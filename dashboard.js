@@ -50,8 +50,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Apply to UI
     kpiValues[0].innerHTML = `${dailySales.toFixed(2)}<span class="currency">ر.س</span>`;
     kpiValues[1].innerHTML = `${orders.length} <span class="text-sm">طلب</span>`;
-    // Hardcoded out-of-stock for now since inventory logic isn't fully complete
-    kpiValues[2].innerHTML = `0 <span class="text-sm">صنف</span>`; 
+    let lowStockCount = 0;
+    const invStr = localStorage.getItem('erp_inventory_items');
+    if(invStr) {
+        const invItems = JSON.parse(invStr);
+        lowStockCount = invItems.filter(it => it.qty <= it.minQty).length;
+    }
+    
+    kpiValues[2].innerHTML = `${lowStockCount} <span class="text-sm">صنف</span>`; 
+    if(lowStockCount > 0) {
+        kpiValues[2].style.color = 'var(--accent-orange)';
+        kpiValues[2].style.textShadow = '0 0 10px rgba(245, 158, 11, 0.5)';
+    }
     kpiValues[3].innerHTML = `${totalExp.toFixed(2)}<span class="currency">ر.س</span>`;
     
     const dBalEl = kpiValues[4];
