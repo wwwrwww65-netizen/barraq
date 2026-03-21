@@ -1,3 +1,10 @@
+// --- Global Authentication Guard ---
+if (!window.location.pathname.includes('login.html')) {
+    if (!localStorage.getItem('currentUser')) {
+        window.location.href = 'login.html';
+    }
+}
+
 // Update Date and Time continuously
 function updateDateTime() {
     const timeDisplay = document.getElementById('datetime-display');
@@ -150,6 +157,95 @@ window.syncGlobalSettings = function() {
 
         } catch(e) {
             console.error('Settings parse error', e);
+        }
+    }
+
+    // --- 3. Profile Setup & Dropdown Menu ---
+    const cUserStr = localStorage.getItem('currentUser');
+    if(cUserStr) {
+        try {
+            const cUser = JSON.parse(cUserStr);
+            const profiles = document.querySelectorAll('.user-profile');
+            
+            profiles.forEach(p => {
+                // Update text
+                const uName = p.querySelector('.user-name');
+                const uRole = p.querySelector('.user-role');
+                const ava = p.querySelector('.avatar');
+                
+                if(uName) uName.innerText = cUser.username;
+                if(uRole) uRole.innerText = cUser.role;
+                if(ava) ava.src = cUser.avatar;
+                
+                // Set relative positioning & pointer cursor
+                p.style.position = 'relative';
+                p.style.cursor = 'pointer';
+                p.style.display = 'flex';
+                p.style.alignItems = 'center';
+                
+                // Add Icon indicating dropdown
+                if(!p.querySelector('.drop-icon-indicator')) {
+                    p.innerHTML += '<i class="ph-bold ph-caret-down drop-icon-indicator" style="margin-right: 10px; color: var(--text-muted);"></i>';
+                }
+
+                // Create Dropdown Node Native HTML
+                if(!p.querySelector('.profile-dropdown')) {
+                    const drop = document.createElement('div');
+                    drop.className = 'profile-dropdown';
+                    drop.style.position = 'absolute';
+                    drop.style.top = '110%';
+                    drop.style.left = '0';
+                    drop.style.background = 'rgba(15, 23, 42, 0.95)';
+                    drop.style.backdropFilter = 'blur(10px)';
+                    drop.style.border = '1px solid rgba(255,255,255,0.1)';
+                    drop.style.borderRadius = '8px';
+                    drop.style.width = '200px';
+                    drop.style.display = 'none';
+                    drop.style.flexDirection = 'column';
+                    drop.style.boxShadow = '0 10px 25px rgba(0,0,0,0.5)';
+                    drop.style.zIndex = '9999';
+                    
+                    drop.innerHTML = `
+                        <a href="profile.html" style="padding: 12px 15px; display:flex; gap:10px; align-items:center; color:white; border-bottom:1px solid rgba(255,255,255,0.05); font-weight:600;"><i class="ph-fill ph-user-circle"></i> معلومات الحساب</a>
+                        <a href="settings.html" style="padding: 12px 15px; display:flex; gap:10px; align-items:center; color:white; border-bottom:1px solid rgba(255,255,255,0.05); font-weight:600;"><i class="ph-fill ph-gear"></i> إعدادات الهوية</a>
+                        <a href="permissions.html" style="padding: 12px 15px; display:flex; gap:10px; align-items:center; color:white; border-bottom:1px solid rgba(255,255,255,0.05); font-weight:600;"><i class="ph-fill ph-shield-check"></i> الصلاحيات</a>
+                        <div id="btn-logout-global" style="padding: 12px 15px; display:flex; gap:10px; align-items:center; color:var(--accent-red); font-weight:800; cursor:pointer;"><i class="ph-bold ph-sign-out"></i> تسجيل الخروج</div>
+                    `;
+                    p.appendChild(drop);
+
+                    // Add hover/click listener
+                    p.addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        // Toggle logic
+                        if(drop.style.display === 'flex') {
+                            drop.style.display = 'none';
+                        } else {
+                            // close others
+                            document.querySelectorAll('.profile-dropdown').forEach(d => d.style.display = 'none');
+                            drop.style.display = 'flex';
+                        }
+                    });
+
+                    // Logout Action
+                    drop.querySelector('#btn-logout-global').addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        // Clear user
+                        localStorage.removeItem('currentUser');
+                        // Optional: don't clear restaurant_settings so they persist for login page
+                        window.location.href = 'login.html';
+                    });
+                }
+            });
+
+            // Global Click outside dropdown to close
+            document.addEventListener('click', () => {
+                document.querySelectorAll('.profile-dropdown').forEach(d => {
+                    d.style.display = 'none';
+                });
+            });
+
+        } catch(e) {
+            console.error('Profile auth error', e);
         }
     }
 };

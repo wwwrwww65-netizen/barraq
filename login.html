@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - سمر حضرموت POS</title>
+    <!-- Base styles -->
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="login.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="login-page-body dark-theme">
+
+    <div class="login-bg-spot blue"></div>
+    <div class="login-bg-spot green"></div>
+
+    <div class="login-box">
+        <img src="logo.jpg" alt="شعار سمر حضرموت" class="login-logo" id="dyn-login-logo">
+        
+        <div class="login-title">
+            <h1 id="dyn-login-name">سمر حضرموت <span class="highlight">POS</span></h1>
+            <p>أدخل بيانات الاعتماد للوصول لنظام الإدارة</p>
+        </div>
+
+        <form id="loginForm">
+            <div class="error-msg" id="login-error">
+                <i class="ph-fill ph-warning-circle"></i> اسم المستخدم أو كلمة المرور غير صحيحة.
+            </div>
+
+            <div class="login-form-group">
+                <label>اسم المستخدم (Username)</label>
+                <div class="login-input-wrapper">
+                    <input type="text" id="username" class="login-input" placeholder="admin" required autocomplete="off">
+                    <i class="ph-fill ph-user"></i>
+                </div>
+            </div>
+
+            <div class="login-form-group">
+                <label>كلمة المرور (Password)</label>
+                <div class="login-input-wrapper">
+                    <input type="password" id="password" class="login-input" placeholder="••••••••" required>
+                    <i class="ph-fill ph-lock-key"></i>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-login" id="btn-login-submit">
+                تسجيل الدخول <i class="ph-bold ph-sign-in"></i>
+            </button>
+        </form>
+
+        <div class="login-footer">
+            جميع الحقوق محفوظة &copy; 2026 - نظام إدارة سمر حضرموت
+        </div>
+    </div>
+
+    <!-- Script to handle dynamic settings for logo on login screen before auth -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem('restaurant_settings');
+            if(saved) {
+                const data = JSON.parse(saved);
+                if(data.logo) document.getElementById('dyn-login-logo').src = data.logo;
+                if(data.name) document.getElementById('dyn-login-name').innerHTML = data.name + ' <span class="highlight">POS</span>';
+            }
+        });
+    </script>
+    <script src="login.js"></script>
+</body>
+</html>
