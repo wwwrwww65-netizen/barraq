@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة المطعم - الكاشير</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Chart.js for beautiful charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="ph-fill ph-storefront"></i>
+                <span>بـرّاق <span class="highlight">POS</span></span>
+            </div>
+            
+            <nav class="nav-menu">
+                <div class="nav-group">
+                    <p class="nav-label">الرئيسية</p>
+                    <a href="#" class="nav-item active"><i class="ph ph-squares-four"></i><span>لوحة القيادة</span></a>
+                    <a href="#" class="nav-item"><i class="ph ph-calculator"></i><span>نقطة البيع (الكاشير)</span></a>
+                    <a href="#" class="nav-item"><i class="ph ph-receipt"></i><span>الطلبات النشطة</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">الإدارة</p>
+                    <a href="#" class="nav-item"><i class="ph ph-pizza"></i><span>الأصناف والمنيو</span></a>
+                    <a href="#" class="nav-item"><i class="ph ph-package"></i><span>المخازن والمشتريات</span></a>
+                    <a href="#" class="nav-item"><i class="ph ph-users"></i><span>الموظفين</span></a>
+                    <a href="#" class="nav-item"><i class="ph ph-users-three"></i><span>العملاء</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">التقارير</p>
+                    <a href="#" class="nav-item"><i class="ph ph-chart-line-up"></i><span>المبيعات</span></a>
+                    <a href="#" class="nav-item"><i class="ph ph-chart-pie"></i><span>الإحصائيات</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">النظام</p>
+                    <a href="#" class="nav-item"><i class="ph ph-gear"></i><span>الإعدادات</span></a>
+                    <a href="#" class="nav-item logout"><i class="ph ph-sign-out"></i><span>تسجيل خروج</span></a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="search-bar">
+                    <i class="ph ph-magnifying-glass"></i>
+                    <input type="text" placeholder="ابحث عن طلب، صنف، أو عميل...">
+                </div>
+                
+                <div class="header-actions">
+                    <div class="datetime" id="datetime-display">
+                        <!-- Time injected via JS -->
+                    </div>
+                    <button class="icon-btn notification-btn">
+                        <i class="ph ph-bell"></i>
+                        <span class="badge">3</span>
+                    </button>
+                    <div class="user-profile">
+                        <img src="https://i.pravatar.cc/150?img=32" alt="صورة المستخدم" class="avatar">
+                        <div class="user-info">
+                            <span class="user-name">أحمد الكاشير</span>
+                            <span class="user-role">مدير الفرع</span>
+                        </div>
+                        <i class="ph ph-caret-down"></i>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Content -->
+            <div class="dashboard-grid">
+                <!-- Top KPI Cards -->
+                <div class="kpi-cards">
+                    <div class="card kpi-card">
+                        <div class="kpi-icon blue">
+                            <i class="ph-fill ph-wallet"></i>
+                        </div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">مبيعات اليوم</p>
+                            <h3 class="kpi-value">4,520<span class="currency">ر.س</span></h3>
+                            <p class="kpi-trend positive"><i class="ph ph-trend-up"></i> +12.5% عن الأمس</p>
+                        </div>
+                    </div>
+                    <div class="card kpi-card">
+                        <div class="kpi-icon green">
+                            <i class="ph-fill ph-receipt"></i>
+                        </div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">الطلبات المنجزة</p>
+                            <h3 class="kpi-value">128</h3>
+                            <p class="kpi-trend positive"><i class="ph ph-trend-up"></i> +5.2% عن الأمس</p>
+                        </div>
+                    </div>
+                    <div class="card kpi-card">
+                        <div class="kpi-icon orange">
+                            <i class="ph-fill ph-armchair"></i>
+                        </div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">الطاولات المشغولة</p>
+                            <h3 class="kpi-value">15<span class="total">/24</span></h3>
+                            <p class="kpi-trend neutral"><i class="ph ph-minus"></i> طبيعي</p>
+                        </div>
+                    </div>
+                    <div class="card kpi-card">
+                        <div class="kpi-icon red">
+                            <i class="ph-fill ph-warning-circle"></i>
+                        </div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">نواقص المخزن</p>
+                            <h3 class="kpi-value">7 <span class="text-sm">أصناف</span></h3>
+                            <p class="kpi-trend negative"><i class="ph ph-trend-down"></i> يتطلب إجراء</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts and Tables Area -->
+                <div class="middle-section">
+                    <!-- Chart area -->
+                    <div class="card chart-card">
+                        <div class="card-header">
+                            <h2 class="card-title">مؤشر المبيعات (أسبوعي)</h2>
+                            <div class="card-actions">
+                                <select class="filter-select">
+                                    <option>هذا الأسبوع</option>
+                                    <option>هذا الشهر</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="salesChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Top Selling Items -->
+                    <div class="card top-items-card">
+                        <div class="card-header">
+                            <h2 class="card-title">الأصناف الأكثر مبيعاً</h2>
+                            <button class="btn-text">عرض الكل</button>
+                        </div>
+                        <div class="items-list">
+                            <div class="item-row">
+                                <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80" alt="برجر" class="item-img">
+                                <div class="item-info">
+                                    <h4>برجر لحم كلاسيك</h4>
+                                    <p>وجبات رئيسية</p>
+                                </div>
+                                <div class="item-sales">
+                                    <span class="sales-count">145 طلب</span>
+                                    <span class="sales-revenue">5,075 ر.س</span>
+                                </div>
+                            </div>
+                            <div class="item-row">
+                                <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80" alt="بيتزا" class="item-img">
+                                <div class="item-info">
+                                    <h4>بيتزا مارغريتا</h4>
+                                    <p>بيتزا</p>
+                                </div>
+                                <div class="item-sales">
+                                    <span class="sales-count">98 طلب</span>
+                                    <span class="sales-revenue">2,940 ر.س</span>
+                                </div>
+                            </div>
+                            <div class="item-row">
+                                <img src="https://images.unsplash.com/photo-1544025162-8315ea07edca?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80" alt="سلطة" class="item-img">
+                                <div class="item-info">
+                                    <h4>سلطة سيزر</h4>
+                                    <p>مقبلات</p>
+                                </div>
+                                <div class="item-sales">
+                                    <span class="sales-count">82 طلب</span>
+                                    <span class="sales-revenue">1,230 ر.س</span>
+                                </div>
+                            </div>
+                            <div class="item-row">
+                                <img src="https://images.unsplash.com/photo-1572490122747-3968b75ee69c?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80" alt="عصير" class="item-img">
+                                <div class="item-info">
+                                    <h4>عصير برتقال طازج</h4>
+                                    <p>مشروبات</p>
+                                </div>
+                                <div class="item-sales">
+                                    <span class="sales-count">76 طلب</span>
+                                    <span class="sales-revenue">760 ر.س</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Section: Recent Orders & Inventory Alerts -->
+                <div class="bottom-section">
+                    <!-- Recent Orders -->
+                    <div class="card recent-orders">
+                        <div class="card-header">
+                            <h2 class="card-title">الطلبات الحديثة</h2>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>رقم الطلب</th>
+                                        <th>النوع</th>
+                                        <th>الطاولة/العميل</th>
+                                        <th>الوقت</th>
+                                        <th>الإجمالي</th>
+                                        <th>الحالة</th>
+                                        <th>إجراء</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>#ORD-1045</td>
+                                        <td><span class="order-type dine-in">محلي</span></td>
+                                        <td>طاولة 12</td>
+                                        <td>منذ دقيقتين</td>
+                                        <td>145.00 ر.س</td>
+                                        <td><span class="status preparing">قيد التحضير</span></td>
+                                        <td><button class="action-btn"><i class="ph ph-eye"></i></button></td>
+                                    </tr>
+                                    <tr>
+                                        <td>#ORD-1044</td>
+                                        <td><span class="order-type delivery">توصيل</span></td>
+                                        <td>محمد علي</td>
+                                        <td>منذ 15 دقيقة</td>
+                                        <td>85.50 ر.س</td>
+                                        <td><span class="status out">في الطريق</span></td>
+                                        <td><button class="action-btn"><i class="ph ph-eye"></i></button></td>
+                                    </tr>
+                                    <tr>
+                                        <td>#ORD-1043</td>
+                                        <td><span class="order-type takeaway">سفري</span></td>
+                                        <td>ضيف</td>
+                                        <td>منذ 22 دقيقة</td>
+                                        <td>45.00 ر.س</td>
+                                        <td><span class="status ready">جاهز للتسليم</span></td>
+                                        <td><button class="action-btn"><i class="ph ph-eye"></i></button></td>
+                                    </tr>
+                                    <tr>
+                                        <td>#ORD-1042</td>
+                                        <td><span class="order-type dine-in">محلي</span></td>
+                                        <td>طاولة 04</td>
+                                        <td>منذ 45 دقيقة</td>
+                                        <td>210.00 ر.س</td>
+                                        <td><span class="status completed">مكتمل</span></td>
+                                        <td><button class="action-btn"><i class="ph ph-eye"></i></button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Inventory Alerts -->
+                    <div class="card inventory-alerts">
+                        <div class="card-header">
+                            <h2 class="card-title">تنبيهات المخزون والمشتريات</h2>
+                            <button class="btn-text">إدارة المشتريات</button>
+                        </div>
+                        <div class="alerts-list">
+                            <div class="alert-item critical">
+                                <div class="alert-icon"><i class="ph ph-warning"></i></div>
+                                <div class="alert-content">
+                                    <h4>طماطم طازجة</h4>
+                                    <p>الرصيد الحالي: 2 كجم <span class="limit">(الحد الأدنى 5 كجم)</span></p>
+                                </div>
+                                <button class="btn-action-small">شراء الآن</button>
+                            </div>
+                            <div class="alert-item critical">
+                                <div class="alert-icon"><i class="ph ph-warning"></i></div>
+                                <div class="alert-content">
+                                    <h4>خبز برجر</h4>
+                                    <p>الرصيد الحالي: 15 قطعة <span class="limit">(الحد الأدنى 50 قطعة)</span></p>
+                                </div>
+                                <button class="btn-action-small">شراء الآن</button>
+                            </div>
+                            <div class="alert-item warning">
+                                <div class="alert-icon"><i class="ph ph-info"></i></div>
+                                <div class="alert-content">
+                                    <h4>لحم مفروم</h4>
+                                    <p>الرصيد الحالي يقترب من الحد الأدنى (تبقي 8 كجم)</p>
+                                </div>
+                                <button class="btn-action-small">مراجعة</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
