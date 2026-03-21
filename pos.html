@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سمر حضرموت - نظام الكاشير (نقطة البيع)</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="pos.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="dark-theme pos-body">
+    <div class="pos-layout">
+        <!-- Sidebar Navigation (Slimmer for POS) -->
+        <aside class="pos-sidebar">
+            <div class="logo-mini">
+                <img src="logo.jpg" alt="Logo">
+            </div>
+            <nav class="pos-menu">
+                <a href="index.html" class="pos-nav-item" title="لوحة القيادة"><i class="ph ph-squares-four"></i></a>
+                <a href="pos.html" class="pos-nav-item active" title="الكاشير"><i class="ph ph-calculator"></i></a>
+                <a href="#" class="pos-nav-item" title="الطلبات السابقة"><i class="ph ph-receipt"></i></a>
+                <a href="#" class="pos-nav-item" title="العملاء"><i class="ph ph-users"></i></a>
+            </nav>
+            <div class="pos-menu-bottom">
+                <a href="#" class="pos-nav-item pos-logout" title="تسجيل خروج"><i class="ph ph-sign-out"></i></a>
+            </div>
+        </aside>
+
+        <!-- Main POS Area (Products) -->
+        <main class="pos-main">
+            <!-- Header -->
+            <header class="pos-header">
+                <div class="pos-search-box">
+                    <i class="ph ph-magnifying-glass"></i>
+                    <input type="text" placeholder="ابحث عن وجبة أو مشروب أو رمز الشريطي...">
+                </div>
+                <div class="pos-top-actions">
+                    <button class="pos-action-btn"><i class="ph ph-barcode"></i> مسح باركود</button>
+                    <button class="pos-action-btn primary"><i class="ph ph-user-plus"></i> عميل جديد</button>
+                    <div class="pos-user">
+                        <img src="https://i.pravatar.cc/150?img=32" alt="User" class="avatar-small">
+                        <span>أحمد</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Categories -->
+            <div class="pos-categories-wrapper">
+                <div class="pos-categories">
+                    <button class="category-btn active">
+                        <div class="cat-icon"><i class="ph ph-squares-four"></i></div>
+                        <span>الكل</span>
+                    </button>
+                    <button class="category-btn">
+                        <div class="cat-icon"><i class="ph ph-bowl-food"></i></div>
+                        <span>مندي وشعبيات</span>
+                    </button>
+                    <button class="category-btn">
+                        <div class="cat-icon"><i class="ph ph-hamburger"></i></div>
+                        <span>وجبات سريعة</span>
+                    </button>
+                    <button class="category-btn">
+                        <div class="cat-icon"><i class="ph ph-coffee"></i></div>
+                        <span>مشروبات</span>
+                    </button>
+                    <button class="category-btn">
+                        <div class="cat-icon"><i class="ph ph-cookie"></i></div>
+                        <span>حلى</span>
+                    </button>
+                    <button class="category-btn">
+                        <div class="cat-icon"><i class="ph ph-carrot"></i></div>
+                        <span>مقبلات وسلطات</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Products Grid -->
+            <div class="pos-products">
+                <div class="product-card">
+                    <div class="product-img-wrapper">
+                        <img src="https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80" alt="مندي">
+                        <span class="product-badge">الأكثر مبيعاً</span>
+                    </div>
+                    <div class="product-details">
+                        <h4>نفر مندي لحم بلدي</h4>
+                        <div class="price-row">
+                            <span class="product-price">65 ر.س</span>
+                            <button class="add-btn"><i class="ph ph-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-card">
+                    <div class="product-img-wrapper">
+                        <img src="https://images.unsplash.com/photo-1563379926898-05f4575a45d8?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80" alt="مكرونة">
+                    </div>
+                    <div class="product-details">
+                        <h4>مكرونة باشميل الدجاج</h4>
+                        <div class="price-row">
+                            <span class="product-price">35 ر.س</span>
+                            <button class="add-btn"><i class="ph ph-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-card">
+                    <div class="product-img-wrapper">
+                        <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80" alt="برجر">
+                    </div>
+                    <div class="product-details">
+                        <h4>برجر لحم كلاسيك</h4>
+                        <div class="price-row">
+                            <span class="product-price">25 ر.س</span>
+                            <button class="add-btn"><i class="ph ph-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-card">
+                    <div class="product-img-wrapper">
+                        <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80" alt="بيتزا">
+                    </div>
+                    <div class="product-details">
+                        <h4>بيتزا مارغريتا حجم وسط</h4>
+                        <div class="price-row">
+                            <span class="product-price">40 ر.س</span>
+                            <button class="add-btn"><i class="ph ph-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-card">
+                    <div class="product-img-wrapper">
+                        <img src="https://images.unsplash.com/photo-1544025162-8315ea07edca?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80" alt="سلطة">
+                    </div>
+                    <div class="product-details">
+                        <h4>سلطة خضراء</h4>
+                        <div class="price-row">
+                            <span class="product-price">10 ر.س</span>
+                            <button class="add-btn"><i class="ph ph-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-card">
+                    <div class="product-img-wrapper">
+                        <img src="https://images.unsplash.com/photo-1572490122747-3968b75ee69c?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80" alt="عصير">
+                    </div>
+                    <div class="product-details">
+                        <h4>عصير برتقال طازج</h4>
+                        <div class="price-row">
+                            <span class="product-price">15 ر.س</span>
+                            <button class="add-btn"><i class="ph ph-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Ticket Area / Cart -->
+        <aside class="pos-cart-panel">
+            <div class="cart-header">
+                <div class="cart-title">
+                    <h3>تفاصيل الطلب</h3>
+                    <span class="order-id">#ORD-1046</span>
+                </div>
+                
+                <div class="order-type-tabs">
+                    <button class="type-btn active"><i class="ph ph-storefront"></i> محلي</button>
+                    <button class="type-btn"><i class="ph ph-bag"></i> سفري</button>
+                    <button class="type-btn"><i class="ph ph-moped"></i> توصيل</button>
+                </div>
+
+                <div class="table-selector">
+                    <select>
+                        <option>اختر الطاولة (اختياري)...</option>
+                        <option>طاولة 01</option>
+                        <option>طاولة 02</option>
+                        <option>طاولة 03</option>
+                        <option>عائلات 01</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="cart-items-list">
+                <!-- Example Item -->
+                <div class="cart-item">
+                    <img src="https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80" alt="مندي" class="cart-item-img">
+                    <div class="item-info">
+                        <h4>نفر مندي لحم بلدي</h4>
+                        <span class="item-price">65 ر.س</span>
+                    </div>
+                    <div class="item-qty">
+                        <button class="qty-btn"><i class="ph ph-minus"></i></button>
+                        <span class="qty-val">2</span>
+                        <button class="qty-btn"><i class="ph ph-plus"></i></button>
+                    </div>
+                    <div class="item-total">
+                        130 ر.س
+                    </div>
+                    <button class="remove-btn"><i class="ph ph-trash"></i></button>
+                </div>
+
+                <!-- Example Item -->
+                <div class="cart-item">
+                    <img src="https://images.unsplash.com/photo-1544025162-8315ea07edca?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80" alt="سلطة" class="cart-item-img">
+                    <div class="item-info">
+                        <h4>سلطة خضراء</h4>
+                        <span class="item-price">10 ر.س</span>
+                    </div>
+                    <div class="item-qty">
+                        <button class="qty-btn"><i class="ph ph-minus"></i></button>
+                        <span class="qty-val">1</span>
+                        <button class="qty-btn"><i class="ph ph-plus"></i></button>
+                    </div>
+                    <div class="item-total">
+                        10 ر.س
+                    </div>
+                    <button class="remove-btn"><i class="ph ph-trash"></i></button>
+                </div>
+            </div>
+
+            <!-- Cart Summary & Actions -->
+            <div class="cart-footer">
+                <div class="cart-summary">
+                    <div class="summary-line">
+                        <span>المجموع الفرعي</span>
+                        <span>140.00 ر.س</span>
+                    </div>
+                    <div class="summary-line">
+                        <span><i class="ph ph-receipt"></i> ضريبة ق.م (15%)</span>
+                        <span>21.00 ر.س</span>
+                    </div>
+                    <div class="summary-line discount">
+                        <span><i class="ph ph-tag"></i> خصم</span>
+                        <span>0.00 ر.س</span>
+                    </div>
+                    <div class="summary-line total">
+                        <span>الإجمالي المطلوب</span>
+                        <span>161.00 ر.س</span>
+                    </div>
+                </div>
+
+                <div class="cart-actions-grid">
+                    <button class="btn-suspend"><i class="ph ph-pause"></i> تعليق الطلب</button>
+                    <button class="btn-print"><i class="ph ph-printer"></i> طباعة للحفظ</button>
+                    <button class="btn-pay"><i class="ph ph-wallet"></i> الدفع (161 ر.س)</button>
+                </div>
+            </div>
+        </aside>
+    </div>
+</body>
+</html>
