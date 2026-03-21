@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سمر حضرموت - الخزينة والبنوك</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="acc.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar accounting-sidebar">
+            <div class="logo">
+                <img src="logo.jpg" alt="شعار المحاسبة" class="restaurant-logo" onerror="this.src='https://placehold.co/100x100'">
+                <span>سمر حضرموت <span class="highlight">ERP</span></span>
+            </div>
+            
+            <nav class="nav-menu">
+                <div class="nav-group">
+                    <p class="nav-label">اللوحة المالية</p>
+                    <a href="accounting.html" class="nav-item"><i class="ph ph-presentation-chart"></i><span>نظرة عامة (الرئيسية)</span></a>
+                    <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>العودة لإدارة الكاشير والمطعم</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">الحسابات العامة</p>
+                    <a href="acc-tree.html" class="nav-item"><i class="ph ph-book-bookmark"></i><span>شجرة الحسابات والدليل</span></a>
+                    <a href="acc-expenses.html" class="nav-item"><i class="ph ph-receipt"></i><span>سجل المصروفات والسندات</span></a>
+                    <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>إجمالي المشتريات (الموردين)</span></a>
+                    <a href="acc-banks.html" class="nav-item active"><i class="ph ph-bank"></i><span>الخزينة والبنوك</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">شؤون الموظفين والعمال</p>
+                    <a href="staff.html" class="nav-item"><i class="ph ph-users-three"></i><span>إدارة الموظفين والملفات</span></a>
+                    <a href="staff.html" class="nav-item"><i class="ph ph-money"></i><span>مسيرات الرواتب والسلف</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">التقارير والكشوفات</p>
+                    <a href="acc-reports.html" class="nav-item"><i class="ph ph-chart-line-up"></i><span>قائمة الدخل و كشف الحساب</span></a>
+                    <a href="acc-reports.html" class="nav-item"><i class="ph ph-file-pdf"></i><span>الميزانية العمومية والمركز</span></a>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content acc-main">
+            <header class="top-header acc-header">
+                <div>
+                    <h2>الخزينة والبنوك (السيولة النقدية)</h2>
+                    <p style="color:var(--text-secondary); font-size:14px; margin-top:5px;">إدارة وحركة الأموال بين صندوق المطعم (الكاشير) وحسابات المؤسسة البنكية.</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" style="background:var(--accent-green)"><i class="ph ph-arrows-left-right"></i> تحويل بين الصناديق</button>
+                </div>
+            </header>
+
+            <div style="padding: 30px;">
+                <div class="acc-kpis">
+                    <div class="kpi-card blue">
+                        <div class="kpi-title" style="color:white;"><i class="ph-fill ph-vault text-blue"></i><span>إجمالي السيولة المتاحة</span></div>
+                        <h3 style="font-size:28px; color:white;" id="total-liquidity">0.00 <span style="font-size:14px;">ر.س</span></h3>
+                    </div>
+                </div>
+
+                <div class="acc-dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+                    <div class="acc-panel">
+                        <div class="acc-panel-title">
+                            <span style="color:var(--accent-green)"><i class="ph-fill ph-money"></i> النقد في الصندوق (الخزينة)</span>
+                        </div>
+                        <h2 style="font-size:36px; margin-bottom:10px; color:white;" id="cash-balance-box">0.00 ر.س</h2>
+                        <p style="color:var(--text-muted); font-size:14px;">يتم تغذيته آلياً من مبيعات "كاش" في الكاشير.</p>
+                        <hr style="border-color:var(--border-color); margin:20px 0;">
+                        <button class="btn btn-outline" style="width:100%"><i class="ph ph-download-simple"></i> إيداع نقدي إضافي</button>
+                    </div>
+
+                    <div class="acc-panel">
+                        <div class="acc-panel-title">
+                            <span style="color:var(--accent-blue)"><i class="ph-fill ph-bank"></i> أرصدة البنك (حسابات شبكة/فيزا/تحويل)</span>
+                        </div>
+                        <h2 style="font-size:36px; margin-bottom:10px; color:white;" id="bank-balance-box">0.00 ر.س</h2>
+                        <p style="color:var(--text-muted); font-size:14px;">يتم تغذيته آلياً من مبيعات "شبكة/مدى/فيزا".</p>
+                        <hr style="border-color:var(--border-color); margin:20px 0;">
+                        <button class="btn btn-outline" style="width:100%"><i class="ph ph-upload-simple"></i> تغذية حساب البنك</button>
+                    </div>
+                </div>
+
+                <div class="acc-panel" style="margin-top:24px;">
+                    <div class="acc-panel-title">
+                        <span>أحدث الحركات النقدية (إيداع / سحب)</span>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>تاريخ الحركة</th>
+                                <th>نوع العملية</th>
+                                <th>من حساب</th>
+                                <th>إلى حساب</th>
+                                <th>المبلغ (ر.س)</th>
+                                <th>بواسطة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bank-trx-body">
+                            <!-- Filled by acc.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="acc.js"></script>
+</body>
+</html>

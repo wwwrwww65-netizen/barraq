@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سمر حضرموت - شجرة الحسابات والدليل</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="acc.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        .tree-container { padding: 20px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); }
+        .tree-node { margin-right: 20px; padding: 10px 0; border-right: 1px dashed var(--border-color); padding-right: 15px; position: relative; }
+        .tree-node::before { content: ''; position: absolute; right: 0; top: 22px; width: 15px; height: 1px; border-top: 1px dashed var(--border-color); }
+        .tree-header { display: flex; align-items: center; gap: 10px; cursor: pointer; color: white; font-weight: 600; }
+        .tree-header i { font-size: 18px; color: var(--accent-blue); }
+        .tree-account { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border-color); margin-top: 8px; transition: 0.2s; cursor: pointer; }
+        .tree-account:hover { background: rgba(255,255,255,0.05); transform: translateX(-5px); }
+        .tree-account span { color: var(--text-secondary); font-size: 14px; }
+        .tree-account strong { color: var(--accent-green); font-size: 15px; }
+    </style>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar accounting-sidebar">
+            <div class="logo">
+                <img src="logo.jpg" alt="شعار المحاسبة" class="restaurant-logo" onerror="this.src='https://placehold.co/100x100'">
+                <span>سمر حضرموت <span class="highlight">ERP</span></span>
+            </div>
+            
+            <nav class="nav-menu">
+                <div class="nav-group">
+                    <p class="nav-label">اللوحة المالية</p>
+                    <a href="accounting.html" class="nav-item"><i class="ph ph-presentation-chart"></i><span>نظرة عامة (الرئيسية)</span></a>
+                    <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>العودة لإدارة الكاشير والمطعم</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">الحسابات العامة</p>
+                    <a href="acc-tree.html" class="nav-item active"><i class="ph ph-book-bookmark"></i><span>شجرة الحسابات والدليل</span></a>
+                    <a href="acc-expenses.html" class="nav-item"><i class="ph ph-receipt"></i><span>سجل المصروفات والسندات</span></a>
+                    <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>إجمالي المشتريات (الموردين)</span></a>
+                    <a href="acc-banks.html" class="nav-item"><i class="ph ph-bank"></i><span>الخزينة والبنوك</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">شؤون الموظفين والعمال</p>
+                    <a href="staff.html" class="nav-item"><i class="ph ph-users-three"></i><span>إدارة الموظفين والملفات</span></a>
+                    <a href="staff.html" class="nav-item"><i class="ph ph-money"></i><span>مسيرات الرواتب والسلف</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">التقارير والكشوفات</p>
+                    <a href="acc-reports.html" class="nav-item"><i class="ph ph-chart-line-up"></i><span>قائمة الدخل و كشف الحساب</span></a>
+                    <a href="acc-reports.html" class="nav-item"><i class="ph ph-file-pdf"></i><span>الميزانية العمومية والمركز</span></a>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content acc-main">
+            <header class="top-header acc-header">
+                <div>
+                    <h2>دليل الحسابات (شجرة الحاسبات)</h2>
+                    <p style="color:var(--text-secondary); font-size:14px; margin-top:5px;">هيكل الأصول والخصوم والمصروفات، يتمدد آلياً بأكواد النظام.</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" style="background:var(--accent-blue)"><i class="ph ph-plus-circle"></i> فرع محاسبي جديد</button>
+                </div>
+            </header>
+
+            <div style="padding: 30px;">
+                <div class="tree-container">
+                    <!-- Assets -->
+                    <div class="tree-node">
+                        <div class="tree-header"><i class="ph-bold ph-caret-down"></i> الأصول (1)</div>
+                        <!-- Current Assets -->
+                        <div class="tree-node">
+                            <div class="tree-header"><i class="ph-bold ph-caret-down"></i> الأصول المتداولة (11)</div>
+                            
+                            <div class="tree-account">
+                                <div><span style="font-weight:700; color:white">111 - الصندوق الرئيسي كاش</span> <span>(أصيل)</span></div>
+                                <strong id="tree-cash">0.00 ر.س</strong>
+                            </div>
+                            <div class="tree-account">
+                                <div><span style="font-weight:700; color:white">112 - حسابات البنوك (مدى/فيزا)</span> <span>(أصيل)</span></div>
+                                <strong id="tree-bank">0.00 ر.س</strong>
+                            </div>
+                            <div class="tree-account">
+                                <div><span style="font-weight:700; color:white">113 - مخزون البضاعة</span> <span>(يقيّم بنهاية الفترة)</span></div>
+                                <strong style="color:var(--text-muted)">يُحدد بجرد المستودع</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Liabilities -->
+                    <div class="tree-node">
+                        <div class="tree-header"><i class="ph-bold ph-caret-down" style="color:var(--accent-orange)"></i> الخصوم والالتزامات (2)</div>
+                        <div class="tree-node">
+                            <div class="tree-header"><i class="ph-bold ph-caret-down" style="color:var(--accent-orange)"></i> الخصوم المتداولة (21)</div>
+                            
+                            <div class="tree-account">
+                                <div><span style="font-weight:700; color:white">211 - ذمم الموردين والدائنين</span> <span>(أصيل)</span></div>
+                                <strong style="color:var(--accent-red)" id="tree-suppliers">0.00 ر.س</strong>
+                            </div>
+                            <div class="tree-account">
+                                <div><span style="font-weight:700; color:white">212 - رواتب مستحقة غير مدفوعة</span> <span>(أصيل)</span></div>
+                                <strong style="color:var(--accent-red)">0.00 ر.س</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Equity/Revenue -->
+                    <div class="tree-node">
+                        <div class="tree-header"><i class="ph-bold ph-caret-down" style="color:var(--accent-green)"></i> الإيرادات التشغيلية (3)</div>
+                        <div class="tree-node">
+                            <div class="tree-account">
+                                <div><span style="font-weight:700; color:white">311 - إيرادات مبيعات الكاشير</span> <span>(مبيعات الطعام)</span></div>
+                                <strong id="tree-rev">0.00 ر.س</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Expenses -->
+                    <div class="tree-node">
+                        <div class="tree-header"><i class="ph-bold ph-caret-down" style="color:var(--accent-red)"></i> المصروفات والتكاليف (4)</div>
+                        <div class="tree-node">
+                            <div class="tree-account">
+                                <div><span style="font-weight:700; color:white">411 - تكلفة البضاعة والمشتريات (COGS)</span></div>
+                                <strong style="color:var(--accent-red)" id="tree-pur">0.00 ر.س</strong>
+                            </div>
+                            <div class="tree-account">
+                                <div><span style="font-weight:700; color:white">412 - مصروفات الرواتب والأجور</span></div>
+                                <strong style="color:var(--accent-red)" id="tree-sal">0.00 ر.س</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="acc.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Fill Bank logic safely
+            if(document.getElementById('cash-balance-box')) {
+                const balCash = document.getElementById('bal-cash') ? parseFloat(document.getElementById('bal-cash').innerText.replace(/,/g,'')) : 0;
+                const balBank = document.getElementById('bal-bank') ? parseFloat(document.getElementById('bal-bank').innerText.replace(/,/g,'')) : 0;
+                document.getElementById('cash-balance-box').innerText = (balCash || 8240).toLocaleString() + ' ر.س';
+                document.getElementById('bank-balance-box').innerText = (balBank || 14300).toLocaleString() + ' ر.س';
+                document.getElementById('total-liquidity').innerText = ((balCash||8240) + (balBank||14300)).toLocaleString() + ' ر.س';
+            }
+            // Fill Tree logic safely
+            if(document.getElementById('tree-cash')) {
+                const balCash = document.getElementById('bal-cash') ? parseFloat(document.getElementById('bal-cash').innerText.replace(/,/g,'')) : 0;
+                document.getElementById('tree-cash').innerText = (balCash || 8240).toLocaleString() + ' ر.س';
+                const balBank = document.getElementById('bal-bank') ? parseFloat(document.getElementById('bal-bank').innerText.replace(/,/g,'')) : 0;
+                document.getElementById('tree-bank').innerText = (balBank || 14300).toLocaleString() + ' ر.س';
+            }
+        });
+    </script>
+</body>
+</html>
