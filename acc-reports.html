@@ -63,6 +63,7 @@
                 <div class="acc-tabs">
                     <button class="acc-tab-btn active" id="tab-pl">قائمة الدخل المبسطة</button>
                     <button class="acc-tab-btn" id="tab-ledger">دفتر الأستاذ (كل الحركات)</button>
+                    <button class="acc-tab-btn" id="tab-balance">الميزانية العمومية والمركز</button>
                 </div>
 
                 <!-- Tab 1: Income Statement (P&L) -->
@@ -152,6 +153,48 @@
                     </table>
                 </div>
 
+                <!-- Tab 3: Balance Sheet -->
+                <div id="view-balance" class="acc-panel" style="display:none; max-width:800px; margin:0 auto; padding:40px;">
+                    <h2 style="text-align:center; margin-bottom:10px; color:white;">الميزانية العمومية للمطعم (المركز المالي)</h2>
+                    <p style="text-align:center; color:var(--text-muted); margin-bottom:40px;">إجمالي الأصول، الخصوم، وحقوق الملكية للحظة الحالية</p>
+
+                    <!-- Assets Box -->
+                    <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:12px; padding:24px; margin-bottom:24px;">
+                        <h3 style="color:var(--accent-blue); display:flex; gap:8px; align-items:center; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;"><i class="ph-bold ph-bank"></i> الأصول (الممتلكات المتاحة)</h3>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:12px; color:white;">
+                            <span>النقد المتوفر في خزينة المطعم</span><strong id="bs-cash">0.00</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:12px; color:white;">
+                            <span>الأموال المودعة في البنوك</span><strong id="bs-bank">0.00</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:12px; color:white;">
+                            <span>قيمة البضاعة في المستودع</span><strong style="color:var(--text-muted)">يُحدد بجرد نهاية الفترة</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-top:24px; padding-top:16px; border-top:1px dashed var(--border-color); color:var(--accent-blue); font-size:18px; font-weight:800;">
+                            <span>إجمالي الأصول</span><strong id="bs-total-assets">0.00 ر.س</strong>
+                        </div>
+                    </div>
+
+                    <!-- Liabilities and Equity Box -->
+                    <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:12px; padding:24px;">
+                        <h3 style="color:var(--accent-orange); display:flex; gap:8px; align-items:center; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;"><i class="ph-bold ph-scales"></i> الخصوم وحقوق الملكية (الالتزامات)</h3>
+                        
+                        <div style="display:flex; justify-content:space-between; margin-bottom:12px; color:white;">
+                            <span>مديونية الموردين (فواتير لم تسدد)</span><strong style="color:var(--accent-red)">0.00</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:12px; color:white;">
+                            <span>رواتب وأجور متأخرة</span><strong style="color:var(--accent-red)">0.00</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:12px; color:var(--accent-green);">
+                            <span>الأرباح المبقاة (صافي دخل الفترة)</span><strong id="bs-retained-earnings">0.00</strong>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; margin-top:24px; padding-top:16px; border-top:1px dashed var(--border-color); color:var(--accent-orange); font-size:18px; font-weight:800;">
+                            <span>إجمالي الخصوم وحق الملكية</span><strong id="bs-total-liabilities">0.00 ر.س</strong>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </main>
     </div>
@@ -159,16 +202,25 @@
     <script src="acc.js"></script>
     <script>
         document.getElementById('tab-pl').addEventListener('click', (e) => {
-            document.getElementById('tab-pl').classList.add('active');
-            document.getElementById('tab-ledger').classList.remove('active');
+            document.querySelectorAll('.acc-tab-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
             document.getElementById('view-pl').style.display = 'block';
             document.getElementById('view-ledger').style.display = 'none';
+            document.getElementById('view-balance').style.display = 'none';
         });
         document.getElementById('tab-ledger').addEventListener('click', (e) => {
-            document.getElementById('tab-ledger').classList.add('active');
-            document.getElementById('tab-pl').classList.remove('active');
+            document.querySelectorAll('.acc-tab-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
             document.getElementById('view-ledger').style.display = 'block';
             document.getElementById('view-pl').style.display = 'none';
+            document.getElementById('view-balance').style.display = 'none';
+        });
+        document.getElementById('tab-balance').addEventListener('click', (e) => {
+            document.querySelectorAll('.acc-tab-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            document.getElementById('view-balance').style.display = 'block';
+            document.getElementById('view-pl').style.display = 'none';
+            document.getElementById('view-ledger').style.display = 'none';
         });
     </script>
 </body>

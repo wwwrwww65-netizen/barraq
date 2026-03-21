@@ -214,6 +214,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 </tr>
             `;
         });
+        
+        // Balance sheet populator
+        if(document.getElementById('bs-cash')) {
+            document.getElementById('bs-cash').innerText = cashBal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ر.س';
+            document.getElementById('bs-bank').innerText = bankBal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ر.س';
+            document.getElementById('bs-total-assets').innerText = (cashBal + bankBal).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ر.س';
+            document.getElementById('bs-retained-earnings').innerText = netProfit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ر.س';
+            document.getElementById('bs-total-liabilities').innerText = (cashBal + bankBal).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ر.س';
+        }
     }
 
 });
