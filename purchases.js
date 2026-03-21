@@ -67,11 +67,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td><span class="inv-tag tag-safe"><i class="ph-fill ph-check-circle"></i> مُورد للمستودع</span></td>
                 <td>
                     <div class="tbl-actions">
-                        <button title="طباعة وإيصال"><i class="ph ph-printer"></i></button>
+                        <button class="print-pur" data-id="${p.id}" title="طباعة فاتورة المشتريات"><i class="ph ph-printer"></i></button>
                     </div>
                 </td>
             `;
             tbody.appendChild(tr);
+        });
+
+        // Attach Print Handlers
+        document.querySelectorAll('.print-pur').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const purId = e.currentTarget.dataset.id;
+                const activePur = purchases.find(x => x.id === purId);
+                if(activePur) printPurchaseInvoice(activePur);
+            });
         });
     }
 
@@ -256,8 +265,101 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.classList.remove('active');
         renderKPIs();
         renderTable();
+        
+        printPurchaseInvoice(newPurchase); // Auto print!
         alert('تم حفظ فاتورة المشتريات وإدخال البضاعة للمخزن وتحديث الأرصدة بنجاح!');
         form.reset();
     });
+
+    // --- HTML Printer Helper ---
+    function printPurchaseInvoice(pur) {
+        let itemsHtml = '';
+        if(pur.items) {
+            pur.items.forEach(it => {
+                itemsHtml += `
+                <tr>
+                    <td>${it.name || it.sku}</td>
+                    <td>${it.qty}</td>
+                    <td>${it.price.toFixed(2)}</td>
+                    <td>${(it.qty * it.price).toFixed(2)}</td>
+                </tr>`;
+            });
+        }
+
+        const methodStr = pur.payMethod === 'cash' ? 'نقداً' : (pur.payMethod === 'bank' ? 'حوالة بنكية' : 'آجل (ذمة)');
+        const sub = pur.total / 1.15;
+        const tax = pur.total - sub;
+
+        const w = window.open('', '_blank', 'width=800,height=600');
+        w.document.write(`
+            <html dir="rtl" lang="ar">
+            <head>
+                <title>فاتورة مشتريات وتوريد بضاعة</title>
+                <style>
+                    body { font-family: 'Segoe UI', Tahoma, Verdana, sans-serif; padding: 20px; color: #333; }
+                    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #334155; padding-bottom: 20px; margin-bottom: 20px; }
+                    .header-left h1 { margin: 0 0 5px 0; color: #0f172a; }
+                    .header-left p { margin: 0; color: #64748b; }
+                    .invoice-info { text-align: right; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+                    .invoice-info p { margin: 5px 0; font-size: 14px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                    th { background: #1e293b; color: white; padding: 12px; text-align: right; }
+                    td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
+                    .totals { width: 300px; margin-right: auto; margin-top:20px; text-align:left;}
+                    .tot-line { display:flex; justify-content:space-between; margin-bottom:8px;}
+                    .tot-line.grand { font-size: 18px; font-weight: bold; border-top: 2px solid #333; padding-top:10px;}
+                    .footer { margin-top: 50px; font-size: 14px; text-align: center; color: #64748b; border-top: 1px solid #cbd5e1; padding-top: 20px; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div class="header-left">
+                        <h1>سمر حضرموت للمطاعم</h1>
+                        <p>إدارة المشتريات والمخازن</p>
+                        <h2 style="margin-top:15px; color:#10b981;">فاتورة مشتريات / توريد بضاعة</h2>
+                    </div>
+                    <div class="invoice-info">
+                        <p><strong>رقم الفاتورة الآلي:</strong> ${pur.id}</p>
+                        <p><strong>رقم الفاتورة المرجعي:</strong> ${pur.ref}</p>
+                        <p><strong>التاريخ:</strong> ${pur.date}</p>
+                        <p><strong>المورد (الشركة):</strong> ${pur.supName}</p>
+                        <p><strong>طريقة الدفع:</strong> ${methodStr}</p>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>الصنف (وصف البضاعة الموردة)</th>
+                            <th>الكمية</th>
+                            <th>سعر الوحدة</th>
+                            <th>الإجمالي الفرعي</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itemsHtml}
+                    </tbody>
+                </table>
+
+                <div class="totals" style="margin-right:0; margin-left:auto; text-align:right;">
+                    <div class="tot-line"><span>الإجمالي قبل الضريبة:</span> <span>${sub.toFixed(2)} ر.س</span></div>
+                    <div class="tot-line"><span>(15%) ضريبة القيمة المضافة:</span> <span>${tax.toFixed(2)} ر.س</span></div>
+                    <div class="tot-line grand"><span>الإجمالي النهائي المستحق:</span> <span>${pur.total.toFixed(2)} ر.س</span></div>
+                </div>
+
+                <div class="footer">
+                    <div style="display:flex; justify-content:space-around; margin-bottom:40px;">
+                        <span>توقيع المشتري / مسؤول المخزن</span>
+                        <span>توقيع ممثل المورد / المحاسب</span>
+                    </div>
+                    <p>هذا السند يعتبر إثبات توريد معتمد في النظام الإلكتروني.</p>
+                </div>
+            </body>
+            </html>
+        `);
+        w.document.close();
+        w.focus();
+        setTimeout(() => { w.print(); w.close(); }, 500);
+    }
 
 });
