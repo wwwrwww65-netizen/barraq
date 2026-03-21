@@ -32,7 +32,49 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 2. Handle Form Submission ---
+    // --- 2. Handle Image Upload ---
+    let localItemImg = 'https://images.unsplash.com/photo-1544025162-8315ea07edca?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'; // default fallback
+    
+    const fileInput = document.querySelector('input[type="file"]');
+    const uploadPlaceholder = document.querySelector('.upload-placeholder');
+    
+    if(fileInput && uploadPlaceholder) {
+        // Trigger generic file click when dropzone clicked
+        uploadPlaceholder.parentElement.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    // Compress image to save localStorage space!
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 400; // Small size for POS
+                        const scaleSize = MAX_WIDTH / img.width;
+                        canvas.width = MAX_WIDTH;
+                        canvas.height = img.height * scaleSize;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        
+                        // Convert back to base64
+                        localItemImg = canvas.toDataURL('image/jpeg', 0.6); // 60% quality jpeg
+                        
+                        // Update UI View
+                        uploadPlaceholder.innerHTML = `<img src="${localItemImg}" style="width:100%; height:150px; object-fit:cover; border-radius:8px;">`;
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+
+    // --- 3. Handle Form Submission ---
     const form = document.querySelector('.add-item-form');
     if(!form) return;
 
@@ -72,10 +114,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const toggles = document.querySelectorAll('.switch input[type="checkbox"]');
         const isActive = toggles[0] ? toggles[0].checked : true;
         
-        // Image processing (in a real app we'd convert Blob to base64 or upload, here just placeholder or read dataURL)
-        // For local demo, we'll assign a placeholder based on category icon if no image
-        let itemImg = 'https://images.unsplash.com/photo-1544025162-8315ea07edca?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'; // fallback
-        
         // Save
         const newItem = {
             id: 'ITM_' + Date.now(),
@@ -86,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
             price: price,
             cost: cost,
             isActive: isActive,
-            image: itemImg,
+            image: localItemImg,
             createdAt: Date.now()
         };
 
