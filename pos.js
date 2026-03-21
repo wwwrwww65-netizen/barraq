@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Elements
     const productsGrid = document.getElementById('products-grid');
-    const categoryBtns = document.querySelectorAll('.category-btn');
+    const categoriesScroll = document.querySelector('.categories-scroll'); // Needs to exist
     const searchInput = document.getElementById('product-search');
     const cartContainer = document.getElementById('cart-items-container');
     
@@ -20,13 +20,80 @@ document.addEventListener('DOMContentLoaded', () => {
     const formatCurrency = (amount) => Number(amount).toFixed(2) + ' ر.س';
 
     /* ===============================
+       Dynamic Data Loading
+    =============================== */
+    let catData = [];
+    const cs = localStorage.getItem('pos_categories');
+    if(cs) catData = JSON.parse(cs);
+
+    let prodData = [];
+    const ps = localStorage.getItem('pos_products');
+    if(ps) prodData = JSON.parse(ps);
+
+    // Initial fallback if system is entirely empty (align with menu.js)
+    if(catData.length === 0) {
+        catData = [
+            { id: 'cat_1', nameAr: 'شعبيات ومندي', icon: 'ph-bowl-food', color: 'orange', order: 1 },
+            { id: 'cat_2', nameAr: 'مشويات', icon: 'ph-fire', color: 'red', order: 2 }
+        ];
+    }
+    if(prodData.length === 0) {
+        prodData = [
+            { id: 'p_1', categoryId: 'cat_1', nameAr: 'مندي دجاج', price: 40, image: 'https://images.unsplash.com/photo-1596797038530-2c107229654b?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80', isActive: true },
+            { id: 'p_2', categoryId: 'cat_1', nameAr: 'مظبي لحم', price: 65, image: 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80', isActive: true }
+        ];
+    }
+
+    // Render Categories
+    if(categoriesScroll) {
+        categoriesScroll.innerHTML = `
+            <button class="category-btn active" data-category="الكل">
+                <div class="cat-icon" style="background: rgba(255, 255, 255, 0.1);"><i class="ph ph-squares-four"></i></div>
+                <span class="cat-name">الكل</span>
+            </button>
+        `;
+        catData.sort((a,b) => (a.order||0) - (b.order||0)).forEach(c => {
+            const html = `
+                <button class="category-btn" data-category="${c.id}">
+                    <div class="cat-icon" style="background: var(--accent-${c.color||'blue'});"><i class="ph ${c.icon||'ph-folder'}"></i></div>
+                    <span class="cat-name">${c.nameAr}</span>
+                </button>
+            `;
+            categoriesScroll.insertAdjacentHTML('beforeend', html);
+        });
+    }
+
+    // Render Products
+    if(productsGrid) {
+        productsGrid.innerHTML = '';
+        prodData.filter(p => p.isActive).forEach(p => {
+            const html = `
+                <div class="product-card" data-category="${p.categoryId}" data-name="${p.nameAr}" data-price="${p.price}" data-id="${p.id}">
+                    <div class="img-container">
+                        <img src="${p.image}" alt="${p.nameAr}">
+                        <div class="price-tag">${Number(p.price).toFixed(2)} ر.س</div>
+                    </div>
+                    <div class="card-body">
+                        <h3 class="product-title">${p.nameAr}</h3>
+                        <div class="card-actions">
+                            <span class="kcal"><i class="ph ph-fire"></i> 400 سعرة</span>
+                            <button class="add-btn"><i class="ph ph-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            productsGrid.insertAdjacentHTML('beforeend', html);
+        });
+    }
+
+    /* ===============================
        Category & Product Filtering
     =============================== */
+    let categoryBtns = document.querySelectorAll('.category-btn');
+
     categoryBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
-            // Remove active class from all
             categoryBtns.forEach(b => b.classList.remove('active'));
-            // Add to clicked
             const targetBtn = e.target.closest('.category-btn');
             targetBtn.classList.add('active');
             
@@ -50,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const matchesSearch = (pName.includes(searchQuery));
 
             if (matchesCategory && matchesSearch) {
-                product.style.display = 'flex'; // It's flex column
+                product.style.display = 'flex';
             } else {
                 product.style.display = 'none';
             }
@@ -63,10 +130,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const addToCartBtns = document.querySelectorAll('.product-card .add-btn');
     const productCardsClickable = document.querySelectorAll('.product-card');
 
-    // Make the entire card clickable, except prevent double ticking if they click the button directly
     productCardsClickable.forEach(card => {
         card.addEventListener('click', (e) => {
-            if(e.target.closest('.add-btn')) return; // handled below
+            if(e.target.closest('.add-btn')) return; 
             addProductToCart(card);
         });
     });

@@ -70,35 +70,8 @@
 
                             <div class="form-group">
                                 <label>القسم / الفئة <span class="required">*</span></label>
-                                <div class="category-selector">
-                                    <label class="cat-radio">
-                                        <input type="radio" name="category" checked>
-                                        <div class="cat-box">
-                                            <i class="ph ph-bowl-food"></i>
-                                            <span>شعبيات</span>
-                                        </div>
-                                    </label>
-                                    <label class="cat-radio">
-                                        <input type="radio" name="category">
-                                        <div class="cat-box">
-                                            <i class="ph ph-hamburger"></i>
-                                            <span>وجبات</span>
-                                        </div>
-                                    </label>
-                                    <label class="cat-radio">
-                                        <input type="radio" name="category">
-                                        <div class="cat-box">
-                                            <i class="ph ph-coffee"></i>
-                                            <span>مشروبات</span>
-                                        </div>
-                                    </label>
-                                    <label class="cat-radio">
-                                        <input type="radio" name="category">
-                                        <div class="cat-box">
-                                            <i class="ph ph-cookie"></i>
-                                            <span>حلويات</span>
-                                        </div>
-                                    </label>
+                                <div class="category-selector" id="dynamic-category-selector">
+                                    <p style="color:var(--text-muted); font-size:12px;">جاري تحميل الأقسام...</p>
                                 </div>
                             </div>
 
@@ -204,5 +177,8 @@
             </form>
         </main>
     </div>
+
+    <script src="script.js"></script>
+    <script src="add-item.js"></script>
 </body>
 </html>
