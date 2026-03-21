@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سمر حضرموت - إضافة صنف جديد</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="add-item.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <img src="logo.jpg" alt="شعار سمر حضرموت" class="restaurant-logo">
+                <span>سمر حضرموت <span class="highlight">POS</span></span>
+            </div>
+            
+            <nav class="nav-menu">
+                <div class="nav-group">
+                    <p class="nav-label">الرئيسية</p>
+                    <a href="index.html" class="nav-item"><i class="ph ph-squares-four"></i><span>لوحة القيادة</span></a>
+                    <a href="pos.html" class="nav-item"><i class="ph ph-calculator"></i><span>الكاشير</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">الإدارة</p>
+                    <a href="menu.html" class="nav-item active"><i class="ph ph-pizza"></i><span>الأصناف والمنيو</span></a>
+                    <a href="#" class="nav-item"><i class="ph ph-package"></i><span>المخازن والمشتريات</span></a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content for Add Item -->
+        <main class="main-content add-item-main">
+            <!-- Header specific to Add Item -->
+            <header class="top-header">
+                <div class="header-left-title breadcrumbs">
+                    <a href="menu.html" class="back-link"><i class="ph ph-arrow-right"></i> إدارة المنيو</a>
+                    <span class="separator">/</span>
+                    <h2>إضافة صنف جديد</h2>
+                </div>
+            </header>
+
+            <form class="add-item-form">
+                <div class="add-item-layout">
+                    
+                    <!-- Right Column: Details -->
+                    <div class="form-column">
+                        <div class="form-card">
+                            <h3 class="card-title-small"><i class="ph ph-info"></i> المعلومات الأساسية</h3>
+                            
+                            <div class="form-group-row">
+                                <div class="form-group">
+                                    <label>اسم الصنف (عربي) <span class="required">*</span></label>
+                                    <input type="text" class="input-modern" placeholder="مثال: برجر لحم دبل..">
+                                </div>
+                                <div class="form-group">
+                                    <label>اسم الصنف (إنجليزي)</label>
+                                    <input type="text" class="input-modern" placeholder="مثال: Double Beef Burger.." dir="ltr">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>القسم / الفئة <span class="required">*</span></label>
+                                <div class="category-selector">
+                                    <label class="cat-radio">
+                                        <input type="radio" name="category" checked>
+                                        <div class="cat-box">
+                                            <i class="ph ph-bowl-food"></i>
+                                            <span>شعبيات</span>
+                                        </div>
+                                    </label>
+                                    <label class="cat-radio">
+                                        <input type="radio" name="category">
+                                        <div class="cat-box">
+                                            <i class="ph ph-hamburger"></i>
+                                            <span>وجبات</span>
+                                        </div>
+                                    </label>
+                                    <label class="cat-radio">
+                                        <input type="radio" name="category">
+                                        <div class="cat-box">
+                                            <i class="ph ph-coffee"></i>
+                                            <span>مشروبات</span>
+                                        </div>
+                                    </label>
+                                    <label class="cat-radio">
+                                        <input type="radio" name="category">
+                                        <div class="cat-box">
+                                            <i class="ph ph-cookie"></i>
+                                            <span>حلويات</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>وصف الصنف والمكونات</label>
+                                <textarea class="input-modern" rows="3" placeholder="اكتب المكونات لتظهر للعميل أو الكاشير.."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="form-card">
+                            <h3 class="card-title-small"><i class="ph ph-money"></i> الأسعار والتكاليف</h3>
+                            <div class="form-group-row">
+                                <div class="form-group">
+                                    <label>سعر البيع (شامل الضريبة) <span class="required">*</span></label>
+                                    <div class="input-with-icon">
+                                        <i class="ph ph-currency-circle-dollar"></i>
+                                        <input type="number" class="input-modern" placeholder="0.00" step="0.5">
+                                        <span class="currency-tag">ر.س</span>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>التكلفة التقديرية <span class="tooltip"><i class="ph ph-question"></i></span></label>
+                                    <div class="input-with-icon">
+                                        <i class="ph ph-calculator"></i>
+                                        <input type="number" class="input-modern" placeholder="0.00" step="0.5">
+                                        <span class="currency-tag">ر.س</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-card">
+                            <h3 class="card-title-small"><i class="ph ph-plus-circle"></i> الإضافات والتعديلات (Modifiers)</h3>
+                            <div class="modifier-list">
+                                <div class="modifier-item">
+                                    <input type="text" class="input-modern mod-name" value="إضافة جبن" readonly>
+                                    <input type="text" class="input-modern mod-price" value="+2.00 ر.س" readonly>
+                                    <button type="button" class="btn-icon remove"><i class="ph ph-trash"></i></button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn-text-add"><i class="ph ph-plus"></i> إنشاء إضافة جديدة</button>
+                        </div>
+                    </div>
+
+                    <!-- Left Column: Media & Settings -->
+                    <div class="form-column">
+                        <div class="form-card upload-card">
+                            <h3 class="card-title-small"><i class="ph ph-image"></i> صورة الصنف</h3>
+                            <div class="image-upload-zone">
+                                <div class="upload-placeholder">
+                                    <i class="ph ph-upload-simple"></i>
+                                    <p>اضغط لاختيار صورة أو اسحبها هنا</p>
+                                    <span>يفضل مقاس 800x800 بكسل PNG أو JPG</span>
+                                </div>
+                                <input type="file" id="item-image" accept="image/*" class="hidden-input">
+                            </div>
+                        </div>
+
+                        <div class="form-card">
+                            <h3 class="card-title-small"><i class="ph ph-sliders"></i> إعدادات إضافية</h3>
+                            
+                            <div class="toggle-setting">
+                                <div class="setting-info">
+                                    <h4>حالة الصنف</h4>
+                                    <p>هل الصنف متاح للبيع حالياً في الكاشير والتطبيقات؟</p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" checked>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <hr class="divider">
+                            <div class="toggle-setting">
+                                <div class="setting-info">
+                                    <h4>تتبع المخزون</h4>
+                                    <p>ربط الصنف بالمخزون للخصم التلقائي عند البيع.</p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <hr class="divider">
+                            <div class="form-group mt-3">
+                                <label>وقت التحضير المتوقع (بالدقائق)</label>
+                                <div class="input-with-icon">
+                                    <i class="ph ph-timer"></i>
+                                    <input type="number" class="input-modern" placeholder="مثال: 15">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="form-actions-bar">
+                    <a href="menu.html" class="btn-cancel">إلغاء الأمر</a>
+                    <div class="save-actions">
+                        <button type="button" class="btn-save-draft"><i class="ph ph-floppy-disk"></i> حفظ كمسودة</button>
+                        <button type="submit" class="btn-save-publish"><i class="ph ph-check-circle"></i> حفظ ونشر للكاشير</button>
+                    </div>
+                </div>
+            </form>
+        </main>
+    </div>
+</body>
+</html>
