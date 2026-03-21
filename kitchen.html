@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شاشة المطبخ (KDS) - سمر حضرموت</title>
+    <!-- Base styles -->
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="kitchen.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="dark-theme">
+    <div class="kds-container">
+        
+        <!-- Minimal KDS Sidebar -->
+        <aside class="kds-sidebar">
+            <div class="logo">
+                <img src="logo.jpg" alt="المطعم" class="restaurant-logo" id="dyn-login-logo">
+            </div>
+            
+            <nav class="kds-nav">
+                <button class="kds-nav-btn active" title="لوحة الطلبات" onclick="location.href='kitchen.html'"><i class="ph-bold ph-cooking-pot"></i></button>
+                <button class="kds-nav-btn" title="المرتجعات" onclick="location.href='returns.html'"><i class="ph-bold ph-arrow-u-down-left"></i></button>
+                <div style="flex:1;"></div>
+                <button class="kds-nav-btn" title="الكاشير" style="margin-top:auto;" onclick="location.href='pos.html'"><i class="ph-bold ph-monitor"></i></button>
+                <button class="kds-nav-btn" title="الرئيسية" onclick="location.href='index.html'"><i class="ph-bold ph-squares-four"></i></button>
+            </nav>
+        </aside>
+
+        <!-- KDS Main View -->
+        <main class="kds-main">
+            <!-- Header -->
+            <header class="kds-header">
+                <div class="kds-header-left">
+                    <h1 id="kds-rest-name"><i class="ph-fill ph-fire"></i> شاشة مراقبة المطبخ الدقيقة (KDS)</h1>
+                    <div class="kds-badge" id="kds-order-count">0 طلب نشط</div>
+                </div>
+                
+                <div class="kds-header-right">
+                    <div class="user-profile" style="background: rgba(255,255,255,0.05); padding: 5px 15px; border-radius:30px;">
+                        <img src="https://i.pravatar.cc/150?img=11" alt="شيف" class="avatar" style="width:30px; height:30px;">
+                        <div class="user-info">
+                            <span class="user-name" style="font-size:12px;">شيف المناوبة</span>
+                        </div>
+                    </div>
+                    <div style="width:1px; height:30px; background: rgba(255,255,255,0.1); margin: 0 10px;"></div>
+                    <div class="kds-time" id="kds-live-clock">12:00:00 PM</div>
+                </div>
+            </header>
+
+            <!-- Kanban Board -->
+            <div class="kds-board">
+                
+                <!-- Column 1: New -->
+                <div class="kds-col new">
+                    <div class="kds-col-header" style="border-bottom-color: var(--accent-red);">
+                        <i class="ph-fill ph-receipt"></i> طلبات جديدة <span class="badge" id="count-new">0</span>
+                    </div>
+                    <div class="kds-col-body" id="col-new">
+                        <!-- Dynamic Tickets injected here -->
+                        <div class="kds-empty"><i class="ph-light ph-tray"></i><p>لا توجد طلبات جديدة</p></div>
+                    </div>
+                </div>
+
+                <!-- Column 2: In Progress -->
+                <div class="kds-col prep">
+                    <div class="kds-col-header" style="border-bottom-color: var(--accent-orange);">
+                        <i class="ph-fill ph-fire"></i> جاري التحضير <span class="badge" style="background:var(--accent-orange);" id="count-prep">0</span>
+                    </div>
+                    <div class="kds-col-body" id="col-prep">
+                        <div class="kds-empty"><i class="ph-light ph-cooking-pot"></i><p>لا توجد طلبات في النار</p></div>
+                    </div>
+                </div>
+
+                <!-- Column 3: Ready -->
+                <div class="kds-col ready">
+                    <div class="kds-col-header" style="border-bottom-color: var(--accent-green);">
+                        <i class="ph-fill ph-check-circle"></i> جاهز للتقديم <span class="badge" style="background:var(--accent-green);" id="count-ready">0</span>
+                    </div>
+                    <div class="kds-col-body" id="col-ready">
+                        <div class="kds-empty"><i class="ph-light ph-bell-ringing"></i><p>النافذة فارغة</p></div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="script.js"></script>
+    <script src="kitchen.js"></script>
+</body>
+</html>
