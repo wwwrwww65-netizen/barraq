@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سمر حضرموت - التقارير الختامية</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="acc.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <img src="logo.jpg" alt="شعار سمر حضرموت" class="restaurant-logo" onerror="this.src='https://placehold.co/100x100'">
+                <span>المالية <span class="highlight">والمحاسبة</span></span>
+            </div>
+            
+            <nav class="nav-menu">
+                <div class="nav-group">
+                    <p class="nav-label">الرئيسية</p>
+                    <a href="index.html" class="nav-item text-muted"><i class="ph ph-arrow-right"></i><span>العودة للوحة القيادة</span></a>
+                </div>
+                <div class="nav-group">
+                    <p class="nav-label">نطاق المحاسبة</p>
+                    <a href="accounting.html" class="nav-item"><i class="ph ph-chart-pie-slice"></i><span>لوحة التحكم المالي</span></a>
+                    <a href="acc-expenses.html" class="nav-item"><i class="ph ph-money"></i><span>المصروفات العامة</span></a>
+                    <a href="acc-reports.html" class="nav-item active"><i class="ph ph-file-text"></i><span>التقارير الختامية (الدخل)</span></a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content acc-main">
+            <header class="top-header acc-header">
+                <div>
+                    <h2>التقارير الختامية وقائمة الدخل (P&L)</h2>
+                    <p style="color:var(--text-secondary); font-size:14px; margin-top:5px;">كشف الأرباح والخسائر الشامل ودفتر الأستاذ العام للعمليات.</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn-primary" onclick="window.print()"><i class="ph ph-printer"></i> طباعة التقرير / PDF</button>
+                </div>
+            </header>
+
+            <div style="padding: 30px;">
+                <div class="acc-tabs">
+                    <button class="acc-tab-btn active" id="tab-pl">قائمة الدخل المبسطة</button>
+                    <button class="acc-tab-btn" id="tab-ledger">دفتر الأستاذ (كل الحركات)</button>
+                </div>
+
+                <!-- Tab 1: Income Statement (P&L) -->
+                <div id="view-pl" class="acc-panel" style="max-width:800px; margin:0 auto; padding:40px;">
+                    <h2 style="text-align:center; margin-bottom:10px; color:white;">قائمة الدخل (الأرباح والخسائر)</h2>
+                    <p style="text-align:center; color:var(--text-muted); margin-bottom:40px;" id="pl-period">الفترة: من أول نشاط حتى تاريخه</p>
+
+                    <table style="width:100%; border-collapse:collapse; font-size:16px;">
+                        <!-- Revenue -->
+                        <tr style="background:rgba(255,255,255,0.05);">
+                            <td colspan="2" style="padding:12px; font-weight:800; color:var(--accent-green);">1. الإيرادات</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:12px 24px; border-bottom:1px solid rgba(255,255,255,0.05);">مبيعات المطعم (نقاط البيع - POS)</td>
+                            <td style="padding:12px 24px; border-bottom:1px solid rgba(255,255,255,0.05); text-align:left; font-weight:700;" id="pl-rev-sales">0.00</td>
+                        </tr>
+                        <tr style="background:rgba(255,255,255,0.02);">
+                            <td style="padding:12px 24px; font-weight:800; border-bottom:2px solid var(--accent-green); color:white;">إجمالي الإيرادات</td>
+                            <td style="padding:12px 24px; text-align:left; font-weight:800; border-bottom:2px solid var(--accent-green); color:var(--accent-green);" id="pl-total-rev">0.00</td>
+                        </tr>
+
+                        <!-- COGS -->
+                        <tr><td colspan="2" style="height:20px;"></td></tr>
+                        <tr style="background:rgba(255,255,255,0.05);">
+                            <td colspan="2" style="padding:12px; font-weight:800; color:var(--accent-orange);">2. تكلفة البضاعة المباعة والمشتريات (COGS)</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:12px 24px; border-bottom:1px solid rgba(255,255,255,0.05);">مشتريات المواد الخام وخضار ولحوم</td>
+                            <td style="padding:12px 24px; border-bottom:1px solid rgba(255,255,255,0.05); text-align:left; font-weight:700; color:var(--accent-red);" id="pl-cogs-pur">(0.00)</td>
+                        </tr>
+                        <tr style="background:rgba(255,255,255,0.02);">
+                            <td style="padding:12px 24px; font-weight:800; border-bottom:2px solid var(--accent-orange); color:white;">مجمل الربح (Gross Profit)</td>
+                            <td style="padding:12px 24px; text-align:left; font-weight:800; border-bottom:2px solid var(--accent-orange); color:var(--accent-orange);" id="pl-gross-profit">0.00</td>
+                        </tr>
+
+                        <!-- Expenses -->
+                        <tr><td colspan="2" style="height:20px;"></td></tr>
+                        <tr style="background:rgba(255,255,255,0.05);">
+                            <td colspan="2" style="padding:12px; font-weight:800; color:var(--accent-red);">3. المصروفات التشغيلية والعمومية (OPEX)</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:12px 24px; border-bottom:1px solid rgba(255,255,255,0.05);">رواتب وأجور عاملين</td>
+                            <td style="padding:12px 24px; border-bottom:1px solid rgba(255,255,255,0.05); text-align:left;" id="pl-exp-salaries">(0.00)</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:12px 24px; border-bottom:1px solid rgba(255,255,255,0.05);">إيجارات ومصاريف تشغيل</td>
+                            <td style="padding:12px 24px; border-bottom:1px solid rgba(255,255,255,0.05); text-align:left;" id="pl-exp-rent">(0.00)</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:12px 24px; border-bottom:1px solid rgba(255,255,255,0.05);">نثريات واستهلاكات يومية عامة</td>
+                            <td style="padding:12px 24px; border-bottom:1px solid rgba(255,255,255,0.05); text-align:left;" id="pl-exp-other">(0.00)</td>
+                        </tr>
+                        <tr style="background:rgba(255,255,255,0.02);">
+                            <td style="padding:12px 24px; font-weight:800; border-bottom:2px solid var(--accent-red); color:white;">إجمالي المصروفات</td>
+                            <td style="padding:12px 24px; text-align:left; font-weight:800; border-bottom:2px solid var(--accent-red); color:var(--accent-red);" id="pl-total-exp">(0.00)</td>
+                        </tr>
+
+                        <!-- Net Profit -->
+                        <tr><td colspan="2" style="height:30px;"></td></tr>
+                        <tr style="background:rgba(59, 130, 246, 0.1);">
+                            <td style="padding:20px 24px; font-weight:800; font-size:20px; color:white; border-top:2px dashed var(--accent-blue);">صافي الدخل / الأرباح (Net Income)</td>
+                            <td style="padding:20px 24px; text-align:left; font-weight:800; font-size:24px; color:var(--accent-blue); border-top:2px dashed var(--accent-blue);" id="pl-net-profit">0.00 র.س</td>
+                        </tr>
+
+                    </table>
+                </div>
+
+                <!-- Tab 2: General Ledger -->
+                <div id="view-ledger" class="acc-panel" style="display:none;">
+                    <div class="acc-panel-title">
+                        <span>دفتر الأستاذ العام (كافة الحركات النقدية والأرصدة)</span>
+                    </div>
+                    <table class="data-table mt-3">
+                        <thead>
+                            <tr>
+                                <th>تاريخ العملية</th>
+                                <th>رقم القيد / المرجع</th>
+                                <th>نوع الحركة</th>
+                                <th>البيان والملاحظات</th>
+                                <th>مقبوضات (دائن) +</th>
+                                <th>مدفوعات (مدين) -</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ledger-tbody">
+                            <!-- Filled by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="acc.js"></script>
+    <script>
+        document.getElementById('tab-pl').addEventListener('click', (e) => {
+            document.getElementById('tab-pl').classList.add('active');
+            document.getElementById('tab-ledger').classList.remove('active');
+            document.getElementById('view-pl').style.display = 'block';
+            document.getElementById('view-ledger').style.display = 'none';
+        });
+        document.getElementById('tab-ledger').addEventListener('click', (e) => {
+            document.getElementById('tab-ledger').classList.add('active');
+            document.getElementById('tab-pl').classList.remove('active');
+            document.getElementById('view-ledger').style.display = 'block';
+            document.getElementById('view-pl').style.display = 'none';
+        });
+    </script>
+</body>
+</html>

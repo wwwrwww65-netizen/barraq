@@ -3,489 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سمر حضرموت - النظام المحاسبي الشامل</title>
+    <title>سمر حضرموت - النظام المحاسبي</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="accounting.css">
-    <link rel="stylesheet" href="staff.css"> <!-- Added to support the Voucher modal styling -->
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="acc.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="dark-theme">
     <div class="app-container">
         <!-- Sidebar Navigation -->
-        <aside class="sidebar accounting-sidebar">
+        <aside class="sidebar">
             <div class="logo">
-                <img src="logo.jpg" alt="شعار المحاسبة" class="restaurant-logo">
-                <span>سمر حضرموت <span class="highlight">ERP</span></span>
+                <img src="logo.jpg" alt="شعار سمر حضرموت" class="restaurant-logo" onerror="this.src='https://placehold.co/100x100'">
+                <span>المالية <span class="highlight">والمحاسبة</span></span>
             </div>
             
             <nav class="nav-menu">
                 <div class="nav-group">
-                    <p class="nav-label">اللوحة المالية</p>
-                    <a href="accounting.html" class="nav-item active"><i class="ph ph-presentation-chart"></i><span>نظرة عامة</span></a>
-                    <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>العودة للكاشير</span></a>
+                    <p class="nav-label">الرئيسية</p>
+                    <a href="index.html" class="nav-item text-muted"><i class="ph ph-arrow-right"></i><span>العودة للوحة القيادة</span></a>
                 </div>
-
                 <div class="nav-group">
-                    <p class="nav-label">الحسابات العامة</p>
-                    <a href="#" class="nav-item"><i class="ph ph-book-bookmark"></i><span>شجرة الحسابات</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-receipt"></i><span>سجل المصروفات</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-shopping-cart"></i><span>إجمالي المشتريات</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-bank"></i><span>الخزينة والبنوك</span></a>
-                </div>
-
-                <div class="nav-group">
-                    <p class="nav-label">شؤون الموظفين والعمال</p>
-                    <a href="#" class="nav-item"><i class="ph ph-users-three"></i><span>إدارة الموظفين</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-money"></i><span>مسيرات الرواتب والسلف</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-file-text"></i><span>كشوفات العمال</span></a>
-                </div>
-
-                <div class="nav-group">
-                    <p class="nav-label">التقارير المالية</p>
-                    <a href="#" class="nav-item"><i class="ph ph-chart-line-up"></i><span>قائمة الدخل</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-file-pdf"></i><span>الميزانية العمومية</span></a>
+                    <p class="nav-label">نطاق المحاسبة</p>
+                    <a href="accounting.html" class="nav-item active"><i class="ph ph-chart-pie-slice"></i><span>لوحة التحكم المالي</span></a>
+                    <a href="acc-expenses.html" class="nav-item"><i class="ph ph-money"></i><span>المصروفات العامة</span></a>
+                    <a href="acc-reports.html" class="nav-item"><i class="ph ph-file-text"></i><span>التقارير الختامية (الدخل)</span></a>
                 </div>
             </nav>
         </aside>
 
         <!-- Main Content -->
         <main class="main-content acc-main">
-            <!-- Header -->
             <header class="top-header acc-header">
-                <div class="header-left-title">
-                    <h2>إدارة النظام المحاسبي</h2>
-                    <span class="fiscal-year-badge">السنة المالية: 2026</span>
+                <div>
+                    <h2>النظام المحاسبي والمالي</h2>
+                    <p style="color:var(--text-secondary); font-size:14px; margin-top:5px;">مراقبة الأرباح والخسائر، وتسجيل المصروفات وقيود اليومية.</p>
                 </div>
-                
                 <div class="header-actions">
-                    <div class="time-filters">
-                        <button class="filter-btn">اليوم</button>
-                        <button class="filter-btn active">هذا الشهر</button>
-                        <button class="filter-btn">الربع الحالي</button>
-                        <button class="filter-btn">رؤية سنوية</button>
-                    </div>
-                    
-                    <button class="icon-btn notification-btn">
-                        <i class="ph ph-bell"></i>
-                    </button>
-                    <div class="user-profile">
-                        <img src="https://i.pravatar.cc/150?img=12" alt="المحاسب" class="avatar">
-                        <div class="user-info">
-                            <span class="user-name">عبدالرحمن</span>
-                            <span class="user-role">المدير المالي</span>
-                        </div>
-                    </div>
+                    <button class="btn-primary bg-blue" onclick="window.location.href='acc-expenses.html'"><i class="ph ph-plus-circle"></i> تسجيل مصروف جديد</button>
+                    <!-- Small datetime display -->
+                    <div style="color:var(--text-muted); font-size:14px; background:rgba(255,255,255,0.05); padding:8px 16px; border-radius:8px;" id="current-date"></div>
                 </div>
             </header>
 
-            <div class="dashboard-grid acc-grid">
-                
-                <!-- Financial Quick Actions -->
-                <div class="acc-actions-bar">
-                    <button class="acc-btn acc-btn-income"><i class="ph ph-plus-circle"></i> سند قبض / توريد</button>
-                    <button class="acc-btn acc-btn-expense"><i class="ph ph-minus-circle"></i> سند صرف / مصروف</button>
-                    <button class="acc-btn acc-btn-invoice"><i class="ph ph-file-invoice"></i> إدخال فاتورة مشتريات</button>
-                    <button class="btn btn-primary" style="background:#ef4444; border:none" id="btn-open-advance-modal"><i class="ph ph-hand-coins"></i> صرف راتب / سلفة</button>
-                    <button class="acc-btn acc-btn-report"><i class="ph ph-printer"></i> طباعة كشف حساب</button>
-                </div>
+            <div class="acc-dashboard-grid">
+                <!-- Left Column: KPIs and Chart -->
+                <div class="acc-col-left">
+                    <div class="acc-kpis">
+                        <div class="kpi-card green">
+                            <div class="kpi-title"><span>إجمالي المبيعات (الإيرادات)</span> <i class="ph-fill ph-trend-up"></i></div>
+                            <div class="kpi-value" id="kpi-revenue">0.00 ر.س</div>
+                            <div class="kpi-trend positive"><i class="ph-bold ph-caret-up"></i> إيرادات من نقاط البيع</div>
+                        </div>
 
-                <!-- Financial KPI Cards -->
-                <div class="kpi-cards acc-kpis">
-                    <!-- Balance -->
-                    <div class="card kpi-card">
-                        <div class="kpi-icon blue">
-                            <i class="ph-fill ph-vault"></i>
+                        <div class="kpi-card red">
+                            <div class="kpi-title"><span>جملة المصروفات والمشتريات</span> <i class="ph-fill ph-trend-down"></i></div>
+                            <div class="kpi-value" id="kpi-expenses">0.00 ر.س</div>
+                            <div class="kpi-trend negative"><i class="ph-bold ph-caret-down"></i> بضاعة منصرفة ومصاريف عامة</div>
                         </div>
-                        <div class="kpi-details">
-                            <p class="kpi-title">الرصيد الكلي (الخزينة + البنوك)</p>
-                            <h3 class="kpi-value acc-glow-blue">125,400<span class="currency">ر.س</span></h3>
-                            <p class="kpi-trend positive"><i class="ph ph-trend-up"></i> +8% نمو السيولة</p>
-                        </div>
-                    </div>
-                    <!-- Total Sales/Income -->
-                    <div class="card kpi-card">
-                        <div class="kpi-icon emerald">
-                            <i class="ph-fill ph-chart-line-up"></i>
-                        </div>
-                        <div class="kpi-details">
-                            <p class="kpi-title">إجمالي المبيعات (هذا الشهر)</p>
-                            <h3 class="kpi-value acc-glow-green">45,200<span class="currency">ر.س</span></h3>
-                            <p class="kpi-trend positive"><i class="ph ph-trend-up"></i> ممتاز</p>
+
+                        <div class="kpi-card blue">
+                            <div class="kpi-title"><span style="color:var(--accent-blue)">صافي الربح التقديري</span> <i class="ph-fill ph-coins"></i></div>
+                            <div class="kpi-value" id="kpi-profit">0.00 ر.س</div>
+                            <div class="kpi-trend" id="kpi-profit-trend">-</div>
                         </div>
                     </div>
-                    <!-- Total Purchases & Expenses -->
-                    <div class="card kpi-card">
-                        <div class="kpi-icon red">
-                            <i class="ph-fill ph-shopping-bag"></i>
-                        </div>
-                        <div class="kpi-details">
-                            <p class="kpi-title">المشتريات والمصروفات</p>
-                            <h3 class="kpi-value acc-glow-red">18,350<span class="currency">ر.س</span></h3>
-                            <p class="kpi-trend negative"><i class="ph ph-trend-up"></i> ارتفاع طفيف بالمواد</p>
-                        </div>
-                    </div>
-                    <!-- Net Profit -->
-                    <div class="card kpi-card">
-                        <div class="kpi-icon orange">
-                            <i class="ph-fill ph-crown"></i>
-                        </div>
-                        <div class="kpi-details">
-                            <p class="kpi-title">صافي الدخل التقديري</p>
-                            <h3 class="kpi-value acc-glow-orange">26,850<span class="currency">ر.س</span></h3>
-                            <p class="kpi-trend positive"><i class="ph ph-check-circle"></i> مؤشر ربحية جيد</p>
-                        </div>
+
+                    <!-- Flow Chart -->
+                    <div class="acc-panel" style="margin-bottom: 24px;">
+                        <h3 class="acc-panel-title">تحليل الإيرادات مقابل المصروفات (آخر 7 أيام)</h3>
+                        <canvas id="financeChart" height="100"></canvas>
                     </div>
                 </div>
 
-                <!-- Main Accounting Split: Chart + Employee Payroll Summary -->
-                <div class="acc-middle-section">
-                    <!-- Cash Flow Chart -->
-                    <div class="card acc-chart-card">
-                        <div class="card-header">
-                            <h2 class="card-title">التدفق النقدي (المبيعات مقابل المصروفات)</h2>
-                            <button class="btn-text">تقرير مفصل</button>
+                <!-- Right Column: Quick Links & Summary -->
+                <div class="acc-col-right">
+                    <div class="acc-panel" style="margin-bottom: 24px;">
+                        <h3 class="acc-panel-title">محفظة الخزينة والحسابات البنكية</h3>
+                        <div style="background:rgba(0,0,0,0.2); padding:16px; border-radius:8px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <span style="font-size:12px; color:var(--text-muted);">رصيد الصندوق (كاش)</span>
+                                <div style="font-size:20px; font-weight:700; color:white;" id="bal-cash">0.00 ر.س</div>
+                            </div>
+                            <i class="ph-fill ph-wallet text-green" style="font-size:28px;"></i>
                         </div>
-                        <div class="chart-container">
-                            <canvas id="accCashFlowChart"></canvas>
+                        <div style="background:rgba(0,0,0,0.2); padding:16px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <span style="font-size:12px; color:var(--text-muted);">حساب البنك (شبكة/حوالات)</span>
+                                <div style="font-size:20px; font-weight:700; color:white;" id="bal-bank">0.00 ر.س</div>
+                            </div>
+                            <i class="ph-fill ph-bank text-blue" style="font-size:28px;"></i>
                         </div>
                     </div>
 
-                    <!-- Payroll & Employees Summary -->
-                    <div class="card acc-payroll-card">
-                        <div class="card-header">
-                            <h2 class="card-title">رواتب وسلف العمال</h2>
-                            <button class="btn-text">إدارة الكشوفات</button>
+                    <div class="acc-panel">
+                        <h3 class="acc-panel-title">آخر العمليات المالية (قيود يومية)</h3>
+                        <div id="recent-entries" style="display:flex; flex-direction:column; gap:12px;">
+                            <!-- Filled by JS -->
                         </div>
-                        <div class="payroll-list">
-                            <div class="payroll-item">
-                                <div class="employee-info">
-                                    <div class="emp-avatar">س</div>
-                                    <div>
-                                        <h4>سليمان أحمد</h4>
-                                        <p>طباخ - مندي</p>
-                                    </div>
-                                </div>
-                                <div class="financials">
-                                    <span class="salary-base">الراتب: 3500 ر.س</span>
-                                    <span class="salary-deduct">السلف: -500 ر.س</span>
-                                    <span class="salary-net">الصافي: 3000 ر.س</span>
-                                </div>
-                                <button class="acc-btn-small">تسديد</button>
-                            </div>
-                            <div class="payroll-item">
-                                <div class="employee-info">
-                                    <div class="emp-avatar">م</div>
-                                    <div>
-                                        <h4>محمد علي</h4>
-                                        <p>كاشير</p>
-                                    </div>
-                                </div>
-                                <div class="financials">
-                                    <span class="salary-base">الراتب: 2800 ر.س</span>
-                                    <span class="salary-deduct">السلف: 0 ر.س</span>
-                                    <span class="salary-net">الصافي: 2800 ر.س</span>
-                                </div>
-                                <button class="acc-btn-small">تسديد</button>
-                            </div>
-                            <div class="payroll-item">
-                                <div class="employee-info">
-                                    <div class="emp-avatar">ع</div>
-                                    <div>
-                                        <h4>عبدالله سالم</h4>
-                                        <p>مندوب توصيل</p>
-                                    </div>
-                                </div>
-                                <div class="financials">
-                                    <span class="salary-base">الراتب: 2000 ر.س</span>
-                                    <span class="salary-deduct">السلف: -200 ر.س</span>
-                                    <span class="salary-net">الصافي: 1800 ر.س</span>
-                                </div>
-                                <button class="acc-btn-small">تسديد</button>
-                            </div>
-                        </div>
-                        <div class="payroll-summary">
-                            <span>إجمالي الرواتب المستحقة هذا الشهر:</span>
-                            <strong>8,300.00 ر.س</strong>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Bottom Data Grids (Recent Expenses & Statements) -->
-                <div class="acc-bottom-section">
-                    <!-- Daily Expenses & Purchases Table -->
-                    <div class="card acc-transactions">
-                        <div class="card-header">
-                            <h2 class="card-title">سجل المصروفات والمشتريات الأخير</h2>
-                            <button class="btn-text">مراجعة الكل</button>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="data-table acc-table">
-                                <thead>
-                                    <tr>
-                                        <th>رقم القيد</th>
-                                        <th>التاريخ</th>
-                                        <th>البيان / الوصف</th>
-                                        <th>التصنيف المالي</th>
-                                        <th>الجهة / المورد</th>
-                                        <th>المبلغ</th>
-                                        <th>حالة الدفع</th>
-                                        <th>إجراء</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>#EXP-5001</td>
-                                        <td>اليوم, 07:15 ص</td>
-                                        <td>فاتورة شراء لحم بلدي (20 ذبيحة)</td>
-                                        <td><span class="acc-tag tag-purchase">مشتريات مواد</span></td>
-                                        <td>مورد اللحوم / مؤسسة السعادة</td>
-                                        <td class="amount-out">8,500.00 ر.س</td>
-                                        <td><span class="status out">مسدد من الخزينة</span></td>
-                                        <td><button class="action-btn"><i class="ph ph-file-text"></i></button></td>
-                                    </tr>
-                                    <tr>
-                                        <td>#EXP-5002</td>
-                                        <td>الأمس, 21:00 م</td>
-                                        <td>تعبئة غاز للمطبخ الداخلي</td>
-                                        <td><span class="acc-tag tag-expense">مصروفات تشغيلية</span></td>
-                                        <td>محطة الغاز المركزية</td>
-                                        <td class="amount-out">450.00 ر.س</td>
-                                        <td><span class="status out">مسدد نقداً</span></td>
-                                        <td><button class="action-btn"><i class="ph ph-file-text"></i></button></td>
-                                    </tr>
-                                    <tr>
-                                        <td>#EXP-5003</td>
-                                        <td>الأمس, 14:30 م</td>
-                                        <td>رواتب يومية لعمال نظافة إضافيين</td>
-                                        <td><span class="acc-tag tag-payroll">رواتب وأجور</span></td>
-                                        <td>عمال النظافة</td>
-                                        <td class="amount-out">200.00 ر.س</td>
-                                        <td><span class="status out">مسدد نقداً</span></td>
-                                        <td><button class="action-btn"><i class="ph ph-file-text"></i></button></td>
-                                    </tr>
-                                    <tr>
-                                        <td>#INV-8004</td>
-                                        <td>18 مارس 2026</td>
-                                        <td>دفعة من مورد الأرز (أرز بسمتي)</td>
-                                        <td><span class="acc-tag tag-payable">ذمم دائنة (موردين)</span></td>
-                                        <td>شركة الأرز العالمية</td>
-                                        <td class="amount-out">12,000.00 ر.س</td>
-                                        <td><span class="status preparing">آجل / غير مسدد</span></td>
-                                        <td><button class="action-btn"><i class="ph ph-file-text"></i></button></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                        <button class="btn-outline mt-3 w-100" onclick="window.location.href='acc-reports.html'">عرض دفتر الأستاذ بالكامل</button>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- Advance / Salary Modal -->
-    <div class="modal-overlay" id="advance-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="ph ph-hand-coins"></i> إصدار سلفة أو صرف راتب</h3>
-                <button class="close-modal" id="btn-close-advance-modal"><i class="ph ph-x"></i></button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group mb-3">
-                    <label>تحديد المستفيد <span class="required">*</span></label>
-                    <select class="input-modern" id="voucher-employee">
-                        <option value="" disabled selected>اختر الموظف المستفيد...</option>
-                        <option value="أحمد الكاشير">أحمد الكاشير (الكاشير)</option>
-                        <option value="محمد علي صالح">محمد علي صالح (المطبخ)</option>
-                        <option value="عمر راشد">عمر راشد (مندوب توصيل)</option>
-                        <option value="رفيق ساجان">رفيق ساجان (خدمة ونظافة)</option>
-                        <option value="سليمان أحمد">سليمان أحمد (طباخ)</option>
-                        <option value="عبدالله سالم">عبدالله سالم (مندوب توصيل)</option>
-                    </select>
-                </div>
-                
-                <div class="form-group mb-3">
-                    <label>المبلغ (ر.س) <span class="required">*</span></label>
-                    <div class="input-with-icon">
-                        <i class="ph ph-money"></i>
-                        <input type="number" id="voucher-amount" class="input-modern" placeholder="0.00" step="10">
-                    </div>
-                </div>
-
-                <div class="form-group mb-3">
-                    <label>البيان / السبب <span class="required">*</span></label>
-                    <input type="text" id="voucher-reason" class="input-modern" placeholder="مثال: سلفة نقدية على راتب شهر مارس...">
-                </div>
-
-                <div class="modal-actions-split mt-4">
-                    <p class="meta-label">اضغط لاختيار نوع العملية وتحميل السند فوراً:</p>
-                    <div class="split-btns">
-                        <button type="button" class="btn-voucher btn-for-him" onclick="generateVoucher('له (صرف مستحقات)')">
-                            <i class="ph ph-trend-up"></i>
-                            سند صرف مستحقات (له)
-                        </button>
-                        <button type="button" class="btn-voucher btn-on-him" onclick="generateVoucher('عليه (سلفة/ذمة)')">
-                            <i class="ph ph-trend-down"></i>
-                            سند سلفة / خصم (عليه)
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Voucher Hidden Template (For rendering Image) -->
-    <div id="voucher-print-container" style="position: absolute; top: -9999px; left: -9999px;">
-        <div class="voucher-wrapper" id="voucher-template">
-            <!-- Header -->
-            <div class="v-header">
-                <div class="v-left-box">
-                    <div class="v-row"><span>التاريخ :</span><strong id="v-date">2026/03/17</strong></div>
-                    <div class="v-row"><span>الرقم :</span><strong id="v-number">146</strong></div>
-                </div>
-                <div class="v-center-logo">
-                    <img src="logo.jpg" alt="Logo">
-                </div>
-                <div class="v-right-text">
-                    <h2>مطابخ ومحائذ سمر حضرموت</h2>
-                    <p>شارع المعارض جوار محطة مزايا</p>
-                    <p>0539774699</p>
-                </div>
-            </div>
-
-            <!-- Title & Balance -->
-            <div class="v-title-area">
-                <div class="v-balance-box">
-                    <span>الرصيد :</span>
-                    <strong id="v-balance-text">لكم 0.00</strong>
-                </div>
-                <h1 class="v-main-title">سند صـرف</h1>
-            </div>
-
-            <!-- Main Body Box -->
-            <div class="v-body-box">
-                <table class="v-table">
-                    <tr>
-                        <td class="v-label">تم صرف للأخ</td>
-                        <td class="v-dots">:</td>
-                        <td class="v-val"><strong id="v-name">...</strong></td>
-                    </tr>
-                    <tr>
-                        <td class="v-label">مبلغ وقدره</td>
-                        <td class="v-dots">:</td>
-                        <td class="v-val"><strong id="v-amt">0.00</strong> <span class="v-sub">(فقط <span id="v-amt-text">...</span> ريال سعودي لا غير)</span></td>
-                    </tr>
-                    <tr>
-                        <td class="v-label">وذلك مقابل</td>
-                        <td class="v-dots">:</td>
-                        <td class="v-val"><strong id="v-reason-text">...</strong></td>
-                    </tr>
-                </table>
-
-                <div class="v-signatures">
-                    <div class="v-sig-box">
-                        <p>سمر حضرموت</p>
-                        <span>...................................</span>
-                        <small>ختم / توقيع الإدارة</small>
-                    </div>
-                    <div class="v-sig-box">
-                        <p id="v-type-sig">المستلم / الموظف</p>
-                        <span>...................................</span>
-                        <small>التوقيع</small>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="v-footer">
-                <p>ملاحظات : <span id="v-notes">سند إلكتروني معتمد من النظام</span></p>
-            </div>
-            <div class="v-bottom-meta">
-                <span>By Smart Accountant (POS)</span>
-                <span id="v-bottom-date">2026/03/17</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Required Scripts for Modal and HTML2Canvas -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="staff.js"></script>
-
-    <!-- Chart Script specific to Accounting -->
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const ctx = document.getElementById('accCashFlowChart').getContext('2d');
-            
-            // Gradients
-            const gradIncome = ctx.createLinearGradient(0, 0, 0, 400);
-            gradIncome.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
-            gradIncome.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
-
-            const gradExpense = ctx.createLinearGradient(0, 0, 0, 400);
-            gradExpense.addColorStop(0, 'rgba(239, 68, 68, 0.4)');
-            gradExpense.addColorStop(1, 'rgba(239, 68, 68, 0.0)');
-
-            const data = {
-                labels: ['الأسبوع 1', 'الأسبوع 2', 'الأسبوع 3', 'الأسبوع 4'],
-                datasets: [
-                    {
-                        label: 'المبيعات / الدخل',
-                        data: [15000, 18000, 14000, 26000],
-                        backgroundColor: gradIncome,
-                        borderColor: '#10b981',
-                        borderWidth: 3,
-                        pointBackgroundColor: '#0b0f19',
-                        pointBorderColor: '#10b981',
-                        fill: true,
-                        tension: 0.4
-                    },
-                    {
-                        label: 'المشتريات / المصروفات',
-                        data: [12000, 8000, 9500, 13000],
-                        backgroundColor: gradExpense,
-                        borderColor: '#ef4444',
-                        borderWidth: 3,
-                        pointBackgroundColor: '#0b0f19',
-                        pointBorderColor: '#ef4444',
-                        fill: true,
-                        tension: 0.4
-                    }
-                ]
-            };
-
-            const config = {
-                type: 'line',
-                data: data,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: { color: '#94a3b8', font: { family: 'Cairo' } }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                            titleFont: { family: 'Cairo', size: 14 },
-                            bodyFont: { family: 'Cairo', size: 13 },
-                            padding: 12,
-                            displayColors: true,
-                        }
-                    },
-                    scales: {
-                        x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8', font: { family: 'Cairo' } } },
-                        y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8', font: { family: 'Cairo' }, callback: (v) => v + ' ر.س' } }
-                    },
-                    interaction: { intersect: false, mode: 'index' },
-                }
-            };
-
-            new Chart(ctx, config);
-        });
-    </script>
+    <script src="acc.js"></script>
 </body>
 </html>
