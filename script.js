@@ -103,13 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Generic UI Interactions
     const navItems = document.querySelectorAll('.nav-item');
-    navItems.forEach(item => {
-        item.addEventListener('click', (e) => {
-            if(!item.classList.contains('logout')) {
-                e.preventDefault();
-                navItems.forEach(nav => nav.classList.remove('active'));
-                item.classList.add('active');
-            }
-        });
-    });
+    /* 
+    We removed the e.preventDefault() from here to allow real navigation 
+    between our newly created html pages. 
+    */
 });
