@@ -242,3 +242,257 @@
 .action-btn-full.text-green:hover { background: rgba(16, 185, 129, 0.1); border-color: var(--accent-green); }
 .action-btn-full.text-red:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--accent-red); }
 .action-btn-full.text-pink:hover { background: rgba(236, 72, 153, 0.1); border-color: #ec4899; }
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+.modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-xl);
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+    transform: translateY(-20px) scale(0.95);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.modal-overlay.active .modal-content {
+    transform: translateY(0) scale(1);
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px;
+    border-bottom: 1px solid var(--border-light);
+}
+.modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.modal-header h3 i { color: #6366f1; font-size: 24px; }
+.close-modal {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 24px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.close-modal:hover { color: var(--accent-red); transform: rotate(90deg); }
+.modal-body {
+    padding: 24px;
+}
+.modal-actions-split {
+    background: rgba(15, 23, 42, 0.5);
+    padding: 20px;
+    border-radius: var(--border-radius-lg);
+    border: 1px solid var(--border-light);
+    text-align: center;
+}
+.split-btns {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+}
+.btn-voucher {
+    flex: 1;
+    padding: 14px 10px;
+    border: none;
+    border-radius: var(--border-radius-md);
+    color: white;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    transition: var(--transition);
+}
+.btn-voucher i { font-size: 24px; }
+.btn-for-him { background: rgba(16, 185, 129, 0.15); border: 2px solid var(--accent-green); color: var(--accent-green); }
+.btn-for-him:hover { background: var(--accent-green); color: white; box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3); transform: translateY(-3px); }
+.btn-on-him { background: rgba(239, 68, 68, 0.15); border: 2px solid var(--accent-red); color: var(--accent-red); }
+.btn-on-him:hover { background: var(--accent-red); color: white; box-shadow: 0 10px 20px rgba(239, 68, 68, 0.3); transform: translateY(-3px); }
+
+/* ==== Highly Accurate Voucher Template Printing Styles ==== */
+#voucher-print-container {
+    opacity: 0;  /* Hidden but takes space to render, overriden by JS during print */
+    position: absolute;
+    pointer-events: none;
+}
+.voucher-wrapper {
+    background-color: #ffffff;
+    width: 210mm; /* A4 width roughly */
+    box-sizing: border-box;
+    padding: 40px;
+    font-family: 'Cairo', Arial, sans-serif;
+    color: #1e3a8a; /* Deep blue used in text */
+    position: relative;
+    border: 1px solid #e2e8f0;
+}
+.v-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+}
+.v-left-box {
+    border: 2px solid #94a3b8;
+    border-radius: 12px;
+    padding: 12px 20px;
+    width: 200px;
+}
+.v-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 16px;
+    margin-bottom: 4px;
+    color: #475569;
+}
+.v-center-logo img {
+    height: 100px;
+    border-radius: 50%;
+    border: 2px solid #1e40af;
+}
+.v-right-text {
+    text-align: right;
+}
+.v-right-text h2 {
+    color: #0284c7;
+    font-size: 22px;
+    font-weight: 800;
+    margin: 0 0 6px 0;
+}
+.v-right-text p {
+    color: #64748b;
+    font-size: 15px;
+    margin: 4px 0;
+}
+.v-title-area {
+    text-align: center;
+    position: relative;
+    margin-bottom: 30px;
+}
+.v-main-title {
+    color: #0284c7;
+    font-size: 32px;
+    font-weight: 800;
+    margin: 0;
+}
+.v-balance-box {
+    position: absolute;
+    left: 0;
+    top: 5px;
+    background-color: #0284c7;
+    color: white;
+    padding: 8px 24px;
+    border-radius: 30px;
+    font-size: 16px;
+    font-weight: 700;
+    display: flex;
+    gap: 8px;
+}
+.v-body-box {
+    border: 2px solid #000000;
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 20px;
+}
+.v-table {
+    width: 100%;
+    margin-bottom: 60px;
+    border-collapse: collapse;
+}
+.v-table td {
+    padding: 14px 0;
+    font-size: 20px;
+}
+.v-label {
+    color: #0284c7;
+    font-weight: 700;
+    width: 25%;
+    vertical-align: top;
+}
+.v-dots {
+    color: #0284c7;
+    font-weight: 700;
+    width: 5%;
+    text-align: center;
+    vertical-align: top;
+}
+.v-val {
+    color: #0284c7;
+    vertical-align: top;
+}
+.v-val strong {
+    font-weight: 800;
+    color: #0284c7;
+}
+.v-sub {
+    font-size: 16px;
+    color: #0284c7;
+}
+.v-signatures {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 40px;
+}
+.v-sig-box {
+    text-align: center;
+}
+.v-sig-box p {
+    font-size: 18px;
+    font-weight: 800;
+    margin-bottom: 20px;
+    color: #000;
+}
+.v-sig-box span {
+    display: block;
+    margin-bottom: 8px;
+    color: #94a3b8;
+}
+.v-sig-box small {
+    display: block;
+    color: #000;
+    font-weight: 700;
+}
+.v-footer {
+    background-color: #0284c7;
+    color: white;
+    padding: 12px 20px;
+    font-size: 16px;
+    font-weight: 800;
+    margin-bottom: 30px;
+}
+.v-footer p {
+    margin: 0;
+}
+.v-bottom-meta {
+    display: flex;
+    justify-content: space-between;
+    color: #475569;
+    font-size: 14px;
+}
+

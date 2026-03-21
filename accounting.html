@@ -6,6 +6,7 @@
     <title>سمر حضرموت - النظام المحاسبي الشامل</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="accounting.css">
+    <link rel="stylesheet" href="staff.css"> <!-- Added to support the Voucher modal styling -->
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -90,7 +91,7 @@
                     <button class="acc-btn acc-btn-income"><i class="ph ph-plus-circle"></i> سند قبض / توريد</button>
                     <button class="acc-btn acc-btn-expense"><i class="ph ph-minus-circle"></i> سند صرف / مصروف</button>
                     <button class="acc-btn acc-btn-invoice"><i class="ph ph-file-invoice"></i> إدخال فاتورة مشتريات</button>
-                    <button class="acc-btn acc-btn-payroll"><i class="ph ph-coins"></i> صرف راتب / سلفة</button>
+                    <button class="btn btn-primary" style="background:#ef4444; border:none" id="btn-open-advance-modal"><i class="ph ph-hand-coins"></i> صرف راتب / سلفة</button>
                     <button class="acc-btn acc-btn-report"><i class="ph ph-printer"></i> طباعة كشف حساب</button>
                 </div>
 
@@ -286,6 +287,126 @@
             </div>
         </main>
     </div>
+
+    <!-- Advance / Salary Modal -->
+    <div class="modal-overlay" id="advance-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="ph ph-hand-coins"></i> إصدار سلفة أو صرف راتب</h3>
+                <button class="close-modal" id="btn-close-advance-modal"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group mb-3">
+                    <label>تحديد المستفيد <span class="required">*</span></label>
+                    <input type="text" id="voucher-employee" class="input-modern" placeholder="ادخل اسم الموظف أو المستفيد...">
+                </div>
+                
+                <div class="form-group mb-3">
+                    <label>المبلغ (ر.س) <span class="required">*</span></label>
+                    <div class="input-with-icon">
+                        <i class="ph ph-money"></i>
+                        <input type="number" id="voucher-amount" class="input-modern" placeholder="0.00" step="10">
+                    </div>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label>البيان / السبب <span class="required">*</span></label>
+                    <input type="text" id="voucher-reason" class="input-modern" placeholder="مثال: سلفة نقدية على راتب شهر مارس...">
+                </div>
+
+                <div class="modal-actions-split mt-4">
+                    <p class="meta-label">اضغط لاختيار نوع العملية وتحميل السند فوراً:</p>
+                    <div class="split-btns">
+                        <button type="button" class="btn-voucher btn-for-him" onclick="generateVoucher('له (صرف مستحقات)')">
+                            <i class="ph ph-trend-up"></i>
+                            سند صرف مستحقات (له)
+                        </button>
+                        <button type="button" class="btn-voucher btn-on-him" onclick="generateVoucher('عليه (سلفة/ذمة)')">
+                            <i class="ph ph-trend-down"></i>
+                            سند سلفة / خصم (عليه)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Voucher Hidden Template (For rendering Image) -->
+    <div id="voucher-print-container" style="position: absolute; top: -9999px; left: -9999px;">
+        <div class="voucher-wrapper" id="voucher-template">
+            <!-- Header -->
+            <div class="v-header">
+                <div class="v-left-box">
+                    <div class="v-row"><span>التاريخ :</span><strong id="v-date">2026/03/17</strong></div>
+                    <div class="v-row"><span>الرقم :</span><strong id="v-number">146</strong></div>
+                </div>
+                <div class="v-center-logo">
+                    <img src="logo.jpg" alt="Logo">
+                </div>
+                <div class="v-right-text">
+                    <h2>مطابخ ومحائذ سمر حضرموت</h2>
+                    <p>شارع المعارض جوار محطة مزايا</p>
+                    <p>0539774699</p>
+                </div>
+            </div>
+
+            <!-- Title & Balance -->
+            <div class="v-title-area">
+                <div class="v-balance-box">
+                    <span>الرصيد :</span>
+                    <strong id="v-balance-text">لكم 0.00</strong>
+                </div>
+                <h1 class="v-main-title">سند صـرف</h1>
+            </div>
+
+            <!-- Main Body Box -->
+            <div class="v-body-box">
+                <table class="v-table">
+                    <tr>
+                        <td class="v-label">تم صرف للأخ</td>
+                        <td class="v-dots">:</td>
+                        <td class="v-val"><strong id="v-name">...</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="v-label">مبلغ وقدره</td>
+                        <td class="v-dots">:</td>
+                        <td class="v-val"><strong id="v-amt">0.00</strong> <span class="v-sub">(فقط <span id="v-amt-text">...</span> ريال سعودي لا غير)</span></td>
+                    </tr>
+                    <tr>
+                        <td class="v-label">وذلك مقابل</td>
+                        <td class="v-dots">:</td>
+                        <td class="v-val"><strong id="v-reason-text">...</strong></td>
+                    </tr>
+                </table>
+
+                <div class="v-signatures">
+                    <div class="v-sig-box">
+                        <p>سمر حضرموت</p>
+                        <span>...................................</span>
+                        <small>ختم / توقيع الإدارة</small>
+                    </div>
+                    <div class="v-sig-box">
+                        <p id="v-type-sig">المستلم / الموظف</p>
+                        <span>...................................</span>
+                        <small>التوقيع</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="v-footer">
+                <p>ملاحظات : <span id="v-notes">سند إلكتروني معتمد من النظام</span></p>
+            </div>
+            <div class="v-bottom-meta">
+                <span>By Smart Accountant (POS)</span>
+                <span id="v-bottom-date">2026/03/17</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Required Scripts for Modal and HTML2Canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="staff.js"></script>
 
     <!-- Chart Script specific to Accounting -->
     <script>
