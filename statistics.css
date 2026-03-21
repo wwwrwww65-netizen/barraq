@@ -1,0 +1,251 @@
+/* === Statistics & Analytics Dashboard Styles === */
+
+.stats-container {
+    padding: 24px 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Header Action Strip */
+.stats-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(15, 23, 42, 0.4);
+    padding: 16px 20px;
+    border-radius: var(--border-radius-lg);
+    border: 1px solid var(--border-light);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.date-filters {
+    display: flex;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 5px;
+    border-radius: 8px;
+}
+
+.date-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.date-btn.active, .date-btn:hover {
+    background: linear-gradient(135deg, var(--accent-blue), #8b5cf6);
+    color: white;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+/* Master KPI Ribbon */
+.kpi-ribbon {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.stat-kpi {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--border-radius-lg);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.stat-kpi:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.kpi-icon-bg {
+    position: absolute;
+    top: -20px;
+    left: -20px;
+    font-size: 120px;
+    opacity: 0.05;
+    transform: rotate(-15deg);
+}
+.stat-kpi:nth-child(1) .kpi-icon-bg { color: var(--accent-green); }
+.stat-kpi:nth-child(2) .kpi-icon-bg { color: var(--accent-blue); }
+.stat-kpi:nth-child(3) .kpi-icon-bg { color: var(--accent-red); }
+.stat-kpi:nth-child(4) .kpi-icon-bg { color: var(--accent-orange); }
+
+.stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    z-index: 1;
+}
+
+.stat-header h4 {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.trend-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 800;
+    display: flex; align-items: center; gap: 4px;
+}
+.trend-badge.up { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+.trend-badge.down { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: white;
+    z-index: 1;
+}
+.stat-value.highlight-green { color: var(--accent-green); text-shadow: 0 0 10px rgba(16, 185, 129, 0.3); }
+
+/* Main Charts Section */
+.charts-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+}
+@media (max-width: 1024px) {
+    .charts-grid { grid-template-columns: 1fr; }
+}
+
+.chart-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--border-radius-xl);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.chart-header h3 {
+    font-size: 18px;
+    color: white;
+    font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+}
+.chart-header h3 i { color: var(--accent-blue); font-size: 20px; }
+
+.chart-wrapper {
+    flex: 1;
+    min-height: 300px;
+    position: relative;
+    width: 100%;
+}
+
+/* Secondary Section Grid */
+.secondary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+@media (max-width: 1024px) {
+    .secondary-grid { grid-template-columns: 1fr; }
+}
+
+/* Top Selling Items (Progress Bars) */
+.top-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 10px;
+}
+
+.item-progress-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.item-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: white;
+    font-weight: 600;
+}
+.item-meta span:last-child {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+.prog-bar-bg {
+    width: 100%;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    overflow: hidden;
+}
+.prog-bar-fill {
+    height: 100%;
+    border-radius: 10px;
+    box-shadow: inset 0 2px 4px rgba(255,255,255,0.2);
+}
+
+/* Performance List */
+.perf-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.perf-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--border-light);
+    transition: var(--transition);
+}
+.perf-item:hover {
+    background: rgba(255, 255, 255, 0.02);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.perf-icon-name {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.perf-icon {
+    width: 40px; height: 40px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+}
+.perf-icon.in { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+.perf-icon.out { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
+.perf-icon.bal { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
+
+.perf-name h4 { font-size: 15px; color: white; margin-bottom: 2px; }
+.perf-name p { font-size: 12px; color: var(--text-muted); }
+
+.perf-amount {
+    text-align: left;
+}
+.perf-amount h3 { font-size: 16px; font-weight: 800; color: white; }
+.perf-amount.pos h3 { color: var(--accent-green); }
+.perf-amount.neg h3 { color: var(--accent-red); }

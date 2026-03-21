@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سمر حضرموت - الإحصائيات والتحليلات</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="statistics.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <img src="logo.jpg" alt="مطعم سمر حضرموت" class="restaurant-logo">
+                <span>سمر حضرموت <span class="highlight">POS</span></span>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="index.html" class="nav-item"><i class="ph ph-squares-four"></i><span>الرئيسية</span></a>
+                <a href="pos.html" class="nav-item"><i class="ph ph-monitor"></i><span>نقطة البيع (الكاشير)</span></a>
+                <a href="sales.html" class="nav-item"><i class="ph ph-receipt"></i><span>المبيعات</span></a>
+                <a href="menu.html" class="nav-item"><i class="ph ph-list-dashes"></i><span>الأصناف والمنيو</span></a>
+                
+                <div class="nav-divider"></div>
+                <p class="nav-label">العمليات والمخزون</p>
+                <a href="inventory.html" class="nav-item"><i class="ph ph-package"></i><span>المخازن والمستودعات</span></a>
+                <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>المشتريات والموردين</span></a>
+                <a href="#" class="nav-item"><i class="ph ph-arrow-u-down-left"></i><span>المرتجعات</span></a>
+                
+                <div class="nav-divider"></div>
+                <p class="nav-label">الإدارة والتقارير</p>
+                <a href="staff.html" class="nav-item"><i class="ph ph-users"></i><span>الموظفين والعمال</span></a>
+                <a href="customers.html" class="nav-item"><i class="ph ph-users-three"></i><span>العملاء</span></a>
+                <a href="accounting.html" class="nav-item"><i class="ph ph-calculator"></i><span>النظام المحاسبي</span></a>
+                <a href="statistics.html" class="nav-item active"><i class="ph ph-chart-pie"></i><span>الإحصائيات</span></a>
+                <a href="#" class="nav-item"><i class="ph ph-gear"></i><span>الإعدادات</span></a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <div class="breadcrumbs pt-0">
+                        <h2>الإحصائيات والتحليلات البيانية</h2>
+                        <span class="separator">/</span>
+                        <span>شاشة الأداء المالي والتشغيلي</span>
+                    </div>
+                </div>
+                
+                <div class="header-actions">
+                    <button class="icon-btn notification-btn">
+                        <i class="ph ph-bell"></i>
+                    </button>
+                    <div class="user-profile">
+                        <img src="https://i.pravatar.cc/150?img=11" alt="المدير" class="avatar">
+                        <div class="user-info">
+                            <span class="user-name">سعيد باعمر</span>
+                            <span class="user-role">مدير النظام</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Statistics Dashboard -->
+            <div class="stats-container">
+                
+                <div class="stats-toolbar">
+                    <div class="date-filters">
+                        <button class="date-btn active" data-range="today">اليوم</button>
+                        <button class="date-btn" data-range="week">هذا الأسبوع</button>
+                        <button class="date-btn" data-range="month">هذا الشهر</button>
+                        <button class="date-btn" data-range="year">هذا العام</button>
+                    </div>
+                    
+                    <button class="btn btn-primary"><i class="ph ph-download-simple"></i> تصدير التقرير (PDF/Excel)</button>
+                </div>
+
+                <!-- KPI Ribbon -->
+                <div class="kpi-ribbon">
+                    <!-- Revenue -->
+                    <div class="stat-kpi">
+                        <i class="ph-fill ph-money kpi-icon-bg"></i>
+                        <div class="stat-header">
+                            <h4>إجمالي الإيرادات</h4>
+                            <span class="trend-badge up"><i class="ph ph-trend-up"></i> 12%</span>
+                        </div>
+                        <span class="stat-value highlight-green" id="dash-revenue">145,200 <small style="font-size:16px;">ر.س</small></span>
+                    </div>
+
+                    <!-- Expenses -->
+                    <div class="stat-kpi">
+                        <i class="ph-fill ph-receipt kpi-icon-bg"></i>
+                        <div class="stat-header">
+                            <h4>إجمالي المصروفات</h4>
+                            <span class="trend-badge down"><i class="ph ph-trend-up"></i> 5%</span>
+                        </div>
+                        <span class="stat-value" id="dash-expenses">64,500 <small style="font-size:16px;">ر.س</small></span>
+                    </div>
+
+                    <!-- Net Profit -->
+                    <div class="stat-kpi">
+                        <i class="ph-fill ph-chart-line-up kpi-icon-bg"></i>
+                        <div class="stat-header">
+                            <h4>صافي الربح التقديري</h4>
+                            <span class="trend-badge up"><i class="ph ph-trend-up"></i> 18%</span>
+                        </div>
+                        <span class="stat-value" id="dash-profit">80,700 <small style="font-size:16px;">ر.س</small></span>
+                    </div>
+
+                    <!-- Margin -->
+                    <div class="stat-kpi">
+                        <i class="ph-fill ph-percent kpi-icon-bg"></i>
+                        <div class="stat-header">
+                            <h4>هامش الربح التشغيلي</h4>
+                            <span class="trend-badge up"><i class="ph ph-minus"></i> 0% مستقر</span>
+                        </div>
+                        <span class="stat-value" id="dash-margin">55.5%</span>
+                    </div>
+                </div>
+
+                <!-- Main Charts Grid -->
+                <div class="charts-grid">
+                    <!-- Line Chart: Trend -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3><i class="ph ph-chart-line"></i> الإيرادات والمصروفات مقارنة بالتوقعات</h3>
+                            <button class="sales-action-btn"><i class="ph ph-dots-three"></i></button>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="mainTrendChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Doughnut Chart: Categories -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3><i class="ph ph-chart-donut"></i> الإيرادات حسب الأصناف</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="categoryDonutChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Secondary Charts & Lists -->
+                <div class="secondary-grid">
+                    
+                    <!-- Top Selling Items -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3><i class="ph ph-star"></i> قائمة الأصناف الأكثر مبيعاً</h3>
+                        </div>
+                        <div class="top-items-list">
+                            <!-- Item -->
+                            <div class="item-progress-row">
+                                <div class="item-meta">
+                                    <span>نفر مندي لحم بلدي <i class="ph-fill ph-fire" style="color:var(--accent-orange)"></i></span>
+                                    <span>2,450 طلب (65%)</span>
+                                </div>
+                                <div class="prog-bar-bg">
+                                    <div class="prog-bar-fill" style="width: 85%; background: linear-gradient(90deg, #3b82f6, #60a5fa);"></div>
+                                </div>
+                            </div>
+                            <!-- Item -->
+                            <div class="item-progress-row">
+                                <div class="item-meta">
+                                    <span>مظبي دجاج شواية</span>
+                                    <span>1,200 طلب (30%)</span>
+                                </div>
+                                <div class="prog-bar-bg">
+                                    <div class="prog-bar-fill" style="width: 50%; background: linear-gradient(90deg, #10b981, #34d399);"></div>
+                                </div>
+                            </div>
+                            <!-- Item -->
+                            <div class="item-progress-row">
+                                <div class="item-meta">
+                                    <span>سلطة خضراء ومقبلات</span>
+                                    <span>850 طلب (20%)</span>
+                                </div>
+                                <div class="prog-bar-bg">
+                                    <div class="prog-bar-fill" style="width: 35%; background: linear-gradient(90deg, #f59e0b, #fbbf24);"></div>
+                                </div>
+                            </div>
+                            <!-- Item -->
+                            <div class="item-progress-row">
+                                <div class="item-meta">
+                                    <span>عصيرات طازجة متنوعة</span>
+                                    <span>600 طلب (15%)</span>
+                                </div>
+                                <div class="prog-bar-bg">
+                                    <div class="prog-bar-fill" style="width: 25%; background: linear-gradient(90deg, #ec4899, #f472b6);"></div>
+                                </div>
+                            </div>
+                            <!-- Item -->
+                            <div class="item-progress-row">
+                                <div class="item-meta">
+                                    <span>حلى سفنجي (كنافة)</span>
+                                    <span>320 طلب (10%)</span>
+                                </div>
+                                <div class="prog-bar-bg">
+                                    <div class="prog-bar-fill" style="width: 15%; background: linear-gradient(90deg, #8b5cf6, #a78bfa);"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Performance List -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3><i class="ph ph-calculator"></i> ملخص الميزانية والإيرادات</h3>
+                            <button class="sales-action-btn"><i class="ph ph-file-pdf"></i></button>
+                        </div>
+                        <div class="perf-list">
+                            <!-- In -->
+                            <div class="perf-item">
+                                <div class="perf-icon-name">
+                                    <div class="perf-icon in"><i class="ph-fill ph-arrow-down-left"></i></div>
+                                    <div class="perf-name">
+                                        <h4>مجمل الإيرادات الصافية</h4>
+                                        <p>دخل المبيعات قبل خصم المواد</p>
+                                    </div>
+                                </div>
+                                <div class="perf-amount pos">
+                                    <h3>145,200 ر.س</h3>
+                                </div>
+                            </div>
+                            
+                            <!-- Out -->
+                            <div class="perf-item">
+                                <div class="perf-icon-name">
+                                    <div class="perf-icon out"><i class="ph-fill ph-arrow-up-right"></i></div>
+                                    <div class="perf-name">
+                                        <h4>تكاليف ومصروفات (Cost)</h4>
+                                        <p>مشتريات، رواتب، مصاريف تشغيل</p>
+                                    </div>
+                                </div>
+                                <div class="perf-amount neg">
+                                    <h3>-64,500 ر.س</h3>
+                                </div>
+                            </div>
+
+                            <!-- Balance -->
+                            <div class="perf-item">
+                                <div class="perf-icon-name">
+                                    <div class="perf-icon bal"><i class="ph-fill ph-vault"></i></div>
+                                    <div class="perf-name">
+                                        <h4>رصيد الصندوق الحالي</h4>
+                                        <p>إضافات ناقص سحوبات الفترة</p>
+                                    </div>
+                                </div>
+                                <div class="perf-amount pos" style="color:var(--accent-blue)">
+                                    <h3 style="color:var(--accent-blue)">80,700 ر.س</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="statistics.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
