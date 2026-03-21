@@ -98,7 +98,20 @@ window.generateVoucher = async function(typeStr) {
         document.getElementById('voucher-amount').value = '';
         document.getElementById('voucher-reason').value = '';
         
-        alert("تم إصدار وتحميل السند بنجاح!");
+        // Save to HR Expenses LocalStorage
+        let hrstr = localStorage.getItem('hr_expenses');
+        let hr_expenses = hrstr ? JSON.parse(hrstr) : [];
+        hr_expenses.push({
+            employee: employee,
+            amount: Number(amount),
+            type: typeStr, // 'سلفة (عليه)' or 'مكافأة (له)'
+            reason: reason,
+            date: new Date().toLocaleDateString('ar-SA'),
+            timestamp: Date.now()
+        });
+        localStorage.setItem('hr_expenses', JSON.stringify(hr_expenses));
+
+        alert("تم إصدار وتحميل السند وتخزينه في النظام المحاسبي بنجاح!");
         
     } catch (err) {
         console.error("Error generating voucher", err);
