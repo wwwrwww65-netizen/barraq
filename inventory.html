@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سمر حضرموت - نظام إدارة المخازن</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="inventory.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar inv-sidebar">
+            <div class="logo">
+                <img src="logo.jpg" alt="شعار المحازن" class="restaurant-logo">
+                <span>إدارة <span class="highlight">المخازن</span></span>
+            </div>
+            
+            <nav class="nav-menu">
+                <div class="nav-group">
+                    <p class="nav-label">نطاق العمل الرئيسي</p>
+                    <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>العودة للوحة القيادة</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">لوحة تحكم المخزون</p>
+                    <a href="#" class="nav-item active"><i class="ph ph-packages"></i><span>نظرة عامة والجرد</span></a>
+                    <a href="#" class="nav-item"><i class="ph ph-arrow-down-left"></i><span>حركات الدخول (استلام)</span></a>
+                    <a href="#" class="nav-item"><i class="ph ph-arrow-up-right"></i><span>حركات الخروج (أمر صرف)</span></a>
+                    <a href="#" class="nav-item"><i class="ph ph-swap"></i><span>تحويل بين المخازن</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">الموردين والمستندات</p>
+                    <a href="#" class="nav-item"><i class="ph ph-truck"></i><span>دليل الموردين</span></a>
+                    <a href="#" class="nav-item"><i class="ph ph-file-text"></i><span>السندات والفواتير</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">التقارير المخزنية</p>
+                    <a href="#" class="nav-item"><i class="ph ph-warning-circle"></i><span>نواقص المخزون</span></a>
+                    <a href="#" class="nav-item"><i class="ph ph-chart-bar"></i><span>تقييم المخزون المالي</span></a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content inv-main">
+            <!-- Top Header -->
+            <header class="top-header inv-header">
+                <div class="header-left-title">
+                    <h2>إدارة المخازن والمستودعات</h2>
+                    <p>إدارة مراقبة الدخول والخروج والكميات المتبقية.</p>
+                </div>
+                
+                <div class="header-actions">
+                    <!-- Quick Actions right in the header for ERP feel -->
+                    <button class="inv-btn-solid bg-green"><i class="ph ph-download-simple"></i> استلام (دخول)</button>
+                    <button class="inv-btn-solid bg-red"><i class="ph ph-upload-simple"></i> أمر صرف (خروج)</button>
+                    
+                    <button class="icon-btn notification-btn">
+                        <i class="ph ph-bell"></i>
+                        <span class="badge" style="background:var(--accent-orange)">3</span>
+                    </button>
+                    <div class="user-profile">
+                        <img src="https://i.pravatar.cc/150?img=11" alt="أمين المستودع" class="avatar">
+                        <div class="user-info">
+                            <span class="user-name">سالم أحمد</span>
+                            <span class="user-role">أمين المستودع</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="inv-dashboard-grid">
+                
+                <!-- Warehouses Tabs -->
+                <div class="warehouses-tabs">
+                    <button class="warehouse-tab active">
+                        <div class="wh-icon blue"><i class="ph-fill ph-warehouse"></i></div>
+                        <div class="wh-details">
+                            <h3>المستودع الرئيسي</h3>
+                            <span>مواد غذائية أساسية وتخزين جاف</span>
+                        </div>
+                    </button>
+                    <button class="warehouse-tab">
+                        <div class="wh-icon orange"><i class="ph-fill ph-storefront"></i></div>
+                        <div class="wh-details">
+                            <h3>مخزن المطعم (الداخلي)</h3>
+                            <span>الكميات اليومية ومخزون التشغيل</span>
+                        </div>
+                    </button>
+                    <button class="warehouse-tab">
+                        <div class="wh-icon teal"><i class="ph-fill ph-drop"></i></div>
+                        <div class="wh-details">
+                            <h3>مخزن المشروبات</h3>
+                            <span>المياه، العصائر، والعبوات</span>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Financial & Quantity KPIs -->
+                <div class="kpi-cards inv-kpis">
+                    <div class="card kpi-card">
+                        <div class="kpi-icon indigo">
+                            <i class="ph-fill ph-coins"></i>
+                        </div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">إجمالي قيمة المخزون التقديرية</p>
+                            <h3 class="kpi-value inv-glow-indigo">145,200<span class="currency">ر.س</span></h3>
+                            <p class="kpi-trend text-blue">تقييم اليوم</p>
+                        </div>
+                    </div>
+
+                    <div class="card kpi-card">
+                        <div class="kpi-icon green">
+                            <i class="ph-fill ph-arrow-down-left"></i>
+                        </div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">الوارد للمخزن (هذا الشهر)</p>
+                            <h3 class="kpi-value text-green">24,500<span class="currency">ر.س</span></h3>
+                            <p class="kpi-trend positive"><i class="ph ph-tag"></i> 14 فاتورة استلام</p>
+                        </div>
+                    </div>
+
+                    <div class="card kpi-card">
+                        <div class="kpi-icon orange">
+                            <i class="ph-fill ph-arrow-up-right"></i>
+                        </div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">المنصرف للمطعم (هذا الشهر)</p>
+                            <h3 class="kpi-value text-orange">18,350<span class="currency">ر.س</span></h3>
+                            <p class="kpi-trend negative"><i class="ph ph-receipt"></i> 26 أمر صرف</p>
+                        </div>
+                    </div>
+
+                    <div class="card kpi-card">
+                        <div class="kpi-icon red">
+                            <i class="ph-fill ph-warning-octagon"></i>
+                        </div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">تنبيهات نواقص المخزون</p>
+                            <h3 class="kpi-value inv-glow-red">5 <span class="currency" style="font-size:14px">أصناف</span></h3>
+                            <p class="kpi-trend negative"><i class="ph ph-warning"></i> تتطلب طلب شراء عاجل</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Inventory Grid (Data Table) -->
+                <div class="card inv-main-table-card">
+                    <div class="card-header inv-table-header">
+                        <h2 class="card-title">مراقبة أرصدة الأصناف (المستودع الرئيسي)</h2>
+                        
+                        <div class="inv-toolbar">
+                            <div class="search-box">
+                                <i class="ph ph-magnifying-glass"></i>
+                                <input type="text" placeholder="البحث باسم الصنف، الباركود..">
+                            </div>
+                            <button class="inv-btn-outline"><i class="ph ph-funnel"></i> تصفية</button>
+                            <button class="inv-btn-outline"><i class="ph ph-printer"></i> جرد المخزن</button>
+                            <button class="inv-btn-solid bg-blue"><i class="ph ph-plus"></i> تعريف منتج جديد</button>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="data-table inv-table">
+                            <thead>
+                                <tr>
+                                    <th>رمز الصنف</th>
+                                    <th>اسم الصنف / الوصف</th>
+                                    <th>الفئة</th>
+                                    <th>وحدة القياس</th>
+                                    <th>تكلفة الوحدة</th>
+                                    <th>الكمية المتبقية (الرصيد)</th>
+                                    <th>قيمة المخزون</th>
+                                    <th>حالة المخزون</th>
+                                    <th>إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Low Stock Item -->
+                                <tr class="stock-row-warning">
+                                    <td><span class="badge-barcode">SKU-1001</span></td>
+                                    <td><strong>أرز بسمتي هندي (أبو كاس)</strong></td>
+                                    <td>المواد التموينية</td>
+                                    <td>كيس (40 كجم)</td>
+                                    <td>320.00 ر.س</td>
+                                    <td class="qty-col low">14</td>
+                                    <td>4,480.00 ر.س</td>
+                                    <td><span class="inv-tag tag-low"><i class="ph-fill ph-warning"></i> تحت الحد الأدنى</span></td>
+                                    <td>
+                                        <div class="tbl-actions">
+                                            <button class="action-btn" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
+                                            <button class="action-btn text-green" title="إصدار استلام"><i class="ph ph-plus-circle"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Normal Item -->
+                                <tr>
+                                    <td><span class="badge-barcode">SKU-1002</span></td>
+                                    <td><strong>لحم غنم حري طازج (أنصاف)</strong></td>
+                                    <td>اللحوم والدواجن</td>
+                                    <td>ذبيحة</td>
+                                    <td>1,200.00 ر.س</td>
+                                    <td class="qty-col safe">35</td>
+                                    <td>42,000.00 ر.س</td>
+                                    <td><span class="inv-tag tag-safe">رصيد كافي</span></td>
+                                    <td>
+                                        <div class="tbl-actions">
+                                            <button class="action-btn" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
+                                            <button class="action-btn text-green" title="إصدار استلام"><i class="ph ph-plus-circle"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <!-- Normal Item -->
+                                <tr>
+                                    <td><span class="badge-barcode">SKU-1005</span></td>
+                                    <td><strong>دجاج مبرد (حجم 900 جرام)</strong></td>
+                                    <td>اللحوم والدواجن</td>
+                                    <td>كرتون (10 حبات)</td>
+                                    <td>145.00 ر.س</td>
+                                    <td class="qty-col safe">80</td>
+                                    <td>11,600.00 ر.س</td>
+                                    <td><span class="inv-tag tag-safe">رصيد كافي</span></td>
+                                    <td>
+                                        <div class="tbl-actions">
+                                            <button class="action-btn" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
+                                            <button class="action-btn text-green" title="إصدار استلام"><i class="ph ph-plus-circle"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <!-- Critical Empty Item -->
+                                <tr class="stock-row-danger">
+                                    <td><span class="badge-barcode">SKU-1012</span></td>
+                                    <td><strong>زيت قلي נباتي</strong></td>
+                                    <td>الزيوت والصلصات</td>
+                                    <td>تنكة (17 لتر)</td>
+                                    <td>160.00 ر.س</td>
+                                    <td class="qty-col empty">0</td>
+                                    <td>0.00 ر.س</td>
+                                    <td><span class="inv-tag tag-empty"><i class="ph-fill ph-x-circle"></i> رصيد صفري (نفذ)</span></td>
+                                    <td>
+                                        <div class="tbl-actions">
+                                            <button class="action-btn" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
+                                            <button class="action-btn text-green" title="إصدار استلام"><i class="ph ph-plus-circle"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <!-- Normal Item -->
+                                <tr>
+                                    <td><span class="badge-barcode">SKU-1020</span></td>
+                                    <td><strong>بهارات مندي مشكلة مركّزة</strong></td>
+                                    <td>البهارات والمكسرات</td>
+                                    <td>كيلو</td>
+                                    <td>45.00 ر.س</td>
+                                    <td class="qty-col safe">112</td>
+                                    <td>5,040.00 ر.س</td>
+                                    <td><span class="inv-tag tag-safe">رصيد كافي</span></td>
+                                    <td>
+                                        <div class="tbl-actions">
+                                            <button class="action-btn" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
+                                            <button class="action-btn text-green" title="إصدار استلام"><i class="ph ph-plus-circle"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+</body>
+</html>
