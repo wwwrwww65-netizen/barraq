@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سمر حضرموت - سجل المبيعات والطلبات</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="sales.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <img src="logo.jpg" alt="مطعم سمر حضرموت" class="restaurant-logo">
+                <span>سمر حضرموت <span class="highlight">POS</span></span>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="index.html" class="nav-item"><i class="ph ph-squares-four"></i><span>الرئيسية</span></a>
+                <a href="pos.html" class="nav-item"><i class="ph ph-monitor"></i><span>نقطة البيع (الكاشير)</span></a>
+                <a href="sales.html" class="nav-item active"><i class="ph ph-receipt"></i><span>المبيعات</span></a>
+                <a href="menu.html" class="nav-item"><i class="ph ph-list-dashes"></i><span>الأصناف والمنيو</span></a>
+                
+                <div class="nav-divider"></div>
+                <p class="nav-label">العمليات والمخزون</p>
+                <a href="inventory.html" class="nav-item"><i class="ph ph-package"></i><span>المخازن والمستودعات</span></a>
+                <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>المشتريات والموردين</span></a>
+                <a href="#" class="nav-item"><i class="ph ph-arrow-u-down-left"></i><span>المرتجعات</span></a>
+                
+                <div class="nav-divider"></div>
+                <p class="nav-label">الإدارة والتقارير</p>
+                <a href="staff.html" class="nav-item"><i class="ph ph-users"></i><span>الموظفين والعمال</span></a>
+                <a href="accounting.html" class="nav-item"><i class="ph ph-chart-line-up"></i><span>النظام المحاسبي</span></a>
+                <a href="#" class="nav-item"><i class="ph ph-gear"></i><span>الإعدادات</span></a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <div class="breadcrumbs pt-0">
+                        <h2>سجل المبيعات والطلبات</h2>
+                        <span class="separator">/</span>
+                        <span>اليوم</span>
+                    </div>
+                </div>
+                
+                <div class="header-actions">
+                    <button class="icon-btn notification-btn">
+                        <i class="ph ph-bell"></i>
+                        <span class="badge-dot"></span>
+                    </button>
+                    <div class="user-profile">
+                        <img src="https://i.pravatar.cc/150?img=11" alt="المدير" class="avatar">
+                        <div class="user-info">
+                            <span class="user-name">سعيد باعمر</span>
+                            <span class="user-role">مدير النظام</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Sales Dashboard -->
+            <div class="sales-container">
+                <div class="sales-header">
+                    <div>
+                        <h2>نظرة عامة على المبيعات</h2>
+                        <p>تتم مزامنة ومتابعة المبيعات الصادرة من الكاشير هنا لحظياً</p>
+                    </div>
+                    <div class="sales-filters">
+                        <input type="date" class="input-modern" id="filter-date" aria-label="تاريخ">
+                        <button class="btn btn-primary" onclick="loadSales()"><i class="ph ph-funnel"></i> تصفية</button>
+                        <button class="btn" style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red); border: 1px solid var(--accent-red);" onclick="clearSales()">مسح السجل</button>
+                    </div>
+                </div>
+
+                <!-- KPI Cards -->
+                <div class="sales-kpi-grid">
+                    <div class="sales-kpi-card green">
+                        <div class="sk-icon green"><i class="ph ph-coins"></i></div>
+                        <p class="sk-title">إجمالي المبيعات (نقداً وشبكة)</p>
+                        <h3 class="sk-value" id="kpi-total-revenue">0.00 ر.س</h3>
+                    </div>
+                    
+                    <div class="sales-kpi-card blue">
+                        <div class="sk-icon blue"><i class="ph ph-receipt"></i></div>
+                        <p class="sk-title">عدد الطلبات المنجزة</p>
+                        <h3 class="sk-value" id="kpi-total-orders">0</h3>
+                    </div>
+
+                    <div class="sales-kpi-card orange">
+                        <div class="sk-icon orange"><i class="ph ph-money"></i></div>
+                        <p class="sk-title">المبيعات النقدية (الكاش)</p>
+                        <h3 class="sk-value" id="kpi-cash-revenue">0.00 ر.س</h3>
+                    </div>
+
+                    <div class="sales-kpi-card purple">
+                        <div class="sk-icon purple"><i class="ph ph-credit-card"></i></div>
+                        <p class="sk-title">مبيعات الشبكة (البطاقات)</p>
+                        <h3 class="sk-value" id="kpi-card-revenue">0.00 ر.س</h3>
+                    </div>
+                </div>
+
+                <!-- Order List -->
+                <div class="sales-table-card">
+                    <div class="sales-list-header">
+                        <h3>سجل طلبات اليوم</h3>
+                        <div class="search-box" style="margin: 0; max-width: 300px;">
+                            <i class="ph ph-magnifying-glass"></i>
+                            <input type="text" id="sales-search" placeholder="ابحث برقم الطلب..." class="input-modern" style="background:rgba(0,0,0,0.2)">
+                        </div>
+                    </div>
+
+                    <div style="overflow-x: auto;">
+                        <table class="sales-table">
+                            <thead>
+                                <tr>
+                                    <th>رقم الطلب</th>
+                                    <th>التاريخ والوقت</th>
+                                    <th>نوع الطلب</th>
+                                    <th>طريقة الدفع</th>
+                                    <th>عدد الأصناف</th>
+                                    <th>إجمالي الفاتورة</th>
+                                    <th style="text-align: center;">خيارات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sales-tbody">
+                                <!-- Data injected by sales.js -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="empty-state" class="empty-sales" style="display: none;">
+                        <i class="ph ph-ghost"></i>
+                        <p>لم يتم تسجيل أي مبيعات بعد. اذهب للكاشير وابدأ البيع!</p>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="sales.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

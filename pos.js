@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentOrderType = 'محلي';
     let discountAmount = 0;
     const TAX_RATE = 0.15;
-    const orderId = '#ORD-' + Math.floor(1000 + Math.random() * 9000); // Random Order ID for session
+    let orderId = '#ORD-' + Math.floor(1000 + Math.random() * 9000); // Random Order ID for session
     document.getElementById('display-order-id').innerText = orderId;
 
     // Elements
@@ -276,7 +276,22 @@ document.addEventListener('DOMContentLoaded', () => {
             await downloadReceipt('receipt-customer', 'فاتورة_العميل');
             await downloadReceipt('receipt-kitchen', 'طلب_المطبخ');
             
-            alert('تمت العملية بنجاح! تم تحميل الفواتير.');
+            // Save to LocalStorage for Sales page
+            const savedOrders = JSON.parse(localStorage.getItem('pos_orders') || '[]');
+            const now = new Date();
+            const selectedPay = document.querySelector('.payment-method.selected input').value;
+            savedOrders.push({
+                orderId: orderId,
+                date: now.toLocaleDateString('ar-SA') + " " + now.toLocaleTimeString('ar-SA'),
+                timestamp: now.getTime(),
+                type: currentOrderType,
+                paymentMethod: selectedPay,
+                total: parseFloat(document.getElementById('cart-total').innerText.replace(' ر.س', '')),
+                items: cart.length
+            });
+            localStorage.setItem('pos_orders', JSON.stringify(savedOrders));
+            
+            alert('تمت العملية بنجاح! تم حفظ المبيعات وتحميل الفواتير.');
             // Reset
             cart = [];
             discountAmount = 0;
@@ -284,6 +299,10 @@ document.addEventListener('DOMContentLoaded', () => {
             cashReceivedInput.value = '';
             renderCart();
             modalCheckout.classList.remove('active');
+
+            // Generate new order ID for next order
+            orderId = '#ORD-' + Math.floor(1000 + Math.random() * 9000);
+            document.getElementById('display-order-id').innerText = orderId;
 
         } catch(e) {
             console.error("Print Failed", e);
