@@ -1,0 +1,139 @@
+/* === Permissions & Roles Styles === */
+
+.perm-container {
+    padding: 30px;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 30px;
+}
+@media (max-width: 1024px) {
+    .perm-container { grid-template-columns: 1fr; }
+}
+
+/* Sidebar Roles */
+.roles-list-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--border-radius-xl);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    height: fit-content;
+}
+
+.roles-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.roles-header h3 { color: white; font-size: 18px; font-weight: 700; }
+.btn-add-role {
+    background: rgba(59, 130, 246, 0.1); color: var(--accent-blue);
+    border: 1px solid rgba(59, 130, 246, 0.3); padding: 8px 12px;
+    border-radius: var(--border-radius-md); font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: var(--transition); display: flex; align-items: center; gap: 5px;
+}
+.btn-add-role:hover { background: var(--accent-blue); color: white; box-shadow: 0 4px 15px rgba(59,130,246,0.3); }
+
+.role-item {
+    background: rgba(15, 23, 42, 0.4); border: 1px solid var(--border-color);
+    padding: 16px; border-radius: var(--border-radius-md);
+    cursor: pointer; transition: var(--transition);
+    display: flex; align-items: center; gap: 15px; position: relative;
+    overflow: hidden;
+}
+.role-item::before {
+    content: ''; position: absolute; right: 0; top: 0; height: 100%; width: 4px;
+    background: transparent; transition: var(--transition);
+}
+.role-item:hover, .role-item.active {
+    background: rgba(59, 130, 246, 0.05); border-color: rgba(59, 130, 246, 0.3);
+}
+.role-item.active::before { background: var(--accent-blue); }
+
+.role-icon {
+    width: 45px; height: 45px; border-radius: 12px; background: rgba(255,255,255,0.05);
+    display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--text-muted);
+}
+.role-item.active .role-icon { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
+
+.role-info h4 { color: white; font-size: 15px; margin-bottom: 3px; }
+.role-info p { color: var(--text-secondary); font-size: 12px; }
+
+/* Permission Matrix */
+.perm-matrix-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--border-radius-xl);
+    padding: 30px;
+    display: none; /* Only show when a role is selected */
+    flex-direction: column;
+}
+.perm-matrix-card.active { display: flex; }
+
+.matrix-header {
+    border-bottom: 1px solid var(--border-light); padding-bottom: 20px; margin-bottom: 20px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+}
+.matrix-title h2 { color: white; font-size: 24px; font-weight: 800; margin-bottom: 5px; }
+.matrix-title p { color: var(--text-secondary); font-size: 14px; }
+.btn-save-role {
+    background: linear-gradient(135deg, var(--accent-green), #059669); color: white;
+    padding: 12px 24px; border-radius: var(--border-radius-md); font-weight: 800; border: none;
+    cursor: pointer; transition: var(--transition); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+    display: flex; align-items: center; gap: 8px; font-size: 15px;
+}
+.btn-save-role:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4); }
+
+/* Switch Layout */
+.perm-group { margin-bottom: 25px; }
+.perm-group-title {
+    color: var(--accent-blue); font-size: 16px; font-weight: 700; margin-bottom: 15px;
+    display: flex; align-items: center; gap: 8px;
+}
+.perm-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;
+}
+
+.perm-toggle-row {
+    background: rgba(15, 23, 42, 0.3); border: 1px solid var(--border-color);
+    padding: 15px; border-radius: var(--border-radius-md);
+    display: flex; justify-content: space-between; align-items: center;
+    transition: var(--transition);
+}
+.perm-toggle-row:hover { border-color: rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
+
+.perm-text h5 { color: white; font-size: 14px; margin-bottom: 2px; }
+.perm-text p { color: var(--text-muted); font-size: 11px; }
+
+/* Custom Switch Toggle */
+.switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+    position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(255,255,255,0.1); transition: .4s; border-radius: 34px; border: 1px solid var(--border-light);
+}
+.slider:before {
+    position: absolute; content: ""; height: 18px; width: 18px; left: 2px; bottom: 2px;
+    background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+input:checked + .slider { background-color: var(--accent-green); border-color: var(--accent-green); }
+input:checked + .slider:before { transform: translateX(20px); }
+
+/* Empty State */
+.empty-perm-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 80px 20px; text-align: center; color: var(--text-muted);
+}
+.empty-perm-state i { font-size: 60px; opacity: 0.5; margin-bottom: 15px; }
+
+/* Modal specific for Role */
+.role-input-modern {
+    background: rgba(15,23,42,0.6); color: white; padding: 12px; border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md); width: 100%; font-family: inherit; margin-bottom: 20px; font-size: 15px;
+}
+.role-input-modern:focus { border-color: var(--accent-blue); outline: none; }

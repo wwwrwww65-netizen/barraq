@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الصلاحيات والمستخدمين - سمر حضرموت</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="permissions.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <img src="logo.jpg" alt="مطعم سمر حضرموت" class="restaurant-logo">
+                <span>سمر حضرموت <span class="highlight">POS</span></span>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="index.html" class="nav-item"><i class="ph ph-squares-four"></i><span>الرئيسية</span></a>
+                <a href="pos.html" class="nav-item"><i class="ph ph-monitor"></i><span>نقطة البيع (الكاشير)</span></a>
+                <a href="sales.html" class="nav-item"><i class="ph ph-receipt"></i><span>المبيعات</span></a>
+                <a href="menu.html" class="nav-item"><i class="ph ph-list-dashes"></i><span>الأصناف والمنيو</span></a>
+                
+                <div class="nav-divider"></div>
+                <p class="nav-label">العمليات والمخزون</p>
+                <a href="inventory.html" class="nav-item"><i class="ph ph-package"></i><span>المخازن والمستودعات</span></a>
+                <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>المشتريات والموردين</span></a>
+                <a href="returns.html" class="nav-item"><i class="ph ph-arrow-u-down-left"></i><span>المرتجعات</span></a>
+                
+                <div class="nav-divider"></div>
+                <p class="nav-label">الإدارة والتقارير</p>
+                <a href="staff.html" class="nav-item"><i class="ph ph-users"></i><span>الموظفين والعمال</span></a>
+                <a href="customers.html" class="nav-item"><i class="ph ph-users-three"></i><span>العملاء</span></a>
+                <a href="accounting.html" class="nav-item"><i class="ph ph-calculator"></i><span>النظام المحاسبي</span></a>
+                <a href="statistics.html" class="nav-item"><i class="ph ph-chart-pie"></i><span>الإحصائيات</span></a>
+                <a href="settings.html" class="nav-item"><i class="ph ph-gear"></i><span>الإعدادات</span></a>
+                <a href="permissions.html" class="nav-item active"><i class="ph ph-shield-check"></i><span>الصلاحيات</span></a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <div class="breadcrumbs pt-0">
+                        <h2>إدارة الصلاحيات وسجل المستخدمين</h2>
+                        <span class="separator">/</span>
+                        <span>مصفوفة التحكم في الأدوار والوصول</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <div class="user-profile">
+                        <img src="https://i.pravatar.cc/150?img=11" alt="المدير" class="avatar">
+                        <div class="user-info">
+                            <span class="user-name">سعيد باعمر</span>
+                            <span class="user-role">مدير النظام</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="perm-container">
+                
+                <!-- Roles Sidebar Widget -->
+                <div class="roles-list-card">
+                    <div class="roles-header">
+                        <h3><i class="ph ph-users"></i> الأدوار الوظيفية</h3>
+                        <button class="btn-add-role" id="btn-add-new-role"><i class="ph-bold ph-plus"></i> دور جديد</button>
+                    </div>
+
+                    <div id="roles-container" style="display:flex; flex-direction:column; gap:10px;">
+                        <!-- JS Dynamically Injected Roles -->
+                    </div>
+                </div>
+
+                <!-- Empty State (No role selected) -->
+                <div class="perm-matrix-card" id="empty-state-card" style="display: flex;">
+                    <div class="empty-perm-state">
+                        <i class="ph ph-shield-star"></i>
+                        <h2>الرجاء اختيار دور وظيفي</h2>
+                        <p>انقر على أحد الأدوار من القائمة الجانبية لعرض وتعديل صلاحيات الوصول الخاصة به عبر النظام الكامل.</p>
+                    </div>
+                </div>
+
+                <!-- Permissions Matrix Editor -->
+                <div class="perm-matrix-card" id="editor-card">
+                    <div class="matrix-header">
+                        <div class="matrix-title">
+                            <h2 id="editing-role-name">كاشير النظام (Cashier)</h2>
+                            <p>قم بتفعيل أو تعطيل الأجزاء التي يُسمح لهذا الدور برؤيتها أو إدارتها داخل النظام.</p>
+                        </div>
+                        <button class="btn-save-role" id="btn-save-matrix"><i class="ph-bold ph-floppy-disk"></i> حفظ الصلاحيات</button>
+                    </div>
+
+                    <div style="overflow-y: auto; overflow-x: hidden; max-height: 60vh; padding-right:10px;">
+                        
+                        <!-- Group: POS & Sales -->
+                        <div class="perm-group">
+                            <h4 class="perm-group-title"><i class="ph-fill ph-monitor"></i> نقطة البيع والمبيعات</h4>
+                            <div class="perm-grid">
+                                <div class="perm-toggle-row">
+                                    <div class="perm-text">
+                                        <h5>الوصول للكاشير وإنشاء الفواتير</h5>
+                                        <p>السماح بفتح شاشة POS وإصدار طلبات جديدة.</p>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="p_pos_access"><span class="slider"></span></label>
+                                </div>
+                                <div class="perm-toggle-row">
+                                    <div class="perm-text">
+                                        <h5>تطبيق الخصومات اليدوية</h5>
+                                        <p>السماح للمستخدم بإدخال خصم مالي على الفاتورة.</p>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="p_pos_discount"><span class="slider"></span></label>
+                                </div>
+                                <div class="perm-toggle-row">
+                                    <div class="perm-text">
+                                        <h5>تعليق وإلغاء الطلبات (المرتجعات)</h5>
+                                        <p>إمكانية عمل مرتجع وإلغاء فواتير محفوظة مسبقاً.</p>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="p_pos_return"><span class="slider"></span></label>
+                                </div>
+                                <div class="perm-toggle-row">
+                                    <div class="perm-text">
+                                        <h5>رؤية شاشة المبيعات الكلية</h5>
+                                        <p>الوصول لصفحة المبيعات والاطلاع على الفواتير اليومية للأرباح.</p>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="p_sales_access"><span class="slider"></span></label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Group: Inventory -->
+                        <div class="perm-group">
+                            <h4 class="perm-group-title"><i class="ph-fill ph-package"></i> المخازن والأصناف</h4>
+                            <div class="perm-grid">
+                                <div class="perm-toggle-row">
+                                    <div class="perm-text">
+                                        <h5>إدارة الأصناف والمنيو</h5>
+                                        <p>السماح بإضافة وتعديل وحذف أنواع المأكولات والمشروبات.</p>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="p_menu_manage"><span class="slider"></span></label>
+                                </div>
+                                <div class="perm-toggle-row">
+                                    <div class="perm-text">
+                                        <h5>إدارة المخزون والمشتريات</h5>
+                                        <p>الوصول لصفحات المشتريات وإضافة كميات وتعديل مستودعات.</p>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="p_inv_manage"><span class="slider"></span></label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Group: Admin & Accounting -->
+                        <div class="perm-group">
+                            <h4 class="perm-group-title"><i class="ph-fill ph-calculator"></i> الإدارة والمالية</h4>
+                            <div class="perm-grid">
+                                <div class="perm-toggle-row">
+                                    <div class="perm-text">
+                                        <h5>النظام المحاسبي وشؤون الموظفين</h5>
+                                        <p>الوصول لصرف الرواتب، والسلفيات، وتسجيل الموظفين.</p>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="p_hr_manage"><span class="slider"></span></label>
+                                </div>
+                                <div class="perm-toggle-row">
+                                    <div class="perm-text">
+                                        <h5>إحصائيات الإيرادات والأرباح</h5>
+                                        <p>رؤية الرسم البياني الحساس وصافي الربح اليومي/الشهري وتصديره.</p>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="p_stats_access"><span class="slider"></span></label>
+                                </div>
+                                <div class="perm-toggle-row">
+                                    <div class="perm-text">
+                                        <h5>إعدادات النظام العامة والصلاحيات</h5>
+                                        <p>القدرة على تعديل الشعار والضريبة وإنشاء أدوار وصلاحيات لغيره (حساس جداً).</p>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="p_sys_admin"><span class="slider"></span></label>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Role Modal -->
+    <div class="modal-overlay" id="add-role-modal">
+        <div class="modal-content" style="max-width: 400px; padding: 30px;">
+            <div class="modal-header" style="border-bottom:none; margin-bottom:10px;">
+                <h3><i class="ph ph-shield-plus"></i> إضافة دور وظيفي جديد</h3>
+                <button class="close-modal" id="close-role-modal"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="new-role-name" class="role-input-modern" placeholder="اسم الدور (مثال: مراقب جودة المخازن)">
+                <button class="btn-save-role" id="btn-save-new-role" style="width:100%; display:flex; justify-content:center;">إنشاء وبدء تخصيص الصلاحيات</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="script.js"></script>
+    <script src="permissions.js"></script>
+</body>
+</html>
