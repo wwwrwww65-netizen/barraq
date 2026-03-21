@@ -111,3 +111,49 @@ document.addEventListener('DOMContentLoaded', () => {
     between our newly created html pages. 
     */
 });
+
+/* =====================================
+   Global Settings Sync 
+===================================== */
+window.syncGlobalSettings = function() {
+    const saved = localStorage.getItem('restaurant_settings');
+    if(saved) {
+        try {
+            const data = JSON.parse(saved);
+            
+            // 1. Sidebar Logo & Name Update (Global)
+            const sideLogos = document.querySelectorAll('.restaurant-logo');
+            sideLogos.forEach(img => { if(data.logo) img.src = data.logo; });
+            
+            const sideTitles = document.querySelectorAll('.logo span');
+            sideTitles.forEach(span => {
+                if(data.name) {
+                    span.innerHTML = data.name + ' <span class="highlight">POS</span>';
+                }
+            });
+
+            // 2. Receipt Updates (If on pos.html)
+            const rLogo = document.getElementById('r-store-logo');
+            if(rLogo && data.logo) rLogo.src = data.logo;
+
+            const rName = document.getElementById('r-store-name');
+            if(rName && data.name) rName.innerText = data.name;
+
+            const rTax = document.getElementById('r-store-tax');
+            if(rTax && data.tax) rTax.innerText = 'الرقم الضريبي: ' + data.tax;
+
+            const rBranch = document.getElementById('r-store-branch');
+            if(rBranch && data.branch) rBranch.innerText = data.branch;
+
+            const rFooter = document.getElementById('r-store-footer');
+            if(rFooter && data.footer) rFooter.innerText = data.footer;
+
+        } catch(e) {
+            console.error('Settings parse error', e);
+        }
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    window.syncGlobalSettings();
+});

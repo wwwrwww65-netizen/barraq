@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إعدادات النظام - سمر حضرموت</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="settings.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <img src="logo.jpg" alt="مطعم سمر حضرموت" class="restaurant-logo">
+                <span>سمر حضرموت <span class="highlight">POS</span></span>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="index.html" class="nav-item"><i class="ph ph-squares-four"></i><span>الرئيسية</span></a>
+                <a href="pos.html" class="nav-item"><i class="ph ph-monitor"></i><span>نقطة البيع (الكاشير)</span></a>
+                <a href="sales.html" class="nav-item"><i class="ph ph-receipt"></i><span>المبيعات</span></a>
+                <a href="menu.html" class="nav-item"><i class="ph ph-list-dashes"></i><span>الأصناف والمنيو</span></a>
+                
+                <div class="nav-divider"></div>
+                <p class="nav-label">العمليات والمخزون</p>
+                <a href="inventory.html" class="nav-item"><i class="ph ph-package"></i><span>المخازن والمستودعات</span></a>
+                <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>المشتريات والموردين</span></a>
+                <a href="#" class="nav-item"><i class="ph ph-arrow-u-down-left"></i><span>المرتجعات</span></a>
+                
+                <div class="nav-divider"></div>
+                <p class="nav-label">الإدارة والتقارير</p>
+                <a href="staff.html" class="nav-item"><i class="ph ph-users"></i><span>الموظفين والعمال</span></a>
+                <a href="customers.html" class="nav-item"><i class="ph ph-users-three"></i><span>العملاء</span></a>
+                <a href="accounting.html" class="nav-item"><i class="ph ph-calculator"></i><span>النظام المحاسبي</span></a>
+                <a href="statistics.html" class="nav-item"><i class="ph ph-chart-pie"></i><span>الإحصائيات</span></a>
+                <a href="settings.html" class="nav-item active"><i class="ph ph-gear"></i><span>الإعدادات</span></a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <div class="breadcrumbs pt-0">
+                        <h2>إعدادات النظام المركزية</h2>
+                        <span class="separator">/</span>
+                        <span>شاشة تخصيص الهوية والفواتير</span>
+                    </div>
+                </div>
+                
+                <div class="header-actions">
+                    <div class="user-profile">
+                        <img src="https://i.pravatar.cc/150?img=11" alt="المدير" class="avatar">
+                        <div class="user-info">
+                            <span class="user-name">سعيد باعمر</span>
+                            <span class="user-role">مدير النظام</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Settings Dashboard -->
+            <div class="settings-container">
+                
+                <form id="settings-form">
+                    <div class="settings-grid">
+                        
+                        <!-- Col 1: Brand & Basic Info -->
+                        <div class="settings-card">
+                            <div class="sc-header">
+                                <i class="ph-fill ph-storefront"></i>
+                                <h3>هوية وبيانات المطعم الأساسية</h3>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>شعار المطعم الجديد (Drag & Drop)</label>
+                                <div class="logo-upload-box" id="drop-zone">
+                                    <i class="ph-fill ph-upload-simple upload-icon"></i>
+                                    <div class="upload-text">اسحب وأفلت صورة الشعار هنا</div>
+                                    <div class="upload-hint">أو انقر لتصفح الملفات من جهازك (JPG/PNG)</div>
+                                    <input type="file" id="logo-input" accept="image/*">
+                                    <img id="preview-logo" src="" alt="Live Preview">
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>اسم المطعم الرسمي</label>
+                                <div class="input-icon-wrapper">
+                                    <i class="ph-fill ph-check-circle" style="color:var(--accent-green)"></i>
+                                    <input type="text" id="set-name" class="input-modern" placeholder="مثال: مطاعم ومطابخ السعادة">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>اسم الفرع أو الوصف التفصيلي</label>
+                                <div class="input-icon-wrapper">
+                                    <i class="ph-fill ph-map-pin"></i>
+                                    <input type="text" id="set-branch" class="input-modern" placeholder="شارع الملك عبدالعزيز - حي النسيم">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Col 2: Tax & Contact Info -->
+                        <div class="settings-card">
+                            <div class="sc-header">
+                                <i class="ph-fill ph-receipt"></i>
+                                <h3>إعدادات الفواتير والضرائب</h3>
+                            </div>
+
+                            <div class="form-group">
+                                <label>الرقم الضريبي (VAT Number)</label>
+                                <div class="input-icon-wrapper">
+                                    <i class="ph-fill ph-barcode"></i>
+                                    <input type="text" id="set-tax" class="input-modern" placeholder="3000xxxxxxxxxxx3">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>رقم هاتف المتجر الموحد</label>
+                                <div class="input-icon-wrapper">
+                                    <i class="ph-fill ph-phone-call"></i>
+                                    <input type="text" id="set-phone" class="input-modern" placeholder="9200xxxx">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>رقم الواتساب الخاص بالطلبات (WhatsApp)</label>
+                                <div class="input-icon-wrapper">
+                                    <i class="ph-fill ph-whatsapp-logo" style="color:var(--accent-green)"></i>
+                                    <input type="text" id="set-whatsapp" class="input-modern" placeholder="05xxxxxxxx">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>رسالة ترحيبية أسفل الفاتورة (Footer Message)</label>
+                                <div class="input-icon-wrapper">
+                                    <i class="ph-fill ph-text-align-center"></i>
+                                    <input type="text" id="set-footer" class="input-modern" placeholder="شكرًا لزيارتكم.. نتشرف بخدمتكم دائماً">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Full Width Action Bar -->
+                        <div style="grid-column: 1 / -1; margin-top:-10px">
+                            <div class="settings-actions">
+                                <button type="button" class="btn btn-primary" style="background:transparent; border: 1px solid var(--border-light); color:var(--text-muted)"><i class="ph ph-arrow-counter-clockwise"></i> استعادة الافتراضية</button>
+                                <button type="submit" class="btn-save-settings"><i class="ph-fill ph-floppy-disk"></i> حفظ وتطبيق الإعدادات على جميع الأنظمة</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="script.js"></script>
+    <script src="settings.js"></script>
+</body>
+</html>
