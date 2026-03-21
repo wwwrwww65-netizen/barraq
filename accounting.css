@@ -1,0 +1,202 @@
+@import url('styles.css');
+
+/* Accounting Dashboard Overrides and Additions */
+.accounting-sidebar {
+    background: rgba(11, 15, 25, 0.95); /* Even darker for serious financial tool */
+    border-right: 1px solid rgba(255,255,255,0.05); /* LTR border left but we are RTL so border-left is written in original styles.css, let's keep it consistent */
+}
+
+/* Header Adjustments */
+.acc-header {
+    border-bottom: 1px solid var(--border-light);
+    background: rgba(15, 23, 42, 0.4);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.header-left-title {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.header-left-title h2 {
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.fiscal-year-badge {
+    font-size: 13px;
+    color: var(--accent-orange);
+    background: rgba(245, 158, 11, 0.1);
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-weight: 700;
+    align-self: flex-start;
+}
+
+/* Financial Actions Bar */
+.acc-actions-bar {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 16px;
+    border-radius: var(--border-radius-lg);
+    border: 1px dashed var(--border-color);
+}
+
+.acc-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: var(--border-radius-md);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: inherit;
+}
+.acc-btn i { font-size: 18px; }
+
+.acc-btn-income:hover { border-color: var(--accent-green); color: var(--accent-green); background: rgba(16,185,129,0.05); }
+.acc-btn-expense:hover { border-color: var(--accent-red); color: var(--accent-red); background: rgba(239,68,68,0.05); }
+.acc-btn-invoice:hover { border-color: #8b5cf6; color: #8b5cf6; background: rgba(139,92,246,0.05); }
+.acc-btn-payroll:hover { border-color: var(--accent-orange); color: var(--accent-orange); background: rgba(245,158,11,0.05); }
+.acc-btn-report:hover { border-color: var(--accent-blue); color: var(--accent-blue); background: rgba(59,130,246,0.05); }
+
+/* KPI Color Overrides */
+.acc-glow-blue { text-shadow: 0 0 15px rgba(59, 130, 246, 0.5); color: #60a5fa !important; }
+.acc-glow-green { text-shadow: 0 0 15px rgba(16, 185, 129, 0.5); color: #34d399 !important; }
+.acc-glow-red { text-shadow: 0 0 15px rgba(244, 63, 94, 0.5); color: #fb7185 !important; }
+.acc-glow-orange { text-shadow: 0 0 15px rgba(245, 158, 11, 0.5); color: #fbbf24 !important; }
+
+/* Middle Section */
+.acc-middle-section {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+}
+
+/* Chart Container Custom Height */
+.acc-chart-card .chart-container {
+    min-height: 350px;
+}
+
+/* Payroll & Employees Card */
+.acc-payroll-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.payroll-list {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1;
+    overflow-y: auto;
+    max-height: 350px;
+}
+
+.payroll-item {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: var(--border-radius-md);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.employee-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.emp-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--accent-blue-glow);
+    color: var(--text-primary);
+    border: 1px solid var(--accent-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.employee-info h4 { font-size: 15px; margin-bottom: 2px; }
+.employee-info p { font-size: 12px; color: var(--text-secondary); }
+
+.financials {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(0,0,0,0.2);
+    padding: 8px 12px;
+    border-radius: var(--border-radius-sm);
+}
+
+.salary-base { color: var(--text-secondary); }
+.salary-deduct { color: var(--accent-red); }
+.salary-net { color: var(--accent-green); font-size: 13px; font-weight: 800; }
+
+.acc-btn-small {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--accent-green);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 6px;
+    border-radius: var(--border-radius-sm);
+    font-family: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.acc-btn-small:hover { background: var(--accent-green); color: white; }
+
+.payroll-summary {
+    padding: 20px 24px;
+    background: rgba(0,0,0,0.2);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 15px;
+    color: var(--text-secondary);
+}
+.payroll-summary strong { color: white; font-size: 18px; }
+
+/* Bottom Section */
+.acc-bottom-section {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Custom Table Tags */
+.acc-tag {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+}
+.tag-purchase { background: rgba(245, 158, 11, 0.1); color: var(--accent-orange); border: 1px solid rgba(245, 158, 11, 0.2); }
+.tag-expense { background: rgba(239, 68, 68, 0.1); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.2); }
+.tag-payroll { background: rgba(139, 92, 246, 0.1); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.2); }
+.tag-payable { background: rgba(99, 102, 241, 0.1); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.2); }
+
+.amount-out { color: var(--accent-red); font-weight: 800; }
+.amount-in { color: var(--accent-green); font-weight: 800; }
+
+/* Responsive Adjustments for Accounting Grid */
+@media (max-width: 1200px) {
+    .acc-middle-section { grid-template-columns: 1fr; }
+    .acc-actions-bar { justify-content: center; }
+}
