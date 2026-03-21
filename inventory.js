@@ -370,6 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const newTxId = 'TX-' + Math.floor(Math.random() * 10000);
+            const totalCost = bQty * erpItems[idx].cost;
             const newTx = {
                 id: newTxId,
                 type: bType,

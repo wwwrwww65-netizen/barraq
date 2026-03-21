@@ -5,9 +5,67 @@ if (!window.location.pathname.includes('login.html')) {
     }
 }
 
+// --- Local Network Synchronization ---
+try {
+    const { ipcRenderer } = require('electron');
+    let isNetworkSyncing = false;
+
+    // Listen for incoming sync updates
+    ipcRenderer.on('network-sync-update', (event, data) => {
+        isNetworkSyncing = true;
+        
+        if (data.action === 'setItem') {
+            localStorage.setItem(data.key, data.value);
+        } else if (data.action === 'removeItem') {
+            localStorage.removeItem(data.key);
+        } else if (data.action === 'clear') {
+            localStorage.clear();
+        }
+        
+        // Dispatch storage event so other scripts might pick it up
+        window.dispatchEvent(new Event('storage'));
+        
+        // Refresh specific things if necessary
+        if (data.key === 'restaurant_settings' && typeof window.syncGlobalSettings === 'function') {
+            window.syncGlobalSettings();
+        }
+        
+        isNetworkSyncing = false;
+    });
+
+    // Intercept localStorage to broadcast updates
+    const originalSetItem = localStorage.setItem;
+    localStorage.setItem = function(key, value) {
+        originalSetItem.apply(this, arguments);
+        if (!isNetworkSyncing) {
+            ipcRenderer.send('network-sync-send', { action: 'setItem', key, value });
+        }
+    };
+
+    const originalRemoveItem = localStorage.removeItem;
+    localStorage.removeItem = function(key) {
+        originalRemoveItem.apply(this, arguments);
+        if (!isNetworkSyncing) {
+            ipcRenderer.send('network-sync-send', { action: 'removeItem', key });
+        }
+    };
+
+    const originalClear = localStorage.clear;
+    localStorage.clear = function() {
+        originalClear.apply(this, arguments);
+        if (!isNetworkSyncing) {
+            ipcRenderer.send('network-sync-send', { action: 'clear' });
+        }
+    };
+    
+} catch(e) {
+    console.log("Not running in Electron or IPC failed");
+}
+
 // Update Date and Time continuously
 function updateDateTime() {
     const timeDisplay = document.getElementById('datetime-display');
+    if (!timeDisplay) return;
     const now = new Date();
     
     // Arabic formatted date
@@ -30,6 +88,28 @@ document.addEventListener('DOMContentLoaded', () => {
     We removed the e.preventDefault() from here to allow real navigation 
     between our newly created html pages. 
     */
+
+    // --- Dynamic Global Back Button ---
+    const path = window.location.pathname;
+    const isRootOrMain = path.endsWith('index.html') || path.endsWith('pos.html') || path.endsWith('kitchen.html') || path.endsWith('login.html');
+    
+    const headerLeft = document.querySelector('.top-header .header-left');
+    if (headerLeft && !isRootOrMain) {
+        const backBtn = document.createElement('button');
+        backBtn.className = 'icon-btn global-back-btn';
+        backBtn.innerHTML = '<i class="ph ph-arrow-right"></i>';
+        backBtn.style.marginLeft = '15px';
+        backBtn.style.color = 'var(--text-primary)';
+        backBtn.style.border = '1px solid var(--border-color)';
+        backBtn.title = 'رجوع للخلف';
+        backBtn.onclick = () => window.history.back();
+        
+        headerLeft.style.display = 'flex';
+        headerLeft.style.alignItems = 'center';
+        
+        // Ensure breadcrumbs or other elements inside don't break layout
+        headerLeft.insertBefore(backBtn, headerLeft.firstChild);
+    }
 });
 
 /* =====================================

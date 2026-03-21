@@ -300,10 +300,10 @@ document.addEventListener('DOMContentLoaded', () => {
             label.querySelector('i').style.color = 'var(--accent-blue)';
             label.querySelector('strong').style.color = 'white';
             
-            // Hide cash calculator if network
-            const isCash = label.querySelector('input').value === 'كاش';
-            document.getElementById('cash-calculator').style.opacity = isCash ? '1' : '0.3';
-            document.getElementById('cash-calculator').style.pointerEvents = isCash ? 'auto' : 'none';
+            // Toggle Display
+            const pt = label.querySelector('input').value;
+            document.getElementById('cash-calculator').style.display = pt === 'كاش' ? 'flex' : 'none';
+            document.getElementById('split-calculator').style.display = pt === 'مجزأ' ? 'flex' : 'none';
         });
     });
 
@@ -314,15 +314,22 @@ document.addEventListener('DOMContentLoaded', () => {
     function calculateChange() {
         const totalStr = document.getElementById('cart-total').innerText.replace(' ر.س', '');
         const total = parseFloat(totalStr) || 0;
-        const received = parseFloat(cashReceivedInput.value) || 0;
         
+        // Handling normal cash
+        const received = parseFloat(cashReceivedInput.value) || 0;
         let change = received - total;
         if (change < 0 || isNaN(change)) change = 0;
-
         cashChangeDisplay.innerText = formatCurrency(change);
+
+        // Handling split
+        const splitCash = parseFloat(document.getElementById('split-cash-amount').value) || 0;
+        let splitNet = total - splitCash;
+        if(splitNet < 0) splitNet = 0;
+        document.getElementById('split-network-amount').innerText = formatCurrency(splitNet);
     }
 
     cashReceivedInput.addEventListener('input', calculateChange);
+    document.getElementById('split-cash-amount').addEventListener('input', calculateChange);
 
 
     /* ===============================
@@ -338,25 +345,71 @@ document.addEventListener('DOMContentLoaded', () => {
         btnConfirmPay.disabled = true;
 
         try {
-            await downloadReceipt('receipt-customer', 'فاتورة_العميل');
-            await downloadReceipt('receipt-kitchen', 'طلب_المطبخ');
+            openCashDrawer();
+            await downloadReceipt('all', 'الفاتورة'); // Opens the print dialog once
             
             // Save to LocalStorage for Sales page
             const savedOrders = JSON.parse(localStorage.getItem('pos_orders') || '[]');
             const now = new Date();
             const selectedPay = document.querySelector('.payment-method.selected input').value;
+            const totalOrder = parseFloat(document.getElementById('cart-total').innerText.replace(' ر.س', ''));
+            let finalSplitCash = 0, finalSplitNet = 0;
+
+            if(selectedPay === 'مجزأ') {
+                finalSplitCash = parseFloat(document.getElementById('split-cash-amount').value) || 0;
+                finalSplitNet = totalOrder - finalSplitCash;
+            } else if (selectedPay === 'كاش') {
+                finalSplitCash = totalOrder;
+            } else {
+                finalSplitNet = totalOrder;
+            }
+
             savedOrders.push({
                 orderId: orderId,
                 date: now.toLocaleDateString('ar-SA') + " " + now.toLocaleTimeString('ar-SA'),
                 timestamp: now.getTime(),
                 type: currentOrderType,
                 paymentMethod: selectedPay,
-                total: parseFloat(document.getElementById('cart-total').innerText.replace(' ر.س', '')),
-                items: cart.length
+                total: totalOrder,
+                splitCash: finalSplitCash,
+                splitNetwork: finalSplitNet,
+                itemsCount: cart.length,
+                items: [...cart] // Save actual items for sales analysis
             });
             localStorage.setItem('pos_orders', JSON.stringify(savedOrders));
             
-            alert('تمت العملية بنجاح! تم حفظ المبيعات وتحميل الفواتير.');
+            // --- Inventory ERP Link: Try to deduct sold items from Stock by exact name ---
+            const inventory = JSON.parse(localStorage.getItem('erp_inventory_items') || '[]');
+            const inventoryTx = JSON.parse(localStorage.getItem('erp_inventory_tx') || '[]');
+            
+            cart.forEach(cartItem => {
+                // look for an exact name match in the inventory
+                let matchingInv = inventory.find(inv => inv.name === cartItem.name && (inv.warehouseId || 'main') === 'restaurant');
+                if(!matchingInv) matchingInv = inventory.find(inv => inv.name === cartItem.name); // fallback to main warehouse
+                
+                if(matchingInv) {
+                    matchingInv.qty -= cartItem.qty; // deduct!
+                    
+                    // Log the deduction transaction
+                    inventoryTx.push({
+                        id: 'TX-' + Math.floor(Math.random() * 10000),
+                        type: 'out', // output from warehouse
+                        total: (matchingInv.cost || 0) * cartItem.qty, 
+                        date: now.getTime(),
+                        fromWh: matchingInv.warehouseId || 'main',
+                        toWh: 'CUSTOMER (POS)',
+                        sku: matchingInv.sku,
+                        refInvoice: orderId,
+                        qtyOut: cartItem.qty
+                    });
+                }
+            });
+            
+            // Save updated inventory records
+            localStorage.setItem('erp_inventory_items', JSON.stringify(inventory));
+            localStorage.setItem('erp_inventory_tx', JSON.stringify(inventoryTx));
+            
+            alert('تمت العملية بنجاح! تم حفظ المبيعات وتحميل الفواتير وتحديث المخزون.');
             // Reset
             cart = [];
             discountAmount = 0;
@@ -383,8 +436,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if(cart.length === 0) return alert('السلة فارغة!');
         document.getElementById('btn-print-receipt').innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
         preparePrintTemplates();
-        await downloadReceipt('receipt-customer', 'مسودة_فاتورة_العميل');
-        await downloadReceipt('receipt-kitchen', 'طلب_المطبخ');
+        openCashDrawer();
+        await downloadReceipt('all', 'مسودة_الفاتورة');
         document.getElementById('btn-print-receipt').innerHTML = '<i class="ph ph-printer"></i> طباعة للحفظ';
     });
 
@@ -438,27 +491,44 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function downloadReceipt(elementId, namePrefix) {
-        const el = document.getElementById(elementId);
-        
-        // Temporarily make container fully opaque unclipped
-        const printZone = document.getElementById('print-zone');
-        printZone.style.top = '0';
-        printZone.style.left = '0';
-        printZone.style.opacity = '1';
-        printZone.style.zIndex = '-999'; 
+        // Modern approach: rather than downloading an image, we print directly
+        // The @media print in pos.css handles the visibility
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                window.print();
+                resolve();
+            }, 500); 
+        });
+    }
 
-        const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+    function openCashDrawer() {
+        // Simulate opening the cash drawer
+        // In Electron/Node.js this would send an ESC/POS command to the printer COM port
+        console.log('Sending ESC/POS kick to COM port...');
+        const notif = document.createElement('div');
+        notif.style.position = 'fixed';
+        notif.style.top = '20px';
+        notif.style.left = '50%';
+        notif.style.transform = 'translateX(-50%)';
+        notif.style.background = 'var(--accent-green)';
+        notif.style.color = 'white';
+        notif.style.padding = '15px 30px';
+        notif.style.borderRadius = '8px';
+        notif.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
+        notif.style.zIndex = '9999999';
+        notif.style.fontSize = '18px';
+        notif.style.fontWeight = 'bold';
+        notif.innerHTML = '<i class="ph ph-safe"></i> تم إرسال أمر فتح صندوق الكاشير!';
+        document.body.appendChild(notif);
         
-        // Hide again
-        printZone.style.top = '-9999px';
-        printZone.style.left = '-9999px';
-        
-        const imgData = canvas.toDataURL('image/jpeg', 1.0);
-        const link = document.createElement('a');
-        link.download = `${namePrefix}_${orderId}_${Date.now()}.jpg`;
-        link.href = imgData;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Play notification sound if available
+        try {
+            const audio = new Audio('https://www.soundjay.com/misc/cash-register-01.mp3');
+            audio.play().catch(e => console.log('Audio disabled by browser policy', e));
+        } catch (e) {}
+
+        setTimeout(() => {
+            notif.remove();
+        }, 4000);
     }
 });

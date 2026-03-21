@@ -77,221 +77,105 @@
                 </div>
             </header>
 
-            <div class="menu-dashboard-grid">
-                
-                <!-- Large Categories Row -->
-                <div class="menu-section-title">
-                    <h3>أقسام المنيو الرئيسية</h3>
-                </div>
-                <div class="menu-categories-grid">
-                    <div class="menu-category-card active-cat">
-                        <div class="cat-icon-lg"><i class="ph ph-squares-four"></i></div>
-                        <div class="cat-info-lg">
-                            <h4>الكل</h4>
-                            <span>142 صنف</span>
-                        </div>
-                    </div>
-                    <div class="menu-category-card">
-                        <div class="cat-icon-lg orange"><i class="ph ph-bowl-food"></i></div>
-                        <div class="cat-info-lg">
-                            <h4>شعبيات ومندي</h4>
-                            <span>18 صنف</span>
-                        </div>
-                    </div>
-                    <div class="menu-category-card">
-                        <div class="cat-icon-lg red"><i class="ph ph-hamburger"></i></div>
-                        <div class="cat-info-lg">
-                            <h4>وجبات وساندوتشات</h4>
-                            <span>35 صنف</span>
-                        </div>
-                    </div>
-                    <div class="menu-category-card">
-                        <div class="cat-icon-lg green"><i class="ph ph-carrot"></i></div>
-                        <div class="cat-info-lg">
-                            <h4>مقبلات وسلطات</h4>
-                            <span>22 صنف</span>
-                        </div>
-                    </div>
-                    <div class="menu-category-card">
-                        <div class="cat-icon-lg blue"><i class="ph ph-coffee"></i></div>
-                        <div class="cat-info-lg">
-                            <h4>مشروبات طازجة</h4>
-                            <span>28 صنف</span>
-                        </div>
-                    </div>
-                    <div class="menu-category-card">
-                        <div class="cat-icon-lg purple"><i class="ph ph-cookie"></i></div>
-                        <div class="cat-info-lg">
-                            <h4>حلويات وضيافة</h4>
-                            <span>39 صنف</span>
-                        </div>
-                    </div>
+            <div class="menu-content-scrollable" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; padding-bottom: 30px;">
+                <!-- Tabs Header -->
+                <div class="menu-tabs-header">
+                    <button class="menu-tab-btn active" data-tab="products"><i class="ph ph-list-dashes"></i> قائمة الأصناف</button>
+                    <button class="menu-tab-btn" data-tab="categories"><i class="ph ph-folder"></i> قائمة الأقسام</button>
                 </div>
 
-                <!-- Products Toolbar -->
-                <div class="menu-toolbar">
-                    <div class="search-bar menu-search">
-                        <i class="ph ph-magnifying-glass"></i>
-                        <input type="text" placeholder="ابحث باسم الصنف أو المكونات...">
-                    </div>
-                    <div class="menu-filters">
-                        <select class="menu-select">
-                            <option>ترتيب حسب: الأحدث</option>
-                            <option>ترتيب حسب: الأعلى مبيعاً</option>
-                            <option>ترتيب حسب: السعر (أقل - أعلى)</option>
-                        </select>
-                        <select class="menu-select">
-                            <option>الحالة: الكل</option>
-                            <option>متاح حالياً</option>
-                            <option>نفذت الكمية</option>
-                            <option>مخفي مؤقتاً</option>
-                        </select>
-                        <div class="view-toggles">
-                            <button class="view-btn active"><i class="ph ph-squares-four"></i></button>
-                            <button class="view-btn"><i class="ph ph-list-dashes"></i></button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Admin Items Grid -->
-                <div class="menu-items-grid">
+                <div class="menu-dashboard-grid" style="flex:auto;">
                     
-                    <!-- Item Card -->
-                    <div class="menu-item-card">
-                        <div class="item-card-image">
-                            <img src="https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80" alt="مندي">
-                            <div class="status-badge available">متاح للبيع <i class="ph-fill ph-check-circle"></i></div>
-                            <!-- Overlay actions on hover -->
-                            <div class="item-overlay-actions">
-                                <button class="overlay-btn edit"><i class="ph ph-pencil-simple"></i> تعديل</button>
-                                <button class="overlay-btn hide"><i class="ph ph-eye-slash"></i> إخفاء</button>
+                    <!-- Products Tab Content -->
+                    <div id="tab-products" class="tab-content active">
+                        <div class="menu-toolbar" style="margin-top:20px;">
+                            <div class="search-bar menu-search" style="width:400px;">
+                                <i class="ph ph-magnifying-glass"></i>
+                                <input type="text" id="search-products-input" placeholder="ابحث باسم الصنف أو المكونات...">
+                            </div>
+                            <div class="menu-filters">
+                                <a href="add-item.html" class="menu-btn-primary" style="text-decoration:none; display:flex; gap:8px; align-items:center;">
+                                    <i class="ph ph-plus-circle"></i> إضافة صنف جديد
+                                </a>
                             </div>
                         </div>
-                        <div class="item-card-content">
-                            <div class="item-card-header">
-                                <h3 class="item-name">نفر مندي لحم بلدي</h3>
-                                <div class="item-category"><i class="ph ph-bowl-food"></i> شعبيات ومندي</div>
-                            </div>
-                            <p class="item-desc">لحم خروف نعيمي طازج مع أرز البشاور والطبخ البلدي، يقدم مع صوص المعبوج والدقوس.</p>
-                            <div class="item-finances">
-                                <div class="finance-col">
-                                    <span class="label">سعر البيع</span>
-                                    <span class="val price">65.00 ر.س</span>
-                                </div>
-                                <div class="finance-col">
-                                    <span class="label">التكلفة (تقريبي)</span>
-                                    <span class="val cost">42.00 ر.س</span>
-                                </div>
-                                <div class="finance-col">
-                                    <span class="label">هامش الربح</span>
-                                    <span class="val margin">35%</span>
-                                </div>
-                            </div>
+
+                        <div class="table-responsive" style="margin-top:20px;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:60px;">الصورة</th>
+                                        <th>اسم الصنف</th>
+                                        <th>القسم</th>
+                                        <th>سعر البيع</th>
+                                        <th>التكلفة</th>
+                                        <th>الحالة</th>
+                                        <th style="text-align:center;">إجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="products-table-body">
+                                    <!-- JS Inject -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
-                    <!-- Item Card -->
-                    <div class="menu-item-card">
-                        <div class="item-card-image">
-                            <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80" alt="برجر">
-                            <div class="status-badge sold-out">نفذت الكمية <i class="ph-fill ph-x-circle"></i></div>
-                            <div class="item-overlay-actions">
-                                <button class="overlay-btn edit"><i class="ph ph-pencil-simple"></i> تعديل</button>
-                                <button class="overlay-btn hide"><i class="ph ph-eye-slash"></i> إخفاء</button>
+                    <!-- Categories Tab Content -->
+                    <div id="tab-categories" class="tab-content" style="display:none;">
+                        <div class="menu-toolbar" style="margin-top:20px;">
+                            <div class="search-bar menu-search" style="width:400px;">
+                                <i class="ph ph-magnifying-glass"></i>
+                                <input type="text" id="search-categories-input" placeholder="ابحث باسم القسم...">
+                            </div>
+                            <div class="menu-filters">
+                                <a href="add-category.html" class="menu-btn-secondary" style="text-decoration:none; display:flex; gap:8px; align-items:center; background: var(--bg-card); border:1px solid var(--accent-blue); padding:10px 20px; border-radius:8px; color:var(--accent-blue); font-weight:700;">
+                                    <i class="ph ph-folder-plus"></i> إضافة قسم جديد
+                                </a>
                             </div>
                         </div>
-                        <div class="item-card-content">
-                            <div class="item-card-header">
-                                <h3 class="item-name">برجر لحم دبل كلاسيك</h3>
-                                <div class="item-category"><i class="ph ph-hamburger"></i> وجبات وساندوتشات</div>
-                            </div>
-                            <p class="item-desc">شريحتين من اللحم المشوي مع جبن الشيدر، الخس، الطماطم وصوص المحل الخاص.</p>
-                            <div class="item-finances">
-                                <div class="finance-col">
-                                    <span class="label">سعر البيع</span>
-                                    <span class="val price">35.00 ر.س</span>
-                                </div>
-                                <div class="finance-col">
-                                    <span class="label">التكلفة (تقريبي)</span>
-                                    <span class="val cost">14.00 ر.س</span>
-                                </div>
-                                <div class="finance-col">
-                                    <span class="label">هامش الربح</span>
-                                    <span class="val margin positive">60%</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- Item Card -->
-                    <div class="menu-item-card hidden-item">
-                        <div class="item-card-image">
-                            <img src="https://images.unsplash.com/photo-1572490122747-3968b75ee69c?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80" alt="عصير" style="filter: grayscale(1);">
-                            <div class="status-badge hidden-badge">مخفي مؤقتاً <i class="ph-fill ph-eye-slash"></i></div>
-                            <div class="item-overlay-actions">
-                                <button class="overlay-btn edit"><i class="ph ph-pencil-simple"></i> تعديل</button>
-                                <button class="overlay-btn show-btn"><i class="ph ph-eye"></i> إظهار</button>
-                            </div>
-                        </div>
-                        <div class="item-card-content">
-                            <div class="item-card-header">
-                                <h3 class="item-name">عصير برتقال خلاط</h3>
-                                <div class="item-category"><i class="ph ph-coffee"></i> مشروبات طازجة</div>
-                            </div>
-                            <p class="item-desc">عصير برتقال يومي بدون إضافة السكر محضر عند الطلب مباشرة.</p>
-                            <div class="item-finances">
-                                <div class="finance-col">
-                                    <span class="label">سعر البيع</span>
-                                    <span class="val price">12.00 ر.س</span>
-                                </div>
-                                <div class="finance-col">
-                                    <span class="label">التكلفة (تقريبي)</span>
-                                    <span class="val cost">4.00 ر.س</span>
-                                </div>
-                                <div class="finance-col">
-                                    <span class="label">هامش الربح</span>
-                                    <span class="val margin positive">66%</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Item Card -->
-                    <div class="menu-item-card">
-                        <div class="item-card-image">
-                            <img src="https://images.unsplash.com/photo-1544025162-8315ea07edca?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&q=80" alt="سلطة">
-                            <div class="status-badge available">متاح للبيع <i class="ph-fill ph-check-circle"></i></div>
-                            <div class="item-overlay-actions">
-                                <button class="overlay-btn edit"><i class="ph ph-pencil-simple"></i> تعديل</button>
-                                <button class="overlay-btn hide"><i class="ph ph-eye-slash"></i> إخفاء</button>
-                            </div>
-                        </div>
-                        <div class="item-card-content">
-                            <div class="item-card-header">
-                                <h3 class="item-name">سلطة سيزر بالدجاج المتبل</h3>
-                                <div class="item-category"><i class="ph ph-carrot"></i> مقبلات وسلطات</div>
-                            </div>
-                            <p class="item-desc">قطع دجاج مشوي مع خس، جبن بارميزان، وخبز محمص بصوص السيزر التقليدي.</p>
-                            <div class="item-finances">
-                                <div class="finance-col">
-                                    <span class="label">سعر البيع</span>
-                                    <span class="val price">28.00 ر.س</span>
-                                </div>
-                                <div class="finance-col">
-                                    <span class="label">التكلفة (تقريبي)</span>
-                                    <span class="val cost">11.50 ر.س</span>
-                                </div>
-                                <div class="finance-col">
-                                    <span class="label">هامش الربح</span>
-                                    <span class="val margin positive">58%</span>
-                                </div>
-                            </div>
+                        <div class="table-responsive" style="margin-top:20px;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:60px;">الأيقونة</th>
+                                        <th>اسم القسم</th>
+                                        <th>لون القسم</th>
+                                        <th>الترتيب</th>
+                                        <th style="text-align:center;">إجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="categories-table-body">
+                                    <!-- JS Inject -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
                 </div>
             </div>
         </main>
+    </div>
+        </main>
+    </div>
+
+    <!-- Pre-load Icons for Phosphor JIT Compiler since they are injected dynamically by JS -->
+    <div style="display:none;" id="icons-cache">
+        <i class="ph ph-pencil-simple"></i>
+        <i class="ph ph-eye"></i>
+        <i class="ph ph-eye-slash"></i>
+        <i class="ph ph-trash"></i>
+        <i class="ph-fill ph-check-circle"></i>
+        <i class="ph-fill ph-eye-slash"></i>
+        <i class="ph ph-folder"></i>
+        <i class="ph ph-bowl-food"></i>
+        <i class="ph ph-hamburger"></i>
+        <i class="ph ph-coffee"></i>
+        <i class="ph ph-cookie"></i>
+        <i class="ph ph-pizza"></i>
+        <i class="ph ph-fish-simple"></i>
+        <i class="ph ph-carrot"></i>
+        <i class="ph ph-fork-knife"></i>
     </div>
 
     <!-- Scripts -->

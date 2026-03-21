@@ -149,10 +149,119 @@
                             </div>
                         </div>
 
+                        <!-- Col 1.5: WhatsApp Integration -->
+                        <div class="settings-card" style="grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
+                            <div>
+                                <div class="sc-header">
+                                    <i class="ph-fill ph-whatsapp-logo" style="color: #25D366;"></i>
+                                    <h3>ربط واتساب (طابعة رقمية)</h3>
+                                </div>
+                                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
+                                    امسح كود QR باستخدام واتساب (الأجهزة المرتبطة) لتفعيل البوت التلقائي، والذي يرسل إشعارات سلف الموظفين للإدارة وفواتير العملاء.
+                                </p>
+                                
+                                <div style="flex:1; background: var(--bg-card); padding:20px; border-radius:12px; border:1px solid var(--border-color); text-align:center;">
+                                    <div id="wa-qr-container" style="background:#fff; width:200px; height:200px; margin:0 auto 15px auto; border-radius:12px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                                        <i class="ph ph-qr-code" style="font-size:48px; color:#ccc;"></i>
+                                    </div>
+                                    <h4 id="wa-status-text" style="color:var(--text-muted); margin-bottom:15px; font-size:14px;">غير متصل (الخدمة متوقفة)</h4>
+                                    <button type="button" class="btn btn-primary" id="btn-wa-link" style="background: #25D366; border: none; width: 100%; display: flex; justify-content: center; align-items: center; gap: 10px;">
+                                        <i class="ph-bold ph-link"></i> تشغيل البوت وتوليد QR
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div style="padding-top:20px;">
+                                <div class="form-group">
+                                    <label>رقم هاتف المحاسب/الإدارة لاستلام الإشعارات والسندات (مطلوب)</label>
+                                    <div class="input-icon-wrapper">
+                                        <i class="ph-fill ph-phone" style="color:var(--accent-blue)"></i>
+                                        <input type="text" id="set-wa-admin" class="input-modern" placeholder="+966xxxxxxxxx" value="+966539774699" dir="ltr" style="font-size:16px;">
+                                    </div>
+                                </div>
+                                <div class="form-group mt-3" style="background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); margin-bottom:15px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <div>
+                                            <h4 style="margin:0; font-size:15px; color:white;">إرسال سندات السلف والرواتب في واتساب الإدارة</h4>
+                                            <span style="font-size:13px; color:var(--text-secondary);">يرسل السند بصيغة نصية مباشرة لرقم الإدارة عند كل سلفة تُسجل.</span>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox" id="set-wa-loans" checked>
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group" style="background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <div>
+                                            <h4 style="margin:0; font-size:15px; color:white;">إرسال تقرير المبيعات اليومية</h4>
+                                            <span style="font-size:13px; color:var(--text-secondary);">إرسال ملخص الوردية (الشيفت) عند إغلاقه.</span>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox" id="set-wa-reports" checked>
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Col 3: Cloud & Network Sync -->
+                        <div class="settings-card" style="grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <div class="sc-header">
+                                    <i class="ph-fill ph-google-drive-logo" style="color: #4285F4;"></i>
+                                    <h3>المزامنة مع جوجل درايف (Google Drive)</h3>
+                                </div>
+                                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">قم بربط حساب جوجل درايف الخاص بالمطعم للاحتفاظ بنسخة احتياطية آمنة من قاعدة البيانات، والمزامنة السحابية.</p>
+
+                                <div class="cloud-status-box" id="google-drive-status" style="background: rgba(66, 133, 244, 0.1); border: 1px solid rgba(66, 133, 244, 0.3); border-radius: 8px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; gap: 15px;">
+                                    <i class="ph-fill ph-cloud-slash" style="color: #EA4335; font-size: 24px;" id="gd-icon"></i>
+                                    <div>
+                                        <h4 style="margin: 0; color: white;" id="gd-title">غير متصل</h4>
+                                        <span style="font-size: 0.8rem; color: var(--text-muted);" id="gd-subtitle">لم يتم ربط أي حساب حتى الآن</span>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <button type="button" class="btn btn-primary" id="btn-google-login" style="background: #4285F4; border: none; width: 100%; display: flex; justify-content: center; align-items: center; gap: 10px;">
+                                        <i class="ph-fill ph-google-logo"></i> تسجيل الدخول بحساب Google
+                                    </button>
+                                </div>
+                                <div class="form-group" style="display: flex; gap: 10px;">
+                                    <button type="button" class="btn btn-primary" id="btn-gd-backup" style="flex: 1; background: var(--bg-card); display: none; color: white; border: 1px solid var(--border-light);">
+                                        <i class="ph-fill ph-cloud-arrow-up"></i> رفع نسخة احتياطية
+                                    </button>
+                                    <button type="button" class="btn btn-primary" id="btn-gd-restore" style="flex: 1; background: var(--bg-card); display: none; color: white; border: 1px solid var(--border-light);">
+                                        <i class="ph-fill ph-cloud-arrow-down"></i> استعادة النسخة
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="sc-header">
+                                    <i class="ph-fill ph-wifi-high" style="color: var(--accent-green);"></i>
+                                    <h3>المزامنة المحلية (LAN / Wi-Fi)</h3>
+                                </div>
+                                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
+                                    البرنامج يقوم بصورة تلقائية بتزامن البيانات فوريًا ومباشرًا مع الأجهزة المتواجدة على نفس الشبكة المحلية (عبر البث المباشر UDP).
+                                </p>
+
+                                <div class="cloud-status-box" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; gap: 15px;">
+                                    <i class="ph-fill ph-broadcast" style="color: var(--accent-green); font-size: 24px;" id="lan-icon"></i>
+                                    <div>
+                                        <h4 style="margin: 0; color: white;">المزامنة التلقائية نشطة</h4>
+                                        <span style="font-size: 0.8rem; color: var(--text-muted);" id="lan-status-text">تتم مزامنة الأصناف والمبيعات والفواتير لحظياً</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Full Width Action Bar -->
                         <div style="grid-column: 1 / -1; margin-top:-10px">
                             <div class="settings-actions">
-                                <button type="button" class="btn btn-primary" style="background:transparent; border: 1px solid var(--border-light); color:var(--text-muted)"><i class="ph ph-arrow-counter-clockwise"></i> استعادة الافتراضية</button>
+                                <button type="button" id="btn-reset-settings" class="btn btn-primary" style="background:transparent; border: 1px solid var(--border-light); color:var(--text-muted)"><i class="ph ph-arrow-counter-clockwise"></i> استعادة الافتراضية</button>
                                 <button type="submit" class="btn-save-settings"><i class="ph-fill ph-floppy-disk"></i> حفظ وتطبيق الإعدادات على جميع الأنظمة</button>
                             </div>
                         </div>

@@ -364,3 +364,88 @@
 /* Hidden Item State */
 .hidden-item { opacity: 0.6; }
 .hidden-item:hover { opacity: 1; }
+
+/* Tabs System */
+.menu-tabs-header {
+    display: flex;
+    gap: 16px;
+    padding: 0 32px;
+    margin-top: 24px;
+    margin-bottom: -16px;
+    border-bottom: 2px solid rgba(255,255,255,0.05);
+}
+
+.menu-tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 16px;
+    font-weight: 700;
+    padding: 12px 24px;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: inherit;
+}
+
+.menu-tab-btn:hover {
+    color: white;
+}
+
+.menu-tab-btn.active {
+    color: var(--accent-blue);
+    border-bottom-color: var(--accent-blue);
+    background: linear-gradient(to top, rgba(59, 130, 246, 0.1), transparent);
+}
+
+.menu-tab-btn i {
+    font-size: 20px;
+}
+
+/* Modals */
+.input-acc {
+    width: 100%;
+    padding: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    color: white;
+    font-family: inherit;
+    font-size: 15px;
+    margin-top: 5px;
+}
+.acc-form-group {
+    margin-bottom: 20px;
+    text-align: right;
+}
+.acc-form-group label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+.required { color: var(--accent-red); margin-right:4px; }
+
+/* Table Action Buttons */
+.action-btn {
+    background: transparent;
+    border: none;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--border-radius-sm);
+    transition: var(--transition);
+    margin: 0 4px;
+}
+.action-btn:hover {
+    background: rgba(255,255,255,0.1);
+}
+.action-btn i { font-size: 16px; margin: 0; }
+

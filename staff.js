@@ -84,14 +84,16 @@ window.generateVoucher = async function(typeStr) {
         printContainer.style.top = '-9999px';
         printContainer.style.left = '-9999px';
 
-        // Trigger download
+        // Trigger download optionally
         const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const link = document.createElement('a');
-        link.download = `سند_صرف_${employee.replace(/\s+/g, '_')}_${Date.now()}.jpg`;
-        link.href = imgData;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        if(confirm('تم إنشاء السند. هل تريد تحميل نسخة من صورة السند إلى جهازك؟')) {
+            const link = document.createElement('a');
+            link.download = `سند_صرف_${employee.replace(/\s+/g, '_')}_${Date.now()}.jpg`;
+            link.href = imgData;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
         
         // Hide Modal & Reset
         document.getElementById('advance-modal').classList.remove('active');
@@ -111,7 +113,32 @@ window.generateVoucher = async function(typeStr) {
         });
         localStorage.setItem('hr_expenses', JSON.stringify(hr_expenses));
 
-        alert("تم إصدار وتحميل السند وتخزينه في النظام المحاسبي بنجاح!");
+        // Let's send a WhatsApp message if the bot is supposedly connected
+        const isWaConnected = localStorage.getItem('wa_connected') === 'true';
+        if(isWaConnected) {
+            let targetAdmin = '+966539774699';
+            let sendLoanAlert = true;
+            
+            const waStr = localStorage.getItem('wa_settings');
+            if(waStr) {
+                const waSet = JSON.parse(waStr);
+                if(waSet.admin) targetAdmin = waSet.admin;
+                if(waSet.loans !== undefined) sendLoanAlert = waSet.loans;
+            }
+            
+            if(sendLoanAlert) {
+                try {
+                    const { ipcRenderer } = require('electron');
+                    ipcRenderer.send('wa-send-message', {
+                        number: targetAdmin,
+                        text: `🔔 *إشعار سند جديد*\n👤 المحول له/الموظف: ${employee}\nنوع السند: ${typeStr}\n💰 المبلغ: ${amount} ر.س\n📝 السبب: ${reason}\n📅 التاريخ: ${todayStr}`,
+                        image: imgData
+                    });
+                } catch(e) { console.error('WA IPC Error', e); }
+            }
+        }
+
+        alert("تم إصدار السند وحفظه في النظام المالي!");
         
     } catch (err) {
         console.error("Error generating voucher", err);

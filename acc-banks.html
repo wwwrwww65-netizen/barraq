@@ -54,7 +54,7 @@
                     <p style="color:var(--text-secondary); font-size:14px; margin-top:5px;">إدارة وحركة الأموال بين صندوق المطعم (الكاشير) وحسابات المؤسسة البنكية.</p>
                 </div>
                 <div class="header-actions">
-                    <button class="btn btn-primary" style="background:var(--accent-green)"><i class="ph ph-arrows-left-right"></i> تحويل بين الصناديق</button>
+                    <button class="btn btn-primary" style="background:var(--accent-green)" onclick="openBankModal('transfer')"><i class="ph ph-arrows-left-right"></i> تحويل بين الصناديق</button>
                 </div>
             </header>
 
@@ -74,7 +74,7 @@
                         <h2 style="font-size:36px; margin-bottom:10px; color:white;" id="cash-balance-box">0.00 ر.س</h2>
                         <p style="color:var(--text-muted); font-size:14px;">يتم تغذيته آلياً من مبيعات "كاش" في الكاشير.</p>
                         <hr style="border-color:var(--border-color); margin:20px 0;">
-                        <button class="btn btn-outline" style="width:100%"><i class="ph ph-download-simple"></i> إيداع نقدي إضافي</button>
+                        <button class="btn btn-outline" style="width:100%" onclick="openBankModal('deposit_cash')"><i class="ph ph-download-simple"></i> إيداع نقدي إضافي</button>
                     </div>
 
                     <div class="acc-panel">
@@ -84,23 +84,21 @@
                         <h2 style="font-size:36px; margin-bottom:10px; color:white;" id="bank-balance-box">0.00 ر.س</h2>
                         <p style="color:var(--text-muted); font-size:14px;">يتم تغذيته آلياً من مبيعات "شبكة/مدى/فيزا".</p>
                         <hr style="border-color:var(--border-color); margin:20px 0;">
-                        <button class="btn btn-outline" style="width:100%"><i class="ph ph-upload-simple"></i> تغذية حساب البنك</button>
+                        <button class="btn btn-outline" style="width:100%" onclick="openBankModal('deposit_bank')"><i class="ph ph-upload-simple"></i> تغذية حساب البنك</button>
                     </div>
                 </div>
 
                 <div class="acc-panel" style="margin-top:24px;">
                     <div class="acc-panel-title">
-                        <span>أحدث الحركات النقدية (إيداع / سحب)</span>
+                        <span>أحدث الحركات النقدية (التحويلات والإيداعات اليدوية)</span>
                     </div>
                     <table class="data-table">
                         <thead>
                             <tr>
                                 <th>تاريخ الحركة</th>
                                 <th>نوع العملية</th>
-                                <th>من حساب</th>
-                                <th>إلى حساب</th>
                                 <th>المبلغ (ر.س)</th>
-                                <th>بواسطة</th>
+                                <th>البيان والملاحظات</th>
                             </tr>
                         </thead>
                         <tbody id="bank-trx-body">
@@ -111,6 +109,86 @@
             </div>
         </main>
     </div>
+
+    <!-- Bank Transaction Modal -->
+    <div class="modal-overlay" id="bank-modal">
+        <div class="modal-box" style="max-width:450px;">
+            <button class="btn-close-modal" type="button" onclick="document.getElementById('bank-modal').classList.remove('active')"><i class="ph ph-x"></i></button>
+            <h3 id="bm-title" style="margin-bottom:24px; color:white; display:flex; align-items:center; gap:8px;"><i class="ph ph-bank"></i> معاملة مالية</h3>
+            
+            <form id="form-bank-trx">
+                <input type="hidden" id="bm-type">
+                
+                <div class="acc-form-group" id="bm-transfer-dir-group" style="display:none;">
+                    <label>اتجاه التحويل <span class="required">*</span></label>
+                    <select id="bm-transfer-dir" class="input-acc">
+                        <option value="transfer_to_bank">من الخزينة (النقد) ⬅ إلى البنك</option>
+                        <option value="transfer_to_cash">من البنك ⬅ إلى الخزينة (النقد)</option>
+                    </select>
+                </div>
+
+                <div class="acc-form-group">
+                    <label>المبلغ (ر.س) <span class="required">*</span></label>
+                    <input type="number" id="bm-amount" class="input-acc" required min="1" step="0.5" placeholder="أدخل المبلغ...">
+                </div>
+
+                <div class="acc-form-group">
+                    <label>البيان / السبب <span class="required">*</span></label>
+                    <input type="text" id="bm-desc" class="input-acc" required placeholder="مثال: إيداع رأس مال، إيداع شخصي...">
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:16px; margin-top:24px;">
+                    <button type="submit" class="btn btn-primary" style="background:var(--accent-blue); width:100%;"><i class="ph ph-check-circle"></i> تنفيذ العملية</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="acc.js"></script>
+    <script>
+        function openBankModal(type) {
+            const m = document.getElementById('bank-modal');
+            const dGroup = document.getElementById('bm-transfer-dir-group');
+            document.getElementById('bm-type').value = type;
+            document.getElementById('form-bank-trx').reset();
+            
+            if(type === 'transfer') {
+                document.getElementById('bm-title').innerHTML = '<i class="ph ph-arrows-left-right"></i> تحويل بين الصناديق';
+                dGroup.style.display = 'block';
+            } else if(type === 'deposit_cash') {
+                document.getElementById('bm-title').innerHTML = '<i class="ph ph-money"></i> إيداع نقدي للصندوق';
+                dGroup.style.display = 'none';
+            } else if(type === 'deposit_bank') {
+                document.getElementById('bm-title').innerHTML = '<i class="ph ph-bank"></i> إيداع لحساب البنك';
+                dGroup.style.display = 'none';
+            }
+            m.classList.add('active');
+        }
+
+        document.getElementById('form-bank-trx').addEventListener('submit', (e) => {
+            e.preventDefault();
+            let type = document.getElementById('bm-type').value;
+            if(type === 'transfer') {
+                type = document.getElementById('bm-transfer-dir').value;
+            }
+            const amount = Number(document.getElementById('bm-amount').value);
+            const desc = document.getElementById('bm-desc').value;
+
+            const trx = {
+                id: 'TRX-' + Math.floor(Math.random()*90000+10000),
+                type: type,
+                amount: amount,
+                desc: desc,
+                date: new Date().toISOString()
+            };
+
+            const allTrx = JSON.parse(localStorage.getItem('bank_transfers') || '[]');
+            allTrx.push(trx);
+            localStorage.setItem('bank_transfers', JSON.stringify(allTrx));
+            
+            document.getElementById('bank-modal').classList.remove('active');
+            window.location.reload();
+        });
+    </script>
 </body>
 </html>

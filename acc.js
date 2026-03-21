@@ -19,8 +19,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let totalRev = 0, cashRev = 0, bankRev = 0;
     posOrders.forEach(o => {
         totalRev += o.total;
-        if(o.paymentMethod === 'cash') cashRev += o.total;
-        if(o.paymentMethod === 'card' || o.paymentMethod === 'bank') bankRev += o.total;
+        if(o.paymentMethod === 'cash' || o.paymentMethod === 'كاش') {
+            cashRev += o.total;
+        } else if(o.paymentMethod === 'card' || o.paymentMethod === 'bank' || o.paymentMethod === 'شبكة / بطاقة' || o.paymentMethod === 'شبكة') {
+            bankRev += o.total;
+        } else if(o.paymentMethod === 'مجزأ') {
+            cashRev += (o.splitCash || 0);
+            bankRev += (o.splitNetwork || 0);
+        }
     });
 
     let totalPur = 0, cashPur = 0, bankPur = 0;
@@ -42,9 +48,49 @@ document.addEventListener('DOMContentLoaded', () => {
         else others += e.amount;
     });
 
+    // Handle Manual Bank/Cash Transfers & Deposits
+    const bankTransfers = JSON.parse(localStorage.getItem('bank_transfers') || '[]');
+    let manualCashIn = 0, manualCashOut = 0;
+    let manualBankIn = 0, manualBankOut = 0;
+    
+    bankTransfers.forEach(t => {
+        if (t.type === 'deposit_cash') manualCashIn += t.amount;
+        if (t.type === 'deposit_bank') manualBankIn += t.amount;
+        if (t.type === 'transfer_to_bank') { manualCashOut += t.amount; manualBankIn += t.amount; }
+        if (t.type === 'transfer_to_cash') { manualBankOut += t.amount; manualCashIn += t.amount; }
+    });
+
     const netProfit = totalRev - totalPur - totalExp;
-    const cashBal = cashRev - cashPur - cashExp;
-    const bankBal = bankRev - bankPur - bankExp;
+    const cashBal = cashRev - cashPur - cashExp + manualCashIn - manualCashOut;
+    const bankBal = bankRev - bankPur - bankExp + manualBankIn - manualBankOut;
+
+    // Render Bank Transactions Table if present
+    const bankTrxBody = document.getElementById('bank-trx-body');
+    if (bankTrxBody) {
+        if (bankTransfers.length === 0) {
+            bankTrxBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px;">لا توجد حركات تحويل أو إيداع يدوية حتى الآن.</td></tr>';
+        } else {
+            let html = '';
+            [...bankTransfers].reverse().forEach(t => {
+                let dStr = new Date(t.date).toLocaleString('ar-SA');
+                let typeStr = '', colorAttr = '';
+                if(t.type === 'deposit_cash') { typeStr = 'إيداع للخزينة (كاش)'; colorAttr = 'var(--accent-green)'; }
+                if(t.type === 'deposit_bank') { typeStr = 'إيداع للبنك'; colorAttr = 'var(--accent-blue)'; }
+                if(t.type === 'transfer_to_bank') { typeStr = 'تحويل من الخزينة للبنك'; colorAttr = 'var(--accent-orange)'; }
+                if(t.type === 'transfer_to_cash') { typeStr = 'تحويل من البنك للخزينة'; colorAttr = 'var(--accent-orange)'; }
+                
+                html += `
+                    <tr>
+                        <td dir="ltr" style="text-align:right">${dStr}</td>
+                        <td style="color:${colorAttr}; font-weight:700;">${typeStr}</td>
+                        <td style="color:white; font-weight:800; font-size:16px;">${t.amount.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                        <td>${t.desc}</td>
+                    </tr>
+                `;
+            });
+            bankTrxBody.innerHTML = html;
+        }
+    }
 
     // ----- A. Dashboard `accounting.html` Logic -----
     if(document.getElementById('kpi-revenue')) {

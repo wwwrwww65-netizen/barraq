@@ -42,7 +42,7 @@
                 <div class="nav-group">
                     <p class="nav-label">التقارير والكشوفات</p>
                     <a href="acc-reports.html" class="nav-item active"><i class="ph ph-chart-line-up"></i><span>قائمة الدخل و كشف الحساب</span></a>
-                    <a href="acc-reports.html" class="nav-item"><i class="ph ph-file-pdf"></i><span>الميزانية العمومية والمركز</span></a>
+                    <a href="acc-reports.html#balance" class="nav-item"><i class="ph ph-file-pdf"></i><span>الميزانية العمومية والمركز</span></a>
                 </div>
             </nav>
         </aside>
@@ -203,25 +203,39 @@
     <script>
         document.getElementById('tab-pl').addEventListener('click', (e) => {
             document.querySelectorAll('.acc-tab-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
+            document.getElementById('tab-pl').classList.add('active');
             document.getElementById('view-pl').style.display = 'block';
             document.getElementById('view-ledger').style.display = 'none';
             document.getElementById('view-balance').style.display = 'none';
         });
         document.getElementById('tab-ledger').addEventListener('click', (e) => {
             document.querySelectorAll('.acc-tab-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
+            document.getElementById('tab-ledger').classList.add('active');
             document.getElementById('view-ledger').style.display = 'block';
             document.getElementById('view-pl').style.display = 'none';
             document.getElementById('view-balance').style.display = 'none';
         });
         document.getElementById('tab-balance').addEventListener('click', (e) => {
             document.querySelectorAll('.acc-tab-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
+            document.getElementById('tab-balance').classList.add('active');
             document.getElementById('view-balance').style.display = 'block';
             document.getElementById('view-pl').style.display = 'none';
             document.getElementById('view-ledger').style.display = 'none';
         });
+
+        // Hash navigation Function
+        function handleHash() {
+            if(window.location.hash === '#balance') {
+                document.getElementById('tab-balance').click();
+            } else if(window.location.hash === '#ledger') {
+                document.getElementById('tab-ledger').click();
+            } else if(!window.location.hash || window.location.hash === '#pl') {
+                document.getElementById('tab-pl').click();
+            }
+        }
+        
+        window.addEventListener('DOMContentLoaded', handleHash);
+        window.addEventListener('hashchange', handleHash);
     </script>
 </body>
 </html>

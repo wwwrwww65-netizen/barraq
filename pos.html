@@ -246,13 +246,25 @@
                     <label class="payment-method selected" style="flex:1; padding: 15px; border: 2px solid var(--accent-blue); border-radius: 8px; cursor: pointer; background: rgba(59, 130, 246, 0.1);">
                         <input type="radio" name="pay_method" value="كاش" checked style="display:none;">
                         <i class="ph ph-money" style="font-size: 32px; color: var(--accent-blue); display: block; margin-bottom: 8px;"></i>
-                        <strong>نقداً (كاش)</strong>
+                        <strong>كاش</strong>
                     </label>
                     <label class="payment-method" style="flex:1; padding: 15px; border: 2px solid var(--border-light); border-radius: 8px; cursor: pointer; background: rgba(15, 23, 42, 0.4);">
-                        <input type="radio" name="pay_method" value="شبكة / بطاقة">
+                        <input type="radio" name="pay_method" value="شبكة / بطاقة" style="display:none;">
                         <i class="ph ph-credit-card" style="font-size: 32px; color: var(--text-muted); display: block; margin-bottom: 8px;"></i>
-                        <strong style="color: var(--text-muted)">شبكة (مدى/فيزا)</strong>
+                        <strong style="color: var(--text-muted)">شبكة</strong>
                     </label>
+                     <label class="payment-method" style="flex:1; padding: 15px; border: 2px solid var(--border-light); border-radius: 8px; cursor: pointer; background: rgba(15, 23, 42, 0.4);">
+                        <input type="radio" name="pay_method" value="مجزأ" style="display:none;">
+                        <i class="ph ph-arrows-split" style="font-size: 32px; color: var(--text-muted); display: block; margin-bottom: 8px;"></i>
+                        <strong style="color: var(--text-muted)">مجزأ</strong>
+                    </label>
+                </div>
+
+                <div id="split-calculator" style="display:none; flex-direction: column; gap: 10px; margin-bottom: 20px; text-align:right; border: 1px dashed var(--accent-orange); padding:10px; border-radius:8px;">
+                    <label style="color: var(--accent-orange); font-size:14px; font-weight:700;">المبلغ المدفوع كاش:</label>
+                    <input type="number" id="split-cash-amount" class="input-modern" placeholder="0.00" style="font-size: 20px; text-align: center; font-weight:800;">
+                    <label style="color: var(--accent-blue); font-size:14px; font-weight:700; margin-top:5px;">المتبقي لدفعه شبكة:</label>
+                    <div style="font-size: 20px; text-align: center; font-weight:800; color:var(--accent-blue);" id="split-network-amount">0.00</div>
                 </div>
 
                 <div id="cash-calculator" style="display:flex; flex-direction: column; gap: 10px; margin-bottom: 20px; text-align:right;">

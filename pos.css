@@ -478,3 +478,29 @@
 }
 .btn-suspend:hover { border-color: var(--accent-orange); color: var(--accent-orange); }
 .btn-print:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+
+@media print { 
+    body * { 
+        visibility: hidden; 
+    } 
+    #print-zone, #print-zone * { 
+        visibility: visible; 
+    } 
+    #print-zone { 
+        position: fixed; 
+        left: 0; 
+        top: 0; 
+        opacity: 1; 
+        z-index: 999999; 
+        background: white; 
+        width: 100%; 
+        height: 100%; 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        justify-content: flex-start; 
+    } 
+    .pos-layout, .modal-overlay { 
+        display: none !important; 
+    } 
+}

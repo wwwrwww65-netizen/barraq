@@ -1,5 +1,21 @@
 document.addEventListener('DOMContentLoaded', () => {
 
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('edit');
+    let editingProduct = null;
+    let localItemImg = 'https://images.unsplash.com/photo-1544025162-8315ea07edca?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'; // default fallback
+
+    if(editId) {
+        const prodStr = localStorage.getItem('pos_products');
+        if(prodStr) {
+            const allProducts = JSON.parse(prodStr);
+            editingProduct = allProducts.find(p => p.id === editId);
+        }
+        if(editingProduct) {
+            localItemImg = editingProduct.image || localItemImg;
+        }
+    }
+
     // --- 1. Load Categories ---
     const catSelector = document.getElementById('dynamic-category-selector');
     let cats = [];
@@ -19,10 +35,11 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         catSelector.innerHTML = '';
         cats.forEach((c, idx) => {
+            const isChecked = editingProduct ? (editingProduct.categoryId === c.id) : (idx === 0);
             const lbl = document.createElement('label');
             lbl.className = 'cat-radio';
             lbl.innerHTML = `
-                <input type="radio" name="item_categoryId" value="${c.id}" ${idx===0 ? 'checked' : ''}>
+                <input type="radio" name="item_categoryId" value="${c.id}" ${isChecked ? 'checked' : ''}>
                 <div class="cat-box">
                     <i class="ph ${c.icon}"></i>
                     <span>${c.nameAr}</span>
@@ -32,14 +49,34 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 2. Handle Image Upload ---
-    let localItemImg = 'https://images.unsplash.com/photo-1544025162-8315ea07edca?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'; // default fallback
-    
+    // --- 2. Handle Image Upload & Pre-fill ---
     const fileInput = document.querySelector('input[type="file"]');
     const uploadPlaceholder = document.querySelector('.upload-placeholder');
     
+    // Fill data if editing
+    if (editingProduct) {
+        document.querySelector('h2').innerText = 'تعديل الصنف';
+        document.querySelector('.btn-save-publish').innerHTML = '<i class="ph ph-check-circle"></i> حفظ التعديلات';
+        
+        const formTbody = document.querySelector('.form-column');
+        formTbody.querySelectorAll('input[type="text"]')[0].value = editingProduct.nameAr || '';
+        formTbody.querySelectorAll('input[type="text"]')[1].value = editingProduct.nameEn || '';
+        const descArea = document.querySelector('textarea');
+        if(descArea) descArea.value = editingProduct.desc || '';
+
+        const numInputs = document.querySelectorAll('input[type="number"]');
+        numInputs[0].value = editingProduct.price || 0;
+        numInputs[1].value = editingProduct.cost || 0;
+
+        const toggles = document.querySelectorAll('.switch input[type="checkbox"]');
+        if(toggles[0]) toggles[0].checked = editingProduct.isActive !== false;
+
+        if(editingProduct.image && uploadPlaceholder) {
+            uploadPlaceholder.innerHTML = `<img src="${localItemImg}" style="width:100%; height:150px; object-fit:cover; border-radius:8px;">`;
+        }
+    }
+
     if(fileInput && uploadPlaceholder) {
-        // Trigger generic file click when dropzone clicked
         uploadPlaceholder.parentElement.addEventListener('click', () => {
             fileInput.click();
         });
@@ -49,21 +86,17 @@ document.addEventListener('DOMContentLoaded', () => {
             if(file) {
                 const reader = new FileReader();
                 reader.onload = (event) => {
-                    // Compress image to save localStorage space!
                     const img = new Image();
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 400; // Small size for POS
+                        const MAX_WIDTH = 400; 
                         const scaleSize = MAX_WIDTH / img.width;
                         canvas.width = MAX_WIDTH;
                         canvas.height = img.height * scaleSize;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                         
-                        // Convert back to base64
-                        localItemImg = canvas.toDataURL('image/jpeg', 0.6); // 60% quality jpeg
-                        
-                        // Update UI View
+                        localItemImg = canvas.toDataURL('image/jpeg', 0.6); 
                         uploadPlaceholder.innerHTML = `<img src="${localItemImg}" style="width:100%; height:150px; object-fit:cover; border-radius:8px;">`;
                     };
                     img.src = event.target.result;
@@ -86,37 +119,29 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Gather basic texts
-        const inputs = document.querySelectorAll('.input-modern:not([type="number"])');
-        // Because of the modifier section which has inputs too, let's be careful.
-        // Or simply query by explicit structure:
-        const formTbody = document.querySelector('.form-column'); // Right side main
+        const formTbody = document.querySelector('.form-column'); 
         const nameAr = formTbody.querySelectorAll('input[type="text"]')[0].value.trim();
         const nameEn = formTbody.querySelectorAll('input[type="text"]')[1].value.trim();
         const desc = document.querySelector('textarea') ? document.querySelector('textarea').value.trim() : '';
 
         if(!nameAr) return alert('الرجاء كتابة اسم الصنف.');
 
-        // Category ID
         const selectedCatEl = document.querySelector('input[name="item_categoryId"]:checked');
         const catId = selectedCatEl ? selectedCatEl.value : null;
 
         if(!catId) return alert('خطأ في تحديد الفئة.');
 
-        // Prices
         const numInputs = document.querySelectorAll('input[type="number"]');
         const price = Number(numInputs[0].value) || 0;
         const cost = Number(numInputs[1].value) || 0;
 
         if(price <= 0) return alert('الرجاء تحديد السعر.');
 
-        // Toggles
         const toggles = document.querySelectorAll('.switch input[type="checkbox"]');
         const isActive = toggles[0] ? toggles[0].checked : true;
         
-        // Save
         const newItem = {
-            id: 'ITM_' + Date.now(),
+            id: editingProduct ? editingProduct.id : ('ITM_' + Date.now()),
             categoryId: catId,
             nameAr: nameAr,
             nameEn: nameEn,
@@ -125,17 +150,22 @@ document.addEventListener('DOMContentLoaded', () => {
             cost: cost,
             isActive: isActive,
             image: localItemImg,
-            createdAt: Date.now()
+            createdAt: editingProduct ? editingProduct.createdAt : Date.now()
         };
 
         const prodStr = localStorage.getItem('pos_products');
         let products = prodStr ? JSON.parse(prodStr) : [];
-        products.push(newItem);
+        
+        if (editingProduct) {
+            const index = products.findIndex(p => p.id === editId);
+            if(index > -1) products[index] = newItem;
+        } else {
+            products.push(newItem);
+        }
+        
         localStorage.setItem('pos_products', JSON.stringify(products));
 
-        // Submit Button animation
         const btnSave = document.querySelector('.btn-save-publish');
-        const origHtml = btnSave.innerHTML;
         btnSave.innerHTML = '<i class="ph-bold ph-check-circle"></i> تم ربط الصنف بالكاشير!';
         btnSave.style.background = 'var(--accent-green)';
         btnSave.style.borderColor = 'var(--accent-green)';
