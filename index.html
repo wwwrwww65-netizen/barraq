@@ -28,7 +28,6 @@
                     <p class="nav-label">الرئيسية</p>
                     <a href="#" class="nav-item active"><i class="ph ph-squares-four"></i><span>لوحة القيادة</span></a>
                     <a href="#" class="nav-item"><i class="ph ph-calculator"></i><span>نقطة البيع (الكاشير)</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-receipt"></i><span>الطلبات النشطة</span></a>
                 </div>
 
                 <div class="nav-group">
@@ -125,16 +124,6 @@
                             <p class="kpi-title">الطلبات المنجزة</p>
                             <h3 class="kpi-value">128</h3>
                             <p class="kpi-trend positive"><i class="ph ph-trend-up"></i> +5.2% عن الأمس</p>
-                        </div>
-                    </div>
-                    <div class="card kpi-card">
-                        <div class="kpi-icon orange">
-                            <i class="ph-fill ph-armchair"></i>
-                        </div>
-                        <div class="kpi-details">
-                            <p class="kpi-title">الطاولات المشغولة</p>
-                            <h3 class="kpi-value">15<span class="total">/24</span></h3>
-                            <p class="kpi-trend neutral"><i class="ph ph-minus"></i> طبيعي</p>
                         </div>
                     </div>
                     <div class="card kpi-card">
@@ -247,7 +236,7 @@
                     <!-- Recent Orders -->
                     <div class="card recent-orders">
                         <div class="card-header">
-                            <h2 class="card-title">الطلبات الحديثة</h2>
+                            <h2 class="card-title">الطلبات المنجزة</h2>
                         </div>
                         <div class="table-responsive">
                             <table class="data-table">
@@ -255,7 +244,7 @@
                                     <tr>
                                         <th>رقم الطلب</th>
                                         <th>النوع</th>
-                                        <th>الطاولة/العميل</th>
+                                        <th>العميل</th>
                                         <th>الوقت</th>
                                         <th>الإجمالي</th>
                                         <th>الحالة</th>
@@ -264,38 +253,29 @@
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td>#ORD-1045</td>
-                                        <td><span class="order-type dine-in">محلي</span></td>
-                                        <td>طاولة 12</td>
-                                        <td>منذ دقيقتين</td>
-                                        <td>145.00 ر.س</td>
-                                        <td><span class="status preparing">قيد التحضير</span></td>
-                                        <td><button class="action-btn"><i class="ph ph-eye"></i></button></td>
-                                    </tr>
-                                    <tr>
-                                        <td>#ORD-1044</td>
-                                        <td><span class="order-type delivery">توصيل</span></td>
-                                        <td>محمد علي</td>
-                                        <td>منذ 15 دقيقة</td>
-                                        <td>85.50 ر.س</td>
-                                        <td><span class="status out">في الطريق</span></td>
-                                        <td><button class="action-btn"><i class="ph ph-eye"></i></button></td>
-                                    </tr>
-                                    <tr>
-                                        <td>#ORD-1043</td>
-                                        <td><span class="order-type takeaway">سفري</span></td>
-                                        <td>ضيف</td>
-                                        <td>منذ 22 دقيقة</td>
-                                        <td>45.00 ر.س</td>
-                                        <td><span class="status ready">جاهز للتسليم</span></td>
-                                        <td><button class="action-btn"><i class="ph ph-eye"></i></button></td>
-                                    </tr>
-                                    <tr>
                                         <td>#ORD-1042</td>
                                         <td><span class="order-type dine-in">محلي</span></td>
-                                        <td>طاولة 04</td>
+                                        <td>ضيوف</td>
                                         <td>منذ 45 دقيقة</td>
                                         <td>210.00 ر.س</td>
+                                        <td><span class="status completed">مكتمل</span></td>
+                                        <td><button class="action-btn"><i class="ph ph-eye"></i></button></td>
+                                    </tr>
+                                    <tr>
+                                        <td>#ORD-1041</td>
+                                        <td><span class="order-type takeaway">سفري</span></td>
+                                        <td>خالد وليد</td>
+                                        <td>منذ ساعة</td>
+                                        <td>125.00 ر.س</td>
+                                        <td><span class="status completed">مكتمل</span></td>
+                                        <td><button class="action-btn"><i class="ph ph-eye"></i></button></td>
+                                    </tr>
+                                    <tr>
+                                        <td>#ORD-1040</td>
+                                        <td><span class="order-type delivery">توصيل</span></td>
+                                        <td>أحمد سعيد</td>
+                                        <td>منذ ساعة و15 دقيقة</td>
+                                        <td>340.50 ر.س</td>
                                         <td><span class="status completed">مكتمل</span></td>
                                         <td><button class="action-btn"><i class="ph ph-eye"></i></button></td>
                                     </tr>
