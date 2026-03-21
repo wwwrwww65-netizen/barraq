@@ -59,24 +59,39 @@ document.addEventListener('DOMContentLoaded', () => {
             const catName = cat ? cat.nameAr : 'غير مصنف';
             
             const html = `
-                <div class="menu-item-row">
-                    <div class="item-visuals">
-                        <img src="${p.image||''}" alt="${p.nameAr}">
-                        <div class="item-text">
-                            <h4>${p.nameAr}</h4>
-                            <p>${catName}</p>
+                <div class="menu-item-card">
+                    <div class="item-card-image">
+                        <img src="${p.image||'https://images.unsplash.com/photo-1544025162-8315ea07edca?w=400&q=80'}" alt="${p.nameAr}">
+                        <div class="status-badge ${p.isActive ? 'available' : 'hidden-badge'}">
+                            ${p.isActive ? 'متاح للبيع <i class="ph-fill ph-check-circle"></i>' : 'مخفي <i class="ph-fill ph-eye-slash"></i>'}
+                        </div>
+                        <div class="item-overlay-actions">
+                            <button class="overlay-btn edit"><i class="ph ph-pencil-simple"></i> تعديل</button>
+                            <button class="overlay-btn hide"><i class="ph ph-eye-slash"></i> إخفاء</button>
                         </div>
                     </div>
-                    <div class="item-price">${Number(p.price).toFixed(2)} ر.س</div>
-                    <div class="item-status">
-                        ${p.isActive ? '<span class="status-badge active">متاح</span>' : '<span class="status-badge inactive">غير متاح</span>'}
-                    </div>
-                    <div class="item-pos">
-                        ${p.isActive ? '<i class="ph-fill ph-check-circle text-green"></i> ظاهر في الكاشير' : '<i class="ph-fill ph-x-circle text-red"></i> مخفي'}
-                    </div>
-                    <div class="item-actions">
-                        <button class="btn-icon edit" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
-                        <button class="btn-icon view" title="إحصائيات المبيعات"><i class="ph ph-chart-line-up"></i></button>
+                    <div class="item-card-content">
+                        <div class="item-card-header">
+                            <h3 class="item-name">${p.nameAr}</h3>
+                            <div class="item-category">
+                                <i class="ph ${cat ? cat.icon : 'ph-folder'}"></i> ${catName}
+                            </div>
+                        </div>
+                        <p class="item-desc">${p.desc || 'لا يوجد وصف مضاف لهذا الصنف في الوقت الحالي.'}</p>
+                        <div class="item-finances">
+                            <div class="finance-col">
+                                <span class="label">سعر البيع</span>
+                                <span class="val price">${Number(p.price).toFixed(2)} ر.س</span>
+                            </div>
+                            <div class="finance-col">
+                                <span class="label">التكلفة</span>
+                                <span class="val cost">${p.cost > 0 ? Number(p.cost).toFixed(2) + ' ر.س' : 'غير محدد'}</span>
+                            </div>
+                            <div class="finance-col">
+                                <span class="label">الأرباح</span>
+                                <span class="val margin ${p.cost > 0 ? 'positive' : ''}">${p.cost > 0 ? '+' + ((p.price - p.cost)/p.cost*100).toFixed(0) + '%' : '-'}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
