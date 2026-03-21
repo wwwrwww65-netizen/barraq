@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة المرتجعات - سمر حضرموت</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="returns.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <img src="logo.jpg" alt="مطعم سمر حضرموت" class="restaurant-logo">
+                <span>سمر حضرموت <span class="highlight">POS</span></span>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="index.html" class="nav-item"><i class="ph ph-squares-four"></i><span>الرئيسية</span></a>
+                <a href="pos.html" class="nav-item"><i class="ph ph-monitor"></i><span>نقطة البيع (الكاشير)</span></a>
+                <a href="sales.html" class="nav-item"><i class="ph ph-receipt"></i><span>المبيعات</span></a>
+                <a href="menu.html" class="nav-item"><i class="ph ph-list-dashes"></i><span>الأصناف والمنيو</span></a>
+                
+                <div class="nav-divider"></div>
+                <p class="nav-label">العمليات والمخزون</p>
+                <a href="inventory.html" class="nav-item"><i class="ph ph-package"></i><span>المخازن والمستودعات</span></a>
+                <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>المشتريات والموردين</span></a>
+                <a href="returns.html" class="nav-item active"><i class="ph ph-arrow-u-down-left"></i><span>المرتجعات</span></a>
+                
+                <div class="nav-divider"></div>
+                <p class="nav-label">الإدارة والتقارير</p>
+                <a href="staff.html" class="nav-item"><i class="ph ph-users"></i><span>الموظفين والعمال</span></a>
+                <a href="customers.html" class="nav-item"><i class="ph ph-users-three"></i><span>العملاء</span></a>
+                <a href="accounting.html" class="nav-item"><i class="ph ph-calculator"></i><span>النظام المحاسبي</span></a>
+                <a href="statistics.html" class="nav-item"><i class="ph ph-chart-pie"></i><span>الإحصائيات</span></a>
+                <a href="settings.html" class="nav-item"><i class="ph ph-gear"></i><span>الإعدادات</span></a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <div class="breadcrumbs pt-0">
+                        <h2>إدارة المرتجعات واسترداد الأموال</h2>
+                        <span class="separator">/</span>
+                        <span>شاشة إلغاء الطلبات وإرجاع المبالغ</span>
+                    </div>
+                </div>
+                
+                <div class="header-actions">
+                    <div class="user-profile">
+                        <img src="https://i.pravatar.cc/150?img=11" alt="المدير" class="avatar">
+                        <div class="user-info">
+                            <span class="user-name">سعيد باعمر</span>
+                            <span class="user-role">مدير النظام</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Returns Dashboard -->
+            <div class="returns-container">
+                
+                <!-- Search Box -->
+                <div class="return-search-box">
+                    <h2><i class="ph-fill ph-magnifying-glass" style="color:var(--accent-blue)"></i> أداة الإرجاع السريع</h2>
+                    <p>أدخل رقم الطلب المعطى للزبون من الكاشير لاسترجاع بيانات الفاتورة وإلغائها</p>
+                    
+                    <div class="search-input-group">
+                        <input type="text" id="return-search-input" placeholder="#ORD-1234">
+                        <button class="btn-search-order" id="btn-search-order">استعلام</button>
+                    </div>
+
+                    <!-- Dynamic Result Modal Card (Hidden by default) -->
+                    <div class="order-result-card" id="order-result">
+                        <div class="or-header">
+                            <h3 id="res-order-id">رقم الطلب: #ORD-0000</h3>
+                            <span id="res-date">التاريخ</span>
+                        </div>
+                        <div class="or-details">
+                            <div class="or-info">
+                                <span>قيمة الفاتورة</span>
+                                <strong id="res-total" style="color:var(--accent-green); font-size:24px;">0.00 ر.س</strong>
+                            </div>
+                            <div class="or-info">
+                                <span>طريقة الدفع الأساسية</span>
+                                <strong id="res-method">كاش</strong>
+                            </div>
+                            <div class="or-info" style="text-align: left;">
+                                <span>نوع الطلب</span>
+                                <strong id="res-type">محلي</strong>
+                            </div>
+                        </div>
+                        <button class="btn-process-return" id="btn-process-return">
+                            <i class="ph ph-warning-circle"></i> إرجاع الأموال وإلغاء الطلب نهائياً
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KPI Grid -->
+                <div class="ret-kpi-grid">
+                    <div class="ret-kpi-card">
+                        <div class="ret-kpi-icon red"><i class="ph-fill ph-arrow-counter-clockwise"></i></div>
+                        <div class="ret-kpi-info">
+                            <h4>إجمالي المبالغ المرتجعة (هذا الشهر)</h4>
+                            <h2 id="kpi-total-returns">0.00 ر.س</h2>
+                        </div>
+                    </div>
+
+                    <div class="ret-kpi-card">
+                        <div class="ret-kpi-icon orange"><i class="ph-fill ph-file-dashed"></i></div>
+                        <div class="ret-kpi-info">
+                            <h4>عدد الطلبات الملغاة</h4>
+                            <h2 id="kpi-return-count">0 طلب</h2>
+                        </div>
+                    </div>
+
+                    <div class="ret-kpi-card">
+                        <div class="ret-kpi-icon gray"><i class="ph-fill ph-clock-counter-clockwise"></i></div>
+                        <div class="ret-kpi-info">
+                            <h4>آخر عملية إرجاع</h4>
+                            <h2 id="kpi-last-return" style="font-size:20px; line-height:35px">لا يوجد</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Returns List -->
+                <div class="returns-table-container">
+                    <div class="returns-list-header">
+                        <h3><i class="ph ph-list-dashes"></i> سجل العمليات المرتجعة</h3>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table class="ret-table">
+                            <thead>
+                                <tr>
+                                    <th>رقم الطلب الأصلي</th>
+                                    <th>وقت الترجيع</th>
+                                    <th>مبلغ الإرجاع</th>
+                                    <th>طريقة رد المبلغ</th>
+                                    <th>الموظف المسئول</th>
+                                    <th>الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody id="returns-tbody">
+                                <!-- JS Inject -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="empty-returns" style="display:none; text-align:center; padding: 40px; color: var(--text-muted);">
+                        <i class="ph ph-check-shield" style="font-size: 50px; opacity:0.5; margin-bottom:10px;"></i>
+                        <p>لا توجد منتجات مرتجعة. أداء ممتاز!</p>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="script.js"></script>
+    <script src="returns.js"></script>
+</body>
+</html>
