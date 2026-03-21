@@ -83,6 +83,28 @@
 
             <!-- Dashboard Content -->
             <div class="dashboard-grid">
+                <!-- Dashboard Top Bar: Welcome, Filters, Actions -->
+                <div class="dashboard-top-bar">
+                    <div class="page-title">
+                        <h1>نظرة عامة على الكاشير</h1>
+                        <p>الوردية الحالية مفتوحة منذ 04:22 ساعة</p>
+                    </div>
+                    
+                    <div class="top-bar-actions">
+                        <div class="time-filters">
+                            <button class="filter-btn active">اليوم</button>
+                            <button class="filter-btn">الأمس</button>
+                            <button class="filter-btn">الـ 7 أيام</button>
+                        </div>
+                        
+                        <div class="action-buttons">
+                            <button class="btn btn-primary"><i class="ph ph-plus-circle"></i> طلب جديد</button>
+                            <button class="btn btn-outline"><i class="ph ph-hand-coins"></i> مصروف</button>
+                            <button class="btn btn-danger"><i class="ph ph-lock-key"></i> إغلاق الوردية</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Top KPI Cards -->
                 <div class="kpi-cards">
                     <div class="card kpi-card">
@@ -123,6 +145,26 @@
                             <p class="kpi-title">نواقص المخزن</p>
                             <h3 class="kpi-value">7 <span class="text-sm">أصناف</span></h3>
                             <p class="kpi-trend negative"><i class="ph ph-trend-down"></i> يتطلب إجراء</p>
+                        </div>
+                    </div>
+                    <div class="card kpi-card">
+                        <div class="kpi-icon red-light">
+                            <i class="ph-fill ph-hand-coins"></i>
+                        </div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">المصروفات (الخوارج)</p>
+                            <h3 class="kpi-value">120<span class="currency">ر.س</span></h3>
+                            <p class="kpi-trend negative"><i class="ph ph-trend-up"></i> +1.5% عن الأمس</p>
+                        </div>
+                    </div>
+                    <div class="card kpi-card">
+                        <div class="kpi-icon emerald">
+                            <i class="ph-fill ph-safe"></i>
+                        </div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">الرصيد في الدرج</p>
+                            <h3 class="kpi-value">4,400<span class="currency">ر.س</span></h3>
+                            <p class="kpi-trend positive"><i class="ph ph-check-circle"></i> متطابق</p>
                         </div>
                     </div>
                 </div>
@@ -259,6 +301,31 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <!-- Delivery Tracker -->
+                    <div class="card delivery-tracker">
+                        <div class="card-header">
+                            <h2 class="card-title">حالة المناديب والتوصيل</h2>
+                        </div>
+                        <div class="delivery-list">
+                            <div class="delivery-item">
+                                <img src="https://i.pravatar.cc/150?img=11" alt="مندوب 1" class="driver-img">
+                                <div class="driver-info">
+                                    <h4>خالد السعيد</h4>
+                                    <p>طريق الملك عبدالله (طلب #1044)</p>
+                                </div>
+                                <span class="status out">في الطريق</span>
+                            </div>
+                            <div class="delivery-item">
+                                <img src="https://i.pravatar.cc/150?img=15" alt="مندوب 2" class="driver-img">
+                                <div class="driver-info">
+                                    <h4>عبدالله سالم</h4>
+                                    <p>المطعم المباشر</p>
+                                </div>
+                                <span class="status ready">متاح</span>
+                            </div>
                         </div>
                     </div>
 
