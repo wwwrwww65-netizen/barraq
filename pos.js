@@ -69,14 +69,13 @@ document.addEventListener('DOMContentLoaded', () => {
         prodData.filter(p => p.isActive).forEach(p => {
             const html = `
                 <div class="product-card" data-category="${p.categoryId}" data-name="${p.nameAr}" data-price="${p.price}" data-id="${p.id}">
-                    <div class="img-container">
+                    <div class="product-img-wrapper">
                         <img src="${p.image}" alt="${p.nameAr}">
-                        <div class="price-tag">${Number(p.price).toFixed(2)} ر.س</div>
                     </div>
-                    <div class="card-body">
-                        <h3 class="product-title">${p.nameAr}</h3>
-                        <div class="card-actions">
-                            <span class="kcal"><i class="ph ph-fire"></i> 400 سعرة</span>
+                    <div class="product-details">
+                        <h4>${p.nameAr}</h4>
+                        <div class="price-row">
+                            <span class="product-price">${Number(p.price).toFixed(2)} ر.س</span>
                             <button class="add-btn"><i class="ph ph-plus"></i></button>
                         </div>
                     </div>
