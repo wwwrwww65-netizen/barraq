@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سمر حضرموت - دليل الموردين</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="inventory.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar inv-sidebar">
+            <div class="logo">
+                <img src="logo.jpg" alt="شعار المحازن" class="restaurant-logo" onerror="this.src='https://placehold.co/100x100'">
+                <span>إدارة <span class="highlight">الموردين</span></span>
+            </div>
+            
+            <nav class="nav-menu">
+                <div class="nav-group">
+                    <p class="nav-label">نطاق العمل الرئيسي</p>
+                    <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>العودة للوحة القيادة</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">لوحة تحكم المخزون</p>
+                    <a href="inventory.html" class="nav-item"><i class="ph ph-packages"></i><span>نظرة عامة والجرد</span></a>
+                    <a href="inv-documents.html?tab=in" class="nav-item"><i class="ph ph-arrow-down-left"></i><span>حركات الدخول (استلام)</span></a>
+                    <a href="inv-documents.html?tab=out" class="nav-item"><i class="ph ph-arrow-up-right"></i><span>حركات الخروج (أمر صرف)</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">الموردين والمستندات</p>
+                    <a href="suppliers.html" class="nav-item active"><i class="ph ph-truck"></i><span>دليل الموردين</span></a>
+                    <a href="inv-documents.html?tab=all" class="nav-item"><i class="ph ph-file-text"></i><span>السندات والفواتير</span></a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content inv-main">
+            <!-- Top Header -->
+            <header class="top-header inv-header">
+                <div class="header-left-title">
+                    <h2>دليل الموردين والشركات</h2>
+                    <p>إدارة بيانات ورصيد وعقود الشركات الموردة للمخازن.</p>
+                </div>
+                
+                <div class="header-actions">
+                    <button class="inv-btn-solid bg-blue" id="btn-add-supplier"><i class="ph ph-user-plus"></i> إضافة مورد جديد</button>
+                </div>
+            </header>
+
+            <div class="inv-dashboard-grid">
+                <div class="kpi-cards inv-kpis" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="card kpi-card">
+                        <div class="kpi-icon blue"><i class="ph-fill ph-users-three"></i></div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">إجمالي الموردين</p>
+                            <h3 class="kpi-value" id="kpi-count">0</h3>
+                            <p class="kpi-trend text-blue">مورد/شركة نشطة</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card inv-main-table-card">
+                    <div class="card-header inv-table-header">
+                        <div class="inv-toolbar" style="width:100%">
+                            <div class="search-box" style="width:100%; max-width:400px;">
+                                <i class="ph ph-magnifying-glass"></i>
+                                <input type="text" id="search-sup" placeholder="البحث باسم المورد أو رقم الهاتف...">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="data-table inv-table">
+                            <thead>
+                                <tr>
+                                    <th>اسم المورد / الشركة</th>
+                                    <th>نوع التوريد</th>
+                                    <th>رقم الهاتف</th>
+                                    <th>الرصيد الدائن / المستحق</th>
+                                    <th>حالة المورد</th>
+                                    <th>إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sup-tbody">
+                                <!-- Filled by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Add Supplier -->
+    <div id="supModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>إضافة مورد جديد</h3>
+                <button type="button" class="btn-cancel-modal" title="إغلاق"><i class="ph ph-x"></i></button>
+            </div>
+            <form id="form-sup" class="modal-body">
+                <div class="form-group-row">
+                    <div class="form-group">
+                        <label>اسم المورد / الشركة</label>
+                        <input type="text" id="sup-name" class="input-modern" required>
+                    </div>
+                    <div class="form-group">
+                        <label>فئة التوريد (لحوم، خضار...)</label>
+                        <input type="text" id="sup-cat" class="input-modern" required>
+                    </div>
+                </div>
+                <div class="form-group-row">
+                    <div class="form-group">
+                        <label>رقم الهاتف للتواصل</label>
+                        <input type="text" id="sup-phone" class="input-modern" required>
+                    </div>
+                    <div class="form-group">
+                        <label>رصيد افتتاحي (مستحق له)</label>
+                        <input type="number" step="0.01" id="sup-balance" class="input-modern" required value="0">
+                    </div>
+                </div>
+                <div class="modal-actions mt-3">
+                    <button type="button" class="btn-cancel btn-cancel-modal">إلغاء</button>
+                    <button type="submit" class="btn-save-role bg-blue">حفظ المورد</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tbody = document.getElementById('sup-tbody');
+            const searchInput = document.getElementById('search-sup');
+            let suppliers = JSON.parse(localStorage.getItem('erp_suppliers') || '[]');
+
+            if(suppliers.length === 0) {
+                suppliers = [
+                    { id: 'SUP-01', name: 'شركة المراعي', cat: 'ألبان ومرطبات', phone: '0551234567', balance: 4500.00, active: true },
+                    { id: 'SUP-02', name: 'مؤسسة الثقفي للحوم', cat: 'لحوم طازجة', phone: '0501112223', balance: 12400.00, active: true }
+                ];
+                localStorage.setItem('erp_suppliers', JSON.stringify(suppliers));
+            }
+
+            function render() {
+                tbody.innerHTML = '';
+                const q = searchInput.value.toLowerCase();
+                let filtered = suppliers.filter(s => s.name.toLowerCase().includes(q) || s.phone.includes(q));
+
+                document.getElementById('kpi-count').innerText = suppliers.length;
+
+                if (filtered.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#666">لم يتم العثور على موردين.</td></tr>';
+                    return;
+                }
+
+                filtered.forEach(s => {
+                    const statusTag = s.active ? '<span class="inv-tag tag-safe">مورد نشط</span>' : '<span class="inv-tag tag-empty">موقوف</span>';
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>${s.name}</strong></td>
+                        <td>${s.cat}</td>
+                        <td dir="ltr" style="text-align:right">${s.phone}</td>
+                        <td style="color:${s.balance > 0 ? 'var(--accent-red)' : 'var(--text)'}; font-weight:700;">
+                            ${s.balance === 0 ? 'لا يوجد استحقاق' : Number(s.balance).toLocaleString() + ' ر.س'}
+                        </td>
+                        <td>${statusTag}</td>
+                        <td>
+                            <button class="action-btn text-blue" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
+                            <button class="action-btn text-orange" title="سداد دفعة"><i class="ph ph-money"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            render();
+            searchInput.addEventListener('input', render);
+
+            // Modal Logic
+            const modal = document.getElementById('supModal');
+            document.getElementById('btn-add-supplier').addEventListener('click', () => modal.classList.add('active'));
+            document.querySelectorAll('.btn-cancel-modal').forEach(b => b.addEventListener('click', () => modal.classList.remove('active')));
+
+            document.getElementById('form-sup').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const newObj = {
+                    id: 'SUP-' + Math.floor(Math.random() * 1000),
+                    name: document.getElementById('sup-name').value,
+                    cat: document.getElementById('sup-cat').value,
+                    phone: document.getElementById('sup-phone').value,
+                    balance: Number(document.getElementById('sup-balance').value),
+                    active: true
+                };
+                suppliers.push(newObj);
+                localStorage.setItem('erp_suppliers', JSON.stringify(suppliers));
+                modal.classList.remove('active');
+                render();
+                e.target.reset();
+            });
+        });
+    </script>
+</body>
+</html>

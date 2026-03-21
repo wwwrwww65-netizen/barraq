@@ -156,6 +156,157 @@ document.addEventListener('DOMContentLoaded', () => {
         closeModal(e.currentTarget.closest('.modal-overlay').id);
     }));
 
+    // Filter Low Stock
+    const btnFilterLow = document.getElementById('btn-filter-low');
+    if(btnFilterLow) {
+        btnFilterLow.addEventListener('click', () => {
+            const currentItems = erpItems.filter(i => (i.warehouseId || 'main') === currentWH);
+            const lowItems = currentItems.filter(it => it.qty <= it.minQty);
+            
+            tbody.innerHTML = '';
+            if(lowItems.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:20px;">لا توجد نواقص في هذا المخزن! كل الكميات ممتازة.</td></tr>';
+                return;
+            }
+            // Temporarily replace render block
+            lowItems.forEach(item => {
+                let rowClass = item.qty === 0 ? 'stock-row-danger' : 'stock-row-warning';
+                let statusTag = item.qty === 0 ? '<span class="inv-tag tag-empty"><i class="ph-fill ph-x-circle"></i> رصيد صفري</span>' : '<span class="inv-tag tag-low"><i class="ph-fill ph-warning"></i> تحت الحد الأدنى</span>';
+                
+                const tr = document.createElement('tr');
+                tr.className = rowClass;
+                tr.innerHTML = `
+                    <td><span class="badge-barcode">${item.sku}</span></td>
+                    <td><strong>${item.name}</strong></td>
+                    <td>${item.category}</td>
+                    <td>${item.unit}</td>
+                    <td>${item.cost.toFixed(2)} ر.س</td>
+                    <td class="qty-col ${item.qty === 0 ? 'empty' : 'low'}">${item.qty}</td>
+                    <td>${(item.qty * item.cost).toLocaleString()} ر.س</td>
+                    <td>${statusTag}</td>
+                    <td></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        });
+    }
+
+    // Valuation Modal Dashboard
+    const btnValuation = document.getElementById('btn-valuation');
+    if(btnValuation) {
+        btnValuation.addEventListener('click', () => {
+            let valMain = 0; let valRest = 0; let valBev = 0;
+            erpItems.forEach(it => {
+                let v = it.qty * it.cost;
+                if(it.warehouseId === 'main') valMain += v;
+                else if(it.warehouseId === 'restaurant') valRest += v;
+                else if(it.warehouseId === 'beverages') valBev += v;
+            });
+
+            const content = document.getElementById('valuation-content');
+            content.innerHTML = `
+                <div style="background: rgba(15,23,42,0.5); border-radius:12px; padding:20px; text-align:right;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
+                        <span>المستودع الرئيسي:</span>
+                        <strong style="color:var(--accent-blue)">${valMain.toFixed(2)} ر.س</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
+                        <span>مخزن المطعم (التشغيل):</span>
+                        <strong style="color:var(--accent-orange)">${valRest.toFixed(2)} ر.س</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
+                        <span>مخزن المشروبات:</span>
+                        <strong style="color:var(--accent-green)">${valBev.toFixed(2)} ر.س</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-top:16px; font-size:18px;">
+                        <span>إجمالي التقييم النهائي:</span>
+                        <strong style="color:white; font-size:22px;">${(valMain + valRest + valBev).toFixed(2)} ر.س</strong>
+                    </div>
+                </div>
+            `;
+            openModal('valuationModal');
+        });
+    }
+
+    // Transfer Modal
+    const btnOpenTransfer = document.getElementById('btn-open-transfer');
+    if(btnOpenTransfer) {
+        btnOpenTransfer.addEventListener('click', () => {
+            document.getElementById('trans-from').value = currentWH;
+            updateTransDropdown();
+            openModal('transferModal');
+        });
+    }
+
+    const transFrom = document.getElementById('trans-from');
+    if(transFrom) transFrom.addEventListener('change', updateTransDropdown);
+
+    function updateTransDropdown() {
+        const fromWh = document.getElementById('trans-from').value;
+        const skuSelect = document.getElementById('trans-sku');
+        if(skuSelect) {
+            const currentItems = erpItems.filter(i => (i.warehouseId || 'main') === fromWh);
+            skuSelect.innerHTML = currentItems.map(it => `<option value="${it.sku}">${it.name} (متوفر: ${it.qty})</option>`).join('');
+        }
+    }
+
+    const formTransfer = document.getElementById('form-transfer');
+    if(formTransfer) {
+        formTransfer.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const fromWh = document.getElementById('trans-from').value;
+            const toWh = document.getElementById('trans-to').value;
+            const tSku = document.getElementById('trans-sku').value;
+            const tQty = Number(document.getElementById('trans-qty').value);
+
+            if(fromWh === toWh) { alert('لا يمكن التحويل لنفس المستودع!'); return; }
+
+            const srcIdx = erpItems.findIndex(it => it.sku === tSku && (it.warehouseId||'main') === fromWh);
+            if(srcIdx === -1) return;
+
+            if(erpItems[srcIdx].qty < tQty) {
+                alert('الكمية في المصدر لا تكفي للتحويل!');
+                return;
+            }
+
+            // Deduct from source
+            erpItems[srcIdx].qty -= tQty;
+
+            // Find or create in destination
+            const dstIdx = erpItems.findIndex(it => it.sku === tSku && it.warehouseId === toWh);
+            if(dstIdx !== -1) {
+                erpItems[dstIdx].qty += tQty;
+            } else {
+                // Clone item
+                const newItem = {...erpItems[srcIdx]};
+                newItem.warehouseId = toWh;
+                newItem.qty = tQty;
+                erpItems.push(newItem);
+            }
+
+            // Log Transfer Tx
+            const newTxId = 'TRF-' + Math.floor(Math.random() * 10000);
+            erpTx.push({
+                id: newTxId,
+                type: 'transfer',
+                total: tQty * erpItems[srcIdx].cost,
+                date: Date.now(),
+                fromWh,
+                toWh,
+                sku: tSku
+            });
+
+            localStorage.setItem('erp_inventory_items', JSON.stringify(erpItems));
+            localStorage.setItem('erp_inventory_tx', JSON.stringify(erpTx));
+
+            closeModal('transferModal');
+            renderTable();
+            renderKPIs();
+            formTransfer.reset();
+            alert('تم تحويل البضاعة بنجاح وتسجيل سند التحويل!');
+        });
+    }
+
     // Save Item
     const formItem = document.getElementById('form-item');
     if(formItem) {

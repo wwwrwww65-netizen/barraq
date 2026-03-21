@@ -30,22 +30,22 @@
 
                 <div class="nav-group">
                     <p class="nav-label">لوحة تحكم المخزون</p>
-                    <a href="#" class="nav-item active"><i class="ph ph-packages"></i><span>نظرة عامة والجرد</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-arrow-down-left"></i><span>حركات الدخول (استلام)</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-arrow-up-right"></i><span>حركات الخروج (أمر صرف)</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-swap"></i><span>تحويل بين المخازن</span></a>
+                    <a href="inventory.html" class="nav-item active"><i class="ph ph-packages"></i><span>نظرة عامة والجرد</span></a>
+                    <a href="inv-documents.html?tab=in" class="nav-item"><i class="ph ph-arrow-down-left"></i><span>حركات الدخول (استلام)</span></a>
+                    <a href="inv-documents.html?tab=out" class="nav-item"><i class="ph ph-arrow-up-right"></i><span>حركات الخروج (أمر صرف)</span></a>
+                    <a href="#" class="nav-item" id="btn-open-transfer"><i class="ph ph-swap"></i><span>تحويل بين المخازن</span></a>
                 </div>
 
                 <div class="nav-group">
                     <p class="nav-label">الموردين والمستندات</p>
-                    <a href="#" class="nav-item"><i class="ph ph-truck"></i><span>دليل الموردين</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-file-text"></i><span>السندات والفواتير</span></a>
+                    <a href="suppliers.html" class="nav-item"><i class="ph ph-truck"></i><span>دليل الموردين</span></a>
+                    <a href="inv-documents.html?tab=all" class="nav-item"><i class="ph ph-file-text"></i><span>السندات والفواتير</span></a>
                 </div>
 
                 <div class="nav-group">
                     <p class="nav-label">التقارير المخزنية</p>
-                    <a href="#" class="nav-item"><i class="ph ph-warning-circle"></i><span>نواقص المخزون</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-chart-bar"></i><span>تقييم المخزون المالي</span></a>
+                    <a href="#" class="nav-item" id="btn-filter-low"><i class="ph ph-warning-circle"></i><span>نواقص المخزون</span></a>
+                    <a href="#" class="nav-item" id="btn-valuation"><i class="ph ph-chart-bar"></i><span>تقييم المخزون المالي</span></a>
                 </div>
             </nav>
         </aside>
@@ -363,6 +363,64 @@
                     <button type="submit" class="btn-save-role bg-green">تأكيد الحركة المخزنية</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal for Transfer between warehouses -->
+    <div id="transferModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>تحويل بضاعة بين المخازن</h3>
+                <button type="button" class="btn-cancel-modal" title="إغلاق"><i class="ph ph-x"></i></button>
+            </div>
+            <form id="form-transfer" class="modal-body">
+                <div class="form-group-row">
+                    <div class="form-group">
+                        <label>من مستودع (المصدر)</label>
+                        <select id="trans-from" class="input-modern" required>
+                            <option value="main">المستودع الرئيسي</option>
+                            <option value="restaurant">مخزن المطعم (الداخلي)</option>
+                            <option value="beverages">مخزن المشروبات</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>إلى مستودع (الوجهة)</label>
+                        <select id="trans-to" class="input-modern" required>
+                            <option value="restaurant">مخزن المطعم (الداخلي)</option>
+                            <option value="main">المستودع الرئيسي</option>
+                            <option value="beverages">مخزن المشروبات</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>الصنف المطلوب تحويله</label>
+                    <select id="trans-sku" class="input-modern" required></select>
+                </div>
+                <div class="form-group">
+                    <label>الكمية المحولة</label>
+                    <input type="number" id="trans-qty" min="1" class="input-modern" required>
+                </div>
+                <div class="modal-actions mt-3">
+                    <button type="button" class="btn-cancel btn-cancel-modal">إلغاء</button>
+                    <button type="submit" class="btn-save-role bg-blue">تأكيد عملية التحويل <i class="ph ph-swap"></i></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Financial Valuation -->
+    <div id="valuationModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>تقييم المخزون المالي <i class="ph-fill ph-coins text-orange"></i></h3>
+                <button type="button" class="btn-cancel-modal" title="إغلاق"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="modal-body" id="valuation-content" style="text-align:center; padding: 20px 0;">
+                <!-- Filled dynamically via JS -->
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel btn-cancel-modal">إغلاق</button>
+            </div>
         </div>
     </div>
 
