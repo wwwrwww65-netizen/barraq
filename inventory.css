@@ -292,3 +292,35 @@
 .btn-cancel:hover { background: rgba(255,255,255,0.1); }
 .btn-save-role { padding: 10px 20px; color: white; border: none; border-radius: var(--border-radius-sm); cursor: pointer; font-weight: 700;}
 
+/* Form Inputs within Modals */
+.modal-body label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.input-modern {
+    width: 100%;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: 12px 14px;
+    color: white;
+    font-family: inherit;
+    font-size: 14px;
+    transition: var(--transition);
+}
+
+.input-modern:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.input-modern::placeholder {
+    color: var(--text-muted);
+}
+
+
