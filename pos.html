@@ -6,6 +6,7 @@
     <title>سمر حضرموت - نظام الكاشير (نقطة البيع)</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="pos.css">
+    <link rel="stylesheet" href="staff.css"> <!-- Modal styles reused here -->
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,7 +38,7 @@
             <header class="pos-header">
                 <div class="pos-search-box">
                     <i class="ph ph-magnifying-glass"></i>
-                    <input type="text" placeholder="ابحث عن وجبة أو مشروب أو رمز الشريطي...">
+                    <input type="text" id="product-search" placeholder="ابحث عن وجبة أو مشروب أو رمز الشريطي...">
                 </div>
                 <div class="pos-top-actions">
                     <button class="pos-action-btn"><i class="ph ph-barcode"></i> مسح باركود</button>
@@ -52,27 +53,27 @@
             <!-- Categories -->
             <div class="pos-categories-wrapper">
                 <div class="pos-categories">
-                    <button class="category-btn active">
+                    <button class="category-btn active" data-category="الكل">
                         <div class="cat-icon"><i class="ph ph-squares-four"></i></div>
                         <span>الكل</span>
                     </button>
-                    <button class="category-btn">
+                    <button class="category-btn" data-category="مندي وشعبيات">
                         <div class="cat-icon"><i class="ph ph-bowl-food"></i></div>
                         <span>مندي وشعبيات</span>
                     </button>
-                    <button class="category-btn">
+                    <button class="category-btn" data-category="وجبات سريعة">
                         <div class="cat-icon"><i class="ph ph-hamburger"></i></div>
                         <span>وجبات سريعة</span>
                     </button>
-                    <button class="category-btn">
+                    <button class="category-btn" data-category="مشروبات">
                         <div class="cat-icon"><i class="ph ph-coffee"></i></div>
                         <span>مشروبات</span>
                     </button>
-                    <button class="category-btn">
+                    <button class="category-btn" data-category="حلى">
                         <div class="cat-icon"><i class="ph ph-cookie"></i></div>
                         <span>حلى</span>
                     </button>
-                    <button class="category-btn">
+                    <button class="category-btn" data-category="مقبلات وسلطات">
                         <div class="cat-icon"><i class="ph ph-carrot"></i></div>
                         <span>مقبلات وسلطات</span>
                     </button>
@@ -80,8 +81,9 @@
             </div>
 
             <!-- Products Grid -->
-            <div class="pos-products">
-                <div class="product-card">
+            <div class="pos-products" id="products-grid">
+                
+                <div class="product-card" data-id="1" data-name="نفر مندي لحم بلدي" data-price="65" data-category="مندي وشعبيات">
                     <div class="product-img-wrapper">
                         <img src="https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80" alt="مندي">
                         <span class="product-badge">الأكثر مبيعاً</span>
@@ -95,7 +97,7 @@
                     </div>
                 </div>
 
-                <div class="product-card">
+                <div class="product-card" data-id="2" data-name="مكرونة باشميل الدجاج" data-price="35" data-category="مندي وشعبيات">
                     <div class="product-img-wrapper">
                         <img src="https://images.unsplash.com/photo-1563379926898-05f4575a45d8?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80" alt="مكرونة">
                     </div>
@@ -108,7 +110,7 @@
                     </div>
                 </div>
 
-                <div class="product-card">
+                <div class="product-card" data-id="3" data-name="برجر لحم كلاسيك" data-price="25" data-category="وجبات سريعة">
                     <div class="product-img-wrapper">
                         <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80" alt="برجر">
                     </div>
@@ -121,7 +123,7 @@
                     </div>
                 </div>
 
-                <div class="product-card">
+                <div class="product-card" data-id="4" data-name="بيتزا مارغريتا حجم وسط" data-price="40" data-category="وجبات سريعة">
                     <div class="product-img-wrapper">
                         <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80" alt="بيتزا">
                     </div>
@@ -134,9 +136,10 @@
                     </div>
                 </div>
 
-                <div class="product-card">
+                <!-- Fixed Salad Image -->
+                <div class="product-card" data-id="5" data-name="سلطة خضراء" data-price="10" data-category="مقبلات وسلطات">
                     <div class="product-img-wrapper">
-                        <img src="https://images.unsplash.com/photo-1544025162-8315ea07edca?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80" alt="سلطة">
+                        <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80" alt="سلطة">
                     </div>
                     <div class="product-details">
                         <h4>سلطة خضراء</h4>
@@ -147,9 +150,10 @@
                     </div>
                 </div>
 
-                <div class="product-card">
+                <!-- Fixed Juice Image -->
+                <div class="product-card" data-id="6" data-name="عصير برتقال طازج" data-price="15" data-category="مشروبات">
                     <div class="product-img-wrapper">
-                        <img src="https://images.unsplash.com/photo-1572490122747-3968b75ee69c?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80" alt="عصير">
+                        <img src="https://images.unsplash.com/photo-1611162617474-5b21e879e113?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80" alt="عصير">
                     </div>
                     <div class="product-details">
                         <h4>عصير برتقال طازج</h4>
@@ -163,66 +167,37 @@
         </main>
 
         <!-- Ticket Area / Cart -->
-        <aside class="pos-cart-panel">
+        <aside class="pos-cart-panel" id="cart-panel">
             <div class="cart-header">
                 <div class="cart-title">
                     <h3>تفاصيل الطلب</h3>
-                    <span class="order-id">#ORD-1046</span>
+                    <span class="order-id" id="display-order-id">#ORD-1046</span>
                 </div>
                 
-                <div class="order-type-tabs">
-                    <button class="type-btn active"><i class="ph ph-storefront"></i> محلي</button>
-                    <button class="type-btn"><i class="ph ph-bag"></i> سفري</button>
-                    <button class="type-btn"><i class="ph ph-moped"></i> توصيل</button>
+                <div class="order-type-tabs" id="order-type-tabs">
+                    <button class="type-btn active" data-type="محلي"><i class="ph ph-storefront"></i> محلي</button>
+                    <button class="type-btn" data-type="سفري"><i class="ph ph-bag"></i> سفري</button>
+                    <button class="type-btn" data-type="توصيل"><i class="ph ph-moped"></i> توصيل</button>
                 </div>
 
                 <div class="table-selector">
-                    <select>
-                        <option>اختر الطاولة (اختياري)...</option>
-                        <option>طاولة 01</option>
-                        <option>طاولة 02</option>
-                        <option>طاولة 03</option>
-                        <option>عائلات 01</option>
+                    <select id="cart-table-select">
+                        <option value="">اختر الطاولة (اختياري)...</option>
+                        <option value="طاولة 01">طاولة 01</option>
+                        <option value="طاولة 02">طاولة 02</option>
+                        <option value="طاولة 03">طاولة 03</option>
+                        <option value="عائلات 01">عائلات 01</option>
                     </select>
                 </div>
             </div>
 
-            <div class="cart-items-list">
-                <!-- Example Item -->
-                <div class="cart-item">
-                    <img src="https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80" alt="مندي" class="cart-item-img">
-                    <div class="item-info">
-                        <h4>نفر مندي لحم بلدي</h4>
-                        <span class="item-price">65 ر.س</span>
-                    </div>
-                    <div class="item-qty">
-                        <button class="qty-btn"><i class="ph ph-minus"></i></button>
-                        <span class="qty-val">2</span>
-                        <button class="qty-btn"><i class="ph ph-plus"></i></button>
-                    </div>
-                    <div class="item-total">
-                        130 ر.س
-                    </div>
-                    <button class="remove-btn"><i class="ph ph-trash"></i></button>
+            <!-- Cart Items -->
+            <div class="cart-items-list" id="cart-items-container">
+                <div class="empty-cart-msg">
+                    <i class="ph ph-shopping-cart"></i>
+                    <p>السلة فارغة، قم بإضافة منتجات</p>
                 </div>
-
-                <!-- Example Item -->
-                <div class="cart-item">
-                    <img src="https://images.unsplash.com/photo-1544025162-8315ea07edca?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80" alt="سلطة" class="cart-item-img">
-                    <div class="item-info">
-                        <h4>سلطة خضراء</h4>
-                        <span class="item-price">10 ر.س</span>
-                    </div>
-                    <div class="item-qty">
-                        <button class="qty-btn"><i class="ph ph-minus"></i></button>
-                        <span class="qty-val">1</span>
-                        <button class="qty-btn"><i class="ph ph-plus"></i></button>
-                    </div>
-                    <div class="item-total">
-                        10 ر.س
-                    </div>
-                    <button class="remove-btn"><i class="ph ph-trash"></i></button>
-                </div>
+                <!-- Items will be injected by JS -->
             </div>
 
             <!-- Cart Summary & Actions -->
@@ -230,29 +205,151 @@
                 <div class="cart-summary">
                     <div class="summary-line">
                         <span>المجموع الفرعي</span>
-                        <span>140.00 ر.س</span>
+                        <span id="cart-subtotal">0.00 ر.س</span>
                     </div>
                     <div class="summary-line">
                         <span><i class="ph ph-receipt"></i> ضريبة ق.م (15%)</span>
-                        <span>21.00 ر.س</span>
+                        <span id="cart-tax">0.00 ر.س</span>
                     </div>
                     <div class="summary-line discount">
-                        <span><i class="ph ph-tag"></i> خصم</span>
-                        <span>0.00 ر.س</span>
+                        <span><i class="ph ph-tag"></i> خصم الإجمالي</span>
+                        <input type="number" id="cart-discount-input" class="discount-input" placeholder="0" min="0">
+                        <span>ر.س</span>
                     </div>
                     <div class="summary-line total">
                         <span>الإجمالي المطلوب</span>
-                        <span>161.00 ر.س</span>
+                        <span id="cart-total">0.00 ر.س</span>
                     </div>
                 </div>
 
                 <div class="cart-actions-grid">
-                    <button class="btn-suspend"><i class="ph ph-pause"></i> تعليق الطلب</button>
-                    <button class="btn-print"><i class="ph ph-printer"></i> طباعة للحفظ</button>
-                    <button class="btn-pay"><i class="ph ph-wallet"></i> الدفع (161 ر.س)</button>
+                    <button class="btn-suspend" id="btn-suspend"><i class="ph ph-pause"></i> تعليق الطلب</button>
+                    <button class="btn-print" id="btn-print-receipt"><i class="ph ph-printer"></i> طباعة للحفظ</button>
+                    <button class="btn-pay" id="btn-checkout"><i class="ph ph-wallet"></i> الدفع (<span id="btn-checkout-total">0</span> ر.س)</button>
                 </div>
             </div>
         </aside>
     </div>
+
+    <!-- Checkout Payment Modal -->
+    <div class="modal-overlay" id="checkout-modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3><i class="ph ph-wallet"></i> إتمام الدفع</h3>
+                <button class="close-modal" id="btn-close-checkout"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="modal-body text-center">
+                <h1 style="font-size: 36px; color: var(--accent-green); margin-bottom: 20px;" id="checkout-total-display">0.00 ر.س</h1>
+                
+                <h4 style="text-align: right; margin-bottom: 10px; color: var(--text-secondary);">طريقة الدفع:</h4>
+                <div class="payment-methods" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <label class="payment-method selected" style="flex:1; padding: 15px; border: 2px solid var(--accent-blue); border-radius: 8px; cursor: pointer; background: rgba(59, 130, 246, 0.1);">
+                        <input type="radio" name="pay_method" value="كاش" checked style="display:none;">
+                        <i class="ph ph-money" style="font-size: 32px; color: var(--accent-blue); display: block; margin-bottom: 8px;"></i>
+                        <strong>نقداً (كاش)</strong>
+                    </label>
+                    <label class="payment-method" style="flex:1; padding: 15px; border: 2px solid var(--border-light); border-radius: 8px; cursor: pointer; background: rgba(15, 23, 42, 0.4);">
+                        <input type="radio" name="pay_method" value="شبكة / بطاقة">
+                        <i class="ph ph-credit-card" style="font-size: 32px; color: var(--text-muted); display: block; margin-bottom: 8px;"></i>
+                        <strong style="color: var(--text-muted)">شبكة (مدى/فيزا)</strong>
+                    </label>
+                </div>
+
+                <div id="cash-calculator" style="display:flex; flex-direction: column; gap: 10px; margin-bottom: 20px; text-align:right;">
+                    <label style="color: var(--text-secondary); font-size:14px; font-weight:700;">المبلغ المستلم من العميل (ر.س):</label>
+                    <input type="number" id="cash-received" class="input-modern" placeholder="0.00" style="font-size: 20px; text-align: center; font-weight:800; color:var(--accent-green);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 8px; border: 1px dashed var(--accent-red);">
+                        <span style="font-weight: 700; color:var(--text-secondary);">المتبقي للعميل (الصرف):</span>
+                        <strong id="cash-change" style="font-size: 20px; color: var(--accent-red);">0.00 ر.س</strong>
+                    </div>
+                </div>
+
+                <button class="btn-pay" id="btn-confirm-payment" style="width: 100%; font-size:18px;"><i class="ph ph-check-circle"></i> تأكيد الدفع وطباعة الفواتير</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Printable Area for Receipts off-canvas -->
+    <div id="print-zone" style="position: absolute; top: -9999px; left: -9999px; background: white;">
+        
+        <!-- 1. Customer Receipt Ticket -->
+        <div id="receipt-customer" style="width: 320px; padding: 20px; background: white; color: black; font-family: 'Cairo', sans-serif; text-align: center; border: 1px dashed #ccc;">
+            <img src="logo.jpg" alt="Logo" style="width: 80px; height: 80px; margin: 0 auto; display: block; filter: grayscale(100%); border-radius: 50%;">
+            <br>
+            <h2 style="margin: 0; font-size: 20px; font-weight: 800;">مطابخ ومحائذ سمر حضرموت</h2>
+            <p style="margin: 5px 0; font-size: 14px;">الرقم الضريبي: 310000000000003</p>
+            <p style="margin: 5px 0; font-size: 14px;">شارع المعارض جوار محطة مزايا</p>
+            
+            <div style="border-bottom: 2px dashed #000; margin: 15px 0;"></div>
+            
+            <h3 style="margin: 0; font-size: 18px;" id="r-type">طلب محلي</h3>
+            <p style="margin: 5px 0; font-size: 14px; font-weight:bold;">رقم الطلب: <span id="r-order-id">#1046</span></p>
+            <p style="margin: 5px 0; font-size: 12px; text-align:right" id="r-date"></p>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; text-align: right;">
+                <thead>
+                    <tr style="border-bottom: 1px solid #000;">
+                        <th style="padding-bottom: 5px;">الصنف</th>
+                        <th style="padding-bottom: 5px;">الكمية</th>
+                        <th style="padding-bottom: 5px;">السعر</th>
+                    </tr>
+                </thead>
+                <tbody id="r-items">
+                    <!-- JS inject -->
+                </tbody>
+            </table>
+
+            <div style="border-bottom: 2px dashed #000; margin: 15px 0;"></div>
+            
+            <div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:5px;">
+                <span>الإجمالي (شامل الضريبة):</span>
+                <strong id="r-total">0.00</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:5px;">
+                <span>الخصم:</span>
+                <span id="r-discount">0.00</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:12px; color:#555;">
+                <span>قيمة الضريبة المضافة 15%:</span>
+                <span id="r-tax">0.00</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:16px; font-weight:bold; margin-top:10px; border-top: 1px solid #000; padding-top: 5px;">
+                <span>طريقة الدفع:</span>
+                <span id="r-payment-method">كاش</span>
+            </div>
+            
+            <br>
+            <p style="text-align: center; font-weight: bold; font-size:14px; margin-top:20px;">شكراً لزيارتكم! بالهناء والشفاء</p>
+            <p style="text-align: center; font-size:10px; color:#666;">Powered By POS System</p>
+        </div>
+
+
+        <!-- 2. Kitchen Ticket -->
+        <div id="receipt-kitchen" style="width: 320px; padding: 20px; background: white; color: black; font-family: 'Cairo', sans-serif; text-align: center; border: 2px solid #000; margin-top:50px;">
+            <h1 style="margin: 0; font-size: 32px; font-weight: 900; background:black; color:white; padding: 5px;">طلب مطبخ</h1>
+            
+            <h2 style="margin: 10px 0; font-size: 28px;" id="k-type">محلي</h2>
+            <h3 style="margin: 0; font-size: 24px; font-weight:bold;">رقم الطلب: <span id="k-order-id">#1046</span></h3>
+            <h4 style="margin: 10px 0; font-size: 20px; border: 2px solid black; padding: 5px;" id="k-table"></h4>
+            
+            <p style="margin: 5px 0; font-size: 14px; text-align:right; border-top:2px dashed #000; padding-top:10px;" id="k-date"></p>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 18px; text-align: right; font-weight: bold;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #000;">
+                        <th style="padding-bottom: 5px; width:70%">الصنف</th>
+                        <th style="padding-bottom: 5px; text-align:center;">الكمية</th>
+                    </tr>
+                </thead>
+                <tbody id="k-items">
+                    <!-- JS inject -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="pos.js"></script>
 </body>
 </html>
