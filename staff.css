@@ -239,6 +239,52 @@
 .action-btn-full:hover { background: rgba(255,255,255,0.1); }
 
 .action-btn-full.text-orange:hover { background: rgba(245, 158, 11, 0.1); border-color: var(--accent-orange); }
+/* Modal Input Styles Fixes */
+.form-group {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+}
+.form-group label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    display: inline-block;
+    text-align: right;
+}
+.required { color: var(--accent-red); margin-right: 4px; }
+
+.input-modern {
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: 12px 16px;
+    color: white;
+    font-family: inherit;
+    font-size: 15px;
+    transition: var(--transition);
+    outline: none;
+    width: 100%;
+}
+.input-modern:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+.input-modern::placeholder { color: var(--text-muted); }
+
+.input-with-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.input-with-icon i {
+    position: absolute;
+    right: 16px;
+    color: var(--text-secondary);
+    font-size: 18px;
+}
+.input-with-icon .input-modern {
+    padding-right: 45px;
+}
+
 .action-btn-full.text-green:hover { background: rgba(16, 185, 129, 0.1); border-color: var(--accent-green); }
 .action-btn-full.text-red:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--accent-red); }
 .action-btn-full.text-pink:hover { background: rgba(236, 72, 153, 0.1); border-color: #ec4899; }
