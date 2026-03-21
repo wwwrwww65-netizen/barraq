@@ -62,8 +62,11 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('kpi-profit').style.color = 'var(--accent-red)';
         }
 
-        document.getElementById('bal-cash').innerText = cashBal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ر.س';
-        document.getElementById('bal-bank').innerText = bankBal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ر.س';
+        if(document.getElementById('bal-total')) {
+            document.getElementById('bal-total').innerText = (cashBal + bankBal).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ر.س';
+        }
+        if(document.getElementById('bal-cash')) document.getElementById('bal-cash').innerText = cashBal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ر.س';
+        if(document.getElementById('bal-bank')) document.getElementById('bal-bank').innerText = bankBal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ر.س';
 
         const today = new Date().toLocaleDateString('ar-SA', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'});
         if(document.getElementById('current-date')) document.getElementById('current-date').innerText = today;
