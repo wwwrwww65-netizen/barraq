@@ -3,288 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سمر حضرموت - إدارة المشتريات</title>
-    <!-- Base styles -->
+    <title>سمر حضرموت - المشتريات والموردين</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="inventory.css"> <!-- Re-use some inventory styles layout -->
-    <link rel="stylesheet" href="purchases.css"> <!-- Specific purchases styles -->
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="purchases.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 </head>
 <body class="dark-theme">
     <div class="app-container">
         <!-- Sidebar Navigation -->
-        <aside class="sidebar inv-sidebar">
+        <aside class="sidebar">
             <div class="logo">
-                <img src="logo.jpg" alt="شعار المشتريات" class="restaurant-logo">
-                <span>إدارة <span class="highlight">المشتريات</span></span>
+                <img src="logo.jpg" alt="شعار سمر حضرموت" class="restaurant-logo" onerror="this.src='https://placehold.co/100x100'">
+                <span>نظام <span class="highlight">المشتريات</span></span>
             </div>
             
             <nav class="nav-menu">
                 <div class="nav-group">
                     <p class="nav-label">الرئيسية</p>
-                    <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>لوحة القيادة</span></a>
+                    <a href="index.html" class="nav-item text-muted"><i class="ph ph-arrow-right"></i><span>لوحة القيادة</span></a>
                 </div>
-
                 <div class="nav-group">
-                    <p class="nav-label">لوحة الإدارة</p>
-                    <a href="menu.html" class="nav-item"><i class="ph ph-pizza"></i><span>الأصناف والمنيو</span></a>
-                    <a href="inventory.html" class="nav-item"><i class="ph ph-package"></i><span>المخازن</span></a>
-                    <a href="purchases.html" class="nav-item active"><i class="ph ph-shopping-cart"></i><span>المشتريات</span></a>
-                </div>
-
-                <div class="nav-group">
-                    <p class="nav-label">دورة الشراء</p>
-                    <a href="#" class="nav-item"><i class="ph ph-receipt"></i><span>فواتير المشتريات</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-file-text"></i><span>عروض الأسعار</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-users-three"></i><span>بطاقات الموردين</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-arrow-u-down-left"></i><span>مرتجعات الموردين</span></a>
-                </div>
-                
-                <div class="nav-group">
-                    <p class="nav-label">المدفوعات</p>
-                    <a href="#" class="nav-item"><i class="ph ph-money"></i><span>سندات صرف دفعات</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-clock-countdown"></i><span>مستحقات آجلة</span></a>
+                    <p class="nav-label">نظام الإمداد والمشتريات</p>
+                    <a href="purchases.html" class="nav-item active"><i class="ph ph-shopping-bag"></i><span>فواتير المشتريات</span></a>
+                    <a href="suppliers.html" class="nav-item"><i class="ph ph-truck"></i><span>دليل الموردين (الحسابات)</span></a>
+                    <a href="inventory.html" class="nav-item"><i class="ph ph-packages"></i><span>المخازن والمستودعات</span></a>
                 </div>
             </nav>
         </aside>
 
         <!-- Main Content -->
-        <main class="main-content inv-main">
-            <!-- Top Header -->
-            <header class="top-header inv-header">
-                <div class="header-left-title">
-                    <h2>إدارة المشتريات والموردين</h2>
-                    <p>مراقبة فواتير الشراء، سداد الموردين، وإصدار أوامر التوريد.</p>
+        <main class="main-content pur-main">
+            <header class="top-header pur-header">
+                <div>
+                    <h2>المشتريات وفواتير الموردين</h2>
+                    <p style="color:var(--text-secondary); font-size:14px; margin-top:5px;">سجل المشتريات الذي يغذي المخازن ويرتبط بحسابات الموردين المباشرة.</p>
                 </div>
-                
                 <div class="header-actions">
-                    <button class="inv-btn-solid bg-blue" style="font-size: 14px; padding: 10px 24px;"><i class="ph ph-plus-circle"></i> فاتورة مشتريات جديدة</button>
-                    <button class="inv-btn-outline"><i class="ph ph-user-plus"></i> إضافة مورد</button>
-                    
-                    <button class="icon-btn notification-btn">
-                        <i class="ph ph-bell"></i>
-                        <span class="badge" style="background:var(--accent-red)">2</span>
-                    </button>
-                    <div class="user-profile">
-                        <img src="https://i.pravatar.cc/150?img=12" alt="مسؤول المشتريات" class="avatar">
-                        <div class="user-info">
-                            <span class="user-name">عبدالله المشتريات</span>
-                            <span class="user-role">مدير المشتريات</span>
-                        </div>
-                    </div>
+                    <button class="btn-primary" id="btn-new-invoice"><i class="ph ph-plus-circle"></i> إنشاء فاتورة مشتريات</button>
                 </div>
             </header>
 
-            <div class="inv-dashboard-grid">
-                
-                <!-- Financial & Quantity KPIs -->
-                <div class="kpi-cards inv-kpis">
-                    <div class="card kpi-card pur-kpi">
-                        <div class="kpi-icon blue">
-                            <i class="ph-fill ph-shopping-bag"></i>
-                        </div>
-                        <div class="kpi-details">
-                            <p class="kpi-title">مشتريات الشهر (الإجمالي)</p>
-                            <h3 class="kpi-value inv-glow-indigo">124,500<span class="currency">ر.س</span></h3>
-                            <p class="kpi-trend positive"><i class="ph ph-trend-up"></i> +4.2% عن الشهر الماضي</p>
+            <div style="padding: 30px;">
+                <div class="pur-kpis">
+                    <div class="kpi-card">
+                        <div class="kpi-icon indigo"><i class="ph-fill ph-receipt"></i></div>
+                        <div>
+                            <p style="color:var(--text-muted); font-size:12px; margin-bottom:5px;">إجمالي فواتير هذا الشهر</p>
+                            <h3 style="font-size:24px; color:white;" id="kpi-count">0 <span style="font-size:12px; font-weight:normal;">فاتورة</span></h3>
                         </div>
                     </div>
-
-                    <div class="card kpi-card pur-kpi">
-                        <div class="kpi-icon orange">
-                            <i class="ph-fill ph-clock-countdown"></i>
-                        </div>
-                        <div class="kpi-details">
-                            <p class="kpi-title">مستحقات متأخرة (آجلة)</p>
-                            <h3 class="kpi-value text-orange">45,200<span class="currency">ر.س</span></h3>
-                            <p class="kpi-trend negative"><i class="ph ph-warning-circle"></i> 8 فواتير تتطلب السداد</p>
+                    <div class="kpi-card">
+                        <div class="kpi-icon green"><i class="ph-fill ph-money"></i></div>
+                        <div>
+                            <p style="color:var(--text-muted); font-size:12px; margin-bottom:5px;">قيمة المشتريات (المدفوعة نقداً)</p>
+                            <h3 style="font-size:24px; color:var(--accent-green);" id="kpi-paid">0 <span style="font-size:12px; font-weight:normal;">ر.س</span></h3>
                         </div>
                     </div>
-
-                    <div class="card kpi-card pur-kpi">
-                        <div class="kpi-icon green">
-                            <i class="ph-fill ph-money"></i>
-                        </div>
-                        <div class="kpi-details">
-                            <p class="kpi-title">المدفوع للموردين (الشهر)</p>
-                            <h3 class="kpi-value text-green">79,300<span class="currency">ر.س</span></h3>
-                            <p class="kpi-trend text-blue"><i class="ph ph-check-circle"></i> 15 سند صرف</p>
+                    <div class="kpi-card">
+                        <div class="kpi-icon red"><i class="ph-fill ph-hand-coins"></i></div>
+                        <div>
+                            <p style="color:var(--text-muted); font-size:12px; margin-bottom:5px;">قيمة المشتريات (آجلة على الحساب)</p>
+                            <h3 style="font-size:24px; color:var(--accent-red);" id="kpi-credit">0 <span style="font-size:12px; font-weight:normal;">ر.س</span></h3>
                         </div>
                     </div>
-
-                    <div class="card kpi-card pur-kpi">
-                        <div class="kpi-icon purple">
-                            <i class="ph-fill ph-users-three"></i>
-                        </div>
-                        <div class="kpi-details">
-                            <p class="kpi-title">الموردين النشطين</p>
-                            <h3 class="kpi-value" style="color:#c084fc; text-shadow:0 0 10px rgba(192, 132, 252, 0.4);">24 <span class="currency" style="font-size:14px">مورد</span></h3>
-                            <p class="kpi-trend positive"><i class="ph ph-truck"></i> 3 موردين جدد أضيفوا</p>
+                    <div class="kpi-card">
+                        <div class="kpi-icon orange"><i class="ph-fill ph-truck"></i></div>
+                        <div>
+                            <p style="color:var(--text-muted); font-size:12px; margin-bottom:5px;">أكثر مورد تم الشراء منه</p>
+                            <h3 style="font-size:16px; color:white;" id="kpi-top-sup">-</h3>
                         </div>
                     </div>
                 </div>
 
-                <!-- Main Purchases Invoices Grid (Data Table) -->
-                <div class="card inv-main-table-card pur-table-card">
-                    <div class="card-header inv-table-header">
-                        <h2 class="card-title">سجل فواتير المشتريات الأخيرة</h2>
-                        
-                        <div class="pur-toolbar">
-                            <div class="search-box">
-                                <i class="ph ph-magnifying-glass"></i>
-                                <input type="text" placeholder="رقم الفاتورة، اسم المورد..">
-                            </div>
-                            <select class="pur-select-filter">
-                                <option>كل حالات الدفع</option>
-                                <option>مدفوع نقداً</option>
-                                <option>آجل (غير مدفوع)</option>
-                                <option>دفعة مقدمة</option>
-                            </select>
-                            <button class="inv-btn-outline"><i class="ph ph-faders"></i> فلاتر متقدمة</button>
-                            <button class="inv-btn-outline"><i class="ph ph-file-pdf"></i> تصدير للكشف</button>
-                        </div>
-                    </div>
-                    
-                    <div class="table-responsive">
-                        <table class="data-table inv-table pur-data-table">
-                            <thead>
-                                <tr>
-                                    <th>رقم النظام</th>
-                                    <th>رقم فاتورة المورد <i class="ph-fill ph-receipt text-blue"></i></th>
-                                    <th>المورد (الشركة)</th>
-                                    <th>تاريخ الشراء</th>
-                                    <th>الإجمالي (شامل الضريبة)</th>
-                                    <th>حالة الدفع (محاسبياً)</th>
-                                    <th>حالة استلام المخزن</th>
-                                    <th>إجراءات الفاتورة</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <!-- Invoice Item 1 -->
-                                <tr>
-                                    <td><span class="sys-id">PUR-4091</span></td>
-                                    <td><strong>INV-99230</strong></td>
-                                    <td>
-                                        <div class="supplier-cell">
-                                            <div class="sup-avatar">ش</div>
-                                            <span>شركة المراعي للأغذية</span>
-                                        </div>
-                                    </td>
-                                    <td>21 مارس 2026</td>
-                                    <td class="amount-col">12,450.00 ر.س</td>
-                                    <td><span class="pur-status st-unpaid"><i class="ph-fill ph-clock"></i> آجل (لم يسدد)</span></td>
-                                    <td><span class="pur-status st-received"><i class="ph-fill ph-check-circle"></i> مستلمة بالكامل</span></td>
-                                    <td>
-                                        <div class="tbl-actions">
-                                            <button class="action-btn text-green tooltip-btn" title="سداد الفاتورة"><i class="ph ph-hand-coins"></i></button>
-                                            <button class="action-btn text-blue tooltip-btn" title="عرض التفاصيل"><i class="ph ph-eye"></i></button>
-                                            <button class="action-btn tooltip-btn" title="طباعة"><i class="ph ph-printer"></i></button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                
-                                <!-- Invoice Item 2 -->
-                                <tr class="pur-row-paid">
-                                    <td><span class="sys-id">PUR-4090</span></td>
-                                    <td><strong>FM-0042</strong></td>
-                                    <td>
-                                        <div class="supplier-cell">
-                                            <div class="sup-avatar bg-orange">ب</div>
-                                            <span>بن داود للجملة</span>
-                                        </div>
-                                    </td>
-                                    <td>20 مارس 2026</td>
-                                    <td class="amount-col">3,200.50 ر.س</td>
-                                    <td><span class="pur-status st-paid"><i class="ph-fill ph-check-circle"></i> مدفوع (بنك)</span></td>
-                                    <td><span class="pur-status st-received"><i class="ph-fill ph-check-circle"></i> مستلمة بالكامل</span></td>
-                                    <td>
-                                        <div class="tbl-actions">
-                                            <button class="action-btn text-blue tooltip-btn" title="عرض التفاصيل"><i class="ph ph-eye"></i></button>
-                                            <button class="action-btn tooltip-btn" title="طباعة سند الصرف/الفاتورة"><i class="ph ph-printer"></i></button>
-                                        </div>
-                                    </td>
-                                </tr>
-
-                                <!-- Invoice Item 3 -->
-                                <tr>
-                                    <td><span class="sys-id">PUR-4089</span></td>
-                                    <td><strong>WH-71A</strong></td>
-                                    <td>
-                                        <div class="supplier-cell">
-                                            <div class="sup-avatar bg-red">م</div>
-                                            <span>مؤسسة اللحوم الطازجة</span>
-                                        </div>
-                                    </td>
-                                    <td>19 مارس 2026</td>
-                                    <td class="amount-col">24,000.00 ر.س</td>
-                                    <td><span class="pur-status st-partial"><i class="ph-fill ph-chart-pieSlice"></i> دفعة مقدمة</span></td>
-                                    <td><span class="pur-status st-pending"><i class="ph-fill ph-truck"></i> قيد التوصيل للمخزن</span></td>
-                                    <td>
-                                        <div class="tbl-actions">
-                                            <button class="action-btn text-green tooltip-btn" title="دفع المتبقي"><i class="ph ph-hand-coins"></i></button>
-                                            <button class="action-btn text-orange tooltip-btn" title="تحديث حالة الاستلام"><i class="ph ph-package"></i></button>
-                                            <button class="action-btn text-blue tooltip-btn" title="عرض التفاصيل"><i class="ph ph-eye"></i></button>
-                                        </div>
-                                    </td>
-                                </tr>
-
-                                <!-- Invoice Item 4 -->
-                                <tr class="pur-row-paid">
-                                    <td><span class="sys-id">PUR-4085</span></td>
-                                    <td><strong>INV-112</strong></td>
-                                    <td>
-                                        <div class="supplier-cell">
-                                            <div class="sup-avatar bg-teal">ن</div>
-                                            <span>نوفا للمياه الطبيعية</span>
-                                        </div>
-                                    </td>
-                                    <td>17 مارس 2026</td>
-                                    <td class="amount-col">1,850.00 ر.س</td>
-                                    <td><span class="pur-status st-paid"><i class="ph-fill ph-check-circle"></i> مدفوع نقداً</span></td>
-                                    <td><span class="pur-status st-received"><i class="ph-fill ph-check-circle"></i> مستلمة بالكامل</span></td>
-                                    <td>
-                                        <div class="tbl-actions">
-                                            <button class="action-btn text-blue tooltip-btn" title="عرض التفاصيل"><i class="ph ph-eye"></i></button>
-                                            <button class="action-btn tooltip-btn" title="طباعة"><i class="ph ph-printer"></i></button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                
-                                <!-- Invoice Item 5 -->
-                                <tr class="stock-row-danger">
-                                    <td><span class="sys-id">PUR-4070</span></td>
-                                    <td><strong>GTY-900</strong></td>
-                                    <td>
-                                        <div class="supplier-cell">
-                                            <div class="sup-avatar bg-indigo">ت</div>
-                                            <span>تغليف الخليج للبلاستيك</span>
-                                        </div>
-                                    </td>
-                                    <td>01 مارس 2026</td>
-                                    <td class="amount-col">8,400.00 ر.س</td>
-                                    <td><span class="pur-status st-overdue"><i class="ph-fill ph-warning-octagon"></i> متأخر (آجل)</span></td>
-                                    <td><span class="pur-status st-received"><i class="ph-fill ph-check-circle"></i> مستلمة بالكامل</span></td>
-                                    <td>
-                                        <div class="tbl-actions">
-                                            <button class="action-btn text-green tooltip-btn" title="سداد عاجل"><i class="ph ph-hand-coins"></i></button>
-                                            <button class="action-btn text-blue tooltip-btn" title="عرض التفاصيل"><i class="ph ph-eye"></i></button>
-                                            <button class="action-btn tooltip-btn" title="طباعة"><i class="ph ph-printer"></i></button>
-                                        </div>
-                                    </td>
-                                </tr>
-
-                            </tbody>
-                        </table>
+                <div class="filter-bar mt-4">
+                    <div class="filter-left">
+                        <input type="text" id="search-inv" class="input-modern" placeholder="ابحث برقم الفاتورة أو المورد.." style="width:300px">
                     </div>
                 </div>
 
+                <table class="data-table pur-table">
+                    <thead>
+                        <tr>
+                            <th>رقم الفاتورة</th>
+                            <th>المورد (الشركة)</th>
+                            <th>التاريخ</th>
+                            <th>إجمالي الفاتورة</th>
+                            <th>طريقة الدفع</th>
+                            <th>حالة الإدخال للمخزن</th>
+                            <th>إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pur-tbody">
+                        <!-- Filled by JS -->
+                    </tbody>
+                </table>
             </div>
         </main>
     </div>
+
+    <!-- Modal: New Purchase Invoice -->
+    <div class="modal-overlay" id="invoiceModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="ph-fill ph-receipt"></i> إصدار فاتورة مشتريات وتوريد بضاعة</h3>
+                <button class="btn-close-modal"><i class="ph ph-x"></i></button>
+            </div>
+            
+            <form id="form-invoice">
+                <div class="form-group-row">
+                    <div class="form-group">
+                        <label>المورد (الشركة)</label>
+                        <select id="inv-supplier" class="input-modern" required>
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>رقم الفاتورة المرجعي (فاتورة المورد)</label>
+                        <input type="text" id="inv-ref" class="input-modern" placeholder="مثال: فا-99238" required>
+                    </div>
+                    <div class="form-group">
+                        <label>تاريخ الفاتورة</label>
+                        <input type="date" id="inv-date" class="input-modern" required>
+                    </div>
+                </div>
+
+                <div class="form-group-row">
+                    <div class="form-group" style="flex:1;">
+                        <label>طريقة الدفع</label>
+                        <select id="inv-payment" class="input-modern" required>
+                            <option value="cash">نقداً (من الخزينة)</option>
+                            <option value="bank">حوالة بنكية</option>
+                            <option value="credit">آجل (يضاف لمديونية المورد)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label>المستودع الوجهة لإدخال البضاعة</label>
+                        <select id="inv-warehouse" class="input-modern" required>
+                            <option value="main">المستودع الرئيسي</option>
+                            <option value="restaurant">مخزن المطعم الداخلي</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Items Section -->
+                <div class="invoice-items">
+                    <label style="color:var(--text-secondary); font-weight:700; display:block; margin-bottom:12px;">أصناف الفاتورة:</label>
+                    <div id="items-container">
+                        <!-- Rows go here -->
+                    </div>
+                    <button type="button" class="btn-add-row" id="btn-add-row"><i class="ph ph-plus"></i> إضافة صنف للفاتورة</button>
+                </div>
+
+                <!-- Totals -->
+                <div class="invoice-totals">
+                    <div class="totals-box">
+                        <div class="tot-line"><span>الإجمالي الفرعي:</span> <strong id="subtotal">0.00</strong></div>
+                        <div class="tot-line"><span>ضريبة القيمة المضافة (15%):</span> <strong id="tax">0.00</strong></div>
+                        <div class="tot-line grand"><span>الإجمالي النهائي:</span> <span id="grandtotal">0.00 ر.س</span></div>
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:16px; margin-top:24px;">
+                    <button type="button" class="btn-outline btn-close-modal">إلغاء</button>
+                    <button type="submit" class="btn-primary"><i class="ph ph-check-circle"></i> حفظ الفاتورة وإدخال البضاعة</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Hidden Template for Rows -->
+    <template id="item-row-tpl">
+        <div class="item-row">
+            <div class="form-group">
+                <label>الصنف (الخامة)</label>
+                <select class="input-modern item-sku" required></select>
+            </div>
+            <div class="form-group">
+                <label>الكمية المستلمة</label>
+                <input type="number" step="0.01" min="0.01" class="input-modern item-qty" placeholder="0" required>
+            </div>
+            <div class="form-group">
+                <label>سعر شراء الوحدة</label>
+                <input type="number" step="0.01" min="0.01" class="input-modern item-price" placeholder="0.00" required>
+            </div>
+            <div class="form-group">
+                <label>الإجمالي</label>
+                <input type="text" class="input-modern item-row-total" value="0.00" readonly style="background:rgba(0,0,0,0.3); color:var(--accent-green); font-weight:700;">
+            </div>
+            <button type="button" class="btn-remove-row" title="حذف الصنف"><i class="ph ph-trash"></i></button>
+        </div>
+    </template>
+
+    <script src="purchases.js"></script>
 </body>
 </html>
