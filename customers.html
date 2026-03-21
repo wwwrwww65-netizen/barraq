@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سمر حضرموت - إدارة العملاء</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="customers.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <img src="logo.jpg" alt="مطعم سمر حضرموت" class="restaurant-logo">
+                <span>سمر حضرموت <span class="highlight">POS</span></span>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="index.html" class="nav-item"><i class="ph ph-squares-four"></i><span>الرئيسية</span></a>
+                <a href="pos.html" class="nav-item"><i class="ph ph-monitor"></i><span>نقطة البيع (الكاشير)</span></a>
+                <a href="sales.html" class="nav-item"><i class="ph ph-receipt"></i><span>المبيعات</span></a>
+                <a href="menu.html" class="nav-item"><i class="ph ph-list-dashes"></i><span>الأصناف والمنيو</span></a>
+                
+                <div class="nav-divider"></div>
+                <p class="nav-label">العمليات والمخزون</p>
+                <a href="inventory.html" class="nav-item"><i class="ph ph-package"></i><span>المخازن والمستودعات</span></a>
+                <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>المشتريات والموردين</span></a>
+                <a href="#" class="nav-item"><i class="ph ph-arrow-u-down-left"></i><span>المرتجعات</span></a>
+                
+                <div class="nav-divider"></div>
+                <p class="nav-label">الإدارة والتقارير</p>
+                <a href="staff.html" class="nav-item"><i class="ph ph-users"></i><span>الموظفين والعمال</span></a>
+                <a href="customers.html" class="nav-item active"><i class="ph ph-users-three"></i><span>العملاء</span></a>
+                <a href="accounting.html" class="nav-item"><i class="ph ph-chart-line-up"></i><span>النظام المحاسبي</span></a>
+                <a href="#" class="nav-item"><i class="ph ph-gear"></i><span>الإعدادات</span></a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <div class="breadcrumbs pt-0">
+                        <h2>إدارة العملاء</h2>
+                        <span class="separator">/</span>
+                        <span>شاشة ولاء العملاء والسجلات</span>
+                    </div>
+                </div>
+                
+                <div class="header-actions">
+                    <button class="icon-btn notification-btn">
+                        <i class="ph ph-bell"></i>
+                    </button>
+                    <div class="user-profile">
+                        <img src="https://i.pravatar.cc/150?img=11" alt="المدير" class="avatar">
+                        <div class="user-info">
+                            <span class="user-name">سعيد باعمر</span>
+                            <span class="user-role">مدير النظام</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Customers Dashboard -->
+            <div class="customers-container">
+                
+                <!-- KPI Indicators -->
+                <div class="cust-kpi-grid">
+                    <div class="cust-kpi-card">
+                        <div class="cust-kpi-icon"><i class="ph-fill ph-users-three"></i></div>
+                        <div class="cust-kpi-info">
+                            <h4>إجمالي العملاء المسجلين</h4>
+                            <h2>1,245</h2>
+                        </div>
+                    </div>
+                    
+                    <div class="cust-kpi-card">
+                        <div class="cust-kpi-icon"><i class="ph-fill ph-trend-up"></i></div>
+                        <div class="cust-kpi-info">
+                            <h4>أضيفوا هذا الشهر</h4>
+                            <h2>+42</h2>
+                        </div>
+                    </div>
+
+                    <div class="cust-kpi-card">
+                        <div class="cust-kpi-icon"><i class="ph-fill ph-crown"></i></div>
+                        <div class="cust-kpi-info">
+                            <h4>عملاء VIP (الولاء الممتاز)</h4>
+                            <h2>108</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Toolbar -->
+                <div class="cust-toolbar">
+                    <div class="cust-search">
+                        <i class="ph ph-magnifying-glass"></i>
+                        <input type="text" id="search-customer" placeholder="ابحث عن عميل بالإسم، أو رقم الجوال...">
+                    </div>
+
+                    <div class="cust-actions">
+                        <div class="cust-filters">
+                            <button class="cust-filter-btn active" data-filter="all">الكل</button>
+                            <button class="cust-filter-btn" data-filter="vip">عملاء VIP</button>
+                            <button class="cust-filter-btn" data-filter="regular">عاديين</button>
+                        </div>
+                        <button class="btn btn-primary" id="btn-open-cust-modal"><i class="ph ph-user-plus"></i> إضافة عميل جديد</button>
+                    </div>
+                </div>
+
+                <!-- Cards Grid -->
+                <div class="customers-grid">
+                    <!-- ADD NEW Placeholder -->
+                    <div class="customer-card new-cust-card" id="btn-open-cust-modal-card">
+                        <i class="ph ph-user-circle-plus"></i>
+                        <h3>إضافة عميل جديد</h3>
+                        <p>تسجيل بيانات للتواصل وبرامج الولاء</p>
+                    </div>
+
+                    <!-- Customer Card: VIP -->
+                    <div class="customer-card" data-type="vip">
+                        <div class="cust-card-header">
+                            <div class="cust-avatar-box">
+                                <div class="cust-avatar">ع.م</div>
+                                <div class="cust-info">
+                                    <h3>عبدالله بن محمد</h3>
+                                    <p><i class="ph ph-phone"></i> 0551234567</p>
+                                </div>
+                            </div>
+                            <span class="cust-badge vip"><i class="ph-fill ph-crown"></i> VIP</span>
+                        </div>
+                        
+                        <div class="cust-stats">
+                            <div class="stat-item">
+                                <span>إجمالي الطلبات</span>
+                                <strong>42 طلب</strong>
+                            </div>
+                            <div class="stat-item">
+                                <span>نقاط الولاء</span>
+                                <strong class="highlight">1,250 نقطة</strong>
+                            </div>
+                            <div class="stat-item">
+                                <span>آخر زيارة</span>
+                                <strong>الأمس</strong>
+                            </div>
+                        </div>
+
+                        <div class="cust-actions-grid">
+                            <button class="cust-btn call" title="اتصال"><i class="ph ph-phone-call"></i></button>
+                            <button class="cust-btn msg" title="رسالة واتساب"><i class="ph ph-whatsapp-logo"></i></button>
+                            <button class="cust-btn edit" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Customer Card: Regular -->
+                    <div class="customer-card" data-type="regular">
+                        <div class="cust-card-header">
+                            <div class="cust-avatar-box">
+                                <div class="cust-avatar" style="background: linear-gradient(135deg, #10b981, #059669);">س.ع</div>
+                                <div class="cust-info">
+                                    <h3>سالم علي</h3>
+                                    <p><i class="ph ph-phone"></i> 0569876543</p>
+                                </div>
+                            </div>
+                            <span class="cust-badge regular"><i class="ph-fill ph-user"></i> عادي</span>
+                        </div>
+                        
+                        <div class="cust-stats">
+                            <div class="stat-item">
+                                <span>إجمالي الطلبات</span>
+                                <strong>5 طلبات</strong>
+                            </div>
+                            <div class="stat-item">
+                                <span>نقاط الولاء</span>
+                                <strong class="highlight">150 نقطة</strong>
+                            </div>
+                            <div class="stat-item">
+                                <span>آخر زيارة</span>
+                                <strong>قبل أسبوع</strong>
+                            </div>
+                        </div>
+
+                        <div class="cust-actions-grid">
+                            <button class="cust-btn call" title="اتصال"><i class="ph ph-phone-call"></i></button>
+                            <button class="cust-btn msg" title="رسالة واتساب"><i class="ph ph-whatsapp-logo"></i></button>
+                            <button class="cust-btn edit" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Customer Card: VIP 2 -->
+                    <div class="customer-card" data-type="vip">
+                        <div class="cust-card-header">
+                            <div class="cust-avatar-box">
+                                <div class="cust-avatar" style="background: linear-gradient(135deg, #f59e0b, #d97706);">ف.ف</div>
+                                <div class="cust-info">
+                                    <h3>فهد الفهد</h3>
+                                    <p><i class="ph ph-phone"></i> 0541122334</p>
+                                </div>
+                            </div>
+                            <span class="cust-badge vip"><i class="ph-fill ph-crown"></i> VIP</span>
+                        </div>
+                        
+                        <div class="cust-stats">
+                            <div class="stat-item">
+                                <span>إجمالي الطلبات</span>
+                                <strong>85 طلب</strong>
+                            </div>
+                            <div class="stat-item">
+                                <span>نقاط الولاء</span>
+                                <strong class="highlight">3,400 نقطة</strong>
+                            </div>
+                            <div class="stat-item">
+                                <span>آخر زيارة</span>
+                                <strong>اليوم صباحاً</strong>
+                            </div>
+                        </div>
+
+                        <div class="cust-actions-grid">
+                            <button class="cust-btn call" title="اتصال"><i class="ph ph-phone-call"></i></button>
+                            <button class="cust-btn msg" title="رسالة واتساب"><i class="ph ph-whatsapp-logo"></i></button>
+                            <button class="cust-btn edit" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- ADD CUSTOMER MODAL -->
+    <div class="modal-overlay" id="add-customer-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="ph ph-user-plus"></i> إضافة تسجيل عميل جديد</h3>
+                <button class="close-modal" id="btn-close-cust-modal"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="new-customer-form">
+                    <div class="form-group">
+                        <label>الاسم بالكامل <span class="required">*</span></label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-user"></i>
+                            <input type="text" class="input-modern" id="c-name" placeholder="مثال: خالد عبدالله" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>رقم الجوال (للواتساب وبرامج الولاء) <span class="required">*</span></label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-phone"></i>
+                            <input type="tel" class="input-modern" id="c-phone" placeholder="05xxxxxxxx" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>البريد الإلكتروني (اختياري)</label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-envelope-simple"></i>
+                            <input type="email" class="input-modern" id="c-email" placeholder="example@gmail.com">
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top:20px;">
+                        <label>ملاحظات إضافية (مثل: يفضل التوصيل للمنزل)</label>
+                        <input type="text" class="input-modern" id="c-notes" placeholder="...">
+                    </div>
+
+                    <button type="submit" class="btn-save-cust" style="margin-top: 30px;">
+                        <i class="ph ph-check-circle"></i> حفظ العميل للنظام
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="customers.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
