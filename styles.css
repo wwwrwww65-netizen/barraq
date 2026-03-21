@@ -90,10 +90,12 @@ body {
     font-weight: 800;
 }
 
-.logo i {
-    color: var(--accent-blue);
-    font-size: 32px;
-    filter: drop-shadow(0 0 10px var(--accent-blue-glow));
+.restaurant-logo {
+    width: 45px;
+    height: 45px;
+    object-fit: contain;
+    border-radius: 5px;
+    background-color: white; /* since it's a goat logo with a white background potentially, adding white BG helps visibility in dark mode */
 }
 
 .logo .highlight {
