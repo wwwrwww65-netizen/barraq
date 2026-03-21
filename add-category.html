@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سمر حضرموت - إضافة قسم جديد</title>
+    <!-- Base styles -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- Re-use layout styles from add-item.css for form layout consistency -->
+    <link rel="stylesheet" href="add-item.css">
+    <!-- Specialized styles for category -->
+    <link rel="stylesheet" href="add-category.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <img src="logo.jpg" alt="شعار المطعم" class="restaurant-logo">
+                <span>سمر حضرموت <span class="highlight">POS</span></span>
+            </div>
+            
+            <nav class="nav-menu">
+                <div class="nav-group">
+                    <p class="nav-label">الرئيسية</p>
+                    <a href="index.html" class="nav-item"><i class="ph ph-squares-four"></i><span>لوحة القيادة</span></a>
+                    <a href="pos.html" class="nav-item"><i class="ph ph-calculator"></i><span>الكاشير</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">الإدارة</p>
+                    <a href="menu.html" class="nav-item active"><i class="ph ph-pizza"></i><span>الأصناف والمنيو</span></a>
+                    <a href="inventory.html" class="nav-item"><i class="ph ph-package"></i><span>المخازن</span></a>
+                    <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>المشتريات</span></a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content add-item-main">
+            <!-- Header specific to Add Category -->
+            <header class="top-header">
+                <div class="header-left-title breadcrumbs">
+                    <a href="menu.html" class="back-link"><i class="ph ph-arrow-right"></i> إدارة المنيو</a>
+                    <span class="separator">/</span>
+                    <h2>إضافة قسم وفئة جديدة</h2>
+                </div>
+            </header>
+
+            <form class="add-item-form">
+                <div class="add-item-layout">
+                    
+                    <!-- Right Column: Details -->
+                    <div class="form-column">
+                        <div class="form-card">
+                            <h3 class="card-title-small"><i class="ph ph-folder-notch"></i> تفاصيل الفئة / القسم</h3>
+                            
+                            <div class="form-group-row">
+                                <div class="form-group">
+                                    <label>اسم القسم (عربي) <span class="required">*</span></label>
+                                    <input type="text" class="input-modern" placeholder="مثال: مشروبات ساخنة..">
+                                </div>
+                                <div class="form-group">
+                                    <label>اسم القسم (إنجليزي)</label>
+                                    <input type="text" class="input-modern" placeholder="مثال: Hot Drinks.." dir="ltr">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>وصف القسم (يظهر للعملاء في تطبيق الطلبات)</label>
+                                <textarea class="input-modern" rows="4" placeholder="اكتب وصفاً جذاباً لهذا القسم.."></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label>اختيار الأيقونة للقسم <span class="required">*</span></label>
+                                <div class="icon-selector-grid">
+                                    <!-- A selection of predefined icons -->
+                                    <label class="icon-radio">
+                                        <input type="radio" name="cat_icon" checked>
+                                        <div class="icon-box"><i class="ph ph-bowl-food"></i></div>
+                                    </label>
+                                    <label class="icon-radio">
+                                        <input type="radio" name="cat_icon">
+                                        <div class="icon-box"><i class="ph ph-hamburger"></i></div>
+                                    </label>
+                                    <label class="icon-radio">
+                                        <input type="radio" name="cat_icon">
+                                        <div class="icon-box"><i class="ph ph-coffee"></i></div>
+                                    </label>
+                                    <label class="icon-radio">
+                                        <input type="radio" name="cat_icon">
+                                        <div class="icon-box"><i class="ph ph-cookie"></i></div>
+                                    </label>
+                                    <label class="icon-radio">
+                                        <input type="radio" name="cat_icon">
+                                        <div class="icon-box"><i class="ph ph-pizza"></i></div>
+                                    </label>
+                                    <label class="icon-radio">
+                                        <input type="radio" name="cat_icon">
+                                        <div class="icon-box"><i class="ph ph-fish-simple"></i></div>
+                                    </label>
+                                    <label class="icon-radio">
+                                        <input type="radio" name="cat_icon">
+                                        <div class="icon-box"><i class="ph ph-carrot"></i></div>
+                                    </label>
+                                    <label class="icon-radio">
+                                        <input type="radio" name="cat_icon">
+                                        <div class="icon-box"><i class="ph ph-fork-knife"></i></div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="form-group mt-3">
+                                <label>لون التمييز في الكاشير (Color Tag) <span class="required">*</span></label>
+                                <div class="color-picker-grid">
+                                    <label class="color-radio">
+                                        <input type="radio" name="cat_color" value="blue" checked>
+                                        <span class="color-dot" style="background-color: #3b82f6;"></span>
+                                    </label>
+                                    <label class="color-radio">
+                                        <input type="radio" name="cat_color" value="green">
+                                        <span class="color-dot" style="background-color: #10b981;"></span>
+                                    </label>
+                                    <label class="color-radio">
+                                        <input type="radio" name="cat_color" value="orange">
+                                        <span class="color-dot" style="background-color: #f59e0b;"></span>
+                                    </label>
+                                    <label class="color-radio">
+                                        <input type="radio" name="cat_color" value="red">
+                                        <span class="color-dot" style="background-color: #ef4444;"></span>
+                                    </label>
+                                    <label class="color-radio">
+                                        <input type="radio" name="cat_color" value="purple">
+                                        <span class="color-dot" style="background-color: #a78bfa;"></span>
+                                    </label>
+                                    <label class="color-radio">
+                                        <input type="radio" name="cat_color" value="pink">
+                                        <span class="color-dot" style="background-color: #ec4899;"></span>
+                                    </label>
+                                    <label class="color-radio">
+                                        <input type="radio" name="cat_color" value="teal">
+                                        <span class="color-dot" style="background-color: #14b8a6;"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Left Column: Media & Settings -->
+                    <div class="form-column">
+                        <div class="form-card upload-card">
+                            <h3 class="card-title-small"><i class="ph ph-image"></i> صورة خلفية القسم (غلاف المنيو الرقمي)</h3>
+                            <div class="image-upload-zone primary-upload-zone">
+                                <div class="upload-placeholder">
+                                    <div class="upload-icon-pulse"><i class="ph ph-cloud-arrow-up"></i></div>
+                                    <p>انقر لرفع صورة الغلاف الخاصة بالقسم</p>
+                                    <span>يفضل صورة أفقية 1200x400 بكسل للتطبيقات</span>
+                                </div>
+                                <input type="file" accept="image/*" class="hidden-input">
+                            </div>
+                        </div>
+
+                        <div class="form-card">
+                            <h3 class="card-title-small"><i class="ph ph-sliders"></i> خيارات النشر</h3>
+                            
+                            <div class="toggle-setting">
+                                <div class="setting-info">
+                                    <h4>متاح في لوحة الكاشير</h4>
+                                    <p>عرض هذا القسم عند تقديم الطلبات عبر الموظفين.</p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" checked>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <hr class="divider">
+                            <div class="toggle-setting">
+                                <div class="setting-info">
+                                    <h4>متاح في التطبيقات الخاصة والطاولات</h4>
+                                    <p>الظهور في منيو الباركود (QR) وتطبيقات التوصيل.</p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" checked>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <hr class="divider">
+                            <div class="form-group mt-3">
+                                <label>ترتيب العرض (الرقم الأقل يظهر أولاً)</label>
+                                <input type="number" class="input-modern" placeholder="مثال: 1" value="1">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="form-actions-bar">
+                    <a href="menu.html" class="btn-cancel">الرجوع للمنيو</a>
+                    <div class="save-actions">
+                        <button type="button" class="btn-save-draft"><i class="ph ph-archive"></i> حفظ كمسودة</button>
+                        <button type="submit" class="cat-btn-save"><i class="ph ph-folder-plus"></i> إضافة ونشر القسم</button>
+                    </div>
+                </div>
+            </form>
+        </main>
+    </div>
+</body>
+</html>
