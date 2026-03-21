@@ -281,5 +281,92 @@
             </div>
         </main>
     </div>
+
+    <!-- Modals for Inventory Operations -->
+    <div id="itemModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>تعريف منتج مخزني جديد</h3>
+                <button type="button" class="btn-cancel-modal" title="إغلاق"><i class="ph ph-x"></i></button>
+            </div>
+            <form id="form-item" class="modal-body">
+                <div class="form-group-row">
+                    <div class="form-group">
+                        <label>اسم الصنف/الخامة</label>
+                        <input type="text" id="item-name" class="input-modern" required>
+                    </div>
+                    <div class="form-group">
+                        <label>الفئة</label>
+                        <select id="item-cat" class="input-modern" required>
+                            <option value="المواد التموينية">المواد التموينية</option>
+                            <option value="اللحوم والدواجن">اللحوم والدواجن</option>
+                            <option value="الخضروات والفاكهة">الخضروات والفاكهة</option>
+                            <option value="الزيوت والصلصات">الزيوت والصلصات</option>
+                            <option value="البهارات والمكسرات">البهارات</option>
+                            <option value="مواد تعبئة وتغليف">تعبئة وتغليف</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group-row">
+                    <div class="form-group">
+                        <label>وحدة القياس</label>
+                        <input type="text" id="item-unit" class="input-modern" placeholder="كيس، كرتون، كيلو..." required>
+                    </div>
+                    <div class="form-group">
+                        <label>تكلفة الوحدة (ر.س)</label>
+                        <input type="number" step="0.01" id="item-cost" class="input-modern" required>
+                    </div>
+                </div>
+                <div class="form-group-row">
+                    <div class="form-group">
+                        <label>الرصيد الافتتاحي (الكمية)</label>
+                        <input type="number" id="item-qty" class="input-modern" required>
+                    </div>
+                    <div class="form-group">
+                        <label>الحد الأدنى للتنبيه بالنواقص</label>
+                        <input type="number" id="item-min" class="input-modern" required>
+                    </div>
+                </div>
+                <div class="modal-actions mt-3">
+                    <button type="button" class="btn-cancel btn-cancel-modal">إلغاء</button>
+                    <button type="submit" class="btn-save-role bg-blue">حفظ المنتج</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Transactions (In/Out) -->
+    <div id="txModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>حركة مخزنية</h3>
+                <button type="button" class="btn-cancel-modal" title="إغلاق"><i class="ph ph-x"></i></button>
+            </div>
+            <form id="form-tx" class="modal-body">
+                <div class="form-group">
+                    <label>نوع الحركة</label>
+                    <select id="tx-type" class="input-modern" required>
+                        <option value="in">استلام بضاعة (دخول مستودع)</option>
+                        <option value="out">أمر صرف (خروج للتشغيل)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>الصنف المطلوب للحركة</label>
+                    <select id="tx-sku" class="input-modern" required></select>
+                </div>
+                <div class="form-group">
+                    <label>الكمية (بالوحدة المعيارية)</label>
+                    <input type="number" id="tx-qty" min="1" class="input-modern" required>
+                </div>
+                <div class="modal-actions mt-3">
+                    <button type="button" class="btn-cancel btn-cancel-modal">إلغاء</button>
+                    <button type="submit" class="btn-save-role bg-green">تأكيد الحركة المخزنية</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="inventory.js"></script>
 </body>
 </html>

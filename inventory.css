@@ -231,3 +231,64 @@
 }
 .tbl-actions button:hover { background: rgba(255,255,255,0.15); transform: translateY(-2px); }
 .tbl-actions button.text-green:hover { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+
+
+/* ===============================
+   Inventory Modals
+=============================== */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(11, 15, 25, 0.85);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: var(--transition);
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    width: 90%;
+    max-width: 500px;
+    padding: 24px;
+    transform: translateY(20px);
+    transition: var(--transition);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.modal-overlay.active .modal-box {
+    transform: translateY(0);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 16px;
+}
+
+.modal-header h3 { font-size: 18px; font-weight: 700; color: white; }
+.btn-cancel-modal { background: none; border: none; font-size: 20px; color: var(--text-secondary); cursor: pointer; transition: 0.2s;}
+.btn-cancel-modal:hover { color: var(--accent-red); transform: rotate(90deg); }
+
+.modal-body { display: flex; flex-direction: column; gap: 16px; }
+.form-group-row { display: flex; gap: 16px; }
+.form-group-row .form-group { flex: 1; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+.btn-cancel { padding: 10px 20px; background: rgba(255,255,255,0.05); color: white; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); cursor: pointer;}
+.btn-cancel:hover { background: rgba(255,255,255,0.1); }
+.btn-save-role { padding: 10px 20px; color: white; border: none; border-radius: var(--border-radius-sm); cursor: pointer; font-weight: 700;}
+
