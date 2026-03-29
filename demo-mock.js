@@ -89,3 +89,24 @@ if (typeof require === 'undefined') {
     
     console.log('[Demo] Electron/Node Polyfill Initialized!');
 }
+
+// ============== GLOBAL EXPORT TO CSV ==============
+window.exportTableToCSV = function(filename = 'export.csv') {
+    const tables = document.querySelectorAll('table');
+    if (!tables.length) { alert('لا يوجد جدول بيانات في هذه الصفحة!'); return; }
+    const table = tables[0];
+    const rows = table.querySelectorAll('tr');
+    const csv = [];
+    rows.forEach(row => {
+        const cols = row.querySelectorAll('td, th');
+        const rowData = [];
+        cols.forEach(col => rowData.push('"' + col.innerText.trim().replace(/"/g, '""') + '"'));
+        csv.push(rowData.join(','));
+    });
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+};
