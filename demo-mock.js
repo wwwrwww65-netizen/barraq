@@ -110,3 +110,52 @@ window.exportTableToCSV = function(filename = 'export.csv') {
     link.download = filename;
     link.click();
 };
+
+// ============== GLOBAL PRINT & PDF DESIGN ENGINE ==============
+window.addEventListener('beforeprint', () => {
+    let header = document.getElementById('global-print-header');
+    if (!header) {
+        header = document.createElement('div');
+        header.id = 'global-print-header';
+        const main = document.querySelector('.main-content') || document.body;
+        if(main.firstChild) main.insertBefore(header, main.firstChild);
+        else main.appendChild(header);
+    }
+    
+    const sysRaw = localStorage.getItem('restaurant_settings');
+    const sys = sysRaw ? JSON.parse(sysRaw) : {};
+    const logoSrc = (sys.logo && sys.logo !== '1111.png') ? sys.logo : '1111.png';
+    
+    // Try to find a meaningful page title, fallback to page title tag
+    let pageTitle = document.title;
+    const h2 = document.querySelector('.top-header h2') || document.querySelector('.page-title h1') || document.querySelector('h2');
+    if(h2) pageTitle = h2.innerText;
+    
+    const dateStr = new Date().toLocaleString('ar-SA', { hour12: false });
+    
+    header.innerHTML = `
+        <div style="width:100%; display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #0f172a !important; padding-bottom:20px; margin-bottom:25px; background:#fff !important;">
+            
+            <div style="text-align:right; width:33%;">
+                <h1 style="margin:0; font-size:26px; font-weight:900; color:#0f172a !important;">${sys.name || 'هـــش HASH'}</h1>
+                <p style="margin:5px 0 0; font-size:15px; font-weight:600; color:#475569 !important;">الفرع: ${sys.branch || 'الرئيسي'}</p>
+                <p style="margin:2px 0 0; font-size:15px; font-weight:600; color:#475569 !important;">للتواصل: ${sys.phone || '---'}</p>
+            </div>
+            
+            <div style="text-align:center; width:33%; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                <img src="${logoSrc}" style="height:75px; object-fit:contain; margin-bottom:12px;" onerror="this.src='placeholder.svg'">
+                <div style="background:#f8fafc !important; padding:6px 20px; border:2px solid #cbd5e1 !important; border-radius:25px;">
+                    <span style="font-size:17px; font-weight:800; color:#0f172a !important;">${pageTitle}</span>
+                </div>
+            </div>
+            
+            <div style="text-align:left; width:33%;">
+                <div style="border:2px solid #cbd5e1 !important; padding:12px 16px; border-radius:8px; display:inline-block; text-align:right; background:#f8fafc !important;">
+                    <p style="margin:0 0 6px; font-size:13px; font-weight:800; color:#475569 !important;">تاريخ التصدير / الطباعة:</p>
+                    <p style="margin:0; font-weight:900; font-size:15px; color:#0f172a !important;" dir="ltr">${dateStr}</p>
+                </div>
+            </div>
+            
+        </div>
+    `;
+});
