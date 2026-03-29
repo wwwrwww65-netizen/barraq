@@ -455,8 +455,14 @@ ipcMain.on('wa-send-message', async (event, data) => {
     const number = data.number; // e.g., '+966539774699'
     const text = data.text;
     
-    // Formatting number for WhatsApp
+    // Formatting number for WhatsApp (Strip + and spaces)
     let chatId = number.replace(/[^0-9]/g, '');
+    
+    // Auto-fix local Saudi numbers (starts with 05) to 9665
+    if (chatId.startsWith('05')) {
+        chatId = '966' + chatId.substring(1);
+    }
+    
     if(!chatId.endsWith('@c.us')) chatId += '@c.us';
 
     // Verify number is registered and get exact serialized ID (Crucial for new chats)
