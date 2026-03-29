@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <script src="demo-mock.js"></script>
@@ -176,7 +176,7 @@
                                 </p>
                                 
                                 <div style="flex:1; background: var(--bg-card); padding:20px; border-radius:12px; border:1px solid var(--border-color); text-align:center;">
-                                    <div id="wa-qr-container" style="background:#fff; width:200px; height:200px; margin:0 auto 15px auto; border-radius:12px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                                    <div id="wa-qr-container" style="background:transparent; min-width:240px; min-height:240px; width:auto; height:auto; margin:0 auto 15px auto; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:visible; padding:6px;">
                                         <i class="ph ph-qr-code" style="font-size:48px; color:#ccc;"></i>
                                     </div>
                                     <h4 id="wa-status-text" style="color:var(--text-muted); margin-bottom:15px; font-size:14px;">غير متصل (الخدمة متوقفة)</h4>
@@ -197,11 +197,24 @@
                                 <div class="form-group mt-3" style="background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); margin-bottom:15px;">
                                     <div style="display:flex; justify-content:space-between; align-items:center;">
                                         <div>
-                                            <h4 style="margin:0; font-size:15px; color:white;">إرسال سندات السلف والرواتب في واتساب الإدارة</h4>
-                                            <span style="font-size:13px; color:var(--text-secondary);">يرسل السند بصيغة نصية مباشرة لرقم الإدارة عند كل سلفة تُسجل.</span>
+                                            <h4 style="margin:0; font-size:15px; color:white;">إرسال سندات السلف والرواتب للموظفين عبر واتساب</h4>
+                                            <span style="font-size:13px; color:var(--text-secondary);">إرسال صورة السند تلقائياً إلى واتساب الموظف المستفيد.</span>
                                         </div>
                                         <label class="switch">
                                             <input type="checkbox" id="set-wa-loans" checked>
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="form-group mt-3" style="background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); margin-bottom:15px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <div>
+                                            <h4 style="margin:0; font-size:15px; color:white;">إرسال سندات المصروفات للإدارة عبر واتساب</h4>
+                                            <span style="font-size:13px; color:var(--text-secondary);">إرسال صورة سند عمليات المصروفات وسحبيات المطعم لرقم الإدارة أعلاه.</span>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox" id="set-wa-expenses" checked>
                                             <span class="slider round"></span>
                                         </label>
                                     </div>

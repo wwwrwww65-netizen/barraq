@@ -731,6 +731,28 @@ window.generateVoucher = async function(typeStr) {
         if(document.getElementById('view-vouchers').style.display==='block') renderVouchers();
 
         alert('✅ تم قيد الحركة المالية بنجاح في النظام المحاسبي.');
+
+        // send WhatsApp message automatically to employee if enabled
+        try {
+            const waRaw = localStorage.getItem('wa_settings');
+            if (waRaw) {
+                const waSettings = JSON.parse(waRaw);
+                if (waSettings.loans) {
+                    const empObj = db.employees?.find(e => e.name === employee);
+                    if (empObj && empObj.phone) {
+                        let phoneNum = String(empObj.phone).replace(/^0/, '+966');
+                        const captionMsg = `مرحباً ${empObj.name}،\nتم إصدار سند لعملية ( ${typeStr} ) بقيمة ${amount} ر.س.\nالبيان: ${reason}`;
+                        const { ipcRenderer } = require('electron');
+                        ipcRenderer.send('wa-send-message', {
+                            number: phoneNum,
+                            text: captionMsg,
+                            image: imgData
+                        });
+                        console.log('Sending WA directly to employee:', phoneNum);
+                    }
+                }
+            }
+        } catch(e) { console.error('Error auto-sending WA voucher', e); }
     } catch(err) {
         console.error('Voucher Error', err);
         alert('حدث خطأ أثناء التوليد.');

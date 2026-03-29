@@ -239,6 +239,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if(waOpts.admin) inputWaAdmin.value = waOpts.admin;
         if(waOpts.loans !== undefined) inputWaLoans.checked = waOpts.loans;
         if(waOpts.reports !== undefined) inputWaReports.checked = waOpts.reports;
+        const setExpenses = document.getElementById('set-wa-expenses');
+        if(setExpenses && waOpts.expenses !== undefined) setExpenses.checked = waOpts.expenses;
     }
 
     try {
@@ -271,14 +273,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // On page load: check current status instantly without re-initializing
-        const wasWaConnected = localStorage.getItem('wa_connected') === 'true';
-        if (wasWaConnected) {
-            setWaStatus('loading');
-            ipcRenderer.send('wa-check-status'); // Fast check - no Chromium launch
-        } else {
-            setWaStatus('disconnected');
-        }
+        // Always check current WA status on page load (QR may already be ready in background)
+        setWaStatus('loading');
+        ipcRenderer.send('wa-check-status');
 
         // Handle immediate status response (already running)
         ipcRenderer.on('wa-still-loading', () => {
@@ -297,11 +294,11 @@ document.addEventListener('DOMContentLoaded', () => {
             btnWaLink.innerHTML = '<i class="ph ph-qr-code"></i> انتظار المسح...';
             try {
                 const qrImageBase64 = await QRCode.toDataURL(qrString, {
-                    width: 220,
-                    margin: 2,
+                    width: 250,
+                    margin: 3,
                     color: { dark: '#000000', light: '#ffffff' }
                 });
-                waQrContainer.innerHTML = `<img src="${qrImageBase64}" style="width:220px;height:220px;border-radius:12px;border:4px solid #10b981;box-shadow:0 0 20px rgba(16,185,129,0.4);"><br><small style="color:var(--text-muted);font-size:12px;">افتح واتساب > الأجهزة المرتبطة > ربط جهاز</small>`;
+                waQrContainer.innerHTML = `<img src="${qrImageBase64}" style="width:240px;height:240px;border-radius:12px;border:3px solid #10b981;box-shadow:0 0 20px rgba(16,185,129,0.4);background:#fff;display:block;"><br><small style="color:var(--text-muted);font-size:12px;margin-top:6px;display:block;">افتح واتساب &gt; الأجهزة المرتبطة &gt; ربط جهاز</small>`;
             } catch(e) {
                 waQrContainer.innerHTML = '<span style="color:red;font-size:12px;">فشل توليد رمز QR</span>';
             }
@@ -343,6 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const waData = {
             admin: inputWaAdmin.value,
             loans: inputWaLoans.checked,
+            expenses: document.getElementById('set-wa-expenses') ? document.getElementById('set-wa-expenses').checked : true,
             reports: inputWaReports.checked
         };
         localStorage.setItem('wa_settings', JSON.stringify(waData));

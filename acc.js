@@ -231,6 +231,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             modal.classList.remove('active');
             renderExp();
+
+            // send WhatsApp message automatically to admin for expenses
+            try {
+                const waRaw = localStorage.getItem('wa_settings');
+                if (waRaw) {
+                    const waSettings = JSON.parse(waRaw);
+                    if (waSettings.expenses && waSettings.admin) {
+                        const adminPhone = String(waSettings.admin);
+                        const captionMsg = `(سند منصرف - العمليات)\nتم إثبات مصروف جديد في النظام:\n\n*القسم:* ${newExp.cat}\n*البيان:* ${newExp.desc}\n*المبلغ:* ${newExp.amount.toLocaleString('en-US')} ر.س\n*طريقة الدفع:* ${newExp.pMethod === 'cash' ? 'كاش نقدي' : 'حوالة بنكية'}`;
+                        const { ipcRenderer } = require('electron');
+                        ipcRenderer.send('wa-send-message', {
+                            number: adminPhone,
+                            text: captionMsg,
+                            image: null
+                        });
+                        console.log('Sending Expense WA to admin:', adminPhone);
+                    }
+                }
+            } catch(sqError) { console.error('Error auto-sending Expense WA', sqError); }
         });
 
         document.getElementById('search-exp')?.addEventListener('input', renderExp);
