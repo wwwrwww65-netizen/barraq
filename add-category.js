@@ -1,15 +1,18 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    const { ipcRenderer } = require('electron');
 
     const urlParams = new URLSearchParams(window.location.search);
     const editId = urlParams.get('edit');
     let editingCategory = null;
 
-    if(editId) {
+    let allCats = await ipcRenderer.invoke('db-get-categories') || [];
+    if(allCats.length === 0) {
         const catsStr = localStorage.getItem('pos_categories');
-        if(catsStr) {
-            const allCats = JSON.parse(catsStr);
-            editingCategory = allCats.find(c => c.id === editId);
-        }
+        if(catsStr) allCats = JSON.parse(catsStr);
+    }
+
+    if(editId) {
+        editingCategory = allCats.find(c => c.id === editId);
     }
 
     if(editingCategory) {
@@ -59,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.querySelector('.add-item-form');
     if(!form) return;
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const inputs = document.querySelectorAll('.input-modern');
@@ -112,16 +115,20 @@ document.addEventListener('DOMContentLoaded', () => {
             createdAt: editingCategory ? editingCategory.createdAt : Date.now()
         };
 
+        try {
+            await ipcRenderer.invoke('db-save-category', newCat);
+        } catch(err) {
+            console.error('Failed to save category via IPC:', err);
+        }
+
         const catsStr = localStorage.getItem('pos_categories');
         let cats = catsStr ? JSON.parse(catsStr) : [];
-        
         if (editingCategory) {
             const index = cats.findIndex(c => c.id === editId);
             if(index > -1) cats[index] = newCat;
         } else {
             cats.push(newCat);
         }
-        
         localStorage.setItem('pos_categories', JSON.stringify(cats));
 
         // UI Feedback

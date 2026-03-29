@@ -3,24 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سمر حضرموت - نظام الكاشير</title>
+    <title>هـــش HASH - نظام الكاشير</title>
     <link rel="stylesheet" href="styles.css">
     <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
+    
+    <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
     <!-- Chart.js for beautiful charts -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="node_modules/chart.js/dist/chart.umd.js"></script>
 </head>
 <body class="dark-theme">
     <div class="app-container">
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo">
-                <img src="logo.jpg" alt="شعار سمر حضرموت" class="restaurant-logo">
-                <span>سمر حضرموت <span class="highlight">POS</span></span>
+                <img src="1111.png" alt="شعار هـــش HASH" class="restaurant-logo">
+                <span>هـــش HASH <span class="highlight">POS</span></span>
             </div>
             
             <nav class="nav-menu">
@@ -81,7 +81,7 @@
                         <span class="badge">3</span>
                     </button>
                     <div class="user-profile">
-                        <img src="https://i.pravatar.cc/150?img=32" alt="صورة المستخدم" class="avatar">
+                        <img src="avatar.svg" alt="صورة المستخدم" class="avatar">
                         <div class="user-info">
                             <span class="user-name">أحمد الكاشير</span>
                             <span class="user-role">مدير الفرع</span>
@@ -114,7 +114,7 @@
                             <a href="returns.html" class="btn btn-outline" style="border-color: #a78bfa; color: #a78bfa; text-decoration: none;"><i class="ph ph-arrow-u-up-left"></i> المرتجعات</a>
                             <a href="acc-expenses.html" class="btn btn-outline" style="text-decoration: none; border-color:var(--text-secondary); color:var(--text-secondary);"><i class="ph ph-hand-coins"></i> مصروف</a>
                             <a href="pos.html" class="btn btn-primary" style="text-decoration: none;"><i class="ph ph-plus-circle"></i> طلب جديد</a>
-                            <button class="btn btn-danger" onclick="alert('سيتم فتح شاشة تقفيل الوردية وجرد الصندوق ومطابقة الكاش في التحديث القادم!')"><i class="ph ph-lock-key"></i> إغلاق الوردية</button>
+                            <button class="btn btn-danger" onclick="openShiftReport()"><i class="ph ph-lock-key"></i> إغلاق الوردية</button>
                         </div>
                     </div>
                 </div>
@@ -199,7 +199,7 @@
                         </div>
                         <div class="items-list">
                             <div class="item-row">
-                                <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80" alt="برجر" class="item-img">
+                                <img src="placeholder.svg" alt="برجر" class="item-img">
                                 <div class="item-info">
                                     <h4>برجر لحم كلاسيك</h4>
                                     <p>وجبات رئيسية</p>
@@ -210,7 +210,7 @@
                                 </div>
                             </div>
                             <div class="item-row">
-                                <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80" alt="بيتزا" class="item-img">
+                                <img src="placeholder.svg" alt="بيتزا" class="item-img">
                                 <div class="item-info">
                                     <h4>بيتزا مارغريتا</h4>
                                     <p>بيتزا</p>
@@ -221,7 +221,7 @@
                                 </div>
                             </div>
                             <div class="item-row">
-                                <img src="https://images.unsplash.com/photo-1544025162-8315ea07edca?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80" alt="سلطة" class="item-img">
+                                <img src="placeholder.svg" alt="سلطة" class="item-img">
                                 <div class="item-info">
                                     <h4>سلطة سيزر</h4>
                                     <p>مقبلات</p>
@@ -232,7 +232,7 @@
                                 </div>
                             </div>
                             <div class="item-row">
-                                <img src="https://images.unsplash.com/photo-1572490122747-3968b75ee69c?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80" alt="عصير" class="item-img">
+                                <img src="placeholder.svg" alt="عصير" class="item-img">
                                 <div class="item-info">
                                     <h4>عصير برتقال طازج</h4>
                                     <p>مشروبات</p>
@@ -306,7 +306,7 @@
                         </div>
                         <div class="delivery-list">
                             <div class="delivery-item">
-                                <img src="https://i.pravatar.cc/150?img=11" alt="مندوب 1" class="driver-img">
+                                <img src="avatar.svg" alt="مندوب 1" class="driver-img">
                                 <div class="driver-info">
                                     <h4>خالد السعيد</h4>
                                     <p>طريق الملك عبدالله (طلب #1044)</p>
@@ -314,7 +314,7 @@
                                 <span class="status out">في الطريق</span>
                             </div>
                             <div class="delivery-item">
-                                <img src="https://i.pravatar.cc/150?img=15" alt="مندوب 2" class="driver-img">
+                                <img src="avatar.svg" alt="مندوب 2" class="driver-img">
                                 <div class="driver-info">
                                     <h4>عبدالله سالم</h4>
                                     <p>المطعم المباشر</p>
@@ -360,6 +360,153 @@
                 </div>
             </div>
         </main>
+        
+        <!-- Modal إغلاق الوردية -->
+        <div id="shiftReportModal" class="shift-modal" style="display:none;">
+            <div class="shift-modal-content">
+                <div class="shift-modal-header">
+                    <h2><i class="ph ph-lock-key"></i> معاينة إغلاق الوردية</h2>
+                    <button class="close-btn" onclick="closeShiftReport()"><i class="ph ph-x"></i></button>
+                </div>
+                
+                <div id="shift-print-area" class="shift-receipt">
+                    <!-- Header -->
+                    <div class="receipt-header">
+                        <img src="1111.png" alt="الشعار" class="restaurant-logo" id="shift-logo">
+                        <h3 id="shift-res-name">هش HASH</h3>
+                        <p>تقرير إغلاق الوردية (Z-Report)</p>
+                        <div class="receipt-datetime" id="shift-datetime"></div>
+                    </div>
+                    
+                    <div class="receipt-divider"></div>
+                    
+                    <div class="receipt-row">
+                        <span>إجمالي الكاش:</span>
+                        <span id="shift-cash">0.00 ر.س</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span>إجمالي الشبكة:</span>
+                        <span id="shift-network">0.00 ر.س</span>
+                    </div>
+                    <div class="receipt-row bold highlight">
+                        <span>إجمال دخل اليوم:</span>
+                        <span id="shift-total-income">0.00 ر.س</span>
+                    </div>
+                    
+                    <div class="receipt-divider"></div>
+                    
+                    <div class="receipt-row">
+                        <span>إجمالي الضريبة (مشمولة):</span>
+                        <span id="shift-tax">0.00 ر.س</span>
+                    </div>
+                    
+                    <div class="receipt-divider"></div>
+
+                    <div class="receipt-row">
+                        <span>إجمالي المرتجعات:</span>
+                        <span id="shift-returns" class="negative">0.00 ر.س</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span>إجمالي المصروفات:</span>
+                        <span id="shift-expenses" class="negative">0.00 ر.س</span>
+                    </div>
+                    <div class="receipt-row bold highlight-drawer">
+                        <span>إجمالي رصيد الدرج الحالي:</span>
+                        <span id="shift-drawer">0.00 ر.س</span>
+                    </div>
+
+                    <div class="receipt-divider"></div>
+                    
+                    <div class="receipt-row bold grand-total">
+                        <span>إجمالي المبيعات (الكل):</span>
+                        <span id="shift-grand-total">0.00 ر.س</span>
+                    </div>
+
+                    <div class="receipt-footer" id="shift-footer">
+                        تم إغلاق الوردية وتمت المطابقة شكراً لجهودكم!
+                    </div>
+                </div>
+                
+                <div class="shift-modal-actions">
+                    <button class="btn btn-outline" style="border-color:var(--border-color); color:var(--text-primary);" onclick="closeShiftReport()">رجوع</button>
+                    <button class="btn btn-primary" style="background:#10b981; border:none; color:white;" onclick="printShiftReport()"><i class="ph ph-printer"></i> طباعة الفاتورة</button>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            /* Shift Modal Styles */
+            .shift-modal {
+                position: fixed; inset: 0; z-index: 99999;
+                background: rgba(0,0,0,0.8);
+                backdrop-filter: blur(8px);
+                display: flex; align-items: center; justify-content: center;
+            }
+            .shift-modal-content {
+                background: var(--bg-card);
+                border: 1px solid var(--border-color);
+                border-radius: 16px;
+                width: 420px;
+                max-width: 95%;
+                display: flex; flex-direction: column;
+                box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+                overflow: hidden;
+            }
+            .shift-modal-header {
+                background: rgba(255,255,255,0.02);
+                padding: 16px 20px;
+                border-bottom: 1px solid var(--border-color);
+                display: flex; justify-content: space-between; align-items: center;
+            }
+            .shift-modal-header h2 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin: 0; color: #fff;}
+            .shift-modal-header .close-btn { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
+            .shift-modal-header .close-btn:hover { color: var(--accent-red); }
+
+            /* Receipt Area */
+            .shift-receipt {
+                padding: 24px;
+                background: #fff;
+                color: #000;
+                max-height: 60vh;
+                overflow-y: auto;
+                font-family: inherit; /* will use cairo */
+                font-size: 14px;
+            }
+            .shift-receipt .receipt-header { text-align: center; margin-bottom: 15px; }
+            .shift-receipt .receipt-header img { width: 60px; height: 60px; object-fit: contain; filter: grayscale(100%); margin-bottom: 5px; }
+            .shift-receipt .receipt-header h3 { margin: 0; font-size: 18px; font-weight: 800; font-family: 'Cairo', sans-serif;}
+            .shift-receipt .receipt-header p { margin: 2px 0; font-size: 13px; color: #444; font-weight: 700;}
+            .shift-receipt .receipt-datetime { margin-top: 5px; font-size: 12px; color: #666; border-top: 1px dashed #ccc; padding-top: 5px; }
+
+            .shift-receipt .receipt-divider { border-top: 1px dashed #000; margin: 12px 0; }
+
+            .shift-receipt .receipt-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600; font-size: 13px;}
+            .shift-receipt .receipt-row.bold { font-weight: 800; font-size: 15px; }
+            .shift-receipt .receipt-row.highlight { background: #f0f0f0; padding: 6px; border-radius: 4px; margin-top: 8px; }
+            .shift-receipt .receipt-row.highlight-drawer { background: #e0eee0; padding: 8px; border: 1px dashed #000; margin-top: 8px; border-radius: 4px;}
+            .shift-receipt .receipt-row.grand-total { background: #000; color: #fff; padding: 10px; border-radius: 4px; font-size: 16px; margin-top: 15px; }
+            .shift-receipt .receipt-row .negative { color: #d00; }
+
+            .shift-receipt .receipt-footer { text-align: center; font-size: 12px; font-weight:700; margin-top: 20px;}
+
+            .shift-modal-actions {
+                padding: 16px 20px;
+                background: rgba(255,255,255,0.02);
+                border-top: 1px solid var(--border-color);
+                display: flex; gap: 10px;
+            }
+            .shift-modal-actions button { flex: 1; padding: 12px; font-size: 14px; display: flex; justify-content: center; gap: 8px; cursor:pointer;}
+
+            /* Print Styles */
+            @media print {
+                body * { visibility: hidden; }
+                .shift-modal { position: absolute; left: 0; top: 0; background: transparent !important; display:block;}
+                .shift-modal-content { box-shadow:none; border:none; border-radius:0; width: 80mm; max-width:80mm; display:block;}
+                .shift-modal-header, .shift-modal-actions { display: none !important; }
+                #shift-print-area, #shift-print-area * { visibility: visible; }
+                #shift-print-area { position: absolute; left: 0; top: 0; width: 80mm; padding: 0; box-shadow: none; max-height: none; overflow: visible;}
+            }
+        </style>
     <!-- Scripts -->
     <script src="script.js"></script>
     <!-- Live Dashboard Injector -->

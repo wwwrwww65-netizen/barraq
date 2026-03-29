@@ -3,28 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سمر حضرموت - الخزينة والبنوك</title>
+    <title>هـــش HASH - الخزينة والبنوك</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="acc.css">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
+    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
 </head>
 <body class="dark-theme">
     <div class="app-container">
         <!-- Sidebar Navigation -->
         <aside class="sidebar accounting-sidebar">
             <div class="logo">
-                <img src="logo.jpg" alt="شعار المحاسبة" class="restaurant-logo" onerror="this.src='https://placehold.co/100x100'">
-                <span>سمر حضرموت <span class="highlight">ERP</span></span>
+                <img src="1111.png" alt="شعار المحاسبة" class="restaurant-logo" onerror="this.src='placeholder.svg'">
+                <span>هـــش HASH <span class="highlight">ERP</span></span>
             </div>
-            
             <nav class="nav-menu">
                 <div class="nav-group">
                     <p class="nav-label">اللوحة المالية</p>
                     <a href="accounting.html" class="nav-item"><i class="ph ph-presentation-chart"></i><span>نظرة عامة (الرئيسية)</span></a>
-                    <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>العودة لإدارة الكاشير والمطعم</span></a>
+                    <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>العودة للكاشير والمطعم</span></a>
                 </div>
-
                 <div class="nav-group">
                     <p class="nav-label">الحسابات العامة</p>
                     <a href="acc-tree.html" class="nav-item"><i class="ph ph-book-bookmark"></i><span>شجرة الحسابات والدليل</span></a>
@@ -32,16 +30,14 @@
                     <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>إجمالي المشتريات (الموردين)</span></a>
                     <a href="acc-banks.html" class="nav-item active"><i class="ph ph-bank"></i><span>الخزينة والبنوك</span></a>
                 </div>
-
                 <div class="nav-group">
-                    <p class="nav-label">شؤون الموظفين والعمال</p>
+                    <p class="nav-label">شؤون الموظفين</p>
                     <a href="staff.html" class="nav-item"><i class="ph ph-users-three"></i><span>إدارة الموظفين والملفات</span></a>
                     <a href="staff.html" class="nav-item"><i class="ph ph-money"></i><span>مسيرات الرواتب والسلف</span></a>
                 </div>
-
                 <div class="nav-group">
                     <p class="nav-label">التقارير والكشوفات</p>
-                    <a href="acc-reports.html" class="nav-item"><i class="ph ph-chart-line-up"></i><span>قائمة الدخل و كشف الحساب</span></a>
+                    <a href="acc-reports.html" class="nav-item"><i class="ph ph-chart-line-up"></i><span>قائمة الدخل وكشف الحساب</span></a>
                     <a href="acc-reports.html" class="nav-item"><i class="ph ph-file-pdf"></i><span>الميزانية العمومية والمركز</span></a>
                 </div>
             </nav>
@@ -59,35 +55,48 @@
             </header>
 
             <div style="padding: 30px;">
+                <!-- KPI الإجمالي -->
                 <div class="acc-kpis">
                     <div class="kpi-card blue">
                         <div class="kpi-title" style="color:white;"><i class="ph-fill ph-vault text-blue"></i><span>إجمالي السيولة المتاحة</span></div>
-                        <h3 style="font-size:28px; color:white;" id="total-liquidity">0.00 <span style="font-size:14px;">ر.س</span></h3>
+                        <h3 style="font-size:28px; color:white;" id="total-liquidity">جاري الحساب... <span style="font-size:14px;">ر.س</span></h3>
                     </div>
                 </div>
 
+                <!-- صندوق الخزينة والبنك -->
                 <div class="acc-dashboard-grid" style="grid-template-columns: 1fr 1fr;">
                     <div class="acc-panel">
                         <div class="acc-panel-title">
                             <span style="color:var(--accent-green)"><i class="ph-fill ph-money"></i> النقد في الصندوق (الخزينة)</span>
                         </div>
-                        <h2 style="font-size:36px; margin-bottom:10px; color:white;" id="cash-balance-box">0.00 ر.س</h2>
-                        <p style="color:var(--text-muted); font-size:14px;">يتم تغذيته آلياً من مبيعات "كاش" في الكاشير.</p>
+                        <h2 style="font-size:36px; margin-bottom:10px; color:white;" id="cash-balance-box">جاري...</h2>
+                        <p style="color:var(--text-muted); font-size:14px;">يتم تغذيته آلياً من مبيعات "كاش" ناقص المصروفات النقدية.</p>
                         <hr style="border-color:var(--border-color); margin:20px 0;">
+                        <div style="display:grid; gap:8px; font-size:13px; color:var(--text-secondary); margin-bottom:16px;" id="cash-breakdown">
+                            <div style="display:flex; justify-content:space-between;"><span>+ مبيعات كاش:</span><span id="cb-sales">-</span></div>
+                            <div style="display:flex; justify-content:space-between;"><span>- مشتريات كاش:</span><span id="cb-pur" style="color:var(--accent-red)">-</span></div>
+                            <div style="display:flex; justify-content:space-between;"><span>- مصروفات كاش:</span><span id="cb-exp" style="color:var(--accent-red)">-</span></div>
+                        </div>
                         <button class="btn btn-outline" style="width:100%" onclick="openBankModal('deposit_cash')"><i class="ph ph-download-simple"></i> إيداع نقدي إضافي</button>
                     </div>
 
                     <div class="acc-panel">
                         <div class="acc-panel-title">
-                            <span style="color:var(--accent-blue)"><i class="ph-fill ph-bank"></i> أرصدة البنك (حسابات شبكة/فيزا/تحويل)</span>
+                            <span style="color:var(--accent-blue)"><i class="ph-fill ph-bank"></i> أرصدة البنك (شبكة/مدى/فيزا/تحويل)</span>
                         </div>
-                        <h2 style="font-size:36px; margin-bottom:10px; color:white;" id="bank-balance-box">0.00 ر.س</h2>
-                        <p style="color:var(--text-muted); font-size:14px;">يتم تغذيته آلياً من مبيعات "شبكة/مدى/فيزا".</p>
+                        <h2 style="font-size:36px; margin-bottom:10px; color:white;" id="bank-balance-box">جاري...</h2>
+                        <p style="color:var(--text-muted); font-size:14px;">يتم تغذيته آلياً من مبيعات "شبكة/مدى/فيزا" ناقص المدفوعات البنكية.</p>
                         <hr style="border-color:var(--border-color); margin:20px 0;">
+                        <div style="display:grid; gap:8px; font-size:13px; color:var(--text-secondary); margin-bottom:16px;" id="bank-breakdown">
+                            <div style="display:flex; justify-content:space-between;"><span>+ مبيعات شبكة/تحويل:</span><span id="bb-sales">-</span></div>
+                            <div style="display:flex; justify-content:space-between;"><span>- مشتريات بنكية:</span><span id="bb-pur" style="color:var(--accent-red)">-</span></div>
+                            <div style="display:flex; justify-content:space-between;"><span>- مصروفات بنكية:</span><span id="bb-exp" style="color:var(--accent-red)">-</span></div>
+                        </div>
                         <button class="btn btn-outline" style="width:100%" onclick="openBankModal('deposit_bank')"><i class="ph ph-upload-simple"></i> تغذية حساب البنك</button>
                     </div>
                 </div>
 
+                <!-- جدول الحركات اليدوية -->
                 <div class="acc-panel" style="margin-top:24px;">
                     <div class="acc-panel-title">
                         <span>أحدث الحركات النقدية (التحويلات والإيداعات اليدوية)</span>
@@ -102,7 +111,7 @@
                             </tr>
                         </thead>
                         <tbody id="bank-trx-body">
-                            <!-- Filled by acc.js -->
+                            <tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-muted);">جاري التحميل...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -115,10 +124,8 @@
         <div class="modal-box" style="max-width:450px;">
             <button class="btn-close-modal" type="button" onclick="document.getElementById('bank-modal').classList.remove('active')"><i class="ph ph-x"></i></button>
             <h3 id="bm-title" style="margin-bottom:24px; color:white; display:flex; align-items:center; gap:8px;"><i class="ph ph-bank"></i> معاملة مالية</h3>
-            
             <form id="form-bank-trx">
                 <input type="hidden" id="bm-type">
-                
                 <div class="acc-form-group" id="bm-transfer-dir-group" style="display:none;">
                     <label>اتجاه التحويل <span class="required">*</span></label>
                     <select id="bm-transfer-dir" class="input-acc">
@@ -126,17 +133,14 @@
                         <option value="transfer_to_cash">من البنك ⬅ إلى الخزينة (النقد)</option>
                     </select>
                 </div>
-
                 <div class="acc-form-group">
                     <label>المبلغ (ر.س) <span class="required">*</span></label>
                     <input type="number" id="bm-amount" class="input-acc" required min="1" step="0.5" placeholder="أدخل المبلغ...">
                 </div>
-
                 <div class="acc-form-group">
                     <label>البيان / السبب <span class="required">*</span></label>
                     <input type="text" id="bm-desc" class="input-acc" required placeholder="مثال: إيداع رأس مال، إيداع شخصي...">
                 </div>
-
                 <div style="display:flex; justify-content:flex-end; gap:16px; margin-top:24px;">
                     <button type="submit" class="btn btn-primary" style="background:var(--accent-blue); width:100%;"><i class="ph ph-check-circle"></i> تنفيذ العملية</button>
                 </div>
@@ -144,51 +148,168 @@
         </div>
     </div>
 
-    <script src="acc.js"></script>
     <script>
-        function openBankModal(type) {
-            const m = document.getElementById('bank-modal');
-            const dGroup = document.getElementById('bm-transfer-dir-group');
-            document.getElementById('bm-type').value = type;
-            document.getElementById('form-bank-trx').reset();
-            
-            if(type === 'transfer') {
-                document.getElementById('bm-title').innerHTML = '<i class="ph ph-arrows-left-right"></i> تحويل بين الصناديق';
-                dGroup.style.display = 'block';
-            } else if(type === 'deposit_cash') {
-                document.getElementById('bm-title').innerHTML = '<i class="ph ph-money"></i> إيداع نقدي للصندوق';
-                dGroup.style.display = 'none';
-            } else if(type === 'deposit_bank') {
-                document.getElementById('bm-title').innerHTML = '<i class="ph ph-bank"></i> إيداع لحساب البنك';
-                dGroup.style.display = 'none';
+    // ✅ الخزينة والبنوك - مرتبط بقاعدة البيانات الحقيقية
+    const { ipcRenderer } = require('electron');
+    const fs = require('fs');
+    const nodePath = require('path');
+    const dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
+
+    function loadDB() {
+        try { return JSON.parse(fs.readFileSync(dbPath, 'utf8')); }
+        catch(e) { return {}; }
+    }
+    function saveDB(db) { fs.writeFileSync(dbPath, JSON.stringify(db, null, 2)); }
+    const fmt = (n) => Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const db = loadDB();
+        const posOrders = await ipcRenderer.invoke('db-get-orders') || [];
+        const erpPurchases = db.purchases || [];
+        const erpExpenses = db.expenses || [];
+        const bankTransfers = db.bankTransfers || [];
+
+        // ── حساب الإيرادات حسب وسيلة الدفع ──
+        let cashRev = 0, bankRev = 0;
+        posOrders.forEach(o => {
+            const pm = (o.paymentMethod || '').trim();
+            if(pm === 'كاش' || pm === 'cash' || pm === 'نقد') {
+                cashRev += o.total;
+            } else if(['شبكة','شبكة / بطاقة','card','bank','مدى','فيزا'].includes(pm)) {
+                bankRev += o.total;
+            } else if(pm === 'مجزأ') {
+                cashRev += (o.splitCash || 0);
+                bankRev += (o.splitNetwork || 0);
+            } else {
+                // أي وسيلة دفع أخرى → تذهب للخزينة كاحتياط
+                cashRev += o.total;
             }
-            m.classList.add('active');
-        }
-
-        document.getElementById('form-bank-trx').addEventListener('submit', (e) => {
-            e.preventDefault();
-            let type = document.getElementById('bm-type').value;
-            if(type === 'transfer') {
-                type = document.getElementById('bm-transfer-dir').value;
-            }
-            const amount = Number(document.getElementById('bm-amount').value);
-            const desc = document.getElementById('bm-desc').value;
-
-            const trx = {
-                id: 'TRX-' + Math.floor(Math.random()*90000+10000),
-                type: type,
-                amount: amount,
-                desc: desc,
-                date: new Date().toISOString()
-            };
-
-            const allTrx = JSON.parse(localStorage.getItem('bank_transfers') || '[]');
-            allTrx.push(trx);
-            localStorage.setItem('bank_transfers', JSON.stringify(allTrx));
-            
-            document.getElementById('bank-modal').classList.remove('active');
-            window.location.reload();
         });
+
+        // ── حساب المشتريات حسب وسيلة الدفع ──
+        let cashPur = 0, bankPur = 0;
+        erpPurchases.forEach(p => {
+            if(p.payMethod === 'cash') cashPur += p.total;
+            else if(p.payMethod === 'bank') bankPur += p.total;
+            // credit (آجل) لا يؤثر على السيولة الآن
+        });
+
+        // ── حساب المصروفات حسب وسيلة الدفع ──
+        let cashExp = 0, bankExp = 0;
+        erpExpenses.forEach(e => {
+            if(e.pMethod === 'cash') cashExp += e.amount;
+            else if(e.pMethod === 'bank') bankExp += e.amount;
+        });
+
+        // 🟢 [إضافة دمج رواتب وسلف الموظفين في الخزينة] 🟢
+        const hrExps = db.hrExpenses || [];
+        hrExps.forEach(hr => {
+            // سلف ورواتب تعتبر مصاريف (خارجة من الدرج)
+            if(hr.type.includes('سلفة') || hr.type.includes('له')) {
+                cashExp += Number(hr.amount);
+            }
+        });
+
+        // ── حساب التحويلات اليدوية ──
+        let manualCashIn = 0, manualCashOut = 0, manualBankIn = 0, manualBankOut = 0;
+        bankTransfers.forEach(t => {
+            if(t.type === 'deposit_cash')    { manualCashIn  += t.amount; }
+            if(t.type === 'deposit_bank')    { manualBankIn  += t.amount; }
+            if(t.type === 'transfer_to_bank'){ manualCashOut += t.amount; manualBankIn += t.amount; }
+            if(t.type === 'transfer_to_cash'){ manualBankOut += t.amount; manualCashIn += t.amount; }
+        });
+
+        // ── الأرصدة النهائية ──
+        const cashBal  = cashRev - cashPur - cashExp + manualCashIn - manualCashOut;
+        const bankBal  = bankRev - bankPur - bankExp + manualBankIn - manualBankOut;
+        const totalLiq = cashBal + bankBal;
+
+        // ── تعبئة الشاشة ──
+        const cashBox = document.getElementById('cash-balance-box');
+        const bankBox = document.getElementById('bank-balance-box');
+        const totalBox = document.getElementById('total-liquidity');
+
+        cashBox.innerHTML  = fmt(cashBal)  + ' <span style="font-size:18px;">ر.س</span>';
+        bankBox.innerHTML  = fmt(bankBal)  + ' <span style="font-size:18px;">ر.س</span>';
+        totalBox.innerHTML = fmt(totalLiq) + ' <span style="font-size:14px;">ر.س</span>';
+
+        if(cashBal < 0)  cashBox.style.color  = 'var(--accent-red)';
+        if(bankBal < 0)  bankBox.style.color  = 'var(--accent-red)';
+        if(totalLiq < 0) totalBox.style.color = 'var(--accent-red)';
+
+        // ── تفصيل أرقام الخزينة ──
+        document.getElementById('cb-sales').innerText = fmt(cashRev)  + ' ر.س';
+        document.getElementById('cb-pur').innerText   = fmt(cashPur)  + ' ر.س';
+        document.getElementById('cb-exp').innerText   = fmt(cashExp)  + ' ر.س';
+        document.getElementById('bb-sales').innerText = fmt(bankRev)  + ' ر.س';
+        document.getElementById('bb-pur').innerText   = fmt(bankPur)  + ' ر.س';
+        document.getElementById('bb-exp').innerText   = fmt(bankExp)  + ' ر.س';
+
+        // ── جدول الحركات اليدوية ──
+        const bankTrxBody = document.getElementById('bank-trx-body');
+        if(bankTransfers.length === 0) {
+            bankTrxBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-muted);">لا توجد حركات تحويل أو إيداع يدوية حتى الآن.</td></tr>';
+        } else {
+            const typeMap = {
+                'deposit_cash':     { label: 'إيداع للخزينة (نقد)',          color: 'var(--accent-green)' },
+                'deposit_bank':     { label: 'إيداع لحساب البنك',             color: 'var(--accent-blue)' },
+                'transfer_to_bank': { label: 'تحويل من الخزينة ← إلى البنك', color: 'var(--accent-orange)' },
+                'transfer_to_cash': { label: 'تحويل من البنك ← إلى الخزينة', color: 'var(--accent-orange)' }
+            };
+            let html = '';
+            [...bankTransfers].reverse().forEach(t => {
+                const info = typeMap[t.type] || { label: t.type, color: 'white' };
+                const dStr = new Date(t.date).toLocaleString('ar-SA');
+                html += `<tr>
+                    <td dir="ltr" style="text-align:right">${dStr}</td>
+                    <td style="color:${info.color}; font-weight:700;">${info.label}</td>
+                    <td style="color:white; font-weight:800; font-size:16px;">${fmt(t.amount)}</td>
+                    <td>${t.desc}</td>
+                </tr>`;
+            });
+            bankTrxBody.innerHTML = html;
+        }
+    });
+
+    function openBankModal(type) {
+        const m = document.getElementById('bank-modal');
+        const dGroup = document.getElementById('bm-transfer-dir-group');
+        document.getElementById('bm-type').value = type;
+        document.getElementById('form-bank-trx').reset();
+        const titles = {
+            'transfer':     '<i class="ph ph-arrows-left-right"></i> تحويل بين الصناديق',
+            'deposit_cash': '<i class="ph ph-money"></i> إيداع نقدي للصندوق',
+            'deposit_bank': '<i class="ph ph-bank"></i> إيداع لحساب البنك'
+        };
+        document.getElementById('bm-title').innerHTML = titles[type] || 'معاملة مالية';
+        dGroup.style.display = (type === 'transfer') ? 'block' : 'none';
+        m.classList.add('active');
+    }
+
+    document.getElementById('form-bank-trx').addEventListener('submit', (e) => {
+        e.preventDefault();
+        let type = document.getElementById('bm-type').value;
+        if(type === 'transfer') type = document.getElementById('bm-transfer-dir').value;
+
+        const trx = {
+            id:     'TRX-' + Math.floor(Math.random()*90000+10000),
+            type,
+            amount: Number(document.getElementById('bm-amount').value),
+            desc:   document.getElementById('bm-desc').value,
+            date:   new Date().toISOString()
+        };
+
+        // ✅ حفظ في قاعدة البيانات JSON (وليس localStorage)
+        try {
+            const db = loadDB();
+            if(!db.bankTransfers) db.bankTransfers = [];
+            db.bankTransfers.push(trx);
+            saveDB(db);
+        } catch(err) { console.error('خطأ في حفظ الحركة:', err); }
+
+        document.getElementById('bank-modal').classList.remove('active');
+        window.location.reload();
+    });
     </script>
 </body>
 </html>

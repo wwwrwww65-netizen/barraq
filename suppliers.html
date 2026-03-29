@@ -3,53 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سمر حضرموت - دليل الموردين</title>
+    <title>هـــش HASH - دليل الموردين</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="inventory.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-    <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
+    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
 </head>
 <body class="dark-theme">
     <div class="app-container">
-        <!-- Sidebar Navigation -->
         <aside class="sidebar inv-sidebar">
             <div class="logo">
-                <img src="logo.jpg" alt="شعار المحازن" class="restaurant-logo" onerror="this.src='https://placehold.co/100x100'">
+                <img src="1111.png" alt="شعار" class="restaurant-logo" onerror="this.src='placeholder.svg'">
                 <span>إدارة <span class="highlight">الموردين</span></span>
             </div>
-            
             <nav class="nav-menu">
                 <div class="nav-group">
                     <p class="nav-label">نطاق العمل الرئيسي</p>
                     <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>العودة للوحة القيادة</span></a>
                 </div>
-
                 <div class="nav-group">
                     <p class="nav-label">لوحة تحكم المخزون</p>
                     <a href="inventory.html" class="nav-item"><i class="ph ph-packages"></i><span>نظرة عامة والجرد</span></a>
-                    <a href="inv-documents.html?tab=in" class="nav-item"><i class="ph ph-arrow-down-left"></i><span>حركات الدخول (استلام)</span></a>
-                    <a href="inv-documents.html?tab=out" class="nav-item"><i class="ph ph-arrow-up-right"></i><span>حركات الخروج (أمر صرف)</span></a>
+                    <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>فواتير المشتريات</span></a>
                 </div>
-
                 <div class="nav-group">
                     <p class="nav-label">الموردين والمستندات</p>
                     <a href="suppliers.html" class="nav-item active"><i class="ph ph-truck"></i><span>دليل الموردين</span></a>
-                    <a href="inv-documents.html?tab=all" class="nav-item"><i class="ph ph-file-text"></i><span>السندات والفواتير</span></a>
                 </div>
             </nav>
         </aside>
 
-        <!-- Main Content -->
         <main class="main-content inv-main">
-            <!-- Top Header -->
             <header class="top-header inv-header">
                 <div class="header-left-title">
                     <h2>دليل الموردين والشركات</h2>
-                    <p>إدارة بيانات ورصيد وعقود الشركات الموردة للمخازن.</p>
+                    <p>إدارة بيانات ورصيد وعقود الشركات الموردة للمخازن — محفوظ في قاعدة البيانات.</p>
                 </div>
-                
                 <div class="header-actions">
                     <button class="inv-btn-solid bg-blue" id="btn-add-supplier"><i class="ph ph-user-plus"></i> إضافة مورد جديد</button>
                 </div>
@@ -65,6 +54,22 @@
                             <p class="kpi-trend text-blue">مورد/شركة نشطة</p>
                         </div>
                     </div>
+                    <div class="card kpi-card">
+                        <div class="kpi-icon red"><i class="ph-fill ph-currency-dollar"></i></div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">إجمالي الذمم المستحقة</p>
+                            <h3 class="kpi-value" id="kpi-total-balance">0</h3>
+                            <p class="kpi-trend text-red">ر.س مستحق للموردين</p>
+                        </div>
+                    </div>
+                    <div class="card kpi-card">
+                        <div class="kpi-icon green"><i class="ph-fill ph-check-circle"></i></div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">موردون بدون ذمم</p>
+                            <h3 class="kpi-value" id="kpi-zero-balance">0</h3>
+                            <p class="kpi-trend text-green">رصيدهم صفر</p>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="card inv-main-table-card">
@@ -76,21 +81,20 @@
                             </div>
                         </div>
                     </div>
-                    
                     <div class="table-responsive">
                         <table class="data-table inv-table">
                             <thead>
                                 <tr>
                                     <th>اسم المورد / الشركة</th>
-                                    <th>نوع التوريد</th>
+                                    <th>فئة التوريد</th>
                                     <th>رقم الهاتف</th>
                                     <th>الرصيد الدائن / المستحق</th>
-                                    <th>حالة المورد</th>
+                                    <th>الحالة</th>
                                     <th>إجراءات</th>
                                 </tr>
                             </thead>
                             <tbody id="sup-tbody">
-                                <!-- Filled by JS -->
+                                <tr><td colspan="6" style="text-align:center;padding:20px;">جاري التحميل...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -99,12 +103,12 @@
         </main>
     </div>
 
-    <!-- Modal Add Supplier -->
+    <!-- Modal -->
     <div id="supModal" class="modal-overlay">
         <div class="modal-box">
             <div class="modal-header">
                 <h3>إضافة مورد جديد</h3>
-                <button type="button" class="btn-cancel-modal" title="إغلاق"><i class="ph ph-x"></i></button>
+                <button type="button" class="btn-cancel-modal"><i class="ph ph-x"></i></button>
             </div>
             <form id="form-sup" class="modal-body">
                 <div class="form-group-row">
@@ -124,88 +128,156 @@
                     </div>
                     <div class="form-group">
                         <label>رصيد افتتاحي (مستحق له)</label>
-                        <input type="number" step="0.01" id="sup-balance" class="input-modern" required value="0">
+                        <input type="number" step="0.01" id="sup-balance" class="input-modern" value="0">
                     </div>
                 </div>
                 <div class="modal-actions mt-3">
                     <button type="button" class="btn-cancel btn-cancel-modal">إلغاء</button>
-                    <button type="submit" class="btn-save-role bg-blue">حفظ المورد</button>
+                    <button type="submit" class="btn-save-role bg-blue">💾 حفظ المورد في قاعدة البيانات</button>
                 </div>
             </form>
         </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const tbody = document.getElementById('sup-tbody');
-            const searchInput = document.getElementById('search-sup');
-            let suppliers = JSON.parse(localStorage.getItem('erp_suppliers') || '[]');
+    // ✅ Suppliers Page — Connected to pos_database.json
+    const fs = require('fs');
+    const nodePath = require('path');
+    const dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
 
-            if(suppliers.length === 0) {
-                suppliers = [
-                    { id: 'SUP-01', name: 'شركة المراعي', cat: 'ألبان ومرطبات', phone: '0551234567', balance: 4500.00, active: true },
-                    { id: 'SUP-02', name: 'مؤسسة الثقفي للحوم', cat: 'لحوم طازجة', phone: '0501112223', balance: 12400.00, active: true }
-                ];
-                localStorage.setItem('erp_suppliers', JSON.stringify(suppliers));
+    function loadDB() {
+        try { return JSON.parse(fs.readFileSync(dbPath, 'utf8')); }
+        catch(e) { return {}; }
+    }
+    function saveDB(db) { fs.writeFileSync(dbPath, JSON.stringify(db, null, 2)); }
+    const fmt = (n) => Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const tbody = document.getElementById('sup-tbody');
+        const searchInput = document.getElementById('search-sup');
+
+        let db = loadDB();
+        if(!db.suppliers) db.suppliers = [];
+        let suppliers = db.suppliers;
+
+        // Seed default suppliers if empty
+        if(suppliers.length === 0) {
+            suppliers = [
+                { id:'SUP-01', name:'شركة المراعي',       cat:'ألبان ومرطبات',  phone:'0551234567', balance:4500,  active:true, createdAt: new Date().toISOString() },
+                { id:'SUP-02', name:'مؤسسة الثقفي للحوم', cat:'لحوم طازجة',     phone:'0501112223', balance:12400, active:true, createdAt: new Date().toISOString() }
+            ];
+            db.suppliers = suppliers;
+            saveDB(db);
+        }
+
+        function renderKPIs() {
+            const activeCount = suppliers.filter(s => s.active).length;
+            const totalBalance = suppliers.reduce((s, sup) => s + (sup.balance || 0), 0);
+            const zeroBalance  = suppliers.filter(s => s.balance === 0).length;
+            document.getElementById('kpi-count').innerText = activeCount;
+            document.getElementById('kpi-total-balance').innerText = fmt(totalBalance) + ' ر.س';
+            document.getElementById('kpi-zero-balance').innerText = zeroBalance;
+        }
+
+        function render() {
+            tbody.innerHTML = '';
+            renderKPIs();
+            const q = searchInput.value.toLowerCase();
+            const filtered = suppliers.filter(s =>
+                s.name.toLowerCase().includes(q) || (s.phone||'').includes(q) || (s.cat||'').toLowerCase().includes(q)
+            );
+
+            if(filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);">لا يوجد موردون مطابقون.</td></tr>';
+                return;
             }
 
-            function render() {
-                tbody.innerHTML = '';
-                const q = searchInput.value.toLowerCase();
-                let filtered = suppliers.filter(s => s.name.toLowerCase().includes(q) || s.phone.includes(q));
+            filtered.forEach(s => {
+                const balColor = s.balance > 0 ? 'var(--accent-red)' : 'var(--accent-green)';
+                const balText  = s.balance === 0 ? '✅ لا يوجد استحقاق' : fmt(s.balance) + ' ر.س';
+                const statusTag = s.active
+                    ? '<span class="inv-tag tag-safe">✅ مورد نشط</span>'
+                    : '<span class="inv-tag tag-empty">⛔ موقوف</span>';
 
-                document.getElementById('kpi-count').innerText = suppliers.length;
-
-                if (filtered.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#666">لم يتم العثور على موردين.</td></tr>';
-                    return;
-                }
-
-                filtered.forEach(s => {
-                    const statusTag = s.active ? '<span class="inv-tag tag-safe">مورد نشط</span>' : '<span class="inv-tag tag-empty">موقوف</span>';
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td><strong>${s.name}</strong></td>
-                        <td>${s.cat}</td>
-                        <td dir="ltr" style="text-align:right">${s.phone}</td>
-                        <td style="color:${s.balance > 0 ? 'var(--accent-red)' : 'var(--text)'}; font-weight:700;">
-                            ${s.balance === 0 ? 'لا يوجد استحقاق' : Number(s.balance).toLocaleString() + ' ر.س'}
-                        </td>
-                        <td>${statusTag}</td>
-                        <td>
-                            <button class="action-btn text-blue" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
-                            <button class="action-btn text-orange" title="سداد دفعة"><i class="ph ph-money"></i></button>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            }
-
-            render();
-            searchInput.addEventListener('input', render);
-
-            // Modal Logic
-            const modal = document.getElementById('supModal');
-            document.getElementById('btn-add-supplier').addEventListener('click', () => modal.classList.add('active'));
-            document.querySelectorAll('.btn-cancel-modal').forEach(b => b.addEventListener('click', () => modal.classList.remove('active')));
-
-            document.getElementById('form-sup').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const newObj = {
-                    id: 'SUP-' + Math.floor(Math.random() * 1000),
-                    name: document.getElementById('sup-name').value,
-                    cat: document.getElementById('sup-cat').value,
-                    phone: document.getElementById('sup-phone').value,
-                    balance: Number(document.getElementById('sup-balance').value),
-                    active: true
-                };
-                suppliers.push(newObj);
-                localStorage.setItem('erp_suppliers', JSON.stringify(suppliers));
-                modal.classList.remove('active');
-                render();
-                e.target.reset();
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>
+                        <strong>${s.name}</strong>
+                        <div style="font-size:11px;color:var(--text-muted);font-family:monospace;">${s.id}</div>
+                    </td>
+                    <td><span style="background:rgba(255,255,255,0.08);padding:3px 8px;border-radius:6px;">${s.cat}</span></td>
+                    <td dir="ltr" style="text-align:right;font-family:monospace;">${s.phone}</td>
+                    <td style="color:${balColor}; font-weight:800; font-size:16px;">${balText}</td>
+                    <td>${statusTag}</td>
+                    <td>
+                        <button class="action-btn text-blue pay-btn" data-id="${s.id}" title="تسجيل دفعة سداد">
+                            <i class="ph ph-money"></i> سداد
+                        </button>
+                        <button class="action-btn ${s.active?'text-orange':'text-green'} toggle-btn" data-id="${s.id}">
+                            <i class="ph ${s.active?'ph-pause-circle':'ph-play-circle'}"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
             });
+
+            // تسجيل دفعة سداد
+            document.querySelectorAll('.pay-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const sup = suppliers.find(s => s.id === btn.dataset.id);
+                    if(!sup) return;
+                    const amtStr = prompt(`💰 دفعة سداد للمورد: "${sup.name}"\nالرصيد الحالي المستحق: ${fmt(sup.balance)} ر.س\n\nأدخل مبلغ الدفعة:`);
+                    const amt = parseFloat(amtStr);
+                    if(isNaN(amt) || amt <= 0) return;
+                    if(amt > sup.balance) { alert('⚠️ المبلغ المدخل أكبر من الرصيد المستحق!'); return; }
+                    sup.balance = Math.max(0, parseFloat((sup.balance - amt).toFixed(2)));
+                    db.suppliers = suppliers;
+                    saveDB(db);
+                    render();
+                    alert(`✅ تم تسجيل الدفعة بمبلغ ${fmt(amt)} ر.س\nالرصيد المتبقي: ${fmt(sup.balance)} ر.س`);
+                });
+            });
+
+            // إيقاف/تفعيل مورد
+            document.querySelectorAll('.toggle-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const sup = suppliers.find(s => s.id === btn.dataset.id);
+                    if(sup) { sup.active = !sup.active; db.suppliers = suppliers; saveDB(db); render(); }
+                });
+            });
+        }
+
+        render();
+        searchInput.addEventListener('input', render);
+
+        // Modal
+        const modal = document.getElementById('supModal');
+        document.getElementById('btn-add-supplier').addEventListener('click', () => modal.classList.add('active'));
+        document.querySelectorAll('.btn-cancel-modal').forEach(b => b.addEventListener('click', () => {
+            modal.classList.remove('active');
+            document.getElementById('form-sup').reset();
+        }));
+
+        document.getElementById('form-sup').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const newSup = {
+                id:        'SUP-' + Date.now(),
+                name:      document.getElementById('sup-name').value.trim(),
+                cat:       document.getElementById('sup-cat').value.trim(),
+                phone:     document.getElementById('sup-phone').value.trim(),
+                balance:   Number(document.getElementById('sup-balance').value) || 0,
+                active:    true,
+                createdAt: new Date().toISOString()
+            };
+            suppliers.push(newSup);
+            db.suppliers = suppliers;
+            saveDB(db);
+            modal.classList.remove('active');
+            e.target.reset();
+            render();
+            alert(`✅ تم حفظ المورد "${newSup.name}" في قاعدة البيانات!`);
         });
+    });
     </script>
 </body>
 </html>

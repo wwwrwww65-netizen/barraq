@@ -1,4 +1,15 @@
-document.addEventListener('DOMContentLoaded', () => {
+const { ipcRenderer } = require('electron');
+const fs = require('fs');
+const path = require('path');
+const dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
+
+function loadDB() {
+    try { return JSON.parse(fs.readFileSync(dbPath, 'utf8')); }
+    catch(e) { return { orders:[], products:[], inventory:[], purchases:[], suppliers:[], inventoryTx:[], returns:[] }; }
+}
+function saveDB(db) { fs.writeFileSync(dbPath, JSON.stringify(db, null, 2)); }
+
+document.addEventListener('DOMContentLoaded', async () => {
     
     // --- Elements ---
     const searchInput = document.getElementById('return-search-input');
@@ -15,25 +26,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentFoundOrder = null;
 
-    // --- Search Logic ---
-    btnSearch.addEventListener('click', () => {
+    // --- Search Logic (from JSON DB via IPC) ---
+    btnSearch.addEventListener('click', async () => {
         const query = searchInput.value.trim();
         if(!query) return alert('الرجاء إدخال رقم الطلب أولاً');
 
-        const ordersStr = localStorage.getItem('pos_orders');
-        const orders = ordersStr ? JSON.parse(ordersStr) : [];
+        // Fetch from JSON database
+        const orders = await ipcRenderer.invoke('db-get-orders');
         
-        // Find order exactly matching ID
-        const found = orders.find(o => o.orderId.toLowerCase() === query.toLowerCase());
+        const found = (orders || []).find(o => o.orderId.toLowerCase() === query.toLowerCase());
 
         if(found) {
             currentFoundOrder = found;
             resId.innerText = 'رقم الطلب: ' + found.orderId;
-            resDate.innerText = found.date;
-            resTotal.innerText = found.total.toFixed(2) + ' ر.س';
-            resMethod.innerText = found.paymentMethod;
-            resType.innerText = found.type;
-            
+            resDate.innerText = found.date || found.dateStr || '';
+            resTotal.innerText = Number(found.total).toFixed(2) + ' ر.س';
+            resMethod.innerText = found.paymentMethod || '';
+            resType.innerText = found.type || '';
             resultCard.classList.add('active');
         } else {
             resultCard.classList.remove('active');
@@ -46,39 +55,34 @@ document.addEventListener('DOMContentLoaded', () => {
     btnProcess.addEventListener('click', () => {
         if(!currentFoundOrder) return;
 
-        if(!confirm('تأكيد عملية الإسترجاع؟ سيتم خصم المبلغ من المبيعات الأصلية وإلغاء الفواتير.')) return;
+        if(!confirm('تأكيد عملية الاسترجاع؟ سيتم خصم المبلغ من المبيعات الأصلية وإلغاء الفواتير.')) return;
 
         const originalText = btnProcess.innerHTML;
-        btnProcess.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin"></i> جاري ارجاع المبلغ...';
+        btnProcess.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin"></i> جاري إرجاع المبلغ...';
         btnProcess.style.pointerEvents = 'none';
 
         setTimeout(() => {
-            // 1. Remove from Sales (pos_orders)
-            let ordersStr = localStorage.getItem('pos_orders');
-            let orders = ordersStr ? JSON.parse(ordersStr) : [];
-            orders = orders.filter(o => o.orderId !== currentFoundOrder.orderId);
-            localStorage.setItem('pos_orders', JSON.stringify(orders));
+            const db = loadDB();
 
-            // 2. Add to Returns (pos_returns)
-            let returnsStr = localStorage.getItem('pos_returns');
-            let returns = returnsStr ? JSON.parse(returnsStr) : [];
-            
+            // 1. Remove from orders
+            db.orders = (db.orders || []).filter(o => o.orderId !== currentFoundOrder.orderId);
+
+            // 2. Add to returns
+            if(!db.returns) db.returns = [];
             const now = new Date();
-            const timeStr = now.toLocaleTimeString('ar-SA');
-            
-            returns.push({
+            db.returns.push({
                 origId: currentFoundOrder.orderId,
-                returnTime: now.toLocaleDateString('ar-SA') + ' ' + timeStr,
+                returnTime: now.toLocaleDateString('ar-SA') + ' ' + now.toLocaleTimeString('ar-SA'),
                 timestamp: now.getTime(),
                 amount: currentFoundOrder.total,
                 method: currentFoundOrder.paymentMethod,
-                emp: 'سعيد باعمر (المدير)'
+                emp: 'المدير'
             });
-            localStorage.setItem('pos_returns', JSON.stringify(returns));
+
+            saveDB(db);
 
             alert('تم استرداد المبلغ وإلغاء عملية الكاشير بنجاح!');
             
-            // Reset state
             resultCard.classList.remove('active');
             currentFoundOrder = null;
             searchInput.value = '';
@@ -92,49 +96,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Load Returns Historical Data ---
     function loadReturns() {
-        const returnsStr = localStorage.getItem('pos_returns');
-        const returns = returnsStr ? JSON.parse(returnsStr) : [];
+        const db = loadDB();
+        const returns = (db.returns || []).slice().sort((a,b) => b.timestamp - a.timestamp);
         
         const tbody = document.getElementById('returns-tbody');
         const emptyState = document.getElementById('empty-returns');
         const tableObj = document.querySelector('.ret-table');
 
-        // Sort descending
-        returns.sort((a,b) => b.timestamp - a.timestamp);
-
-        // Update KPIs
         let totalVal = 0;
         returns.forEach(r => totalVal += r.amount);
 
-        document.getElementById('kpi-total-returns').innerText = totalVal.toFixed(2) + ' ر.س';
-        document.getElementById('kpi-return-count').innerText = returns.length + ' طلب';
-        
-        if(returns.length > 0) {
-            document.getElementById('kpi-last-return').innerHTML = returns[0].returnTime + `<br><span style="font-size:14px;color:var(--text-muted)">(${returns[0].origId})</span>`;
+        const el = (id) => document.getElementById(id);
+        if(el('kpi-total-returns')) el('kpi-total-returns').innerText = totalVal.toFixed(2) + ' ر.س';
+        if(el('kpi-return-count')) el('kpi-return-count').innerText = returns.length + ' طلب';
+        if(returns.length > 0 && el('kpi-last-return')) {
+            el('kpi-last-return').innerHTML = returns[0].returnTime + `<br><span style="font-size:14px;color:var(--text-muted)">(${returns[0].origId})</span>`;
         }
 
         if(returns.length === 0) {
-            tableObj.style.display = 'none';
-            emptyState.style.display = 'block';
+            if(tableObj) tableObj.style.display = 'none';
+            if(emptyState) emptyState.style.display = 'block';
             return;
         }
 
-        emptyState.style.display = 'none';
-        tableObj.style.display = 'table';
+        if(emptyState) emptyState.style.display = 'none';
+        if(tableObj) tableObj.style.display = 'table';
         tbody.innerHTML = '';
 
         returns.forEach(r => {
-            let row = `
+            tbody.insertAdjacentHTML('beforeend', `
                 <tr>
                     <td><strong>${r.origId}</strong></td>
                     <td style="color:var(--text-secondary); font-size:12px;">${r.returnTime}</td>
-                    <td style="color:var(--accent-red); font-weight:800;">${r.amount.toFixed(2)} ر.س</td>
+                    <td style="color:var(--accent-red); font-weight:800;">${Number(r.amount).toFixed(2)} ر.س</td>
                     <td><span style="color:var(--text-secondary)"><i class="ph ph-money"></i> ${r.method}</span></td>
-                    <td>${r.emp}</td>
+                    <td>${r.emp || ''}</td>
                     <td><span class="badge-returned">مسترجع</span></td>
                 </tr>
-            `;
-            tbody.insertAdjacentHTML('beforeend', row);
+            `);
         });
     }
 

@@ -6,7 +6,35 @@ document.addEventListener('DOMContentLoaded', () => {
     let cart = [];
     let currentOrderType = 'محلي';
     let discountAmount = 0;
-    const TAX_RATE = 0.15;
+
+    // ── Dynamic Tax Rate (from restaurant_settings) ─────────────────────────
+    function getTaxRate() {
+        try {
+            const s = JSON.parse(localStorage.getItem('restaurant_settings') || '{}');
+            const rate = parseFloat(s.taxRate);
+            return isNaN(rate) ? 0.15 : rate / 100;
+        } catch(e) { return 0.15; }
+    }
+
+    // Update the tax label in the cart UI to reflect current rate
+    function updateTaxLabel() {
+        const taxLabelEl = document.getElementById('cart-tax-label');
+        if (taxLabelEl) {
+            const pct = Math.round(getTaxRate() * 100 * 100) / 100;
+            taxLabelEl.innerHTML = `<i class="ph ph-receipt"></i> ضريبة ق.م (${pct}%)`;
+        }
+    }
+
+    updateTaxLabel();
+
+    // Re-apply if network sync updates settings
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'restaurant_settings') {
+            updateTaxLabel();
+            renderCart(); // recalculate totals
+        }
+    });
+
     let orderId = '#ORD-' + Math.floor(1000 + Math.random() * 9000); // Random Order ID for session
     document.getElementById('display-order-id').innerText = orderId;
 
@@ -20,17 +48,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const formatCurrency = (amount) => Number(amount).toFixed(2) + ' ر.س';
 
     /* ===============================
-       Dynamic Data Loading
+       Dynamic Data Loading from JSON DB
     =============================== */
-    let catData = [];
-    const cs = localStorage.getItem('pos_categories');
-    if(cs) catData = JSON.parse(cs);
+    const _fs = require('fs');
+    const _path = require('path');
+    const _dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
+    function _loadDB() {
+        try { return JSON.parse(_fs.readFileSync(_dbPath, 'utf8')); }
+        catch(e) { return { categories:[], products:[] }; }
+    }
 
-    let prodData = [];
-    const ps = localStorage.getItem('pos_products');
-    if(ps) prodData = JSON.parse(ps);
+    const _db = _loadDB();
 
-    // Initial fallback if system is entirely empty (align with menu.js)
+    let catData = (_db.categories && _db.categories.length > 0)
+        ? _db.categories
+        : JSON.parse(localStorage.getItem('pos_categories') || '[]');
+
+    let prodData = (_db.products && _db.products.length > 0)
+        ? _db.products
+        : JSON.parse(localStorage.getItem('pos_products') || '[]');
+
+    // Initial fallback if system is entirely empty
     if(catData.length === 0) {
         catData = [
             { id: 'cat_1', nameAr: 'شعبيات ومندي', icon: 'ph-bowl-food', color: 'orange', order: 1 },
@@ -39,8 +77,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if(prodData.length === 0) {
         prodData = [
-            { id: 'p_1', categoryId: 'cat_1', nameAr: 'مندي دجاج', price: 40, image: 'https://images.unsplash.com/photo-1596797038530-2c107229654b?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80', isActive: true },
-            { id: 'p_2', categoryId: 'cat_1', nameAr: 'مظبي لحم', price: 65, image: 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80', isActive: true }
+            { id: 'p_1', sku: 'SKU-M001', categoryId: 'cat_1', nameAr: 'مندي دجاج', price: 40, cost: 18, image: 'placeholder.svg', isActive: true },
+            { id: 'p_2', sku: 'SKU-M002', categoryId: 'cat_1', nameAr: 'مظبي لحم', price: 65, cost: 30, image: 'placeholder.svg', isActive: true }
         ];
     }
 
@@ -159,8 +197,39 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCart();
     }
 
-    // Attach listener to discount input
+    // ── Discount Permission Check ──────────────────────────────────────────
+    // Check if current user has pos_discount permission.
+    // If not, hide the entire discount row so they can't apply manual discounts.
+    const discountRow = document.querySelector('.summary-line.discount');
     const discountInput = document.getElementById('cart-discount-input');
+
+    (function applyDiscountPermission() {
+        try {
+            const cUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+            // Super Admin always has access
+            if (cUser.role === 'المدير العام') return;
+
+            const systemRoles = JSON.parse(localStorage.getItem('system_roles') || '[]');
+            const myRole = systemRoles.find(r => r.name === cUser.role);
+
+            const hasDiscountPerm = myRole && myRole.perms && myRole.perms['pos_discount'] === true;
+
+            if (!hasDiscountPerm) {
+                // Hide the discount row entirely
+                if (discountRow) {
+                    discountRow.style.display = 'none';
+                }
+                // Lock the input so JS can't be manipulated via console
+                discountInput.value = '0';
+                discountAmount = 0;
+                discountInput.disabled = true;
+            }
+        } catch(e) {
+            console.error('Discount permission check failed', e);
+        }
+    })();
+
+    // Attach listener to discount input
     discountInput.addEventListener('input', (e) => {
         discountAmount = parseFloat(e.target.value) || 0;
         renderCart();
@@ -250,6 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let finalTotal = grossAmount - discountAmount;
         if (finalTotal < 0) finalTotal = 0;
 
+        const TAX_RATE = getTaxRate();
         let taxAmount = finalTotal - (finalTotal / (1 + TAX_RATE));
 
         document.getElementById('cart-subtotal').innerText = formatCurrency(grossAmount);
@@ -345,11 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnConfirmPay.disabled = true;
 
         try {
-            openCashDrawer();
-            await downloadReceipt('all', 'الفاتورة'); // Opens the print dialog once
-            
-            // Save to LocalStorage for Sales page
-            const savedOrders = JSON.parse(localStorage.getItem('pos_orders') || '[]');
+            // Save to LocalStorage for Sales page FIRST
             const now = new Date();
             const selectedPay = document.querySelector('.payment-method.selected input').value;
             const totalOrder = parseFloat(document.getElementById('cart-total').innerText.replace(' ر.س', ''));
@@ -364,7 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 finalSplitNet = totalOrder;
             }
 
-            savedOrders.push({
+            const orderData = {
                 orderId: orderId,
                 date: now.toLocaleDateString('ar-SA') + " " + now.toLocaleTimeString('ar-SA'),
                 timestamp: now.getTime(),
@@ -374,43 +440,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 splitCash: finalSplitCash,
                 splitNetwork: finalSplitNet,
                 itemsCount: cart.length,
-                items: [...cart] // Save actual items for sales analysis
-            });
-            localStorage.setItem('pos_orders', JSON.stringify(savedOrders));
+                items: [...cart]
+            };
             
-            // --- Inventory ERP Link: Try to deduct sold items from Stock by exact name ---
-            const inventory = JSON.parse(localStorage.getItem('erp_inventory_items') || '[]');
-            const inventoryTx = JSON.parse(localStorage.getItem('erp_inventory_tx') || '[]');
+            // Securely save via IPC to backend SQLite (Atomic Transaction)
+            const { ipcRenderer } = require('electron');
+            await ipcRenderer.invoke('db-save-order', orderData);
             
-            cart.forEach(cartItem => {
-                // look for an exact name match in the inventory
-                let matchingInv = inventory.find(inv => inv.name === cartItem.name && (inv.warehouseId || 'main') === 'restaurant');
-                if(!matchingInv) matchingInv = inventory.find(inv => inv.name === cartItem.name); // fallback to main warehouse
-                
-                if(matchingInv) {
-                    matchingInv.qty -= cartItem.qty; // deduct!
-                    
-                    // Log the deduction transaction
-                    inventoryTx.push({
-                        id: 'TX-' + Math.floor(Math.random() * 10000),
-                        type: 'out', // output from warehouse
-                        total: (matchingInv.cost || 0) * cartItem.qty, 
-                        date: now.getTime(),
-                        fromWh: matchingInv.warehouseId || 'main',
-                        toWh: 'CUSTOMER (POS)',
-                        sku: matchingInv.sku,
-                        refInvoice: orderId,
-                        qtyOut: cartItem.qty
-                    });
-                }
-            });
-            
-            // Save updated inventory records
-            localStorage.setItem('erp_inventory_items', JSON.stringify(inventory));
-            localStorage.setItem('erp_inventory_tx', JSON.stringify(inventoryTx));
-            
-            alert('تمت العملية بنجاح! تم حفظ المبيعات وتحميل الفواتير وتحديث المخزون.');
-            // Reset
+            // Reset cart UI before printing dialog block
             cart = [];
             discountAmount = 0;
             discountInput.value = '';
@@ -418,13 +455,17 @@ document.addEventListener('DOMContentLoaded', () => {
             renderCart();
             modalCheckout.classList.remove('active');
 
-            // Generate new order ID for next order
             orderId = '#ORD-' + Math.floor(1000 + Math.random() * 9000);
             document.getElementById('display-order-id').innerText = orderId;
 
+            alert('تمت العملية بنجاح! تم حفظ المبيعات وتحديث المخزون. ستظهر الفاتورة للطباعة الآن.');
+
+            openCashDrawer();
+            await downloadReceipt('all', 'الفاتورة');
+
         } catch(e) {
-            console.error("Print Failed", e);
-            alert("فشلت عملية حفظ الفاتورة");
+            console.error("Save or Print Failed", e);
+            alert("حدث خطأ أثناء حفظ الفاتورة");
         } finally {
             btnConfirmPay.innerHTML = '<i class="ph ph-check-circle"></i> تأكيد الدفع وطباعة الفواتير';
             btnConfirmPay.disabled = false;
@@ -486,18 +527,55 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Totals for customer
         document.getElementById('r-total').innerText = document.getElementById('cart-total').innerText;
-        document.getElementById('r-discount').innerText = discountAmount > 0 ? formatCurrency(discountAmount) : '0.00 ר.س';
+        document.getElementById('r-discount').innerText = discountAmount > 0 ? formatCurrency(discountAmount) : '0.00 ر.س';
         document.getElementById('r-tax').innerText = document.getElementById('cart-tax').innerText;
+
+        // Update tax rate label in receipt
+        const rTaxRateLabel = document.getElementById('r-tax-rate-label');
+        if (rTaxRateLabel) {
+            const pct = Math.round(getTaxRate() * 100 * 100) / 100;
+            rTaxRateLabel.innerText = `قيمة الضريبة المضافة ${pct}%:`;
+        }
     }
 
     async function downloadReceipt(elementId, namePrefix) {
-        // Modern approach: rather than downloading an image, we print directly
-        // The @media print in pos.css handles the visibility
-        return new Promise((resolve) => {
-            setTimeout(() => {
+        return new Promise(async (resolve) => {
+            try {
+                // Ensure print-zone is temporarily visible for html2canvas to capture if it was display:none
+                // In pos.html, it's positioned off-screen (top: -9999px) so it's fine.
+                const receiptCustomer = document.getElementById('receipt-customer');
+                if(!receiptCustomer) {
+                    window.print();
+                    return resolve();
+                }
+
+                // Render the receipt to a canvas
+                const canvas = await html2canvas(receiptCustomer, { scale: 2 });
+                const imgData = canvas.toDataURL('image/png');
+                
+                // Trigger download
+                const link = document.createElement('a');
+                link.download = namePrefix + '_' + orderId + '.png';
+                link.href = imgData;
+                link.click();
+                
+                // Also do the kitchen receipt
+                const receiptKitchen = document.getElementById('receipt-kitchen');
+                if(receiptKitchen) {
+                    const canvasK = await html2canvas(receiptKitchen, { scale: 2 });
+                    const linkK = document.createElement('a');
+                    linkK.download = 'مطبخ_' + orderId + '.png';
+                    linkK.href = canvasK.toDataURL('image/png');
+                    linkK.click();
+                }
+
+                resolve();
+            } catch(e) {
+                console.error("html2canvas failed", e);
+                // Fallback
                 window.print();
                 resolve();
-            }, 500); 
+            }
         });
     }
 
@@ -523,7 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Play notification sound if available
         try {
-            const audio = new Audio('https://www.soundjay.com/misc/cash-register-01.mp3');
+            const audio = new Audio('cash-register.mp3');
             audio.play().catch(e => console.log('Audio disabled by browser policy', e));
         } catch (e) {}
 

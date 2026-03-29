@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputName = document.getElementById('set-name');
     const inputBranch = document.getElementById('set-branch');
     const inputTax = document.getElementById('set-tax');
+    const inputTaxRate = document.getElementById('set-tax-rate');
     const inputPhone = document.getElementById('set-phone');
     const inputWhatsapp = document.getElementById('set-whatsapp');
     const inputFooter = document.getElementById('set-footer');
@@ -21,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(d.name) inputName.value = d.name;
         if(d.branch) inputBranch.value = d.branch;
         if(d.tax) inputTax.value = d.tax;
+        if(d.taxRate !== undefined && d.taxRate !== '') inputTaxRate.value = d.taxRate;
         if(d.phone) inputPhone.value = d.phone;
         if(d.whatsapp) inputWhatsapp.value = d.whatsapp;
         if(d.footer) inputFooter.value = d.footer;
@@ -82,14 +84,16 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin"></i> جاري حفظ السحابة...';
         btn.style.pointerEvents = 'none';
 
+        const taxRateVal = parseFloat(inputTaxRate.value);
         const data = {
-            name: inputName.value || 'سمر حضرموت',
+            name: inputName.value || 'هـــش HASH',
             branch: inputBranch.value,
             tax: inputTax.value || '300123456780003',
+            taxRate: isNaN(taxRateVal) ? 15 : taxRateVal,
             phone: inputPhone.value,
             whatsapp: inputWhatsapp.value,
             footer: inputFooter.value,
-            logo: base64Logo || 'logo.jpg' // Default logic
+            logo: base64Logo || '1111.png' // شعار هش HASH الرسمي كافتراضي
         };
 
         localStorage.setItem('restaurant_settings', JSON.stringify(data));
@@ -111,7 +115,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetBtn = document.getElementById('btn-reset-settings');
     if (resetBtn) {
         resetBtn.addEventListener('click', () => {
-            if(confirm('هل تريد استعادة تصميم "سمر حضرموت" ومسح الإعدادات الجديدة؟')) {
+            if(confirm('هل تريد استعادة شعار واسم "هش HASH" ومسح بيانات المطعم الحالية؟')) {
+                // مسح بيانات المطعم وإعادة الشعار الرسمي للبرنامج
                 localStorage.removeItem('restaurant_settings');
                 location.reload();
             }

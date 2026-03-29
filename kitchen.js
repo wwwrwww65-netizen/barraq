@@ -1,60 +1,95 @@
-document.addEventListener('DOMContentLoaded', () => {
+const { ipcRenderer } = require('electron');
+const fs = require('fs');
+const path = require('path');
+const dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
+
+function loadDB() {
+    try { return JSON.parse(fs.readFileSync(dbPath, 'utf8')); }
+    catch(e) { return { orders:[], products:[], inventory:[], purchases:[], suppliers:[], inventoryTx:[], returns:[], expenses:[] }; }
+}
+function saveDB(db) {
+    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+    try { ipcRenderer.send('notify-db-changed'); } catch(e) {}
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Time Clock ---
     setInterval(() => {
-        const d = new Date();
-        document.getElementById('kds-live-clock').innerText = d.toLocaleTimeString('en-US', {hour12:true, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+        document.getElementById('kds-live-clock').innerText =
+            new Date().toLocaleTimeString('en-US', {hour12:true, hour:'2-digit', minute:'2-digit', second:'2-digit'});
     }, 1000);
 
     // --- Load Settings ---
     const savedSet = localStorage.getItem('restaurant_settings');
     if(savedSet) {
         const ds = JSON.parse(savedSet);
-        if(ds.logo) document.getElementById('dyn-login-logo').src = ds.logo;
-        if(ds.name) document.getElementById('kds-rest-name').innerHTML = `<i class="ph-fill ph-fire"></i> شاشة مطبخ ${ds.name} (KDS)`;
+        if(ds.logo && document.getElementById('dyn-login-logo')) document.getElementById('dyn-login-logo').src = ds.logo;
+        if(ds.name && document.getElementById('kds-rest-name')) document.getElementById('kds-rest-name').innerHTML = `<i class="ph-fill ph-fire"></i> شاشة مطبخ ${ds.name} (KDS)`;
     }
 
     // --- KDS Engine ---
     let orders = [];
 
-    function fetchOrders() {
-        const str = localStorage.getItem('pos_orders');
-        orders = str ? JSON.parse(str) : [];
+    async function fetchOrders() {
+        // ✅ Fetch from JSON database via IPC
+        const allOrders = await ipcRenderer.invoke('db-get-orders') || [];
 
-        // Migrate Old Orders to have a Kitchen Status and a Date.now() timestamp if missing
+        // Only show orders from today that are not archived/done
+        const todayStart = new Date();
+        todayStart.setHours(0,0,0,0);
+
+        orders = allOrders.filter(o => {
+            const ts = o.timestamp || o.createdAt || 0;
+            return ts >= todayStart.getTime();
+        });
+
+        // Assign kitchenStatus to new orders that don't have it + persist back to DB
         let modified = false;
+        const db = loadDB();
         orders.forEach(o => {
-            if(!o.kitchenStatus) {
-                o.kitchenStatus = 'new';
-                o.createdAt = Date.now();
+            // Find matching order in db.orders
+            const dbOrder = (db.orders || []).find(x => x.orderId === o.orderId);
+            if(dbOrder && !dbOrder.kitchenStatus) {
+                dbOrder.kitchenStatus = 'new';
+                dbOrder.createdAt = dbOrder.timestamp || Date.now();
                 modified = true;
             }
-            // Some existing mock POS orders don't have createdAt
-            if(!o.createdAt) { o.createdAt = Date.now() - (Math.random() * 600000); modified = true; } // Random 1-10 mins ago
+            // Reflect kitchenStatus from DB into our local variable
+            if(dbOrder) {
+                o.kitchenStatus = dbOrder.kitchenStatus || 'new';
+                o.createdAt = dbOrder.createdAt || dbOrder.timestamp || Date.now();
+            } else {
+                o.kitchenStatus = o.kitchenStatus || 'new';
+                o.createdAt = o.timestamp || Date.now();
+            }
         });
-        if(modified) localStorage.setItem('pos_orders', JSON.stringify(orders));
-        
+
+        if(modified) saveDB(db);
+
         renderBoard();
     }
 
-    // Handle Button Clicks
+    // Handle Button Clicks - Update Kitchen Status in DB
     window.updateKDSStatus = function(orderId, nextStatus) {
-        const idx = orders.findIndex(o => o.orderId === orderId);
-        if(idx > -1) {
-            orders[idx].kitchenStatus = nextStatus;
-            
-            // If going from ready -> done (Delivered to customer), we don't delete from pos_orders, we just mark as "done" so it hides from KDS
-            localStorage.setItem('pos_orders', JSON.stringify(orders));
-            renderBoard();
+        const db = loadDB();
+        const dbOrder = (db.orders || []).find(o => o.orderId === orderId);
+        if(dbOrder) {
+            dbOrder.kitchenStatus = nextStatus;
+            saveDB(db);
         }
-    }
+        // Update local reference too
+        const localOrder = orders.find(o => o.orderId === orderId);
+        if(localOrder) localOrder.kitchenStatus = nextStatus;
+        renderBoard();
+    };
 
     function renderBoard() {
         const colNew = document.getElementById('col-new');
         const colPrep = document.getElementById('col-prep');
         const colReady = document.getElementById('col-ready');
+        if(!colNew) return;
 
-        // Clear contents
         colNew.innerHTML = '';
         colPrep.innerHTML = '';
         colReady.innerHTML = '';
@@ -62,45 +97,39 @@ document.addEventListener('DOMContentLoaded', () => {
         let countNew=0, countPrep=0, countReady=0;
 
         orders.forEach(o => {
-            if(o.kitchenStatus === 'done' || o.kitchenStatus === 'archived') return; // Skip closed orders from showing in KDS
+            if(o.kitchenStatus === 'done' || o.kitchenStatus === 'archived') return;
 
-            let colContainer, badgeClass, actionHtml;
-
+            let colContainer, actionHtml;
             if(o.kitchenStatus === 'new') {
-                colContainer = colNew; countNew++; badgeClass = 'type-local';
+                colContainer = colNew; countNew++;
                 actionHtml = `<button class="btn-kds-act to-prep" onclick="updateKDSStatus('${o.orderId}', 'prep')"><i class="ph-bold ph-fire"></i> استلام وبدء التحضير</button>`;
             } else if(o.kitchenStatus === 'prep') {
-                colContainer = colPrep; countPrep++; badgeClass = 'type-takeaway'; // Or another generic one
+                colContainer = colPrep; countPrep++;
                 actionHtml = `<button class="btn-kds-act to-ready" onclick="updateKDSStatus('${o.orderId}', 'ready')"><i class="ph-bold ph-check"></i> جاهز للاستلام</button>`;
             } else if(o.kitchenStatus === 'ready') {
-                colContainer = colReady; countReady++; badgeClass = 'type-takeaway';
+                colContainer = colReady; countReady++;
                 actionHtml = `<button class="btn-kds-act to-done" onclick="updateKDSStatus('${o.orderId}', 'done')"><i class="ph-bold ph-check-circle"></i> تم التسليم للعميل/ويتر</button>`;
             }
+            if(!colContainer) return;
 
-            // Type string
             const otype = (o.type && o.type.includes('سفري')) ? 'سفري' : 'محلي (صالة)';
+            const elapsedMins = Math.floor((Date.now() - (o.createdAt || o.timestamp || Date.now())) / 60000);
+            const timerWarn = elapsedMins > 15 ? 'warn' : '';
 
-            // Items List
             let itemsHtml = '';
-            if(o.items && o.items.length > 0) {
+            if(Array.isArray(o.items) && o.items.length > 0) {
                 o.items.forEach(i => {
                     itemsHtml += `
                         <div class="k-item">
                             <span class="k-item-name"><i class="ph-bold ph-caret-left" style="color:var(--text-muted); font-size:12px;"></i> ${i.name}</span>
                             <span class="k-qty">x${i.qty}</span>
-                        </div>
-                    `;
+                        </div>`;
                 });
             } else {
                 itemsHtml = `<p style="color:var(--text-muted); font-size:12px;">(تفاصيل الطلب غير متوفرة)</p>`;
             }
 
-            // Elapsed time
-            const elapsedMins = Math.floor((Date.now() - o.createdAt) / 60000);
-            const timerWarn = elapsedMins > 15 ? 'warn' : '';
-
-            // Card HTML
-            const card = `
+            colContainer.insertAdjacentHTML('beforeend', `
                 <div class="kds-ticket" id="ticket-${o.orderId}">
                     <div class="kds-ticket-head">
                         <span class="t-id"><i class="ph-fill ph-receipt text-blue"></i> ${o.orderId}</span>
@@ -112,31 +141,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="kds-ticket-items">
                         ${itemsHtml}
-                        ${o.note ? `<p style="margin-top:10px; color:var(--accent-orange); font-size:12px; font-weight:bold; background:rgba(249, 115, 22, 0.1); padding:5px; border-radius:4px;"><i class="ph-fill ph-warning-circle"></i> ${o.note}</p>` : ''}
+                        ${o.note ? `<p style="margin-top:10px; color:var(--accent-orange); font-size:12px; font-weight:bold; background:rgba(249,115,22,0.1); padding:5px; border-radius:4px;"><i class="ph-fill ph-warning-circle"></i> ${o.note}</p>` : ''}
                     </div>
-                    <div class="kds-ticket-action">
-                        ${actionHtml}
-                    </div>
+                    <div class="kds-ticket-action">${actionHtml}</div>
                 </div>
-            `;
-            colContainer.insertAdjacentHTML('beforeend', card);
+            `);
         });
 
-        // Set counters
         document.getElementById('count-new').innerText = countNew;
         document.getElementById('count-prep').innerText = countPrep;
         document.getElementById('count-ready').innerText = countReady;
-        
-        let totalActive = countNew + countPrep + countReady;
-        document.getElementById('kds-order-count').innerText = `${totalActive} طلبات قيد العمل`;
+        document.getElementById('kds-order-count').innerText = `${countNew+countPrep+countReady} طلبات قيد العمل`;
 
-        // Apply Empty States
         if(countNew === 0) colNew.innerHTML = `<div class="kds-empty"><i class="ph-light ph-tray"></i><p>لا توجد طلبات جديدة</p></div>`;
         if(countPrep === 0) colPrep.innerHTML = `<div class="kds-empty"><i class="ph-light ph-cooking-pot"></i><p>لا توجد طلبات في التحضير</p></div>`;
         if(countReady === 0) colReady.innerHTML = `<div class="kds-empty"><i class="ph-light ph-bell-ringing"></i><p>لا توجد طلبات جاهزة</p></div>`;
     }
 
-    // Auto Refresh KDS every 5 seconds to catch new POS orders from other windows
-    fetchOrders();
-    setInterval(fetchOrders, 5000);
+    // ✅ Immediate refresh when a peer broadcasts a new order
+    window.addEventListener('pos-db-updated', () => {
+        fetchOrders();
+        console.log('[KDS] ⚡ New order received from network — refreshing...');
+    });
+
+    // ✅ Auto Refresh KDS every 10 seconds as backup
+    await fetchOrders();
+    setInterval(fetchOrders, 10000);
 });

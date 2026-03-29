@@ -1,14 +1,14 @@
-document.addEventListener('DOMContentLoaded', () => {
+const { ipcRenderer } = require('electron');
+
+document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Date Filter Buttons Toggle ---
     const dateBtns = document.querySelectorAll('.date-btn');
     dateBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             dateBtns.forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
-            
-            // Re-render chart data
-            fetchRealDataAndUpdateCharts(e.target.dataset.range);
+            await fetchRealDataAndUpdateCharts(e.target.dataset.range);
         });
     });
 
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
         mainTrendChart = new Chart(ctxTrend, {
             type: 'line',
             data: {
-                labels: ['الأسبوع 1', 'الأسبوع 2', 'الأسبوع 3', 'الأسبوع 4'], // Default
+                labels: ['الأسبوع 1', 'الأسبوع 2', 'الأسبوع 3', 'الأسبوع 4'],
                 datasets: [
                     {
                         label: 'الإيرادات المحققة',
@@ -73,87 +73,77 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Initialize Empty
     initCharts();
 
-    // The Magic: Fetch Real LocalStorage Data!
-    function fetchRealDataAndUpdateCharts(range = 'month') {
-        
-        let ordersStr = localStorage.getItem('pos_orders');
-        let returnsStr = localStorage.getItem('pos_returns');
-        let hrstr = localStorage.getItem('hr_expenses');
-        let purStr = localStorage.getItem('purchases_log'); // Assuming later
+    async function fetchRealDataAndUpdateCharts(range = 'month') {
+        // ✅ قراءة كل البيانات من قاعدة البيانات JSON
+        const _fs = require('fs');
+        const _path = require('path');
+        const _dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
+        let _db = {};
+        try { _db = JSON.parse(_fs.readFileSync(_dbPath, 'utf8')); } catch(e) {}
 
-        let orders = ordersStr ? JSON.parse(ordersStr) : [];
-        let returns = returnsStr ? JSON.parse(returnsStr) : [];
-        let hrExpenses = hrstr ? JSON.parse(hrstr) : [];
-        let purchases = purStr ? JSON.parse(purStr) : [];
+        // الطلبات من IPC (مُحسّن للتزامن)
+        let orders = await ipcRenderer.invoke('db-get-orders') || [];
 
-        // CALCULATE GLOBALS
+        // بقية البيانات من ملف JSON مباشرة
+        const returns      = _db.returns      || [];
+        const hrExpenses   = _db.hrExpenses   || [];
+        const purchases    = _db.purchases    || [];
+
         let totalRevenue = 0;
         let cashSales = 0;
         let cardSales = 0;
         
         orders.forEach(o => {
             totalRevenue += o.total;
-            if(o.paymentMethod.includes('كاش')) cashSales += o.total;
+            if((o.paymentMethod||'').includes('كاش')) cashSales += o.total;
             else cardSales += o.total;
         });
 
-        // Deduct Returns
         let totalReturns = 0;
         returns.forEach(r => {
             totalReturns += r.amount;
-            if(r.method.includes('كاش')) cashSales -= r.amount;
+            if((r.method||'').includes('كاش')) cashSales -= r.amount;
             else cardSales -= r.amount;
         });
 
         const netRevenue = totalRevenue - totalReturns;
 
-        // EXPENSES Calculation
         let totalHRExpenses = 0;
-        hrExpenses.forEach(hr => totalHRExpenses += hr.amount);
+        hrExpenses.forEach(hr => totalHRExpenses += (hr.amount || 0));
 
         let totalPurchases = 0;
-        purchases.forEach(pur => totalPurchases += pur.amount);
-
-        // Assume some standard food cost as expenses if purchases are empty right now for demo purposes
-        if(totalPurchases === 0) {
-            totalPurchases = netRevenue * 0.45; // 45% default food cost
-        }
+        purchases.forEach(pur => totalPurchases += (pur.total || pur.amount || 0));
+        if(totalPurchases === 0 && netRevenue > 0) totalPurchases = netRevenue * 0.45;
 
         const exactExpenses = totalHRExpenses + totalPurchases;
         const netProfit = netRevenue - exactExpenses;
         let margin = netRevenue > 0 ? ((netProfit / netRevenue) * 100).toFixed(1) : 0;
 
-        // --- UPDATE HTML KPIs ---
-        document.getElementById('dash-revenue').innerHTML = netRevenue.toFixed(2) + ' <small style="font-size:16px;">ر.س</small>';
-        document.getElementById('dash-expenses').innerHTML = exactExpenses.toFixed(2) + ' <small style="font-size:16px;">ر.س</small>';
-        document.getElementById('dash-profit').innerHTML = netProfit.toFixed(2) + ' <small style="font-size:16px;">ر.س</small>';
+        const el = (id) => document.getElementById(id);
+        if(el('dash-revenue')) el('dash-revenue').innerHTML = netRevenue.toFixed(2) + ' <small style="font-size:16px;">ر.س</small>';
+        if(el('dash-expenses')) el('dash-expenses').innerHTML = exactExpenses.toFixed(2) + ' <small style="font-size:16px;">ر.س</small>';
+        if(el('dash-profit')) el('dash-profit').innerHTML = netProfit.toFixed(2) + ' <small style="font-size:16px;">ر.س</small>';
         
-        const mEl = document.getElementById('dash-margin');
-        mEl.innerHTML = margin + '%';
-        if(margin < 0) mEl.style.color = 'var(--accent-red)';
-        else mEl.style.color = 'var(--accent-green)';
-
-        // Financial List Bottom Updates
-        const posEls = document.querySelectorAll('.perf-amount');
-        if(posEls.length >= 3) {
-            posEls[0].querySelector('h3').innerText = netRevenue.toFixed(2) + ' ر.س'; // In
-            posEls[1].querySelector('h3').innerText = '-' + exactExpenses.toFixed(2) + ' ر.س'; // Out
-            
-            const bal = posEls[2].querySelector('h3');
-            bal.innerText = netProfit.toFixed(2) + ' ر.س'; // Balance
-            if(netProfit < 0) bal.style.color = 'var(--accent-red)';
-            else bal.style.color = 'var(--accent-blue)';
+        const mEl = el('dash-margin');
+        if(mEl) {
+            mEl.innerHTML = margin + '%';
+            mEl.style.color = margin < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
         }
 
-        // --- UPDATE CHARTS ---
-        // 1. Update Donut Chart (Cash vs Card)
+        const posEls = document.querySelectorAll('.perf-amount');
+        if(posEls.length >= 3) {
+            posEls[0].querySelector('h3').innerText = netRevenue.toFixed(2) + ' ر.س';
+            posEls[1].querySelector('h3').innerText = '-' + exactExpenses.toFixed(2) + ' ر.س';
+            const bal = posEls[2].querySelector('h3');
+            bal.innerText = netProfit.toFixed(2) + ' ر.س';
+            bal.style.color = netProfit < 0 ? 'var(--accent-red)' : 'var(--accent-blue)';
+        }
+
         categoryDonutChart.data.datasets[0].data = [Math.max(0, cashSales), Math.max(0, cardSales)];
         categoryDonutChart.update();
 
-        // 2. Trend Chart (Simulating weekly breakdown from total)
         mainTrendChart.data.datasets[0].data = [
             netRevenue * 0.20, netRevenue * 0.25, netRevenue * 0.15, netRevenue * 0.40
         ];
@@ -163,6 +153,5 @@ document.addEventListener('DOMContentLoaded', () => {
         mainTrendChart.update();
     }
 
-    // Call it initially
-    fetchRealDataAndUpdateCharts();
+    await fetchRealDataAndUpdateCharts();
 });

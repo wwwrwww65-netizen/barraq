@@ -12,14 +12,14 @@
   "license": "ISC",
   "description": "",
   "build": {
-    "appId": "com.samar.pos",
-    "productName": "Samar POS",
+    "appId": "com.hash.pos",
+    "productName": "Hash POS",
     "directories": {
       "output": "dist"
     },
     "win": {
       "target": "nsis",
-      "icon": "logo.jpg"
+      "icon": "1111.png"
     },
     "nsis": {
       "oneClick": false,
@@ -32,6 +32,11 @@
     "electron-builder": "^26.8.1"
   },
   "dependencies": {
+    "@fontsource/cairo": "^5.2.7",
+    "@phosphor-icons/web": "^2.1.2",
+    "better-sqlite3": "^12.8.0",
+    "chart.js": "^4.5.1",
+    "html2canvas": "^1.4.1",
     "qrcode": "^1.5.4",
     "whatsapp-web.js": "^1.34.6"
   }

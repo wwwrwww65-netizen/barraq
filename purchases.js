@@ -1,19 +1,29 @@
+const { ipcRenderer } = require('electron');
+const fs = require('fs');
+const path = require('path');
+const dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
+
+function loadDB() {
+    try { return JSON.parse(fs.readFileSync(dbPath, 'utf8')); } catch(e) { return { orders:[], products:[], inventory:[], purchases:[], suppliers:[], inventoryTx:[], returns:[] }; }
+}
+function saveDB(db) {
+    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+    try { ipcRenderer.send('notify-db-changed'); } catch(e) {}
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 
-    // Databases
-    let purchases = JSON.parse(localStorage.getItem('erp_purchases') || '[]');
-    let suppliers = JSON.parse(localStorage.getItem('erp_suppliers') || '[]');
-    let inventory = JSON.parse(localStorage.getItem('erp_inventory_items') || '[]');
-    let inventoryTx = JSON.parse(localStorage.getItem('erp_inventory_tx') || '[]');
+    // Databases from JSON DB
+    let db = loadDB();
+    if(!db.purchases) db.purchases = [];
+    if(!db.suppliers) db.suppliers = [];
+    if(!db.inventory) db.inventory = [];
+    if(!db.inventoryTx) db.inventoryTx = [];
 
-    // Fake initial data for purchases if empty
-    if(purchases.length === 0) {
-        purchases = [
-            { id: 'PUR-1001', ref: 'INV-4022', supId: 'SUP-01', supName: 'شركة المراعي', date: '2023-10-01', total: 4500, payMethod: 'credit', status: 'مستلمة بالمخزن' },
-            { id: 'PUR-1002', ref: 'INV-9111', supId: 'SUP-02', supName: 'مؤسسة الثقفي', date: '2023-10-02', total: 12400, payMethod: 'bank', status: 'مستلمة بالمخزن' }
-        ];
-        localStorage.setItem('erp_purchases', JSON.stringify(purchases));
-    }
+    let purchases = db.purchases;
+    let suppliers = db.suppliers;
+    let inventory = db.inventory;
+    let inventoryTx = db.inventoryTx;
 
     // --- KPIs ---
     function renderKPIs() {
@@ -89,6 +99,18 @@ document.addEventListener('DOMContentLoaded', () => {
     renderKPIs();
     renderTable();
 
+    // ── Network Sync: reload when pos_database.json updated by a peer ─────────
+    window.addEventListener('pos-db-updated', () => {
+        db = loadDB();
+        purchases = db.purchases || [];
+        suppliers = db.suppliers || [];
+        inventory = db.inventory || [];
+        inventoryTx = db.inventoryTx || [];
+        renderKPIs();
+        renderTable();
+        console.log('[Sync] 🔄 Purchases reloaded from network update.');
+    });
+
     // --- Modal Logic ---
     const modal = document.getElementById('invoiceModal');
     const form = document.getElementById('form-invoice');
@@ -152,6 +174,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('btn-add-row').addEventListener('click', addRow);
 
+    // Helper: read tax rate from settings
+    function getSystemTaxRate() {
+        try {
+            const s = JSON.parse(localStorage.getItem('restaurant_settings') || '{}');
+            const rate = parseFloat(s.taxRate);
+            return isNaN(rate) ? 15 : rate;
+        } catch(e) { return 15; }
+    }
+
     function calculateTotals() {
         let sub = 0;
         document.querySelectorAll('.item-row').forEach(row => {
@@ -162,12 +193,17 @@ document.addEventListener('DOMContentLoaded', () => {
             sub += t;
         });
 
-        const tax = sub * 0.15; // Assuming 15% VAT on subtotal
+        const taxPct = getSystemTaxRate(); // dynamic from settings
+        const tax = sub * (taxPct / 100);
         const grand = sub + tax;
 
         document.getElementById('subtotal').innerText = sub.toFixed(2);
         document.getElementById('tax').innerText = tax.toFixed(2);
         document.getElementById('grandtotal').innerText = grand.toFixed(2) + ' ر.س';
+
+        // Update label text to show current rate
+        const purTaxLabel = document.getElementById('pur-tax-label');
+        if (purTaxLabel) purTaxLabel.innerText = `ضريبة القيمة المضافة (${taxPct}%):`;
     }
 
 
@@ -254,12 +290,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // 4. Save Everything
+        // 4. Save Everything to JSON DB
         purchases.push(newPurchase);
-        localStorage.setItem('erp_purchases', JSON.stringify(purchases));
-        localStorage.setItem('erp_suppliers', JSON.stringify(suppliers));
-        localStorage.setItem('erp_inventory_items', JSON.stringify(inventory));
-        localStorage.setItem('erp_inventory_tx', JSON.stringify(inventoryTx));
+        db.purchases = purchases;
+        db.suppliers = suppliers;
+        db.inventory = inventory;
+        db.inventoryTx = inventoryTx;
+        saveDB(db);
 
         // 5. Cleanup
         modal.classList.remove('active');
@@ -287,7 +324,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const methodStr = pur.payMethod === 'cash' ? 'نقداً' : (pur.payMethod === 'bank' ? 'حوالة بنكية' : 'آجل (ذمة)');
-        const sub = pur.total / 1.15;
+        const taxPct = getSystemTaxRate();
+        const sub = pur.total / (1 + taxPct / 100);
         const tax = pur.total - sub;
 
         const w = window.open('', '_blank', 'width=800,height=600');
@@ -314,7 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <body>
                 <div class="header">
                     <div class="header-left">
-                        <h1>سمر حضرموت للمطاعم</h1>
+                        <h1>هـــش HASH للمطاعم</h1>
                         <p>إدارة المشتريات والمخازن</p>
                         <h2 style="margin-top:15px; color:#10b981;">فاتورة مشتريات / توريد بضاعة</h2>
                     </div>
@@ -343,7 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 <div class="totals" style="margin-right:0; margin-left:auto; text-align:right;">
                     <div class="tot-line"><span>الإجمالي قبل الضريبة:</span> <span>${sub.toFixed(2)} ر.س</span></div>
-                    <div class="tot-line"><span>(15%) ضريبة القيمة المضافة:</span> <span>${tax.toFixed(2)} ر.س</span></div>
+                    <div class="tot-line"><span>(${taxPct}%) ضريبة القيمة المضافة:</span> <span>${tax.toFixed(2)} ر.س</span></div>
                     <div class="tot-line grand"><span>الإجمالي النهائي المستحق:</span> <span>${pur.total.toFixed(2)} ر.س</span></div>
                 </div>
 

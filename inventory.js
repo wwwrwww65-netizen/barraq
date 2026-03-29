@@ -1,15 +1,32 @@
+const fs = require('fs');
+const path = require('path');
+const { ipcRenderer } = require('electron');
+const dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
+
+function loadDB() {
+    try { return JSON.parse(fs.readFileSync(dbPath, 'utf8')); }
+    catch(e) { return { orders:[], products:[], inventory:[], purchases:[], suppliers:[], inventoryTx:[], returns:[] }; }
+}
+function saveDB(db) {
+    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+    try { ipcRenderer.send('notify-db-changed'); } catch(e) {}
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 
     const tbody = document.querySelector('.inv-table tbody');
     if(!tbody) return;
 
-    // --- State Management ---
-    let erpItems = [];
-    const storedItems = localStorage.getItem('erp_inventory_items');
-    if (storedItems) {
-        erpItems = JSON.parse(storedItems);
-    } else {
-        // Initial Dummy Data
+    // Load from JSON DB
+    let db = loadDB();
+    if(!db.inventory) db.inventory = [];
+    if(!db.inventoryTx) db.inventoryTx = [];
+
+    let erpItems = db.inventory;
+    let erpTx = db.inventoryTx;
+
+    // Seed initial items if empty
+    if(erpItems.length === 0) {
         erpItems = [
             { sku: 'SKU-2001', name: 'أرز بسمتي هندي', category: 'المواد التموينية', unit: 'كيس 40كج', cost: 320, qty: 14, minQty: 15, warehouseId: 'main' },
             { sku: 'SKU-2002', name: 'لحم حري طازج', category: 'اللحوم', unit: 'ذبيحة', cost: 1200, qty: 35, minQty: 10, warehouseId: 'main' },
@@ -17,19 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
             { sku: 'SKU-2012', name: 'زيت قلي نباتي', category: 'الزيوت', unit: 'تنكة', cost: 160, qty: 0, minQty: 10, warehouseId: 'restaurant' },
             { sku: 'SKU-2015', name: 'مياه لتر ونصف', category: 'المرطبات', unit: 'كرتون', cost: 12, qty: 50, minQty: 20, warehouseId: 'beverages' }
         ];
-        localStorage.setItem('erp_inventory_items', JSON.stringify(erpItems));
-    }
-
-    let erpTx = [];
-    const storedTx = localStorage.getItem('erp_inventory_tx');
-    if (storedTx) {
-        erpTx = JSON.parse(storedTx);
-    } else {
-        erpTx = [
-            { id: 'TX01', type: 'in', total: 24500, date: Date.now() - 86400000 },
-            { id: 'TX02', type: 'out', total: 18350, date: Date.now() - 400000 }
-        ];
-        localStorage.setItem('erp_inventory_tx', JSON.stringify(erpTx));
+        db.inventory = erpItems;
+        saveDB(db);
     }
 
     // --- Render Functions ---
@@ -112,6 +118,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderTable();
     renderKPIs();
+
+    // ── Network Sync: reload data when pos_database.json is updated by a peer ──
+    window.addEventListener('pos-db-updated', () => {
+        db = loadDB();
+        erpItems = db.inventory || [];
+        erpTx = db.inventoryTx || [];
+        renderTable();
+        renderKPIs();
+        console.log('[Sync] 🔄 Inventory reloaded from network update.');
+    });
 
     // --- Warehouse Tabs Logic ---
     const whTabs = document.querySelectorAll('.warehouse-tab');
@@ -296,8 +312,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 sku: tSku
             });
 
-            localStorage.setItem('erp_inventory_items', JSON.stringify(erpItems));
-            localStorage.setItem('erp_inventory_tx', JSON.stringify(erpTx));
+            db.inventory = erpItems;
+            db.inventoryTx = erpTx;
+            saveDB(db);
 
             closeModal('transferModal');
             renderTable();
@@ -323,7 +340,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 warehouseId: currentWH
             };
             erpItems.push(newItem);
-            localStorage.setItem('erp_inventory_items', JSON.stringify(erpItems));
+            db.inventory = erpItems;
+            saveDB(db);
             
             closeModal('itemModal');
             renderTable();
@@ -379,8 +397,9 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             erpTx.push(newTx);
 
-            localStorage.setItem('erp_inventory_items', JSON.stringify(erpItems));
-            localStorage.setItem('erp_inventory_tx', JSON.stringify(erpTx));
+            db.inventory = erpItems;
+            db.inventoryTx = erpTx;
+            saveDB(db);
 
             closeModal('txModal');
             renderTable();
@@ -417,7 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </head>
             <body>
                 <div class="header">
-                    <h2>سمر حضرموت للمطاعم</h2>
+                    <h2>هـــش HASH للمطاعم</h2>
                     <p>المخازن والمستودعات</p>
                     <h3 style="margin-top:10px; border:1px solid #333; display:inline-block; padding:5px 15px; border-radius:5px;">${typeName}</h3>
                 </div>

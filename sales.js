@@ -1,5 +1,7 @@
-document.addEventListener('DOMContentLoaded', () => {
-    loadSales();
+const { ipcRenderer } = require('electron');
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadSales();
 
     const searchInput = document.getElementById('sales-search');
     if (searchInput) {
@@ -14,10 +16,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-function loadSales() {
-    const ordersStr = localStorage.getItem('pos_orders');
-    const orders = ordersStr ? JSON.parse(ordersStr) : [];
-    
+async function loadSales() {
+    // Read from SQLite JSON database via IPC
+    let orders = await ipcRenderer.invoke('db-get-orders');
+    if (!orders) orders = [];
+
     // Sort descending by timestamp
     orders.sort((a, b) => b.timestamp - a.timestamp);
 
@@ -26,30 +29,32 @@ function loadSales() {
     
     if (orders.length === 0) {
         tbody.innerHTML = '';
-        emptyState.style.display = 'block';
-        document.querySelector('.sales-table').style.display = 'none';
+        if(emptyState) emptyState.style.display = 'block';
+        const tbl = document.querySelector('.sales-table');
+        if(tbl) tbl.style.display = 'none';
         updateKPIs([]);
         return;
     }
 
-    emptyState.style.display = 'none';
-    document.querySelector('.sales-table').style.display = 'table';
+    if(emptyState) emptyState.style.display = 'none';
+    const tbl = document.querySelector('.sales-table');
+    if(tbl) tbl.style.display = 'table';
     updateKPIs(orders);
 
     let rowsHTML = '';
     orders.forEach(order => {
-        // Badges mapping
-        let typeClass = order.type.includes('محلي') ? 'badge-dinein' : order.type.includes('سفري') ? 'badge-takeout' : 'badge-delivery';
-        let methodClass = order.paymentMethod.includes('كاش') ? 'badge-cash' : 'badge-card';
+        let typeClass = (order.type||'').includes('محلي') ? 'badge-dinein' : (order.type||'').includes('سفري') ? 'badge-takeout' : 'badge-delivery';
+        let methodClass = (order.paymentMethod||'').includes('كاش') ? 'badge-cash' : 'badge-card';
+        const itemsCount = Array.isArray(order.items) ? order.items.length : (order.itemsCount || 0);
 
         rowsHTML += `
             <tr>
                 <td><strong>${order.orderId}</strong></td>
-                <td style="color:var(--text-secondary); font-size:12px;">${order.date}</td>
-                <td><span class="badge ${typeClass}">${order.type}</span></td>
-                <td><span class="badge ${methodClass}"><i class="ph ph-${order.paymentMethod.includes('كاش') ? 'money' : 'credit-card'}"></i> ${order.paymentMethod}</span></td>
-                <td>${order.items} أصناف</td>
-                <td style="color:var(--accent-green); font-weight:800;">${order.total.toFixed(2)} ر.س</td>
+                <td style="color:var(--text-secondary); font-size:12px;">${order.date || order.dateStr || ''}</td>
+                <td><span class="badge ${typeClass}">${order.type || ''}</span></td>
+                <td><span class="badge ${methodClass}"><i class="ph ph-${(order.paymentMethod||'').includes('كاش') ? 'money' : 'credit-card'}"></i> ${order.paymentMethod || ''}</span></td>
+                <td>${itemsCount} أصناف</td>
+                <td style="color:var(--accent-green); font-weight:800;">${Number(order.total).toFixed(2)} ر.س</td>
                 <td style="text-align:center;">
                     <button class="sales-action-btn" title="طباعة الفاتورة مرة أخرى"><i class="ph ph-printer"></i></button>
                     <button class="sales-action-btn" title="تفاصيل الطلب" style="color:var(--accent-blue)"><i class="ph ph-eye"></i></button>
@@ -69,22 +74,32 @@ function updateKPIs(orders) {
 
     orders.forEach(o => {
         totalRev += o.total;
-        if (o.paymentMethod.includes('كاش')) {
+        if ((o.paymentMethod||'').includes('كاش')) {
             cashRev += o.total;
         } else {
             cardRev += o.total;
         }
     });
 
-    document.getElementById('kpi-total-revenue').innerText = totalRev.toFixed(2) + ' ر.س';
-    document.getElementById('kpi-total-orders').innerText = orderCount;
-    document.getElementById('kpi-cash-revenue').innerText = cashRev.toFixed(2) + ' ر.س';
-    document.getElementById('kpi-card-revenue').innerText = cardRev.toFixed(2) + ' ر.س';
+    const el = (id) => document.getElementById(id);
+    if(el('kpi-total-revenue')) el('kpi-total-revenue').innerText = totalRev.toFixed(2) + ' ر.س';
+    if(el('kpi-total-orders')) el('kpi-total-orders').innerText = orderCount;
+    if(el('kpi-cash-revenue')) el('kpi-cash-revenue').innerText = cashRev.toFixed(2) + ' ر.س';
+    if(el('kpi-card-revenue')) el('kpi-card-revenue').innerText = cardRev.toFixed(2) + ' ر.س';
 }
 
-function clearSales() {
+async function clearSales() {
     if(confirm('هل أنت متأكد من مسح جميع سجلات المبيعات الحالية؟ لا يمكن التراجع!')) {
-        localStorage.removeItem('pos_orders');
-        loadSales();
+        // Clear orders from JSON DB
+        const fs = require('fs');
+        const path = require('path');
+        const dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
+        try {
+            const raw = fs.readFileSync(dbPath, 'utf8');
+            const db = JSON.parse(raw);
+            db.orders = [];
+            fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+        } catch(e) { console.error(e); }
+        await loadSales();
     }
 }

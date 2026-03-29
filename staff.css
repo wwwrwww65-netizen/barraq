@@ -2,6 +2,9 @@
 
 /* HR Specific Global Theme Adjustments */
 .text-pink { color: #ec4899 !important; }
+.text-red { color: #ef4444 !important; }
+.bg-red { background: #ef4444 !important; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+.bg-red:hover { background: #dc2626 !important; transform: translateY(-2px); }
 
 /* Dashboard Header Buttons */
 .hr-btn-solid {

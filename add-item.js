@@ -1,26 +1,30 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    const { ipcRenderer } = require('electron');
 
     const urlParams = new URLSearchParams(window.location.search);
     const editId = urlParams.get('edit');
     let editingProduct = null;
-    let localItemImg = 'https://images.unsplash.com/photo-1544025162-8315ea07edca?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'; // default fallback
+    let localItemImg = 'placeholder.svg'; // default fallback
 
-    if(editId) {
+    // Attempt to load from JSON DB first via IPC, then localStorage fallback
+    let allProducts = await ipcRenderer.invoke('db-get-products') || [];
+    if(allProducts.length === 0) {
         const prodStr = localStorage.getItem('pos_products');
-        if(prodStr) {
-            const allProducts = JSON.parse(prodStr);
-            editingProduct = allProducts.find(p => p.id === editId);
-        }
-        if(editingProduct) {
-            localItemImg = editingProduct.image || localItemImg;
-        }
+        if(prodStr) allProducts = JSON.parse(prodStr);
+    }
+    
+    if(editId) {
+        editingProduct = allProducts.find(p => p.id === editId);
+        if(editingProduct) localItemImg = editingProduct.image || localItemImg;
     }
 
     // --- 1. Load Categories ---
     const catSelector = document.getElementById('dynamic-category-selector');
-    let cats = [];
-    const catsStr = localStorage.getItem('pos_categories');
-    if(catsStr) cats = JSON.parse(catsStr);
+    let cats = await ipcRenderer.invoke('db-get-categories') || [];
+    if(cats.length === 0) {
+        const catsStr = localStorage.getItem('pos_categories');
+        if(catsStr) cats = JSON.parse(catsStr);
+    }
 
     if(!catSelector) return;
 
@@ -111,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.querySelector('.add-item-form');
     if(!form) return;
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         if(cats.length === 0) {
@@ -153,16 +157,22 @@ document.addEventListener('DOMContentLoaded', () => {
             createdAt: editingProduct ? editingProduct.createdAt : Date.now()
         };
 
+        // Call IPC to save into pos_database.json AND trigger network db_changed
+        try {
+            await ipcRenderer.invoke('db-save-product', newItem);
+        } catch(err) {
+            console.error('Failed to save product to DB via IPC:', err);
+        }
+
+        // Keep localStorage as fallback
         const prodStr = localStorage.getItem('pos_products');
         let products = prodStr ? JSON.parse(prodStr) : [];
-        
         if (editingProduct) {
             const index = products.findIndex(p => p.id === editId);
             if(index > -1) products[index] = newItem;
         } else {
             products.push(newItem);
         }
-        
         localStorage.setItem('pos_products', JSON.stringify(products));
 
         const btnSave = document.querySelector('.btn-save-publish');

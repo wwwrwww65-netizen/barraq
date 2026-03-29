@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إعداد النظام لأول مرة - POS</title>
+    <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
+    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #050d1a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            direction: rtl;
+            overflow-x: hidden;
+        }
+
+        /* Background glows */
+        .bg-glow {
+            position: fixed; border-radius: 50%;
+            filter: blur(80px); pointer-events: none; z-index: 0;
+        }
+        .bg-glow-1 { width: 400px; height: 400px; background: rgba(16,185,129,.08); top: -100px; right: -100px; }
+        .bg-glow-2 { width: 350px; height: 350px; background: rgba(59,130,246,.06); bottom: -100px; left: -100px; }
+
+        /* Main container */
+        .setup-container {
+            position: relative; z-index: 1;
+            width: 100%; max-width: 560px; padding: 20px;
+        }
+
+        /* Header */
+        .setup-header { text-align: center; margin-bottom: 28px; }
+        .setup-header .brand {
+            display: inline-flex; align-items: center; gap: 12px;
+            background: rgba(15,23,42,.7); border: 1px solid rgba(255,255,255,.07);
+            border-radius: 16px; padding: 10px 20px; margin-bottom: 16px;
+        }
+        .setup-header .brand img { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; }
+        .setup-header .brand-name {
+            font-size: 16px; font-weight: 800;
+            background: linear-gradient(90deg,#10b981,#34d399);
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .setup-header h1 { font-size: 26px; font-weight: 800; color: #fff; margin-bottom: 6px; }
+        .setup-header p { color: #64748b; font-size: 14px; }
+
+        /* Steps indicator */
+        .steps-bar {
+            display: flex; align-items: center; justify-content: center;
+            gap: 0; margin-bottom: 28px;
+        }
+        .step-dot {
+            display: flex; align-items: center; justify-content: center;
+            width: 36px; height: 36px; border-radius: 50%;
+            font-size: 13px; font-weight: 800;
+            background: rgba(255,255,255,.05);
+            border: 2px solid rgba(255,255,255,.08);
+            color: #475569; transition: all .3s;
+        }
+        .step-dot.active { background: #10b981; border-color: #10b981; color: #fff; box-shadow: 0 0 20px rgba(16,185,129,.4); }
+        .step-dot.done { background: rgba(16,185,129,.2); border-color: rgba(16,185,129,.4); color: #10b981; }
+        .step-line { flex: 1; max-width: 50px; height: 2px; background: rgba(255,255,255,.06); transition: background .3s; }
+        .step-line.done { background: rgba(16,185,129,.4); }
+
+        /* Card */
+        .setup-card {
+            background: rgba(15,23,42,.85);
+            border: 1px solid rgba(255,255,255,.07);
+            border-radius: 24px; padding: 32px;
+            backdrop-filter: blur(24px);
+            box-shadow: 0 24px 64px rgba(0,0,0,.6);
+        }
+
+        .step-content { display: none; animation: fadeSlide .35s ease; }
+        .step-content.active { display: block; }
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .step-title { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+        .step-sub { color: #64748b; font-size: 13px; margin-bottom: 24px; }
+
+        /* Logo upload */
+        .logo-upload-area {
+            border: 2px dashed rgba(16,185,129,.3);
+            border-radius: 16px; padding: 24px;
+            text-align: center; cursor: pointer;
+            transition: all .2s; margin-bottom: 20px;
+            background: rgba(16,185,129,.03);
+        }
+        .logo-upload-area:hover { border-color: rgba(16,185,129,.6); background: rgba(16,185,129,.06); }
+        .logo-upload-area.has-img { border-style: solid; border-color: rgba(16,185,129,.5); }
+        .logo-preview-img { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; margin-bottom: 8px; display: none; }
+        .logo-upload-icon { font-size: 36px; color: #10b981; margin-bottom: 8px; }
+        .logo-upload-label { font-size: 14px; font-weight: 600; color: #94a3b8; }
+        .logo-upload-hint { font-size: 11px; color: #475569; margin-top: 4px; }
+
+        /* Form fields */
+        .form-group { margin-bottom: 18px; }
+        .form-group label {
+            display: block; font-size: 13px; font-weight: 700;
+            color: #94a3b8; margin-bottom: 8px;
+        }
+        .form-group label span.req { color: #ef4444; margin-right: 3px; }
+        .input-wrap { position: relative; }
+        .input-wrap i {
+            position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+            color: #475569; font-size: 18px; pointer-events: none;
+        }
+        .form-input {
+            width: 100%; padding: 13px 44px 13px 14px;
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 12px; color: #fff;
+            font-family: 'Cairo', sans-serif; font-size: 14px;
+            transition: all .2s; outline: none;
+        }
+        .form-input:focus { border-color: rgba(16,185,129,.5); background: rgba(16,185,129,.04); box-shadow: 0 0 0 3px rgba(16,185,129,.1); }
+        .form-input::placeholder { color: #334155; }
+
+        .pwd-toggle {
+            position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: #475569; cursor: pointer;
+            font-size: 18px; padding: 0;
+        }
+        .pwd-toggle:hover { color: #10b981; }
+
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+        /* Error */
+        .field-error { color: #ef4444; font-size: 11px; margin-top: 5px; display: none; }
+
+        /* Buttons */
+        .btn-next {
+            width: 100%; padding: 14px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border: none; border-radius: 14px;
+            color: #fff; font-family: 'Cairo', sans-serif;
+            font-size: 16px; font-weight: 800; cursor: pointer;
+            box-shadow: 0 4px 24px rgba(16,185,129,.4);
+            transition: all .2s; margin-top: 8px;
+        }
+        .btn-next:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(16,185,129,.5); }
+        .btn-next:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+        .btn-back {
+            width: 100%; padding: 12px;
+            background: transparent; border: 1px solid rgba(255,255,255,.08);
+            border-radius: 14px; color: #64748b;
+            font-family: 'Cairo', sans-serif; font-size: 14px; cursor: pointer;
+            transition: all .2s; margin-top: 8px;
+        }
+        .btn-back:hover { border-color: rgba(255,255,255,.2); color: #94a3b8; }
+
+        /* Summary card in step 3 */
+        .summary-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 13px 16px; border-radius: 12px;
+            background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06);
+            margin-bottom: 10px;
+        }
+        .summary-row i { color: #10b981; font-size: 20px; }
+        .summary-row-label { font-size: 12px; color: #64748b; }
+        .summary-row-value { font-size: 14px; font-weight: 700; color: #fff; }
+
+        /* Success state */
+        .success-icon {
+            width: 80px; height: 80px; border-radius: 50%;
+            background: rgba(16,185,129,.15); border: 2px solid rgba(16,185,129,.4);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 36px; margin: 0 auto 16px;
+            animation: pop .4s ease;
+        }
+        @keyframes pop {
+            0%   { transform: scale(0.5); opacity: 0; }
+            70%  { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Preview card */
+        .preview-logo {
+            width: 52px; height: 52px; border-radius: 12px;
+            object-fit: cover; border: 2px solid rgba(16,185,129,.3);
+        }
+
+        /* Progress bar */
+        .setup-progress {
+            height: 2px; background: rgba(255,255,255,.05);
+            border-radius: 2px; margin-top: 20px; overflow: hidden;
+        }
+        .setup-progress-fill {
+            height: 100%; background: linear-gradient(90deg,#10b981,#34d399);
+            border-radius: 2px; transition: width .4s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+
+    <div class="setup-container">
+
+        <!-- Header -->
+        <div class="setup-header">
+            <div class="brand">
+                <img src="1111.png" alt="Logo" id="hdr-logo">
+                <span class="brand-name" id="hdr-name">إعداد النظام</span>
+            </div>
+            <h1>مرحباً بك في النظام! 👋</h1>
+            <p>سيساعدك هذا المعالج على إعداد النظام في دقيقتين</p>
+        </div>
+
+        <!-- Steps indicator -->
+        <div class="steps-bar">
+            <div class="step-dot active" id="sdot-1">1</div>
+            <div class="step-line" id="sline-1"></div>
+            <div class="step-dot" id="sdot-2">2</div>
+            <div class="step-line" id="sline-2"></div>
+            <div class="step-dot" id="sdot-3">3</div>
+        </div>
+
+        <!-- Card -->
+        <div class="setup-card">
+
+            <!-- STEP 1: Restaurant Info -->
+            <div class="step-content active" id="step-1">
+                <div class="step-title">🏪 معلومات المطعم</div>
+                <div class="step-sub">اسم المطعم وشعاره سيظهران في كل مكان في النظام</div>
+
+                <!-- Logo Upload -->
+                <div class="logo-upload-area" id="logo-drop" onclick="document.getElementById('logo-file').click()">
+                    <img id="logo-preview" class="logo-preview-img" alt="Logo Preview">
+                    <div id="logo-placeholder">
+                        <div class="logo-upload-icon"><i class="ph ph-image"></i></div>
+                        <div class="logo-upload-label">اضغط لرفع شعار المطعم</div>
+                        <div class="logo-upload-hint">PNG, JPG, SVG — الحد الأقصى 2MB</div>
+                    </div>
+                </div>
+                <input type="file" id="logo-file" accept="image/*" style="display:none">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>اسم المطعم <span class="req">*</span></label>
+                        <div class="input-wrap">
+                            <i class="ph ph-storefront"></i>
+                            <input type="text" class="form-input" id="inp-name" placeholder="هـــش HASH" required>
+                        </div>
+                        <div class="field-error" id="err-name">يرجى إدخال اسم المطعم</div>
+                    </div>
+                    <div class="form-group">
+                        <label>اسم الفرع</label>
+                        <div class="input-wrap">
+                            <i class="ph ph-map-pin"></i>
+                            <input type="text" class="form-input" id="inp-branch" placeholder="الفرع الرئيسي">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>رقم الهاتف</label>
+                        <div class="input-wrap">
+                            <i class="ph ph-phone"></i>
+                            <input type="text" class="form-input" id="inp-phone" placeholder="+966 5x xxx xxxx">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>الرقم الضريبي</label>
+                        <div class="input-wrap">
+                            <i class="ph ph-seal-percent"></i>
+                            <input type="text" class="form-input" id="inp-tax" placeholder="300xxxxxxxxx0003">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>نص تذكاري (يظهر في أسفل الفواتير)</label>
+                    <div class="input-wrap">
+                        <i class="ph ph-note-pencil"></i>
+                        <input type="text" class="form-input" id="inp-footer" placeholder="شكراً لزيارتكم - نتطلع لخدمتكم مجدداً">
+                    </div>
+                </div>
+
+                <button class="btn-next" id="btn-next-1" onclick="goStep(2)">
+                    متابعة &nbsp;<i class="ph-bold ph-arrow-left"></i>
+                </button>
+            </div>
+
+            <!-- STEP 2: Admin Account -->
+            <div class="step-content" id="step-2">
+                <div class="step-title">👤 حساب المدير العام</div>
+                <div class="step-sub">هذا الحساب سيملك صلاحيات كاملة على النظام. احتفظ ببياناته بأمان.</div>
+
+                <div class="form-group">
+                    <label>اسم المستخدم (Username) <span class="req">*</span></label>
+                    <div class="input-wrap">
+                        <i class="ph ph-user-circle"></i>
+                        <input type="text" class="form-input" id="inp-username" placeholder="admin" autocomplete="off">
+                    </div>
+                    <div class="field-error" id="err-username">يرجى إدخال اسم المستخدم</div>
+                </div>
+
+                <div class="form-group">
+                    <label>الاسم الكامل <span class="req">*</span></label>
+                    <div class="input-wrap">
+                        <i class="ph ph-identification-badge"></i>
+                        <input type="text" class="form-input" id="inp-fullname" placeholder="مدير النظام">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>كلمة المرور <span class="req">*</span></label>
+                    <div class="input-wrap">
+                        <i class="ph ph-lock-key"></i>
+                        <input type="password" class="form-input" id="inp-pwd" placeholder="كلمة مرور قوية (6 أحرف على الأقل)" autocomplete="new-password">
+                        <button class="pwd-toggle" type="button" onclick="togglePwd('inp-pwd', this)">
+                            <i class="ph ph-eye"></i>
+                        </button>
+                    </div>
+                    <div class="field-error" id="err-pwd">يجب أن تكون كلمة المرور 6 أحرف على الأقل</div>
+                </div>
+
+                <div class="form-group">
+                    <label>تأكيد كلمة المرور <span class="req">*</span></label>
+                    <div class="input-wrap">
+                        <i class="ph ph-lock-key-open"></i>
+                        <input type="password" class="form-input" id="inp-pwd2" placeholder="أعد إدخال كلمة المرور" autocomplete="new-password">
+                        <button class="pwd-toggle" type="button" onclick="togglePwd('inp-pwd2', this)">
+                            <i class="ph ph-eye"></i>
+                        </button>
+                    </div>
+                    <div class="field-error" id="err-pwd2">كلمتا المرور غير متطابقتين</div>
+                </div>
+
+                <button class="btn-next" id="btn-next-2" onclick="goStep(3)">
+                    متابعة للمراجعة &nbsp;<i class="ph-bold ph-arrow-left"></i>
+                </button>
+                <button class="btn-back" onclick="goStep(1)">
+                    <i class="ph-bold ph-arrow-right"></i>&nbsp; رجوع
+                </button>
+            </div>
+
+            <!-- STEP 3: Review & Confirm -->
+            <div class="step-content" id="step-3">
+                <div class="step-title">✅ مراجعة وتأكيد</div>
+                <div class="step-sub">تحقق من البيانات قبل إتمام الإعداد</div>
+
+                <div class="summary-row">
+                    <i class="ph-fill ph-image-square"></i>
+                    <div>
+                        <div class="summary-row-label">شعار المطعم</div>
+                        <img id="sum-logo" src="1111.png" style="width:40px;height:40px;border-radius:8px;margin-top:4px;object-fit:cover;">
+                    </div>
+                </div>
+                <div class="summary-row">
+                    <i class="ph-fill ph-storefront"></i>
+                    <div>
+                        <div class="summary-row-label">اسم المطعم</div>
+                        <div class="summary-row-value" id="sum-name">—</div>
+                    </div>
+                </div>
+                <div class="summary-row">
+                    <i class="ph-fill ph-phone"></i>
+                    <div>
+                        <div class="summary-row-label">الهاتف</div>
+                        <div class="summary-row-value" id="sum-phone">—</div>
+                    </div>
+                </div>
+                <div class="summary-row">
+                    <i class="ph-fill ph-user-circle"></i>
+                    <div>
+                        <div class="summary-row-label">المستخدم والاسم</div>
+                        <div class="summary-row-value" id="sum-user">—</div>
+                    </div>
+                </div>
+                <div class="summary-row">
+                    <i class="ph-fill ph-shield-check"></i>
+                    <div>
+                        <div class="summary-row-label">الدور</div>
+                        <div class="summary-row-value" style="color:#10b981;">المدير العام 🔑</div>
+                    </div>
+                </div>
+
+                <button class="btn-next" id="btn-finish" onclick="finishSetup()">
+                    <i class="ph-bold ph-rocket-launch"></i>&nbsp; إتمام الإعداد والبدء
+                </button>
+                <button class="btn-back" onclick="goStep(2)">
+                    <i class="ph-bold ph-arrow-right"></i>&nbsp; رجوع للتعديل
+                </button>
+            </div>
+
+            <!-- STEP 4: Done -->
+            <div class="step-content" id="step-4">
+                <div style="text-align:center; padding: 10px 0;">
+                    <div class="success-icon">✅</div>
+                    <div class="step-title" style="font-size:22px; margin-bottom:8px;">تم الإعداد بنجاح!</div>
+                    <div class="step-sub" style="margin-bottom:20px;line-height:1.8;">
+                        تم حفظ بيانات المطعم وإنشاء حساب المدير العام.<br>
+                        سيتم توجيهك لصفحة الدخول الآن.
+                    </div>
+                    <div id="done-preview" style="display:flex;align-items:center;gap:12px;justify-content:center;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:14px;padding:14px 20px;margin-bottom:20px;">
+                        <img id="done-logo" src="1111.png" style="width:50px;height:50px;border-radius:12px;object-fit:cover;">
+                        <div style="text-align:right;">
+                            <div style="font-size:16px;font-weight:800;color:#10b981;" id="done-name">المطعم</div>
+                            <div style="font-size:12px;color:#64748b;" id="done-user">المدير العام</div>
+                        </div>
+                    </div>
+                    <div style="font-size:13px;color:#475569;" id="redirect-msg">جاري التوجيه خلال <strong id="cnt">3</strong> ثوانٍ...</div>
+                </div>
+            </div>
+
+            <!-- Progress -->
+            <div class="setup-progress">
+                <div class="setup-progress-fill" id="setup-prog" style="width:33%"></div>
+            </div>
+        </div>
+
+        <div style="text-align:center;margin-top:16px;font-size:11px;color:#1e3a5f;">
+            نظام إدارة المطاعم POS &nbsp;·&nbsp; جميع الحقوق محفوظة © 2026
+        </div>
+    </div>
+
+    <script>
+        let base64Logo = '';
+        let currentStep = 1;
+
+        // Logo upload
+        const logoFile = document.getElementById('logo-file');
+        const logoPreview = document.getElementById('logo-preview');
+        const logoDrop = document.getElementById('logo-drop');
+
+        logoFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                base64Logo = ev.target.result;
+                logoPreview.src = base64Logo;
+                logoPreview.style.display = 'block';
+                document.getElementById('logo-placeholder').style.display = 'none';
+                logoDrop.classList.add('has-img');
+                // Live preview in header
+                document.getElementById('hdr-logo').src = base64Logo;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Drag & drop
+        ['dragenter','dragover'].forEach(ev => logoDrop.addEventListener(ev, e => { e.preventDefault(); logoDrop.style.borderColor='rgba(16,185,129,.8)'; }));
+        ['dragleave','drop'].forEach(ev => logoDrop.addEventListener(ev, e => { e.preventDefault(); logoDrop.style.borderColor=''; }));
+        logoDrop.addEventListener('drop', e => {
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                logoFile.files = e.dataTransfer.files;
+                logoFile.dispatchEvent(new Event('change'));
+            }
+        });
+
+        // Live name preview in header
+        document.getElementById('inp-name').addEventListener('input', (e) => {
+            document.getElementById('hdr-name').textContent = e.target.value || 'إعداد النظام';
+        });
+
+        function togglePwd(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const isHidden = input.type === 'password';
+            input.type = isHidden ? 'text' : 'password';
+            btn.innerHTML = isHidden ? '<i class="ph ph-eye-slash"></i>' : '<i class="ph ph-eye"></i>';
+        }
+
+        function showErr(id, show) {
+            document.getElementById(id).style.display = show ? 'block' : 'none';
+        }
+
+        function goStep(n) {
+            // Validate current step before going forward
+            if (n > currentStep) {
+                if (currentStep === 1 && !validateStep1()) return;
+                if (currentStep === 2 && !validateStep2()) return;
+            }
+
+            document.getElementById('step-' + currentStep).classList.remove('active');
+            currentStep = n;
+
+            const el = document.getElementById('step-' + (n <= 3 ? n : 3));
+            if (el) el.classList.add('active');
+
+            // Update step dots
+            [1,2,3].forEach(i => {
+                const dot = document.getElementById('sdot-' + i);
+                dot.classList.remove('active','done');
+                if (i < currentStep) dot.classList.add('done');
+                else if (i === currentStep) dot.classList.add('active');
+            });
+            [1,2].forEach(i => {
+                const line = document.getElementById('sline-' + i);
+                line.classList.toggle('done', i < currentStep);
+            });
+
+            // Progress bar
+            const pcts = { 1: '33%', 2: '66%', 3: '90%', 4: '100%' };
+            document.getElementById('setup-prog').style.width = pcts[n] || '33%';
+
+            // Fill summary in step 3
+            if (n === 3) buildSummary();
+        }
+
+        function validateStep1() {
+            const name = document.getElementById('inp-name').value.trim();
+            if (!name) { showErr('err-name', true); return false; }
+            showErr('err-name', false);
+            return true;
+        }
+
+        function validateStep2() {
+            let ok = true;
+            const user = document.getElementById('inp-username').value.trim();
+            const pwd  = document.getElementById('inp-pwd').value;
+            const pwd2 = document.getElementById('inp-pwd2').value;
+
+            if (!user) { showErr('err-username', true); ok = false; } else showErr('err-username', false);
+            if (!pwd || pwd.length < 6) { showErr('err-pwd', true); ok = false; } else showErr('err-pwd', false);
+            if (pwd !== pwd2) { showErr('err-pwd2', true); ok = false; } else showErr('err-pwd2', false);
+            return ok;
+        }
+
+        function buildSummary() {
+            const name= document.getElementById('inp-name').value.trim();
+            const phone= document.getElementById('inp-phone').value.trim();
+            const user= document.getElementById('inp-username').value.trim();
+            const full= document.getElementById('inp-fullname').value.trim() || user;
+
+            document.getElementById('sum-name').textContent  = name  || '—';
+            document.getElementById('sum-phone').textContent = phone || 'غير محدد';
+            document.getElementById('sum-user').textContent  = full + ' (' + user + ')';
+            if (base64Logo) document.getElementById('sum-logo').src = base64Logo;
+        }
+
+        function finishSetup() {
+            const btn = document.getElementById('btn-finish');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري الحفظ...';
+
+            const name    = document.getElementById('inp-name').value.trim();
+            const branch  = document.getElementById('inp-branch').value.trim();
+            const phone   = document.getElementById('inp-phone').value.trim();
+            const tax     = document.getElementById('inp-tax').value.trim();
+            const footer  = document.getElementById('inp-footer').value.trim();
+            const user    = document.getElementById('inp-username').value.trim();
+            const full    = document.getElementById('inp-fullname').value.trim() || 'المدير العام';
+            const pwd     = document.getElementById('inp-pwd').value;
+
+            // 1. Save restaurant_settings (same format as settings.js)
+            const settings = {
+                name, branch, phone, tax,
+                footer: footer || 'شكراً لزيارتكم - نتطلع لخدمتكم مجدداً',
+                logo: base64Logo || '1111.png',
+                whatsapp: phone
+            };
+            localStorage.setItem('restaurant_settings', JSON.stringify(settings));
+
+            // 2. Save admin password (login.js reads this)
+            localStorage.setItem('admin_pwd', pwd);
+            localStorage.setItem('admin_username', user);
+
+            // 3. Create system_roles (المدير العام role)
+            const adminRole = {
+                name: 'المدير العام',
+                perms: {
+                    pos_access: true, pos_discount: true, pos_return: true,
+                    sales_access: true, menu_manage: true, inv_manage: true,
+                    hr_manage: true, stats_access: true, sys_admin: true
+                }
+            };
+            if (!localStorage.getItem('system_roles')) {
+                localStorage.setItem('system_roles', JSON.stringify([adminRole]));
+            }
+
+            // 4. Log this setup completion
+            localStorage.setItem('setup_complete', '1');
+            localStorage.setItem('setup_admin', user);
+
+            // Show done screen
+            setTimeout(() => {
+                document.getElementById('step-3').classList.remove('active');
+                document.getElementById('step-4').classList.add('active');
+                document.getElementById('setup-prog').style.width = '100%';
+                [1,2,3].forEach(i => {
+                    document.getElementById('sdot-' + i).classList.remove('active');
+                    document.getElementById('sdot-' + i).classList.add('done');
+                });
+
+                // Fill done preview
+                if (base64Logo) document.getElementById('done-logo').src = base64Logo;
+                document.getElementById('done-name').textContent = name;
+                document.getElementById('done-user').textContent = user + ' — ' + full;
+
+                // Countdown redirect
+                let c = 3;
+                const cnt = document.getElementById('cnt');
+                const t = setInterval(() => {
+                    c--;
+                    if (cnt) cnt.textContent = c;
+                    if (c <= 0) {
+                        clearInterval(t);
+                        window.location.href = 'login.html';
+                    }
+                }, 1000);
+            }, 1200);
+        }
+    </script>
+</body>
+</html>

@@ -3,421 +3,578 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سمر حضرموت - شؤون الموظفين (HR)</title>
+    <title>هـــش HASH - شؤون الموظفين (HR)</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="staff.css">
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-    <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
+    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
+    <style>
+        /* Premium Page Transitions */
+        .hr-view { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Modern Form Grid */
+        .premium-form { background: rgba(15, 23, 42, 0.4); border: 1px solid var(--border-color); border-radius: var(--border-radius-xl); padding: 32px; backdrop-filter: blur(10px); }
+        .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .form-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+        
+        .photo-upload-box {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border: 2px dashed rgba(236, 72, 153, 0.4); border-radius: 50%; width: 150px; height: 150px;
+            margin: 0 auto 32px; background: rgba(236, 72, 153, 0.05); cursor: pointer; transition: all 0.3s ease; position: relative; overflow: hidden;
+        }
+        .photo-upload-box:hover { background: rgba(236, 72, 153, 0.1); border-color: #ec4899; }
+        .photo-upload-box img { width: 100%; height: 100%; object-fit: cover; position: absolute; top:0; left:0; z-index: 1; }
+        .photo-upload-box .upload-icon { position: relative; z-index: 2; color: #ec4899; display: flex; flex-direction: column; align-items: center; }
+        .photo-upload-box input[type="file"] { display: none; }
+
+        /* Profile Header */
+        .profile-header {
+            display: flex; gap: 32px; padding: 32px; border-radius: var(--border-radius-xl);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(236, 72, 153, 0.05) 100%);
+            border: 1px solid rgba(255,255,255,0.05); margin-bottom: 24px; position: relative;
+        }
+        .profile-avatar {
+            width: 140px; height: 140px; border-radius: 24px; object-fit: cover;
+            border: 4px solid var(--bg-card); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .profile-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .profile-info h1 { font-size: 32px; margin-bottom: 8px; color: white; display: flex; align-items: center; gap: 12px; }
+        .profile-meta-tags { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+        .p-tag { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background: rgba(255,255,255,0.05); display: flex; align-items: center; gap: 6px; }
+        
+        /* Stats row inside profile */
+        .profile-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 16px; }
+        .p-stat-card { background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.03); padding: 16px; border-radius: 16px; }
+        .p-stat-card p { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+        .p-stat-card h3 { font-size: 24px; color: white; }
+
+        /* Fancy Form Inputs Fix */
+        .fm-group { display: flex; flex-direction: column; margin-bottom: 20px; }
+        .fm-group label { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; }
+        .fm-input { 
+            background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; 
+            padding: 14px 16px; color: white; font-family: inherit; font-size: 15px; outline: none; transition: 0.3s;
+        }
+        .fm-input:focus { border-color: #ec4899; box-shadow: 0 0 0 3px rgba(236,72,153,0.1); background: rgba(0,0,0,0.3); }
+
+        /* Secondary Tabs inside Profile */
+        .profile-tabs { display: flex; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 24px; }
+        .ptab-btn { 
+            background: transparent; border: none; border-bottom: 3px solid transparent; color: var(--text-muted); 
+            padding: 12px 24px; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; transition: 0.3s;
+        }
+        .ptab-btn.active { color: white; border-bottom-color: #ec4899; }
+        .ptab-btn:hover:not(.active) { color: white; background: rgba(255,255,255,0.02); }
+        .ptab-content { display: none; }
+        .ptab-content.active { display: block; animation: fadeIn 0.3s; }
+
+        /* Mini Quick Action Buttons */
+        .action-btn-mini {
+            width: 36px; height: 36px; border-radius: 8px; border: none; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s;
+        }
+        .btn-att-present { background: rgba(16,185,129,0.1); color: #34d399; }
+        .btn-att-present:hover { background: #10b981; color: white; }
+        .btn-att-absent { background: rgba(248,113,113,0.1); color: #f87171; }
+        .btn-att-absent:hover { background: #ef4444; color: white; }
+        .btn-att-excused { background: rgba(245,158,11,0.1); color: #fbbf24; }
+        .btn-att-excused:hover { background: #f59e0b; color: white; }
+    </style>
 </head>
 <body class="dark-theme">
-    <div class="app-container">
-        <!-- Sidebar Navigation -->
-        <aside class="sidebar hr-sidebar">
-            <div class="logo">
-                <img src="logo.jpg" alt="شعار المحازن" class="restaurant-logo">
-                <span>شؤون <span class="highlight text-pink">الموظفين</span></span>
+<div class="app-container">
+
+    <!-- Sidebar -->
+    <aside class="sidebar hr-sidebar">
+        <div class="logo">
+            <img src="1111.png" alt="شعار" class="restaurant-logo" onerror="this.src='placeholder.svg'">
+            <span>شؤون <span class="highlight text-pink">الموظفين</span></span>
+        </div>
+        <nav class="nav-menu">
+            <div class="nav-group">
+                <p class="nav-label">نطاق العمل الرئيسي</p>
+                <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>العودة للكاشير / الرئيسية</span></a>
+            </div>
+            <div class="nav-group">
+                <p class="nav-label">إدارة الطاقم</p>
+                <a href="#" class="nav-item active" id="nav-employees"><i class="ph ph-users"></i><span>دليل الموظفين</span></a>
+                <a href="#" class="nav-item" id="nav-new-emp"><i class="ph ph-user-plus"></i><span>إضافة موظف جديد</span></a>
+            </div>
+            <div class="nav-group">
+                <p class="nav-label">الرواتب والمالية</p>
+                <a href="#" class="nav-item" id="nav-payroll"><i class="ph ph-money"></i><span>مسير الرواتب</span></a>
+                <a href="#" class="nav-item" id="nav-vouchers"><i class="ph ph-receipt"></i><span>سجل السندات والسلف</span></a>
+            </div>
+
+            <div class="nav-group mb-5">
+                <p class="nav-label">العقوبات والقرارات</p>
+                <a href="#" class="nav-item text-red" id="nav-deductions" style="color:#f87171;"><i class="ph ph-warning-octagon"></i><span>الخصومات والجزاءات</span></a>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content hr-main">
+        <header class="top-header hr-header">
+            <div class="header-left-title">
+                <h2 id="page-title">دليل الموظفين</h2>
+                <p id="page-subtitle">نظرة عامة على الطاقم وحالتهم</p>
+            </div>
+            <div class="header-actions" style="display:flex; gap:10px;">
+                <button class="hr-btn-solid bg-red" id="btn-open-penalty-modal" style="background:rgba(239,68,68,0.2) !important; color:#ef4444; border:1px solid #ef4444;"><i class="ph ph-warning-octagon"></i> خصم / جزاء</button>
+                <button class="hr-btn-solid bg-indigo" id="btn-open-advance-modal"><i class="ph ph-hand-coins"></i> صرف راتب / سلفة سريع</button>
+            </div>
+        </header>
+
+        <!-- View: All Employees -->
+        <div id="view-employees" class="hr-view" style="padding:24px;">
+            <div class="kpi-cards hr-kpis" style="margin-bottom:24px;">
+                <div class="card kpi-card hr-kpi-pink">
+                    <div class="kpi-icon pink"><i class="ph-fill ph-users"></i></div>
+                    <div class="kpi-details">
+                        <p class="kpi-title">إجمالي الموظفين</p>
+                        <h3 class="kpi-value hr-glow-pink" id="kpi-total">0 <span class="currency" style="font-size:14px">موظف</span></h3>
+                    </div>
+                </div>
+                <div class="card kpi-card hr-kpi-orange">
+                    <div class="kpi-icon orange"><i class="ph-fill ph-hand-coins"></i></div>
+                    <div class="kpi-details">
+                        <p class="kpi-title">السلف المفتوحة</p>
+                        <h3 class="kpi-value text-orange" id="kpi-loans">0 <span class="currency">ر.س</span></h3>
+                    </div>
+                </div>
+                <div class="card kpi-card hr-kpi-indigo">
+                    <div class="kpi-icon indigo"><i class="ph-fill ph-wallet"></i></div>
+                    <div class="kpi-details">
+                        <p class="kpi-title">مسير الرواتب</p>
+                        <h3 class="kpi-value hr-glow-indigo" id="kpi-payroll">0 <span class="currency">ر.س</span></h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="roles-toolbar card" style="margin-bottom:24px;">
+                <div class="roles-tabs" id="role-tabs">
+                    <button class="role-tab active" data-role="all">الجميع</button>
+                    <!-- سيتم إضافة الأقسام الأخرى تلقائياً عبر الجافاسكربت -->
+                </div>
+                <div class="search-bar" style="width:300px;">
+                    <i class="ph ph-magnifying-glass"></i>
+                    <input type="text" id="search-emp" placeholder="البحث بالاسم أو الإقامة...">
+                </div>
+            </div>
+
+            <div class="staff-grid" id="staff-grid">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+
+        <!-- View: Add/Edit Employee (Full Page) -->
+        <div id="view-add-employee" class="hr-view" style="padding:24px; display:none;">
+            <div class="premium-form" style="max-width: 1000px; margin:0 auto;">
+                <h2 style="margin-bottom: 24px; display:flex; align-items:center; gap:12px; color:white;">
+                    <i class="ph-fill ph-user-circle-plus" style="color:#ec4899; font-size:32px;"></i>
+                    <span id="form-emp-title">إضافة ملف موظف جديد</span>
+                </h2>
+                
+                <form id="form-new-emp">
+                    <!-- Avatar Upload -->
+                    <div class="photo-upload-box" id="avatar-dropzone" onclick="document.getElementById('ne-photo').click()">
+                        <div class="upload-icon">
+                            <i class="ph ph-camera" style="font-size:32px; margin-bottom:8px;"></i>
+                            <span style="font-size:12px; font-weight:700;">صورة الموظف</span>
+                        </div>
+                        <img id="avatar-preview" src="" style="display:none;">
+                        <input type="file" id="ne-photo" accept="image/png, image/jpeg, image/webp">
+                    </div>
+
+                    <div class="form-grid-2">
+                        <!-- Personal Info -->
+                        <div>
+                            <h3 style="color:var(--accent-blue); margin-bottom:16px;"><i class="ph ph-identification-card"></i> البيانات الشخصية</h3>
+                            <div class="fm-group">
+                                <label>الاسم الكامل <span class="required">*</span></label>
+                                <input type="text" id="ne-name" class="fm-input" required placeholder="مثال: أحمد عبدالله صالح">
+                            </div>
+                            <div class="form-grid-2">
+                                <div class="fm-group">
+                                    <label>الجنسية <span class="required">*</span></label>
+                                    <input type="text" id="ne-nationality" class="fm-input" required placeholder="يمني / هندي...">
+                                </div>
+                                <div class="fm-group">
+                                    <label>رقم الهاتف <span class="required">*</span></label>
+                                    <input type="text" id="ne-phone" class="fm-input" required placeholder="05xxxxxxxx" dir="ltr" style="text-align:right;">
+                                </div>
+                            </div>
+                            <div class="form-grid-2">
+                                <div class="fm-group">
+                                    <label>رقم الهوية / الإقامة <span class="required">*</span></label>
+                                    <input type="text" id="ne-iqama" class="fm-input" required placeholder="2xxxxxxxxx">
+                                </div>
+                                <div class="fm-group">
+                                    <label>تاريخ الانتهاء</label>
+                                    <input type="date" id="ne-expiry" class="fm-input">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Job Info -->
+                        <div>
+                            <h3 style="color:var(--accent-pink); margin-bottom:16px;"><i class="ph ph-briefcase"></i> الوظيفة والراتب</h3>
+                            <div class="form-grid-2">
+                                <div class="fm-group">
+                                    <label>القسم / الوظيفة (اكتب أو اختر) <span class="required">*</span></label>
+                                    <input type="text" id="ne-role" list="role-options" class="fm-input" required placeholder="مثال: الإدارة، محاسبة، نظافة...">
+                                    <datalist id="role-options">
+                                        <option value="إدارة">
+                                        <option value="كاشير">
+                                        <option value="مطبخ">
+                                        <option value="توصيل">
+                                        <option value="خدمة">
+                                    </datalist>
+                                </div>
+                                <div class="fm-group">
+                                    <label>تاريخ المباشرة</label>
+                                    <input type="date" id="ne-start" class="fm-input">
+                                </div>
+                            </div>
+                            <div class="form-grid-2">
+                                <div class="fm-group">
+                                    <label>الوردية / الدوام <span class="required">*</span></label>
+                                    <select id="ne-shift" class="fm-input" required>
+                                        <option value="صباحي">صباحي (Morning)</option>
+                                        <option value="مسائي">مسائي (Evening)</option>
+                                        <option value="كامل">دوام كامل (Full Day)</option>
+                                        <option value="مفتوح">مفتوح / منزلي</option>
+                                    </select>
+                                </div>
+                                <div class="fm-group">
+                                    <label>ساعات العمل</label>
+                                    <input type="number" id="ne-hours" class="fm-input" min="1" max="24" value="8" placeholder="8 ساعات">
+                                </div>
+                            </div>
+                            <div class="fm-group">
+                                <label>الراتب الأساسي (ر.س) <span class="required">*</span></label>
+                                <input type="number" id="ne-salary" class="fm-input" required min="1" step="50" placeholder="3000">
+                            </div>
+                            
+                            <h4 style="color:var(--text-muted); margin-top:24px; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">بيانات دخول النظام (صلاحيات الكاشير)</h4>
+                            <div class="form-grid-2">
+                                <div class="fm-group">
+                                    <label>اسم المستخدم (الدخول للنظام)</label>
+                                    <input type="text" id="ne-username" class="fm-input" placeholder="مثال: ahmed123" style="background:rgba(0,0,0,0.3);">
+                                </div>
+                                <div class="fm-group">
+                                    <label>كلمة السر</label>
+                                    <input type="password" id="ne-password" class="fm-input" placeholder="****" style="background:rgba(0,0,0,0.3);">
+                                </div>
+                            </div>
+                            
+                            <div class="fm-group" style="margin-top:16px;">
+                                <label>ملاحظات إضافية (أوصاف الوظيفة، شروط)</label>
+                                <textarea id="ne-notes" class="fm-input" style="height:104px; resize:none;" placeholder="أي ملاحظات إضافية عن عقد الموظف..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="border-top:1px solid rgba(255,255,255,0.05); margin-top:32px; padding-top:24px; display:flex; gap:16px; justify-content:flex-end;">
+                        <button type="button" onclick="showView('view-employees', 'nav-employees')" class="hr-btn-solid" style="background:transparent; border:1px solid var(--text-muted); color:white;">إلغاء والعودة</button>
+                        <button type="submit" class="hr-btn-solid bg-pink" style="padding:12px 40px; font-size:16px;"><i class="ph ph-floppy-disk"></i> حفظ في قاعدة البيانات</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- View: Employee Full Profile -->
+        <div id="view-emp-profile" class="hr-view" style="padding:24px; display:none; max-width:1400px; margin:0 auto;">
+            <button onclick="showView('view-employees', 'nav-employees')" class="hr-btn-solid" style="background:var(--bg-card); border:1px solid var(--border-color); color:white; margin-bottom:16px; padding:6px 16px;"><i class="ph ph-arrow-right"></i> العودة للقائمة</button>
+            
+            <div class="profile-header">
+                <img id="pro-avatar" src="avatar.svg" class="profile-avatar" onerror="this.src='avatar.svg'">
+                <div class="profile-info">
+                    <h1 id="pro-name">اسم الموظف</h1>
+                    <div class="profile-meta-tags">
+                        <span class="p-tag" style="color:#60a5fa; border:1px solid rgba(59,130,246,0.3)"><i class="ph ph-briefcase"></i> <span id="pro-role">وظيفة</span></span>
+                        <span class="p-tag" style="color:#f472b6; border:1px solid rgba(236,72,153,0.3)"><i class="ph ph-clock"></i> <span id="pro-shift">صباحي (8 سا)</span></span>
+                        <span class="p-tag" style="color:#a78bfa; border:1px solid rgba(139,92,246,0.3)"><i class="ph ph-identification-card"></i> إقامة: <span id="pro-iqama">---</span></span>
+                        <span class="p-tag" style="color:#34d399; border:1px solid rgba(16,185,129,0.3)" id="pro-status"><i class="ph ph-check-circle"></i> مداوم الآن</span>
+                    </div>
+                    <div class="profile-stats-grid">
+                        <div class="p-stat-card">
+                            <p>الراتب الأساسي</p>
+                            <h3 style="color:#34d399;" id="pro-salary">0.00 <span style="font-size:12px">ر.س</span></h3>
+                        </div>
+                        <div class="p-stat-card">
+                            <p>إجمالي السلف / الخصم</p>
+                            <h3 style="color:#f87171;" id="pro-loans">0.00 <span style="font-size:12px">ر.س</span></h3>
+                        </div>
+                        <div class="p-stat-card">
+                            <p>صافي المستحق للصرف</p>
+                            <h3 style="color:#60a5fa;" id="pro-net">0.00 <span style="font-size:12px">ر.س</span></h3>
+                        </div>
+                        <div class="p-stat-card" style="background:rgba(236,72,153,0.1); border-color:rgba(236,72,153,0.2);">
+                            <p style="color:#f472b6;">أيام الغياب هذا الشهر</p>
+                            <h3 style="color:#f472b6;" id="pro-absent">0 <span style="font-size:12px">يوم</span></h3>
+                        </div>
+                    </div>
+                </div>
+                <div style="position:absolute; top:32px; left:32px; display:flex; gap:8px;">
+                    <button class="icon-btn-subtle" id="pro-btn-edit" title="تعديل الملف" style="background:rgba(255,255,255,0.1); width:40px; height:40px; border-radius:10px;"><i class="ph ph-pencil-simple"></i></button>
+                    <button class="icon-btn-subtle" id="pro-btn-print" title="طباعة كشف الحساب" style="background:rgba(255,255,255,0.1); width:40px; height:40px; border-radius:10px;"><i class="ph ph-printer"></i></button>
+                </div>
+            </div>
+
+            <!-- Profile Internal Tabs -->
+            <div class="profile-tabs">
+                <button class="ptab-btn active" onclick="switchProTab('tab-attendance', this)"><i class="ph ph-calendar-check"></i> سجل الحضور والغياب</button>
+                <button class="ptab-btn" onclick="switchProTab('tab-finances', this)"><i class="ph ph-money"></i> السجل المالي والسندات</button>
+                <button class="ptab-btn" onclick="switchProTab('tab-personal', this)"><i class="ph ph-identification-card"></i> البيانات والمرفقات</button>
+            </div>
+
+            <div id="tab-attendance" class="ptab-content active card" style="padding:24px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h3>سجل البصمة / التحضير الذكي</h3>
+                    <div style="display:flex; gap:10px;">
+                        <button class="hr-btn-solid bg-indigo" onclick="markAttendance('حضور')"><i class="ph ph-fingerprint"></i> تسجيل حضور الآن</button>
+                        <button class="hr-btn-solid" style="background:var(--accent-red);" onclick="markAttendance('غياب')"><i class="ph ph-user-minus"></i> تسجيل غياب</button>
+                    </div>
+                </div>
+                <table class="data-table">
+                    <thead><tr><th>التاريخ</th><th>الوقت</th><th>الحالة</th><th>بواسطة</th></tr></thead>
+                    <tbody id="pro-attendance-body"></tbody>
+                </table>
+            </div>
+
+            <div id="tab-finances" class="ptab-content card" style="padding:24px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h3>السندات المالية الصادرة</h3>
+                    <button class="hr-btn-solid bg-pink" onclick="openAdvanceModalForCurrent()"><i class="ph ph-plus"></i> إصدار سند جديد</button>
+                </div>
+                <table class="data-table">
+                    <thead><tr><th>التاريخ</th><th>نوع السند</th><th>المبلغ</th><th>البيان</th></tr></thead>
+                    <tbody id="pro-finances-body"></tbody>
+                </table>
+            </div>
+
+            <div id="tab-personal" class="ptab-content card" style="padding:24px;">
+                <h3>معلومات إضافية</h3>
+                <div class="form-grid-3" style="margin-top:20px;">
+                    <div class="fm-group"><label>رقم الهاتف</label><div class="fm-input" id="pro-info-phone" style="background:rgba(0,0,0,0.1)">-</div></div>
+                    <div class="fm-group"><label>الجنسية</label><div class="fm-input" id="pro-info-nat" style="background:rgba(0,0,0,0.1)">-</div></div>
+                    <div class="fm-group"><label>تاريخ المباشرة</label><div class="fm-input" id="pro-info-start" style="background:rgba(0,0,0,0.1)">-</div></div>
+                </div>
+                <div class="fm-group" style="margin-top:16px;">
+                    <label>الملاحظات الإدارية لشؤون الموظفين</label>
+                    <div class="fm-input" id="pro-info-notes" style="background:rgba(0,0,0,0.1); height:100px;">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View: Payroll -->
+        <div id="view-payroll" class="hr-view" style="padding:24px; display:none;">
+            <div class="card" style="padding:24px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+                    <h3 style="color:white;"><i class="ph ph-money"></i> مسير الرواتب الشهري المجمع</h3>
+                    <button class="hr-btn-solid bg-indigo"><i class="ph ph-printer"></i> طباعة المسير</button>
+                </div>
+                <table class="data-table">
+                    <thead><tr><th>الموظف</th><th>الوظيفة</th><th>الراتب الأساسي</th><th>السلف المخصومة</th><th>صافي الراتب</th><th>الحالة</th></tr></thead>
+                    <tbody id="payroll-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- View: Vouchers -->
+        <div id="view-vouchers" class="hr-view" style="padding:24px; display:none;">
+            <div class="card" style="padding:24px;">
+                <h3 style="margin-bottom:20px; color:white;"><i class="ph ph-receipt"></i> سجل أرشيف السندات</h3>
+                <table class="data-table">
+                    <thead><tr><th>التاريخ</th><th>الموظف</th><th>النوع</th><th>المبلغ</th><th>السبب</th></tr></thead>
+                    <tbody id="vouchers-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- View: Deductions & Penalties -->
+        <div id="view-deductions" class="hr-view" style="display:none; padding:24px;">
+            <div class="dashboard-header mb-4">
+                <div>
+                    <h1>قواعد وسجل الخصومات</h1>
+                    <p style="color:var(--text-muted)">إدارة قوانين الجزاءات، وعرض السجل التاريخي للخصومات المطبقة</p>
+                </div>
             </div>
             
-            <nav class="nav-menu">
-                <div class="nav-group">
-                    <p class="nav-label">نطاق العمل الرئيسي</p>
-                    <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>العودة للوحة القيادة</span></a>
-                </div>
-
-                <div class="nav-group">
-                    <p class="nav-label">لوحة إدارة الـ HR</p>
-                    <a href="#" class="nav-item active"><i class="ph ph-users"></i><span>دليل الموظفين والطاقم</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-calendar-check"></i><span>الورديات (شفتات الحضور)</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-money"></i><span>مسيرات الرواتب والسلف</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-shield-check"></i><span>الصلاحيات والأدوار</span></a>
-                </div>
-
-                <div class="nav-group">
-                    <p class="nav-label">التقييم والأداء</p>
-                    <a href="#" class="nav-item"><i class="ph ph-star"></i><span>مكافآت وخصومات</span></a>
-                    <a href="#" class="nav-item"><i class="ph ph-file-text"></i><span>تقارير الإنتاجية</span></a>
-                </div>
-            </nav>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="main-content hr-main">
-            <!-- Top Header -->
-            <header class="top-header hr-header">
-                <div class="header-left-title">
-                    <h2>إدارة الموارد البشرية والموظفين</h2>
-                    <p>إدارة الطاقم، الرواتب، الورديات وتتبع الحضور والانصراف.</p>
-                </div>
-                
-                <div class="header-actions">
-                    <button class="hr-btn-solid bg-pink"><i class="ph ph-user-plus"></i> تعيين موظف جديد</button>
-                    <button class="hr-btn-solid bg-indigo" id="btn-open-advance-modal"><i class="ph ph-money"></i> صرف راتب / سلفة</button>
-                    
-                    <button class="icon-btn notification-btn">
-                        <i class="ph ph-bell"></i>
-                        <span class="badge" style="background:var(--accent-red)">5</span>
-                    </button>
-                    <div class="user-profile">
-                        <img src="https://i.pravatar.cc/150?img=11" alt="مسؤول الموارد البشرية" class="avatar">
-                        <div class="user-info">
-                            <span class="user-name">يوسف سعد</span>
-                            <span class="user-role">مدير شؤون الموظفين</span>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            <div class="hr-dashboard-grid">
-                
-                <!-- KPI Indicators -->
-                <div class="kpi-cards hr-kpis">
-                    <div class="card kpi-card hr-kpi-pink">
-                        <div class="kpi-icon pink">
-                            <i class="ph-fill ph-users"></i>
-                        </div>
-                        <div class="kpi-details">
-                            <p class="kpi-title">إجمالي عدد الموظفين</p>
-                            <h3 class="kpi-value hr-glow-pink">32<span class="currency" style="font-size:14px">موظف</span></h3>
-                            <p class="kpi-trend text-green"><i class="ph ph-check-circle"></i> 28 نشط و 4 إجازة</p>
-                        </div>
-                    </div>
-
-                    <div class="card kpi-card hr-kpi-green">
-                        <div class="kpi-icon green">
-                            <i class="ph-fill ph-user-check"></i>
-                        </div>
-                        <div class="kpi-details">
-                            <p class="kpi-title">المداومون (الوردية الحالية)</p>
-                            <h3 class="kpi-value text-green">14<span class="currency" style="font-size:14px">موظف</span></h3>
-                            <p class="kpi-trend positive"><i class="ph ph-clock"></i> وردية المساء (04:00م - 12:00ص)</p>
-                        </div>
-                    </div>
-
-                    <div class="card kpi-card hr-kpi-orange">
-                        <div class="kpi-icon orange">
-                            <i class="ph-fill ph-hand-coins"></i>
-                        </div>
-                        <div class="kpi-details">
-                            <p class="kpi-title">إجمالي السلف والأقساط (الشهر)</p>
-                            <h3 class="kpi-value text-orange">4,500<span class="currency">ر.س</span></h3>
-                            <p class="kpi-trend negative"><i class="ph ph-warning-circle"></i> تخصم تلقائياً من الرواتب</p>
-                        </div>
-                    </div>
-
-                    <div class="card kpi-card hr-kpi-indigo">
-                        <div class="kpi-icon indigo">
-                            <i class="ph-fill ph-wallet"></i>
-                        </div>
-                        <div class="kpi-details">
-                            <p class="kpi-title">مسير الرواتب التقريبي للتسليم</p>
-                            <h3 class="kpi-value hr-glow-indigo">112,400<span class="currency">ر.س</span></h3>
-                            <p class="kpi-trend text-blue"><i class="ph ph-calendar"></i> استحقاق يوم 28 من الشهر</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Roles Tabs Filters -->
-                <div class="roles-toolbar card">
-                    <div class="roles-tabs">
-                        <button class="role-tab active">جميع الطاقم (32)</button>
-                        <button class="role-tab">الإدارة (3)</button>
-                        <button class="role-tab">الكاشير (4)</button>
-                        <button class="role-tab">المطبخ والطهاة (12)</button>
-                        <button class="role-tab">مناديب التوصيل (8)</button>
-                        <button class="role-tab">الخدمة والنظافة (5)</button>
-                    </div>
-                    <div class="search-box">
-                        <i class="ph ph-magnifying-glass"></i>
-                        <input type="text" placeholder="البحث برقم الإقامة، الاسم..">
-                    </div>
-                </div>
-
-                <!-- Employee Cards Grid -->
-                <!-- A highly modern grid showcasing employees instead of a boring table -->
-                <div class="staff-grid">
-                    
-                    <!-- Card 1: Manager -->
-                    <div class="staff-card card">
-                        <div class="staff-card-header">
-                            <div class="staff-status status-online">مداوم الآن</div>
-                            <button class="icon-btn-subtle"><i class="ph ph-dots-three-vertical"></i></button>
-                        </div>
-                        <div class="staff-avatar-wrapper">
-                            <img src="https://i.pravatar.cc/150?img=32" alt="أحمد الكاشير" class="staff-avatar">
-                            <div class="staff-role-badge role-admin">إدارة وكاشير</div>
-                        </div>
-                        <div class="staff-info">
-                            <h3>أحمد الكاشير</h3>
-                            <p class="staff-id">رقم وظيفي: #EMP-001</p>
-                            
-                            <div class="staff-meta">
-                                <span title="الجنسية"><i class="ph ph-flag"></i> يمني</span>
-                                <span title="نهاية الإقامة"><i class="ph ph-identification-card"></i> 14/08/2026</span>
-                            </div>
-                        </div>
-                        <div class="staff-finances">
-                            <div>
-                                <span>الراتب الأساسي</span>
-                                <strong>4,500 ر.س</strong>
-                            </div>
-                            <div>
-                                <span>سلفيات / خصم</span>
-                                <strong class="text-orange">200 ر.س</strong>
-                            </div>
-                        </div>
-                        <div class="staff-actions">
-                            <button class="action-btn-full text-blue"><i class="ph ph-file-text"></i> ملف الموظف</button>
-                            <button class="action-btn-full text-green"><i class="ph ph-money"></i> منح مكافأة</button>
-                        </div>
-                    </div>
-
-                    <!-- Card 2: Kitchen Chef -->
-                    <div class="staff-card card">
-                        <div class="staff-card-header">
-                            <div class="staff-status status-online">مداوم الآن</div>
-                            <button class="icon-btn-subtle"><i class="ph ph-dots-three-vertical"></i></button>
-                        </div>
-                        <div class="staff-avatar-wrapper">
-                            <img src="https://i.pravatar.cc/150?img=11" alt="محمد علي" class="staff-avatar">
-                            <div class="staff-role-badge role-kitchen">شيف ومطبخ</div>
-                        </div>
-                        <div class="staff-info">
-                            <h3>محمد علي صالح</h3>
-                            <p class="staff-id">رقم وظيفي: #EMP-014</p>
-                            
-                            <div class="staff-meta">
-                                <span><i class="ph ph-flag"></i> مصري</span>
-                                <span><i class="ph ph-identification-card"></i> 02/01/2027</span>
-                            </div>
-                        </div>
-                        <div class="staff-finances">
-                            <div>
-                                <span>الراتب الأساسي</span>
-                                <strong>5,200 ر.س</strong>
-                            </div>
-                            <div>
-                                <span>سلفيات / خصم</span>
-                                <strong class="text-green">0.00 ر.س</strong>
-                            </div>
-                        </div>
-                        <div class="staff-actions">
-                            <button class="action-btn-full text-blue"><i class="ph ph-file-text"></i> ملف الموظف</button>
-                            <button class="action-btn-full text-orange"><i class="ph ph-hand-coins"></i> سلفة نقدي</button>
-                        </div>
-                    </div>
-
-                    <!-- Card 3: Delivery Driver -->
-                    <div class="staff-card card">
-                        <div class="staff-card-header">
-                            <div class="staff-status status-offline">خارج الدوام (إجازة)</div>
-                            <button class="icon-btn-subtle"><i class="ph ph-dots-three-vertical"></i></button>
-                        </div>
-                        <div class="staff-avatar-wrapper">
-                            <img src="https://i.pravatar.cc/150?img=15" alt="عمر راشد" class="staff-avatar grayscale">
-                            <div class="staff-role-badge role-delivery">مندوب توصيل</div>
-                        </div>
-                        <div class="staff-info">
-                            <h3>عمر راشد</h3>
-                            <p class="staff-id">رقم وظيفي: #EMP-021</p>
-                            
-                            <div class="staff-meta">
-                                <span><i class="ph ph-flag"></i> سوداني</span>
-                                <span><i class="ph ph-identification-card"></i> 25/11/2026</span>
-                            </div>
-                        </div>
-                        <div class="staff-finances">
-                            <div>
-                                <span>الراتب الأساسي</span>
-                                <strong>3,000 ر.س</strong>
-                            </div>
-                            <div>
-                                <span>سلفيات / خصم</span>
-                                <strong class="text-orange">800 ر.س</strong>
-                            </div>
-                        </div>
-                        <div class="staff-actions">
-                            <button class="action-btn-full text-blue"><i class="ph ph-file-text"></i> ملف الموظف</button>
-                            <button class="action-btn-full text-red" title="إرسال تنبيه"><i class="ph ph-warning"></i> إنذار نظامي</button>
-                        </div>
-                    </div>
-
-                    <!-- Card 4: Service / Cleaner -->
-                    <div class="staff-card card">
-                        <div class="staff-card-header">
-                            <div class="staff-status status-online">مداوم الآن</div>
-                            <button class="icon-btn-subtle"><i class="ph ph-dots-three-vertical"></i></button>
-                        </div>
-                        <div class="staff-avatar-wrapper">
-                            <img src="https://i.pravatar.cc/150?img=52" alt="رفيق ساجان" class="staff-avatar">
-                            <div class="staff-role-badge role-service">خدمة ونظافة</div>
-                        </div>
-                        <div class="staff-info">
-                            <h3>رفيق ساجان</h3>
-                            <p class="staff-id">رقم وظيفي: #EMP-030</p>
-                            
-                            <div class="staff-meta">
-                                <span><i class="ph ph-flag"></i> بنغلاديشي</span>
-                                <span class="text-red" title="شارفت الإقامة على الانتهاء"><i class="ph ph-warning-octagon"></i> 05/04/2026</span>
-                            </div>
-                        </div>
-                        <div class="staff-finances">
-                            <div>
-                                <span>الراتب الأساسي</span>
-                                <strong>1,800 ر.س</strong>
-                            </div>
-                            <div>
-                                <span>مكافآت (إضافي)</span>
-                                <strong class="text-green">+150 ر.س</strong>
-                            </div>
-                        </div>
-                        <div class="staff-actions">
-                            <button class="action-btn-full text-blue"><i class="ph ph-file-text"></i> ملف الموظف</button>
-                            <button class="action-btn-full text-pink" title="تجديد الإقامة"><i class="ph ph-file-arrow-up"></i> تجديد إقامة</button>
-                        </div>
-                    </div>
-
-                    <!-- Additional UI placeholder to show add new fast -->
-                    <div class="staff-card card add-new-staff-card">
-                        <i class="ph ph-user-plus icon-huge text-pink"></i>
-                        <h3>تعيين موظف جديد</h3>
-                        <p>إضافة ملف جديد للنظام</p>
-                        <button class="hr-btn-solid bg-pink mt-3"><i class="ph ph-plus"></i> إنشاء الملف</button>
-                    </div>
-
-                </div>
-
-            </div>
-        </main>
-    </div>
-
-    <!-- Advance / Salary Modal -->
-    <div class="modal-overlay" id="advance-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="ph ph-hand-coins"></i> إصدار سلفة أو صرف راتب</h3>
-                <button class="close-modal" id="btn-close-advance-modal"><i class="ph ph-x"></i></button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group mb-3">
-                    <label>تحديد الموظف <span class="required">*</span></label>
-                    <select class="input-modern" id="voucher-employee">
-                        <option value="" disabled selected>اختر الموظف المستفيد...</option>
-                        <option value="أحمد الكاشير">أحمد الكاشير (الكاشير)</option>
-                        <option value="محمد علي صالح">محمد علي صالح (المطبخ)</option>
-                        <option value="عمر راشد">عمر راشد (مندوب توصيل)</option>
-                        <option value="رفيق ساجان">رفيق ساجان (خدمة ونظافة)</option>
-                    </select>
-                </div>
-                
-                <div class="form-group mb-3">
-                    <label>المبلغ (ر.س) <span class="required">*</span></label>
-                    <div class="input-with-icon">
-                        <i class="ph ph-money"></i>
-                        <input type="number" id="voucher-amount" class="input-modern" placeholder="0.00" step="10">
-                    </div>
-                </div>
-
-                <div class="form-group mb-3">
-                    <label>البيان / السبب <span class="required">*</span></label>
-                    <input type="text" id="voucher-reason" class="input-modern" placeholder="مثال: سلفة نقدية على راتب شهر مارس...">
-                </div>
-
-                <div class="modal-actions-split mt-4">
-                    <p class="meta-label">اضغط لاختيار نوع العملية وتحميل السند فوراً:</p>
-                    <div class="split-btns">
-                        <button type="button" class="btn-voucher btn-for-him" onclick="generateVoucher('له (راتب/مكافأة)')">
-                            <i class="ph ph-trend-up"></i>
-                            صرف راتب / مكافأة (له)
+            <div style="display:grid; grid-template-columns: 1fr 2fr; gap:24px;">
+                <!-- Column 1: Rules -->
+                <div class="card" style="padding:24px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <h3 style="color:white; margin:0;"><i class="ph ph-scales" style="color:#ec4899;"></i> قواعد الجزاءات</h3>
+                        <button class="hr-btn-solid bg-pink" style="padding:6px 12px; font-size:12px;" onclick="document.getElementById('rule-modal').classList.add('active');">
+                            <i class="ph ph-plus"></i> إضافة قاعدة
                         </button>
-                        <button type="button" class="btn-voucher btn-on-him" onclick="generateVoucher('عليه (سلفة/خصم)')">
-                            <i class="ph ph-trend-down"></i>
-                            تسجيل سلفة نقدية (عليه)
-                        </button>
+                    </div>
+                    <div class="table-responsive" style="max-height:400px; overflow-y:auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>نوع المخالفة</th>
+                                    <th>قيمة الخصم</th>
+                                    <th>إجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rules-tbody">
+                                <!-- JS Populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Column 2: Log History -->
+                <div class="card" style="padding:24px; border:1px solid rgba(239,68,68,0.3);">
+                    <h3 style="color:white; margin-bottom:20px;"><i class="ph ph-clock-counter-clockwise"></i> السجل الزمني للخصومات</h3>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>الموظف المستهدف</th>
+                                    <th>مبلغ الخصم</th>
+                                    <th>المخالفة / السبب</th>
+                                </tr>
+                            </thead>
+                            <tbody id="deductions-tbody">
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Voucher Hidden Template (For rendering Image) -->
-    <div id="voucher-print-container" style="position: absolute; top: -9999px; left: -9999px;">
-        <div class="voucher-wrapper" id="voucher-template">
-            <!-- Header -->
-            <div class="v-header">
-                <div class="v-left-box">
-                    <div class="v-row"><span>التاريخ :</span><strong id="v-date">2026/03/17</strong></div>
-                    <div class="v-row"><span>الرقم :</span><strong id="v-number">146</strong></div>
-                </div>
-                <div class="v-center-logo">
-                    <img src="logo.jpg" alt="Logo">
-                </div>
-                <div class="v-right-text">
-                    <h2>مطابخ ومحائذ سمر حضرموت</h2>
-                    <p>شارع المعارض جوار محطة مزايا</p>
-                    <p>0539774699</p>
-                </div>
-            </div>
+    </main>
+</div>
 
-            <!-- Title & Balance -->
-            <div class="v-title-area">
-                <div class="v-balance-box">
-                    <span>الرصيد :</span>
-                    <strong id="v-balance-text">لكم 2,272.50</strong>
-                </div>
-                <h1 class="v-main-title">سند صـرف</h1>
-            </div>
+<!-- Modal: صرف راتب / سلفة -->
+<div class="modal-overlay" id="advance-modal">
+    <div class="modal-content" style="max-width:450px; background:var(--bg-card); border:1px solid rgba(255,255,255,0.1); border-radius:24px; padding:24px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+            <h3 style="color:white; margin:0;"><i class="ph ph-hand-coins" style="color:#f472b6;"></i> إصدار سند مالي</h3>
+            <button class="close-modal" id="btn-close-advance-modal" style="background:none;border:none;color:#fff;cursor:pointer;"><i class="ph ph-x" style="font-size:20px;"></i></button>
+        </div>
+        
+        <div class="fm-group">
+            <label>اختر الموظف المستفيد</label>
+            <select id="voucher-employee" class="fm-input" style="background:rgba(0,0,0,0.3);"><option value="">...</option></select>
+        </div>
+        <div class="fm-group">
+            <label>قيمة المبلغ (ر.س)</label>
+            <input type="number" id="voucher-amount" class="fm-input" placeholder="0.00" style="background:rgba(0,0,0,0.3); font-size:24px; font-weight:800; color:#34d399;">
+        </div>
+        <div class="fm-group">
+            <label>البيان / السبب</label>
+            <input type="text" id="voucher-reason" class="fm-input" placeholder="مثال: سلفة نقدية..." style="background:rgba(0,0,0,0.3);">
+        </div>
 
-            <!-- Main Body Box -->
-            <div class="v-body-box">
-                <table class="v-table">
-                    <tr>
-                        <td class="v-label">تم صرف للأخ</td>
-                        <td class="v-dots">:</td>
-                        <td class="v-val"><strong id="v-name">براق الكاشير</strong></td>
-                    </tr>
-                    <tr>
-                        <td class="v-label">مبلغ وقدره</td>
-                        <td class="v-dots">:</td>
-                        <td class="v-val"><strong id="v-amt">100.00</strong> <span class="v-sub">(فقط <span id="v-amt-text">مائة</span> ريال سعودي لا غير)</span></td>
-                    </tr>
-                    <tr>
-                        <td class="v-label">وذلك مقابل</td>
-                        <td class="v-dots">:</td>
-                        <td class="v-val"><strong id="v-reason-text">سحب من الراتب تحويل من أبو جواد</strong></td>
-                    </tr>
-                </table>
-
-                <div class="v-signatures">
-                    <div class="v-sig-box">
-                        <p>سمر حضرموت</p>
-                        <span>...................................</span>
-                        <small>ختم / توقيع الإدارة</small>
-                    </div>
-                    <div class="v-sig-box">
-                        <p id="v-type-sig">المستلم / الموظف</p>
-                        <span>...................................</span>
-                        <small>التوقيع</small>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="v-footer">
-                <p>ملاحظات : <span id="v-notes">سند إلكتروني معتمد من النظام</span></p>
-            </div>
-            <div class="v-bottom-meta">
-                <span>By Smart Accountant (POS)</span>
-                <span id="v-bottom-date">2026/03/17</span>
+        <div style="background:rgba(0,0,0,0.2); padding:16px; border-radius:12px; text-align:center;">
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">اختر نوع التأثير لإنشاء السند:</p>
+            <div style="display:flex; gap:12px;">
+                <button type="button" class="hr-btn-solid" style="background:rgba(16,185,129,0.1); color:#34d399; border:1px solid #34d399; flex:1; justify-content:center; flex-direction:column; padding:12px;" onclick="generateVoucher('له (راتب/مكافأة)')">
+                    <i class="ph ph-trend-up" style="margin-bottom:4px;"></i> مستحق (له)
+                </button>
+                <button type="button" class="hr-btn-solid" style="background:rgba(239,68,68,0.1); color:#f87171; border:1px solid #f87171; flex:1; justify-content:center; flex-direction:column; padding:12px;" onclick="generateVoucher('عليه (سلفة/خصم)')">
+                    <i class="ph ph-trend-down" style="margin-bottom:4px;"></i> سلفة / خصم (عليه)
+                </button>
             </div>
         </div>
     </div>
+</div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="script.js?v=3"></script>
-    <script src="staff.js"></script>
+<!-- Voucher Template Hidden (Unchanged perfectly working HTML2Canvas) -->
+<div id="voucher-print-container" style="position:absolute; top:-9999px; left:-9999px;">
+    <div class="voucher-wrapper" id="voucher-template">
+        <div class="v-header">
+            <div class="v-left-box"><div class="v-row"><span>التاريخ :</span><strong id="v-date"></strong></div><div class="v-row"><span>الرقم :</span><strong id="v-number"></strong></div></div>
+            <div class="v-center-logo"><img src="1111.png" alt="Logo" onerror="this.src='placeholder.svg'"></div>
+            <div class="v-right-text"><h2>مطابخ ومحائذ هـــش HASH</h2><p>شارع المعارض جوار محطة مزايا</p><p>0539774699</p></div>
+        </div>
+        <div class="v-title-area"><div class="v-balance-box"><span>الرصيد :</span><strong id="v-balance-text"></strong></div><h1 class="v-main-title">سند صـرف</h1></div>
+        <div class="v-body-box">
+            <table class="v-table">
+                <tr><td class="v-label">تم صرف للأخ</td><td class="v-dots">:</td><td class="v-val"><strong id="v-name"></strong></td></tr>
+                <tr><td class="v-label">مبلغ وقدره</td><td class="v-dots">:</td><td class="v-val"><strong id="v-amt"></strong> <span class="v-sub">(فقط <span id="v-amt-text"></span> ريال لا غير)</span></td></tr>
+                <tr><td class="v-label">وذلك مقابل</td><td class="v-dots">:</td><td class="v-val"><strong id="v-reason-text"></strong></td></tr>
+            </table>
+            <div class="v-signatures"><div class="v-sig-box"><p>هـــش HASH</p><span>..............</span><small>الختم</small></div><div class="v-sig-box"><p id="v-type-sig">المستلم</p><span>..............</span><small>التوقيع</small></div></div>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<!-- Penalty / Deduction Modal -->
+<div class="modal-overlay" id="penalty-modal">
+    <div class="modal-content" style="max-width:450px; background:var(--bg-card); border:1px solid rgba(239,68,68,0.3); border-radius:24px; padding:24px; box-shadow:0 10px 40px rgba(239,68,68,0.1);">
+        <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+            <h3 style="color:white; margin:0;"><i class="ph ph-warning-octagon text-red" style="font-size:20px; vertical-align:-3px;"></i> تسجيل جزاء مالي</h3>
+            <button class="close-modal" id="btn-close-penalty-modal" style="background:none;border:none;color:#fff;cursor:pointer;"><i class="ph ph-x" style="font-size:20px;"></i></button>
+        </div>
+        
+        <form id="form-penalty-trx">
+            <div class="fm-group mb-3">
+                <label>الموظف المستهدف</label>
+                <select id="penalty-employee" class="fm-input" style="background:rgba(0,0,0,0.3);" required></select>
+            </div>
+            <div class="fm-group mb-3">
+                <label>مبلغ الخصم (ر.س)</label>
+                <input type="number" id="penalty-amount" class="fm-input" min="1" required placeholder="مثلاً 100" style="background:rgba(0,0,0,0.3); font-size:24px; font-weight:800; color:#ef4444;">
+            </div>
+            <div class="fm-group mb-4">
+                <label>السبب أو المخالفة (اختر أو اكتب)</label>
+                <input type="text" id="penalty-reason" list="penalty-reasons-list" class="fm-input" required placeholder="تأخير، غياب، إهمال..." style="background:rgba(0,0,0,0.3);">
+                <datalist id="penalty-reasons-list">
+                    <option value="غياب بدون عذر">
+                    <option value="تأخير عن موعد الدوام">
+                    <option value="سوء استخدام معدات / كسر شيء">
+                    <option value="ضعف الأداء والإهمال في العمل">
+                </datalist>
+            </div>
+            
+            <div style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); padding:12px; border-radius:12px; margin-bottom:20px; display:flex; gap:12px;">
+                <i class="ph-fill ph-warning-circle text-red" style="font-size:24px;"></i>
+                <p style="font-size:12px; margin:0; color:#fca5a5; line-height:1.6;">الجزاء سيُخصم من القيمة الصافية لراتب الموظف ولن يؤثر على سيولة الخزينة كونه لم يُصرف كنقدية فعلية (متوافق مع النظام المحاسبي).</p>
+            </div>
+            
+            <button type="submit" class="hr-btn-solid bg-red" style="width:100%; justify-content:center; padding:14px; font-size:16px;">
+                <i class="ph ph-check-circle"></i> تأكيد تطبيق الجزاء
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Rule Creation Modal -->
+<div class="modal-overlay" id="rule-modal">
+    <div class="modal-content" style="max-width:400px; background:var(--bg-card); border:1px solid rgba(236,72,153,0.3); border-radius:24px; padding:24px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+            <h3 style="color:white; margin:0;"><i class="ph ph-scales text-pink" style="font-size:20px; vertical-align:-3px;"></i> إضافة قاعدة جزاء</h3>
+            <button class="close-modal" id="btn-close-rule-modal" style="background:none;border:none;color:#fff;cursor:pointer;"><i class="ph ph-x" style="font-size:20px;"></i></button>
+        </div>
+        
+        <form id="form-rule-create">
+            <div class="fm-group mb-3">
+                <label>اسم ونص المخالفة</label>
+                <input type="text" id="rule-name" class="fm-input" required placeholder="مثال: غياب بدون عذر" style="background:rgba(0,0,0,0.3);">
+            </div>
+            <div class="fm-group mb-4">
+                <label>القيمة الافتراضية للخصم (ر.س)</label>
+                <input type="number" id="rule-amount" class="fm-input" min="1" required placeholder="مثلاً 150" style="background:rgba(0,0,0,0.3); color:#34d399; font-weight:bold; font-size:20px;">
+            </div>
+            
+            <button type="submit" class="hr-btn-solid bg-pink" style="width:100%; justify-content:center; padding:14px; font-size:16px;">
+                <i class="ph ph-floppy-disk"></i> حفظ القاعدة
+            </button>
+        </form>
+    </div>
+</div>
+
+<script src="node_modules/html2canvas/dist/html2canvas.min.js"></script>
+<script src="staff.js"></script>
 </body>
 </html>

@@ -1,14 +1,15 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
 
     const kpiValues = document.querySelectorAll('.kpi-card .kpi-value');
     if(!kpiValues || kpiValues.length < 5) return; // Not on index page
 
     // FETCH LIVE DATA
-    const oStr = localStorage.getItem('pos_orders');
+    const { ipcRenderer } = require('electron');
+    let orders = await ipcRenderer.invoke('db-get-orders');
+    if(!orders) orders = [];
+
     const rStr = localStorage.getItem('pos_returns');
     const hStr = localStorage.getItem('hr_expenses');
-
-    let orders = oStr ? JSON.parse(oStr) : [];
     let returns = rStr ? JSON.parse(rStr) : [];
     let hrExpenses = hStr ? JSON.parse(hStr) : [];
 
@@ -16,16 +17,39 @@ document.addEventListener('DOMContentLoaded', () => {
     // In a real app we'd filter by today's date, here we just sum them all assuming they are current session
     let dailySales = 0;
     let cashSales = 0;
+    let networkSales = 0;
+    let totalTax = 0;
     let totalItemsNum = 0;
+    let totalReturnsAmt = 0;
+
+    // الحصول على نسبة الضريبة من الإعدادات
+    let taxRateStr = 15;
+    const sysSet = localStorage.getItem('restaurant_settings');
+    if(sysSet) {
+        try {
+            const data = JSON.parse(sysSet);
+            if(data.taxRate !== undefined) taxRateStr = parseFloat(data.taxRate);
+        } catch(e){}
+    }
+    const TAX_RATE = taxRateStr / 100;
 
     // Item sales tracking for Top Selling
     let itemSalesMap = {}; 
 
     orders.forEach(o => {
         dailySales += o.total;
-        if(o.paymentMethod.includes('كاش')) cashSales += o.total;
+        
+        // حساب الضريبة المشمولة من الإجمالي = الإجمالي - (الإجمالي / (1 + النسبة))
+        let orderTax = o.total - (o.total / (1 + TAX_RATE));
+        totalTax += orderTax;
 
-        if(o.items) {
+        if(o.paymentMethod && o.paymentMethod.includes('كاش')) {
+            cashSales += o.total;
+        } else {
+            networkSales += o.total;
+        }
+
+        if(Array.isArray(o.items)) {
             o.items.forEach(itm => {
                 totalItemsNum += itm.qty;
                 if(!itemSalesMap[itm.name]) {
@@ -39,7 +63,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     returns.forEach(r => {
         dailySales -= r.amount;
-        if(r.method.includes('كاش')) cashSales -= r.amount;
+        totalReturnsAmt += r.amount;
+        if(r.method && r.method.includes('كاش')) {
+            cashSales -= r.amount;
+        } else {
+            networkSales -= r.amount;
+        }
     });
 
     let totalExp = 0;
@@ -196,5 +225,40 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // --- 5. SHIFT REPORT MODAL LOGIC ---
+    window.openShiftReport = function() {
+        const modal = document.getElementById('shiftReportModal');
+        if(!modal) return;
+        
+        const now = new Date();
+        document.getElementById('shift-datetime').innerText = now.toLocaleString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        
+        document.getElementById('shift-cash').innerText = cashSales.toFixed(2) + ' ر.س';
+        document.getElementById('shift-network').innerText = networkSales.toFixed(2) + ' ر.س';
+        document.getElementById('shift-total-income').innerText = (cashSales + networkSales).toFixed(2) + ' ر.س';
+        
+        document.getElementById('shift-tax').innerText = totalTax.toFixed(2) + ' ر.س';
+        document.getElementById('shift-returns').innerText = totalReturnsAmt.toFixed(2) + ' ر.س';
+        document.getElementById('shift-expenses').innerText = totalExp.toFixed(2) + ' ر.س';
+        
+        document.getElementById('shift-drawer').innerText = drawerBalance.toFixed(2) + ' ر.س';
+        
+        document.getElementById('shift-grand-total').innerText = dailySales.toFixed(2) + ' ر.س';
+
+        modal.style.display = 'flex';
+    };
+
+    window.closeShiftReport = function() {
+        const modal = document.getElementById('shiftReportModal');
+        if(modal) modal.style.display = 'none';
+    };
+
+    window.printShiftReport = function() {
+        window.print();
+        // Option to optionally clear logs and actually close shift: 
+        // localStorage.setItem('pos_returns', '[]');
+        // We'll just leave it as is for reporting logic 
+    };
 
 });

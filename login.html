@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل الدخول - سمر حضرموت POS</title>
+    <title>تسجيل الدخول - هش HASH POS</title>
     <!-- Base styles -->
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="login.css">
     <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
+    
+    <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
 </head>
 <body class="login-page-body dark-theme">
 
@@ -20,10 +20,10 @@
     <div class="login-bg-spot green"></div>
 
     <div class="login-box">
-        <img src="logo.jpg" alt="شعار سمر حضرموت" class="login-logo" id="dyn-login-logo">
+        <img src="1111.png" alt="شعار هش HASH" class="login-logo" id="dyn-login-logo">
         
         <div class="login-title">
-            <h1 id="dyn-login-name">سمر حضرموت <span class="highlight">POS</span></h1>
+            <h1 id="dyn-login-name">هش HASH <span class="highlight">POS</span></h1>
             <p>أدخل بيانات الاعتماد للوصول لنظام الإدارة</p>
         </div>
 
@@ -54,21 +54,42 @@
         </form>
 
         <div class="login-footer">
-            جميع الحقوق محفوظة &copy; 2026 - نظام إدارة سمر حضرموت
+            جميع الحقوق محفوظة &copy; 2026 - نظام هش HASH POS
         </div>
     </div>
 
     <!-- Script to handle dynamic settings for logo on login screen before auth -->
     <script>
+        // ═══════════════════════════════════════════════════════
+        // منطق شاشة تسجيل الدخول:
+        // - الافتراضي: شعار وإسم هش HASH (الشعار الرسمي للبرنامج)
+        // - إذا ضبط المالك اسم مطعمه وشعاره من الإعدادات → تظهر بيانات المطعم
+        // ═══════════════════════════════════════════════════════
         document.addEventListener('DOMContentLoaded', () => {
             const saved = localStorage.getItem('restaurant_settings');
-            if(saved) {
-                const data = JSON.parse(saved);
-                if(data.logo) document.getElementById('dyn-login-logo').src = data.logo;
-                if(data.name) document.getElementById('dyn-login-name').innerHTML = data.name + ' <span class="highlight">POS</span>';
+            const logoEl = document.getElementById('dyn-login-logo');
+            const nameEl = document.getElementById('dyn-login-name');
+
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    // استخدم بيانات المطعم إذا أدخلها المستخدم (اسم مختلف عن هش)
+                    const restaurantName = (data.name || '').trim();
+                    const restaurantLogo = (data.logo || '').trim();
+
+                    // إذا كان الشعار base64 أو مساراً لملف مطعم حقيقي
+                    if (restaurantLogo && restaurantLogo !== '1111.png' && restaurantLogo !== '1(1).png') {
+                        logoEl.src = restaurantLogo;
+                    }
+                    // إذا كان اسم مطعم حقيقي مختلف عن الافتراضي
+                    if (restaurantName && restaurantName !== 'هش HASH' && restaurantName !== 'هـــش HASH') {
+                        nameEl.innerHTML = restaurantName + ' <span class="highlight">POS</span>';
+                    }
+                } catch(e) { console.error('Login settings parse error', e); }
             }
         });
     </script>
+    <script src="script.js"></script>
     <script src="login.js"></script>
 </body>
 </html>
