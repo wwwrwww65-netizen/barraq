@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelectorAll('.btn-close-modal').forEach(b => b.addEventListener('click', () => modal.classList.remove('active')));
         if(document.getElementById('exp-date')) document.getElementById('exp-date').valueAsDate = new Date();
 
-        document.getElementById('form-expense')?.addEventListener('submit', (ev) => {
+        document.getElementById('form-expense')?.addEventListener('submit', async (ev) => {
             ev.preventDefault();
             const newExp = {
                 id: 'EXP-' + Math.floor(Math.random()*9000+1000),
@@ -232,24 +232,64 @@ document.addEventListener('DOMContentLoaded', async () => {
             modal.classList.remove('active');
             renderExp();
 
-            // send WhatsApp message automatically to admin for expenses
+            // send WhatsApp image voucher to admin for expenses
             try {
                 const waRaw = localStorage.getItem('wa_settings');
                 if (waRaw) {
                     const waSettings = JSON.parse(waRaw);
                     if (waSettings.expenses && waSettings.admin) {
                         const adminPhone = String(waSettings.admin);
-                        const captionMsg = `(سند منصرف - العمليات)\nتم إثبات مصروف جديد في النظام:\n\n*القسم:* ${newExp.cat}\n*البيان:* ${newExp.desc}\n*المبلغ:* ${newExp.amount.toLocaleString('en-US')} ر.س\n*طريقة الدفع:* ${newExp.pMethod === 'cash' ? 'كاش نقدي' : 'حوالة بنكية'}`;
+
+                        // Populate voucher template
+                        const sysRaw = localStorage.getItem('restaurant_settings');
+                        const sysSet = sysRaw ? JSON.parse(sysRaw) : {};
+                        const todayStr = newExp.date || new Date().toISOString().split('T')[0];
+
+                        if(document.getElementById('ev-date')) document.getElementById('ev-date').innerText = todayStr;
+                        if(document.getElementById('ev-number')) document.getElementById('ev-number').innerText = newExp.id;
+                        if(document.getElementById('ev-cat')) document.getElementById('ev-cat').innerText = newExp.cat;
+                        if(document.getElementById('ev-amt')) document.getElementById('ev-amt').innerText = newExp.amount.toLocaleString('en-US', {minimumFractionDigits:2}) + ' ر.س';
+                        if(document.getElementById('ev-desc')) document.getElementById('ev-desc').innerText = newExp.desc;
+                        if(document.getElementById('ev-pay')) document.getElementById('ev-pay').innerText = newExp.pMethod === 'cash' ? 'كاش نقدي' : 'حوالة بنكية';
+                        if(document.getElementById('ev-rest-name')) document.getElementById('ev-rest-name').innerText = sysSet.name || '';
+                        if(document.getElementById('ev-branch')) document.getElementById('ev-branch').innerText = sysSet.branch || '';
+                        if(document.getElementById('ev-phone')) document.getElementById('ev-phone').innerText = sysSet.phone || '';
+                        if(document.getElementById('ev-stamp')) document.getElementById('ev-stamp').innerText = sysSet.name || '';
+                        const logoEl = document.getElementById('ev-logo');
+                        if(logoEl && sysSet.logo && sysSet.logo !== '1111.png') logoEl.src = sysSet.logo;
+
+                        // Capture voucher as image
+                        const voucherEl = document.getElementById('exp-voucher-template');
+                        const container = document.getElementById('exp-voucher-container');
+                        container.style.position = 'fixed';
+                        container.style.top = '-9999px';
+                        container.style.left = '0';
+                        container.style.width = '840px';
+                        voucherEl.style.width = '800px';
+                        await new Promise(r => setTimeout(r, 150));
+
+                        const canvas = await html2canvas(voucherEl, { scale:2, useCORS:true, backgroundColor:'#fff', width:800, windowWidth:1200, logging:false });
+
+                        // Resize to 1600×1132
+                        const fc = document.createElement('canvas'); fc.width=1600; fc.height=1132;
+                        const ctx2 = fc.getContext('2d');
+                        ctx2.fillStyle='#fff'; ctx2.fillRect(0,0,1600,1132);
+                        ctx2.drawImage(canvas, 0, 0, 1600, 1132);
+                        const imgData = fc.toDataURL('image/jpeg', 0.95);
+
+                        container.style.position = 'absolute';
+                        container.style.top = '-9999px';
+                        container.style.left = '-9999px';
+                        container.style.width = '';
+                        voucherEl.style.width = '800px';
+
+                        const captionMsg = `سند مصروف — ${newExp.cat}\nالمبلغ: ${newExp.amount.toLocaleString('en-US')} ر.س\n${newExp.desc}`;
                         const { ipcRenderer } = require('electron');
-                        ipcRenderer.send('wa-send-message', {
-                            number: adminPhone,
-                            text: captionMsg,
-                            image: null
-                        });
-                        console.log('Sending Expense WA to admin:', adminPhone);
+                        ipcRenderer.send('wa-send-message', { number: adminPhone, text: captionMsg, image: imgData });
+                        console.log('Sent expense voucher image to admin:', adminPhone);
                     }
                 }
-            } catch(sqError) { console.error('Error auto-sending Expense WA', sqError); }
+            } catch(sqError) { console.error('Error sending expense WA voucher', sqError); }
         });
 
         document.getElementById('search-exp')?.addEventListener('input', renderExp);
