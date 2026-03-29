@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <script src="demo-mock.js"></script>
@@ -118,6 +118,10 @@
                 <div class="sales-table-card">
                     <div class="sales-list-header">
                         <h3>سجل طلبات اليوم</h3>
+                        <div>
+                            <button class="btn btn-outline" style="border-color:#10b981; color:#10b981; margin-left:10px;" onclick="window.exportTableToCSV('sales.csv')"><i class="ph ph-export"></i> تصدير (Excel)</button>
+                            <button class="btn btn-outline" onclick="window.print()"><i class="ph ph-printer"></i> طباعة التقرير</button>
+                        </div>
                         <div class="search-box" style="margin: 0; max-width: 300px;">
                             <i class="ph ph-magnifying-glass"></i>
                             <input type="text" id="sales-search" placeholder="ابحث برقم الطلب..." class="input-modern" style="background:rgba(0,0,0,0.2)">

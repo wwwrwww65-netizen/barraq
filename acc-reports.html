@@ -44,6 +44,7 @@
                     <p class="nav-label">التقارير والكشوفات</p>
                     <a href="acc-reports.html" class="nav-item active"><i class="ph ph-chart-line-up"></i><span>قائمة الدخل و كشف الحساب</span></a>
                     <a href="acc-reports.html#balance" class="nav-item"><i class="ph ph-file-pdf"></i><span>الميزانية العمومية والمركز</span></a>
+                    <a href="profit-loss.html" class="nav-item"><i class="ph ph-scales"></i><span>الأرباح والخسائر</span></a>
                 </div>
             </nav>
         </aside>
@@ -56,6 +57,7 @@
                     <p style="color:var(--text-secondary); font-size:14px; margin-top:5px;">كشف الأرباح والخسائر الشامل ودفتر الأستاذ العام للعمليات.</p>
                 </div>
                 <div class="header-actions">
+                    <button class="btn btn-primary" onclick="window.exportTableToCSV('financial_report.csv')"><i class="ph ph-export"></i> تصدير (Excel)</button>
                     <button class="btn btn-primary" onclick="window.print()"><i class="ph ph-printer"></i> طباعة التقرير / PDF</button>
                 </div>
             </header>

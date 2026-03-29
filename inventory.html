@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <script src="demo-mock.js"></script>
@@ -164,7 +164,8 @@
                                 <input type="text" placeholder="البحث باسم الصنف، الباركود..">
                             </div>
                             <button class="inv-btn-outline"><i class="ph ph-funnel"></i> تصفية</button>
-                            <button class="inv-btn-outline"><i class="ph ph-printer"></i> جرد المخزن</button>
+                            <button class="inv-btn-outline" onclick="window.exportTableToCSV('inventory_report.csv')"><i class="ph ph-download-simple"></i> تصدير (Excel)</button>
+                            <button class="inv-btn-outline" onclick="window.print()"><i class="ph ph-printer"></i> جرد المخزن (طباعة)</button>
                             <button class="inv-btn-solid bg-blue"><i class="ph ph-plus"></i> تعريف منتج جديد</button>
                         </div>
                     </div>

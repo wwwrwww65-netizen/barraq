@@ -816,3 +816,37 @@ body {
     .search-bar input { display: none; }
     .user-info { display: none; }
 }
+
+
+/* ============== PRINT STYLES ============== */
+@media print {
+    .sidebar, .top-header, .header-actions, .filter-box, 
+    .orders-toolbar, .sales-filters, .inv-toolbar,
+    .time-filters, .filter-bar, .acc-actions-bar,
+    .btn-suspend, .btn-print, button, .nav-menu,
+    .cart-actions-grid, .pos-panel, .badge { display: none !important; }
+
+    body, body.dark-theme { background: #fff !important; color: #000 !important; }
+    .main-content, .app-container { margin: 0 !important; padding: 0 !important; }
+    
+    .card, .acc-transactions, .pl-report-panel, .sales-table-card, 
+    .orders-grid, .inv-main-table-card, .pur-table {
+        background: #fff !important; border: 1px solid #ccc !important;
+        box-shadow: none !important; color: #000 !important;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #333; padding: 8px; color: #000 !important; font-size: 12px; }
+    h1, h2, h3, p, span, td, th, li { color: #000 !important; }
+    canvas { max-width: 100%; }
+
+    @page { margin: 1cm; }
+
+    body::before {
+        content: "مطابخ ومحائذ هـــش HASH — تقرير رسمي معتمد";
+        display: block; text-align: center; font-size: 20px;
+        font-weight: 900; padding-bottom: 12px;
+        border-bottom: 2px solid #000; margin-bottom: 18px;
+        color: #000 !important;
+    }
+}

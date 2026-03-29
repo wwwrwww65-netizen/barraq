@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <script src="demo-mock.js"></script>
@@ -88,6 +88,8 @@
                 <div class="filter-bar mt-4">
                     <div class="filter-left">
                         <input type="text" id="search-inv" class="input-modern" placeholder="ابحث برقم الفاتورة أو المورد.." style="width:300px">
+                        <button class="btn btn-primary" style="margin-right:10px" onclick="window.exportTableToCSV('purchases.csv')"><i class="ph ph-export"></i> تصدير (Excel)</button>
+                        <button class="btn btn-outline" style="margin-right:10px" onclick="window.print()"><i class="ph ph-printer"></i> طباعة السجل</button>
                     </div>
                 </div>
 

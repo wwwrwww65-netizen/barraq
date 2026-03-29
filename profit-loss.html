@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>هـــش HASH - الأرباح والخسائر</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="accounting.css">
+    <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
+    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
+    <script src="node_modules/chart.js/dist/chart.umd.js"></script>
+    <style>
+        .pl-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .pl-kpi-card {
+            background: var(--bg-card);
+            padding: 24px;
+            border-radius: 16px;
+            border: 1px solid var(--border-light);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .pl-kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0; right: 0; left: 0; height: 3px;
+        }
+        .pl-kpi-card.income::before { background: var(--accent-green); }
+        .pl-kpi-card.expense::before { background: var(--accent-red); }
+        .pl-kpi-card.profit::before { background: var(--accent-blue); }
+        .pl-kpi-card.profit-net::before { background: linear-gradient(90deg, #f59e0b, #ec4899); }
+        
+        .pl-kpi-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+        .income .pl-kpi-icon { color: var(--accent-green); }
+        .expense .pl-kpi-icon { color: var(--accent-red); }
+        .profit .pl-kpi-icon { color: var(--accent-blue); }
+        .profit-net .pl-kpi-icon { color: #f59e0b; }
+        
+        .pl-kpi-title {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        .pl-kpi-value {
+            font-size: 28px;
+            font-weight: 800;
+            margin: 0;
+            color: var(--text-primary);
+        }
+        
+        .pl-sections {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+        
+        .pl-report-panel {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border-light);
+            padding: 25px;
+            height: 100%;
+        }
+        
+        .pl-report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-light);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .pl-report-header h3 {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+        }
+        
+        .pl-breakdown-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .pl-breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px dashed rgba(255,255,255,0.05);
+            font-size: 15px;
+        }
+        .pl-breakdown-item:last-child { border: none; }
+        
+        .pl-breakdown-item .val { font-weight: bold; }
+        .val.val-green { color: var(--accent-green); }
+        .val.val-red { color: var(--accent-red); }
+        
+        .grand-total-box {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .grand-total-box h4 { margin: 0 0 10px 0; color: var(--text-muted); }
+        .grand-total-box .huge-amount {
+            font-size: 36px;
+            font-weight: 900;
+            color: var(--accent-green);
+            text-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+        }
+        .grand-total-box .huge-amount.loss {
+            color: var(--accent-red);
+            text-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+        }
+        
+        @media (max-width: 1000px) {
+            .pl-sections { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar accounting-sidebar">
+            <div class="logo">
+                <img src="1111.png" alt="شعار المحاسبة" class="restaurant-logo">
+                <span>هـــش HASH <span class="highlight">ERP</span></span>
+            </div>
+            
+            <nav class="nav-menu">
+                <div class="nav-group">
+                    <p class="nav-label">اللوحة المالية</p>
+                    <a href="accounting.html" class="nav-item"><i class="ph ph-presentation-chart"></i><span>نظرة عامة (الرئيسية)</span></a>
+                    <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>العودة لإدارة الكاشير والمطعم</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">الحسابات العامة</p>
+                    <a href="acc-tree.html" class="nav-item"><i class="ph ph-book-bookmark"></i><span>شجرة الحسابات والدليل</span></a>
+                    <a href="acc-expenses.html" class="nav-item"><i class="ph ph-receipt"></i><span>سجل المصروفات والسندات</span></a>
+                    <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>إجمالي المشتريات (الموردين)</span></a>
+                    <a href="acc-banks.html" class="nav-item"><i class="ph ph-bank"></i><span>الخزينة والبنوك</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">شؤون الموظفين والعمال</p>
+                    <a href="staff.html" class="nav-item"><i class="ph ph-users-three"></i><span>إدارة الموظفين والملفات</span></a>
+                    <a href="staff.html" class="nav-item"><i class="ph ph-money"></i><span>مسيرات الرواتب والسلف</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">التقارير والكشوفات</p>
+                    <a href="acc-reports.html" class="nav-item"><i class="ph ph-chart-line-up"></i><span>قائمة الدخل و كشف الحساب</span></a>
+                    <a href="acc-reports.html#balance" class="nav-item"><i class="ph ph-file-pdf"></i><span>الميزانية العمومية والمركز</span></a>
+                    <a href="profit-loss.html" class="nav-item active"><i class="ph ph-scales"></i><span>الأرباح والخسائر</span></a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content acc-main">
+            <!-- Header -->
+            <header class="top-header acc-header">
+                <div class="header-left-title">
+                    <h2>تقرير الأرباح والخسائر الشامل</h2>
+                    <span class="fiscal-year-badge">السنة المالية: 2026</span>
+                </div>
+                
+                <div class="header-actions">
+                    <div class="time-filters">
+                        <button class="filter-btn" data-period="day">اليوم</button>
+                        <button class="filter-btn" data-period="week">الاسبوع</button>
+                        <button class="filter-btn active" data-period="month">هذا الشهر</button>
+                        <button class="filter-btn" data-period="year">سنوي</button>
+                    </div>
+                    
+                    <button class="icon-btn notification-btn">
+                        <i class="ph ph-bell"></i>
+                    </button>
+                    <div class="user-profile">
+                        <img src="avatar.svg" alt="المحاسب" class="avatar">
+                        <div class="user-info">
+                            <span class="user-name">جاري التحميل...</span>
+                            <span class="user-role">...</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="dashboard-grid acc-grid" style="padding: 20px;">
+                <!-- KPI Row -->
+                <div class="pl-kpi-grid">
+                    <div class="pl-kpi-card income">
+                        <i class="ph ph-trend-up pl-kpi-icon"></i>
+                        <p class="pl-kpi-title">إجمالي الإيرادات (المبيعات)</p>
+                        <h3 class="pl-kpi-value acc-glow-green" id="pl-total-revenue">0.00 ر.س</h3>
+                    </div>
+                    <div class="pl-kpi-card expense">
+                        <i class="ph ph-trend-down pl-kpi-icon"></i>
+                        <p class="pl-kpi-title">إجمالي المصروفات (مشتريات، رواتب، تشغيل)</p>
+                        <h3 class="pl-kpi-value acc-glow-red" id="pl-total-expense">0.00 ر.س</h3>
+                    </div>
+                    <div class="pl-kpi-card profit">
+                        <i class="ph ph-coins pl-kpi-icon"></i>
+                        <p class="pl-kpi-title">إجمالي المرتجعات / خصومات</p>
+                        <h3 class="pl-kpi-value" id="pl-total-returns" style="color:var(--text-muted)">0.00 ر.س</h3>
+                    </div>
+                    <div class="pl-kpi-card profit-net">
+                        <i class="ph ph-scales pl-kpi-icon"></i>
+                        <p class="pl-kpi-title">صافي الربح التقديري (قبل الضريبة)</p>
+                        <h3 class="pl-kpi-value" id="pl-net-profit">0.00 ر.س</h3>
+                    </div>
+                </div>
+
+                <div class="pl-sections">
+                    <!-- Chart Section -->
+                    <div class="pl-report-panel">
+                        <div class="pl-report-header">
+                            <h3><i class="ph ph-chart-polar"></i> المخطط البياني للتدفق (إيراد vs مصروف)</h3>
+                            <button class="btn-text"><i class="ph ph-export"></i> تصدير البيانات</button>
+                        </div>
+                        <div style="height: 350px;">
+                            <canvas id="plChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Breakdown Table -->
+                    <div class="pl-report-panel">
+                        <div class="pl-report-header">
+                            <h3><i class="ph ph-receipt"></i> تفصيل قائمة الدخل</h3>
+                            <button class="btn-text" onclick="window.print()"><i class="ph ph-printer"></i> طباعة</button>
+                        </div>
+                        <ul class="pl-breakdown-list">
+                            <li class="pl-breakdown-item">
+                                <span>مبيعات الكاشير المباشرة</span>
+                                <span class="val val-green" id="bd-sales-cash">0.00</span>
+                            </li>
+                            <li class="pl-breakdown-item">
+                                <span>مبيعات شبكة (بنك)</span>
+                                <span class="val val-green" id="bd-sales-network">0.00</span>
+                            </li>
+                            <li class="pl-breakdown-item" style="border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 20px;">
+                                <span>إيرادات أخرى</span>
+                                <span class="val val-green">0.00</span>
+                            </li>
+                            
+                            <li class="pl-breakdown-item" style="margin-top:10px;">
+                                <span>تكلفة المشتريات (مواد خام)</span>
+                                <span class="val val-red" id="bd-purchases">0.00</span>
+                            </li>
+                            <li class="pl-breakdown-item">
+                                <span>رواتب وأجور موظفين</span>
+                                <span class="val val-red" id="bd-salaries">0.00</span>
+                            </li>
+                            <li class="pl-breakdown-item">
+                                <span>مصروفات تشغيلية (كهرباء، ماء، صيانة)</span>
+                                <span class="val val-red" id="bd-expenses">0.00</span>
+                            </li>
+                            <li class="pl-breakdown-item">
+                                <span>مرتجعات وخصومات للعملاء</span>
+                                <span class="val val-red" id="bd-returns">0.00</span>
+                            </li>
+                        </ul>
+                        
+                        <div class="grand-total-box">
+                            <h4>النتيجة النهائية (عن الفترة المحددة)</h4>
+                            <div class="huge-amount" id="bd-grand-total">0.00 ر.س</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="profit-loss.js"></script>
+</body>
+</html>
