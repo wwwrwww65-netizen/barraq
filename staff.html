@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+    <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>هـــش HASH - شؤون الموظفين (HR)</title>
@@ -120,9 +121,18 @@
                 <h2 id="page-title">دليل الموظفين</h2>
                 <p id="page-subtitle">نظرة عامة على الطاقم وحالتهم</p>
             </div>
-            <div class="header-actions" style="display:flex; gap:10px;">
+            <div class="header-actions" style="display:flex; gap:10px; align-items:center;">
                 <button class="hr-btn-solid bg-red" id="btn-open-penalty-modal" style="background:rgba(239,68,68,0.2) !important; color:#ef4444; border:1px solid #ef4444;"><i class="ph ph-warning-octagon"></i> خصم / جزاء</button>
                 <button class="hr-btn-solid bg-indigo" id="btn-open-advance-modal"><i class="ph ph-hand-coins"></i> صرف راتب / سلفة سريع</button>
+                
+                <div style="width: 1px; height: 32px; background: rgba(255,255,255,0.1); margin: 0 8px;"></div>
+                <div class="user-profile">
+                    <img src="avatar.svg" alt="صورة المستخدم" class="avatar">
+                    <div class="user-info">
+                        <span class="user-name">جاري التحميل...</span>
+                        <span class="user-role">...</span>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -228,7 +238,7 @@
                                         <option value="إدارة">
                                         <option value="كاشير">
                                         <option value="مطبخ">
-                                        <option value="توصيل">
+
                                         <option value="خدمة">
                                     </datalist>
                                 </div>
@@ -576,5 +586,6 @@
 
 <script src="node_modules/html2canvas/dist/html2canvas.min.js"></script>
 <script src="staff.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

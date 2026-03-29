@@ -1,0 +1,269 @@
+/* orders.css */
+
+.orders-container {
+    padding: 20px;
+}
+
+.orders-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-card);
+    padding: 15px 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    padding: 8px 15px;
+    flex: 1;
+    min-width: 300px;
+}
+
+.search-box i {
+    color: var(--text-muted);
+    font-size: 20px;
+    margin-left: 10px;
+}
+
+.search-box input {
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    width: 100%;
+    outline: none;
+    font-family: 'Cairo', sans-serif;
+}
+
+.filter-box {
+    display: flex;
+    gap: 10px;
+}
+
+.filter-box select, .filter-box input[type="date"] {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-family: 'Cairo', sans-serif;
+    outline: none;
+}
+.filter-box input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.5;
+}
+
+/* Orders Grid */
+.orders-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.order-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 15px;
+    transition: all 0.2s;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+}
+
+.order-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--accent-blue);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+
+.oc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px dashed var(--border-color);
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.oc-id {
+    font-weight: 800;
+    color: var(--accent-blue);
+    font-size: 16px;
+}
+
+.oc-status {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+}
+.oc-status.done { background: rgba(16,185,129,0.1); color: var(--accent-green); }
+.oc-status.returned { background: rgba(239,68,68,0.1); color: var(--accent-red); }
+
+.oc-body {
+    flex: 1;
+}
+.oc-body p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 5px 0;
+    display: flex;
+    justify-content: space-between;
+}
+.oc-body p span.price {
+    font-weight: 800;
+    color: var(--text-primary);
+    font-size: 16px;
+}
+
+.oc-items {
+    display: flex;
+    gap: 8px;
+    margin: 10px 0;
+    overflow-x: auto;
+    padding-bottom: 5px;
+}
+.oc-items img {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: var(--bg-dark);
+}
+
+.oc-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border-color);
+}
+
+.btn-card-return {
+    background: rgba(239,68,68,0.1);
+    color: var(--accent-red);
+    border: 1px solid rgba(239,68,68,0.2);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.btn-card-return:hover {
+    background: var(--accent-red);
+    color: #fff;
+}
+.btn-card-return:disabled {
+    opacity: 0.5; cursor: not-allowed;
+}
+
+
+/* Order Modal */
+.order-modal {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+}
+
+.order-modal-content {
+    background: var(--bg-card);
+    width: 600px;
+    max-width: 95%;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    display: flex; flex-direction: column;
+    max-height: 90vh;
+}
+
+.order-modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.order-modal-header h2 { font-size: 18px; display: flex; align-items: center; gap: 8px; }
+.order-modal-header .close-btn { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
+.order-modal-header .close-btn:hover { color: var(--accent-red); }
+
+.order-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.om-status-bar {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    background: rgba(255,255,255,0.02);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 20px;
+}
+.om-status-item {
+    flex: 1;
+    min-width: 120px;
+}
+.om-status-item p { font-size: 12px; color: var(--text-muted); margin-bottom: 3px; }
+.om-status-item h4 { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+
+.om-items-list {
+    margin-bottom: 20px;
+}
+.om-item-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 15px;
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid var(--border-color);
+}
+.om-item-row:last-child { border-bottom: none; border-radius: 0 0 8px 8px;}
+.om-item-row:first-child { border-radius: 8px 8px 0 0;}
+.om-item-img {
+    width: 50px; height: 50px; border-radius: 8px; object-fit: cover;
+}
+.om-item-info { flex: 1; }
+.om-item-info h4 { font-size: 15px; font-weight: 700; margin-bottom: 3px;}
+.om-item-info p { font-size: 12px; color: var(--text-muted); }
+
+.om-item-price {
+    font-weight: 800; font-size: 16px; color: var(--text-primary);
+}
+
+.om-summary {
+    background: rgba(255,255,255,0.02);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+.om-summary .summary-row {
+    display: flex; justify-content: space-between;
+    margin-bottom: 8px; font-size: 14px; color: var(--text-secondary);
+}
+.om-summary .summary-row.total {
+    margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-color);
+    font-size: 18px; font-weight: 800; color: var(--accent-green);
+}
+
+.order-modal-actions {
+    padding: 15px 20px;
+    border-top: 1px solid var(--border-color);
+    display: flex; justify-content: flex-end; gap: 10px;
+}

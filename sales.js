@@ -43,7 +43,7 @@ async function loadSales() {
 
     let rowsHTML = '';
     orders.forEach(order => {
-        let typeClass = (order.type||'').includes('محلي') ? 'badge-dinein' : (order.type||'').includes('سفري') ? 'badge-takeout' : 'badge-delivery';
+        let typeClass = (order.type||'').includes('محلي') ? 'badge-dinein' : 'badge-takeout';
         let methodClass = (order.paymentMethod||'').includes('كاش') ? 'badge-cash' : 'badge-card';
         const itemsCount = Array.isArray(order.items) ? order.items.length : (order.itemsCount || 0);
 

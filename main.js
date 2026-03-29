@@ -174,6 +174,14 @@ function setupNetworkSync() {
   ipcMain.handle('get-instance-id', () => myInstanceId);
   ipcMain.handle('get-local-ip', () => getLocalIP());
   ipcMain.handle('get-hostname', () => os.hostname());
+  ipcMain.handle('get-printers', async (event) => {
+    try {
+      return await event.sender.getPrintersAsync();
+    } catch(e) {
+      console.error('Error getting printers:', e);
+      return [];
+    }
+  });
 
   // Renderer saved pos_database.json → broadcast to all peers
   ipcMain.on('notify-db-changed', () => {

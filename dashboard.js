@@ -74,7 +74,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let totalExp = 0;
     hrExpenses.forEach(h => totalExp += h.amount);
 
-    let drawerBalance = cashSales - totalExp; // Only cash goes to drawer
+    let shiftCashFloat = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
+    // Only cash goes to drawer
+    let drawerBalance = shiftCashFloat + cashSales - totalExp + (totalReturnsAmt < 0 ? 0 : 0); // returns are handled in cashSales directly since cashSales -= r.amount
 
     // Apply to UI
     kpiValues[0].innerHTML = `${dailySales.toFixed(2)}<span class="currency">ر.س</span>`;
@@ -227,6 +229,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- 5. SHIFT REPORT MODAL LOGIC ---
+    window.openShiftFloatModal = function() {
+        const currentFloat = localStorage.getItem('shift_cash_float') || 0;
+        const modal = document.getElementById('floatModal');
+        const input = document.getElementById('floatInput');
+        if(modal && input) {
+            input.value = currentFloat;
+            modal.style.display = 'flex';
+        } else {
+            // fallback (if used somewhere else where HTML modal isn't injected)
+            const userInput = prompt('أدخل العهدة المبدئية للدرج (الكاش الموجود في الدرج قبل بدء الوردية):', currentFloat);
+            if(userInput !== null) {
+                const val = parseFloat(userInput) || 0;
+                localStorage.setItem('shift_cash_float', val);
+                alert('تم تعيين الرصيد الافتتاحي للدرج بنجاح.');
+                window.location.reload();
+            }
+        }
+    };
+
+    window.closeShiftFloatModal = function() {
+        const modal = document.getElementById('floatModal');
+        if(modal) modal.style.display = 'none';
+    };
+
+    window.saveShiftFloatModal = function() {
+        const input = document.getElementById('floatInput');
+        if(input) {
+            const val = parseFloat(input.value) || 0;
+            localStorage.setItem('shift_cash_float', val);
+            alert('تم تعيين الرصيد الافتتاحي للدرج بنجاح.');
+            window.location.reload();
+        }
+    };
+
     window.openShiftReport = function() {
         const modal = document.getElementById('shiftReportModal');
         if(!modal) return;
@@ -234,6 +270,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const now = new Date();
         document.getElementById('shift-datetime').innerText = now.toLocaleString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         
+        document.getElementById('shift-float-cash').innerText = shiftCashFloat.toFixed(2) + ' ر.س';
         document.getElementById('shift-cash').innerText = cashSales.toFixed(2) + ' ر.س';
         document.getElementById('shift-network').innerText = networkSales.toFixed(2) + ' ر.س';
         document.getElementById('shift-total-income').innerText = (cashSales + networkSales).toFixed(2) + ' ر.س';
@@ -254,11 +291,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(modal) modal.style.display = 'none';
     };
 
-    window.printShiftReport = function() {
-        window.print();
-        // Option to optionally clear logs and actually close shift: 
-        // localStorage.setItem('pos_returns', '[]');
-        // We'll just leave it as is for reporting logic 
+    window.printShiftReport = async function() {
+        const path = require('path');
+        const printClone = document.getElementById('shift-print-area').cloneNode(true);
+        
+        // Fix logo path
+        const logo = printClone.querySelector('img#shift-logo');
+        if (logo) {
+            logo.src = 'file://' + path.join(__dirname, '1111.png').replace(/\\/g, '/');
+        }
+
+        const html = `
+            <style>
+                @import url('node_modules/@fontsource/cairo/index.css');
+                @page { margin: 0; }
+                body { font-family: 'Cairo', sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; }
+                #receipt-container { width: 72mm; color: #000; margin: 0; padding: 5mm; }
+                .shift-receipt { width:100%; background: #fff; color: #000; font-size: 14px; }
+                .receipt-header { text-align: center; margin-bottom: 15px; }
+                .receipt-header img { width: 60px; height: 60px; object-fit: contain; filter: grayscale(100%); margin-bottom: 5px; }
+                .receipt-header h3 { margin: 0; font-size: 18px; font-weight: 800; }
+                .receipt-header p { margin: 2px 0; font-size: 13px; color: #444; font-weight: 700;}
+                .receipt-datetime { margin-top: 5px; font-size: 12px; color: #666; border-top: 1px dashed #ccc; padding-top: 5px; }
+                .receipt-divider { border-top: 1px dashed #000; margin: 12px 0; }
+                .receipt-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600; font-size: 13px;}
+                .receipt-row.bold { font-weight: 800; font-size: 15px; }
+                .receipt-row.highlight { background: #f0f0f0; padding: 6px; border-radius: 4px; margin-top: 8px; }
+                .receipt-row.highlight-drawer { background: #e0eee0; padding: 8px; border: 1px dashed #000; margin-top: 8px; border-radius: 4px;}
+                .receipt-row.grand-total { background: #000; color: #fff; padding: 10px; border-radius: 4px; font-size: 16px; margin-top: 15px; }
+                .receipt-footer { text-align: center; font-size: 12px; font-weight:700; margin-top: 20px;}
+            </style>
+            <div id="receipt-container">
+                ${printClone.innerHTML}
+            </div>
+        `;
+
+        try {
+            await ipcRenderer.invoke('print-to-device', { html: html, printerName: '' });
+        } catch(e) { 
+            console.error('Z-Report print failed', e); 
+        }
     };
 
 });

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+    <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>هـــش HASH - نظام الكاشير</title>
@@ -33,7 +34,8 @@
 
                 <div class="nav-group">
                     <p class="nav-label">المبيعات والمنيو</p>
-                    <a href="sales.html" class="nav-item"><i class="ph ph-chart-line-up"></i><span>المبيعات</span></a>
+                    <a href="orders.html" class="nav-item"><i class="ph ph-list-numbers"></i><span>سجل الطلبات</span></a>
+                <a href="sales.html" class="nav-item"><i class="ph ph-chart-line-up"></i><span>المبيعات</span></a>
                     <a href="menu.html" class="nav-item"><i class="ph ph-list-dashes"></i><span>الأصناف والمنيو</span></a>
                 </div>
 
@@ -83,8 +85,8 @@
                     <div class="user-profile">
                         <img src="avatar.svg" alt="صورة المستخدم" class="avatar">
                         <div class="user-info">
-                            <span class="user-name">أحمد الكاشير</span>
-                            <span class="user-role">مدير الفرع</span>
+                            <span class="user-name">جاري التحميل...</span>
+                            <span class="user-role">...</span>
                         </div>
                         <i class="ph ph-caret-down"></i>
                     </div>
@@ -114,6 +116,7 @@
                             <a href="returns.html" class="btn btn-outline" style="border-color: #a78bfa; color: #a78bfa; text-decoration: none;"><i class="ph ph-arrow-u-up-left"></i> المرتجعات</a>
                             <a href="acc-expenses.html" class="btn btn-outline" style="text-decoration: none; border-color:var(--text-secondary); color:var(--text-secondary);"><i class="ph ph-hand-coins"></i> مصروف</a>
                             <a href="pos.html" class="btn btn-primary" style="text-decoration: none;"><i class="ph ph-plus-circle"></i> طلب جديد</a>
+                            <button class="btn btn-outline" style="border-color: #fcd34d; color: #fcd34d; background: transparent;" onclick="openShiftFloatModal()"><i class="ph ph-money"></i> رصيد مبدئي للدرج</button>
                             <button class="btn btn-danger" onclick="openShiftReport()"><i class="ph ph-lock-key"></i> إغلاق الوردية</button>
                         </div>
                     </div>
@@ -287,7 +290,7 @@
                                     </tr>
                                     <tr>
                                         <td>#ORD-1040</td>
-                                        <td><span class="order-type delivery">توصيل</span></td>
+                                        <td><span class="order-type takeaway">سفري</span></td>
                                         <td>أحمد سعيد</td>
                                         <td>منذ ساعة و15 دقيقة</td>
                                         <td>340.50 ر.س</td>
@@ -299,30 +302,7 @@
                         </div>
                     </div>
 
-                    <!-- Delivery Tracker -->
-                    <div class="card delivery-tracker">
-                        <div class="card-header">
-                            <h2 class="card-title">حالة المناديب والتوصيل</h2>
-                        </div>
-                        <div class="delivery-list">
-                            <div class="delivery-item">
-                                <img src="avatar.svg" alt="مندوب 1" class="driver-img">
-                                <div class="driver-info">
-                                    <h4>خالد السعيد</h4>
-                                    <p>طريق الملك عبدالله (طلب #1044)</p>
-                                </div>
-                                <span class="status out">في الطريق</span>
-                            </div>
-                            <div class="delivery-item">
-                                <img src="avatar.svg" alt="مندوب 2" class="driver-img">
-                                <div class="driver-info">
-                                    <h4>عبدالله سالم</h4>
-                                    <p>المطعم المباشر</p>
-                                </div>
-                                <span class="status ready">متاح</span>
-                            </div>
-                        </div>
-                    </div>
+
 
                     <!-- Inventory Alerts -->
                     <div class="card inventory-alerts">
@@ -381,7 +361,11 @@
                     <div class="receipt-divider"></div>
                     
                     <div class="receipt-row">
-                        <span>إجمالي الكاش:</span>
+                        <span>الرصيد الافتتاحي للدرج (العهدة):</span>
+                        <span id="shift-float-cash">0.00 ر.س</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span>إجمالي الكاش المكتسب:</span>
                         <span id="shift-cash">0.00 ر.س</span>
                     </div>
                     <div class="receipt-row">
@@ -430,6 +414,24 @@
                 <div class="shift-modal-actions">
                     <button class="btn btn-outline" style="border-color:var(--border-color); color:var(--text-primary);" onclick="closeShiftReport()">رجوع</button>
                     <button class="btn btn-primary" style="background:#10b981; border:none; color:white;" onclick="printShiftReport()"><i class="ph ph-printer"></i> طباعة الفاتورة</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal رصيد مبدئي للدرج -->
+        <div id="floatModal" class="shift-modal" style="display:none;">
+            <div class="shift-modal-content" style="width: 350px;">
+                <div class="shift-modal-header">
+                    <h2><i class="ph ph-money"></i> رصيد مبدئي للدرج</h2>
+                    <button class="close-btn" onclick="closeShiftFloatModal()"><i class="ph ph-x"></i></button>
+                </div>
+                <div style="padding: 24px;">
+                    <label style="display:block; margin-bottom:8px; font-weight:bold; color:var(--text-primary);">أدخل العهدة المبدئية للدرج:</label>
+                    <input type="number" id="floatInput" class="form-input" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-primary); font-size:16px;" placeholder="0.00" min="0" step="0.01">
+                </div>
+                <div class="shift-modal-actions">
+                    <button class="btn btn-outline" style="border-color:var(--border-color); color:var(--text-primary);" onclick="closeShiftFloatModal()">إلغاء</button>
+                    <button class="btn btn-primary" style="background:#fcd34d; border:none; color:#000; font-weight:bold;" onclick="saveShiftFloatModal()">حفظ الرصيد</button>
                 </div>
             </div>
         </div>

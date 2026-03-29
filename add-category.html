@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+    <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>هـــش HASH - إضافة قسم جديد</title>
@@ -183,7 +184,7 @@
                             <div class="toggle-setting">
                                 <div class="setting-info">
                                     <h4>متاح في التطبيقات الخاصة والطاولات</h4>
-                                    <p>الظهور في منيو الباركود (QR) وتطبيقات التوصيل.</p>
+                                    <p>الظهور في منيو الباركود (QR).</p>
                                 </div>
                                 <label class="switch">
                                     <input type="checkbox" checked>
@@ -194,6 +195,17 @@
                             <div class="form-group mt-3">
                                 <label>ترتيب العرض (الرقم الأقل يظهر أولاً)</label>
                                 <input type="number" class="input-modern" placeholder="مثال: 1" value="1">
+                            </div>
+                            
+                            <hr class="divider">
+                            <div class="form-group mt-3">
+                                <label><i class="ph ph-printer"></i> طابعات القسم (أين تُطبع فواتير المطبخ؟)</label>
+                                <button type="button" class="btn-outline w-100" style="width:100%; margin-top:5px; border-color:var(--text-muted); color:var(--text-secondary); background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; cursor:pointer;" onclick="openPrinterSelection()">
+                                    <i class="ph ph-list-plus"></i> تحديد الطابعات الخاصة بالقسم
+                                </button>
+                                <div id="selected-printers-names" style="margin-top: 8px; font-size: 13px; color: var(--accent-blue); font-weight:700;">
+                                    الطباعة متوقفة (لا يوجد طابعة محددة)
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -209,6 +221,25 @@
                 </div>
             </form>
         </main>
+    </div>
+
+    <!-- Printers Modal -->
+    <div id="printersModal" class="order-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center;">
+        <div class="order-modal-content" style="background:var(--bg-card); width:500px; max-width:95%; border-radius:16px; border:1px solid var(--border-color); display:flex; flex-direction:column; max-height:90vh;">
+            <div class="order-modal-header" style="display:flex; justify-content:space-between; align-items:center; padding:15px 20px; border-bottom:1px solid var(--border-color);">
+                <h2 style="font-size:18px; margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-printer"></i> الطابعات المتوفرة بالنظام</h2>
+                <button type="button" onclick="closePrinterSelection()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer;"><i class="ph ph-x"></i></button>
+            </div>
+            
+            <div class="order-modal-body" style="padding:20px; overflow-y:auto;" id="printers-list-container">
+                <div style="text-align:center; padding:20px; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:24px;"></i> يتم جلب الطابعات...</div>
+            </div>
+            
+            <div class="order-modal-actions" style="padding:15px 20px; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn-outline" style="border-color:var(--border-color); color:var(--text-primary); padding:10px 20px; border-radius:8px; cursor:pointer;" onclick="closePrinterSelection()">إلغاء</button>
+                <button type="button" class="btn-primary" style="background:#10b981; border:none; color:white; padding:10px 20px; border-radius:8px; cursor:pointer;" onclick="savePrinterSelection()"><i class="ph ph-check"></i> تحديد وحفظ</button>
+            </div>
+        </div>
     </div>
 
     <script src="script.js"></script>

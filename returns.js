@@ -138,4 +138,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     loadReturns();
+
+    // --- Auto Fill from URL ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlOrderId = urlParams.get('orderId');
+    if (urlOrderId) {
+        searchInput.value = urlOrderId;
+        btnSearch.click();
+    }
 });

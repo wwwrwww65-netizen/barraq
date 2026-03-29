@@ -22,22 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let categories = db.categories;
     let products = db.products;
 
-    // --- Seed initial data if empty ---
-    if(categories.length === 0) {
-        categories = [
-            { id: 'cat_1', nameAr: 'شعبيات ومندي', icon: 'ph-bowl-food', color: 'orange', order: 1 },
-            { id: 'cat_2', nameAr: 'مشويات', icon: 'ph-fire', color: 'red', order: 2 }
-        ];
-        db.categories = categories;
-    }
-    if(products.length === 0) {
-        products = [
-            { id: 'p_1', sku: 'SKU-M001', categoryId: 'cat_1', nameAr: 'مندي دجاج', price: 40, cost: 18, image: 'placeholder.svg', isActive: true, inventorySku: '' },
-            { id: 'p_2', sku: 'SKU-M002', categoryId: 'cat_1', nameAr: 'مظبي لحم', price: 65, cost: 30, image: 'placeholder.svg', isActive: true, inventorySku: '' }
-        ];
-        db.products = products;
-    }
-    saveDB(db);
+    // We no longer inject dummy fallback data so users can have a completely empty menu.
 
     // Also sync to localStorage for pos.js (which reads menu from localStorage)
     localStorage.setItem('pos_categories', JSON.stringify(categories));
@@ -86,6 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${!p.isActive
                         ? `<button class="action-btn toggle-prod-btn" style="color:var(--accent-green);" data-id="${p.id}" title="تفعيل"><i class="ph ph-eye"></i></button>`
                         : `<button class="action-btn toggle-prod-btn" style="color:var(--text-muted);" data-id="${p.id}" title="إخفاء"><i class="ph ph-eye-slash"></i></button>`}
+                    <button class="action-btn del-prod-btn" style="color:var(--accent-red);" data-id="${p.id}" title="حذف"><i class="ph ph-trash"></i></button>
                 </td>
             `;
             pTableBody.appendChild(tr);
@@ -96,6 +82,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.querySelectorAll('.toggle-prod-btn').forEach(btn => {
             btn.addEventListener('click', (e) => toggleProductStatus(e.target.closest('button').dataset.id));
+        });
+        document.querySelectorAll('.del-prod-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => deleteProduct(e.target.closest('button').dataset.id));
         });
     }
 
@@ -144,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = `add-item.html?edit=${id}`;
     }
 
-    window.toggleProductStatus = function(id) {
+    function toggleProductStatus(id) {
         const prod = products.find(p => p.id === id);
         if(prod) {
             prod.isActive = !prod.isActive;
@@ -155,17 +144,31 @@ document.addEventListener('DOMContentLoaded', () => {
             renderProducts(searchProdInput?.value || '');
             showNotice(prod.isActive ? 'تم تفعيل الصنف ✅' : 'تم إخفاء الصنف');
         }
-    };
+    }
+
+    function deleteProduct(id) {
+        if(confirm('هل أنت متأكد من الحذف النهائي لهذا الصنف؟')) {
+            products = products.filter(p => p.id !== id);
+            db.products = products;
+            saveDB(db);
+            localStorage.setItem('pos_products', JSON.stringify(products));
+            renderProducts(searchProdInput?.value || '');
+            showNotice('تم حذف الصنف بنجاح');
+        }
+    }
 
     // --- Category Edit ---
     function openEditCategory(id) {
         window.location.href = `add-category.html?edit=${id}`;
     }
 
-    window.deleteCategory = function(id) {
+    function deleteCategory(id) {
         const inUse = products.some(p => p.categoryId === id);
-        if(inUse) { alert('لا يمكن حذف القسم! يوجد أصناف بداخله. قم بنقلها أولاً.'); return; }
-        if(confirm('هل أنت متأكد من حذف هذا القسم؟')) {
+        if(inUse) { 
+            alert('لا يمكن حذف القسم! يوجد أصناف مسجلة بداخله. الرجاء مسح هذه الأصناف أولاً لتتمكن من حذفه.'); 
+            return; 
+        }
+        if(confirm('هل أنت متأكد من حذف هذا القسم نهائياً؟')) {
             categories = categories.filter(c => c.id !== id);
             db.categories = categories;
             saveDB(db);
@@ -173,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderCategories(searchCatInput?.value || '');
             showNotice('تم الحذف بنجاح');
         }
-    };
+    }
 
     // --- Toast Notification ---
     function showNotice(msg) {

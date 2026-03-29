@@ -29,7 +29,7 @@ const roleConfig = {
     'إدارة':  { badge: 'role-admin',    icon: 'ph-crown',         color: '#8b5cf6' },
     'كاشير':  { badge: 'role-cashier',  icon: 'ph-cash-register', color: '#3b82f6' },
     'مطبخ':   { badge: 'role-kitchen',  icon: 'ph-cooking-pot',   color: '#f59e0b' },
-    'توصيل':  { badge: 'role-delivery', icon: 'ph-motorcycle',    color: '#10b981' },
+
     'خدمة':   { badge: 'role-service',  icon: 'ph-broom',         color: '#ec4899' }
 };
 

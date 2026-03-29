@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <script src="demo-mock.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سجل الطلبات - هـــش HASH</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="orders.css">
+    <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
+    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <img src="1111.png" alt="مطعم هـــش HASH" class="restaurant-logo">
+                <span>هـــش HASH <span class="highlight">POS</span></span>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="index.html" class="nav-item"><i class="ph ph-squares-four"></i><span>الرئيسية</span></a>
+                <a href="pos.html" class="nav-item"><i class="ph ph-monitor"></i><span>نقطة البيع (الكاشير)</span></a>
+                <a href="kitchen.html" class="nav-item"><i class="ph ph-cooking-pot"></i><span>شاشة المطبخ (KDS)</span></a>
+                <a href="orders.html" class="nav-item active"><i class="ph ph-list-numbers"></i><span>سجل الطلبات</span></a>
+                <a href="sales.html" class="nav-item"><i class="ph ph-receipt"></i><span>المبيعات</span></a>
+                <a href="menu.html" class="nav-item"><i class="ph ph-list-dashes"></i><span>الأصناف والمنيو</span></a>
+                
+                <div class="nav-divider"></div>
+                <p class="nav-label">العمليات والمخزون</p>
+                <a href="inventory.html" class="nav-item"><i class="ph ph-package"></i><span>المخازن والمستودعات</span></a>
+                <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>المشتريات والموردين</span></a>
+                <a href="returns.html" class="nav-item"><i class="ph ph-arrow-u-down-left"></i><span>المرتجعات</span></a>
+                
+                <div class="nav-divider"></div>
+                <p class="nav-label">الإدارة والتقارير</p>
+                <a href="staff.html" class="nav-item"><i class="ph ph-users"></i><span>الموظفين والعمال</span></a>
+                <a href="customers.html" class="nav-item"><i class="ph ph-users-three"></i><span>العملاء</span></a>
+                <a href="accounting.html" class="nav-item"><i class="ph ph-calculator"></i><span>النظام المحاسبي</span></a>
+                <a href="statistics.html" class="nav-item"><i class="ph ph-chart-pie"></i><span>الإحصائيات</span></a>
+                <a href="settings.html" class="nav-item"><i class="ph ph-gear"></i><span>الإعدادات</span></a>
+                <a href="permissions.html" class="nav-item"><i class="ph ph-shield-check"></i><span>الصلاحيات</span></a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <div class="breadcrumbs pt-0">
+                        <h2>سجل الطلبات</h2>
+                        <span class="separator">/</span>
+                        <span>مراجعة الطلبات السابقة وإدارتها</span>
+                    </div>
+                </div>
+                
+                <div class="header-actions">
+                    <div class="user-profile">
+                        <img src="avatar.svg" alt="المدير" class="avatar">
+                        <div class="user-info">
+                            <span class="user-name">جاري التحميل...</span>
+                            <span class="user-role">...</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="orders-container">
+                <!-- Search and Filters -->
+                <div class="orders-toolbar">
+                    <div class="search-box">
+                        <i class="ph ph-magnifying-glass"></i>
+                        <input type="text" id="order-search" placeholder="ابحث برقم الطلب، اسم العميل، طريقة الدفع...">
+                    </div>
+                    <div class="filter-box">
+                        <select id="order-type-filter">
+                            <option value="all">جميع أنواع الطلبات</option>
+                            <option value="محلي">محلي</option>
+                            <option value="سفري">سفري</option>
+                        </select>
+                        <input type="date" id="order-date-filter">
+                    </div>
+                </div>
+
+                <!-- Orders Grid -->
+                <div class="orders-grid border-container" id="orders-grid">
+                    <!-- JS Inject -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div id="orderDetailsModal" class="order-modal" style="display:none;">
+        <div class="order-modal-content">
+            <div class="order-modal-header">
+                <h2><i class="ph ph-receipt"></i> تفاصيل الطلب <span id="mod-order-id">#ORD-0000</span></h2>
+                <button class="close-btn" onclick="closeOrderDetails()"><i class="ph ph-x"></i></button>
+            </div>
+            
+            <div class="order-modal-body">
+                <!-- Status Bar -->
+                <div class="om-status-bar">
+                    <div class="om-status-item">
+                        <p>تاريخ ووقت الطلب</p>
+                        <h4 id="mod-date">2026-03-29 14:30</h4>
+                    </div>
+                    <div class="om-status-item">
+                        <p>طريقة الدفع</p>
+                        <h4 id="mod-method">كاش</h4>
+                    </div>
+                    <div class="om-status-item">
+                        <p>الكاشير / الموظف</p>
+                        <h4 id="mod-cashier">الكاشير الرئيسي</h4>
+                    </div>
+                    <div class="om-status-item">
+                        <p>نوع الطلب</p>
+                        <h4 id="mod-type">محلي</h4>
+                    </div>
+                </div>
+
+                <!-- Items List -->
+                <div class="om-items-list" id="mod-items-list">
+                    <!-- Items JS Inject -->
+                </div>
+
+                <!-- Summary -->
+                <div class="om-summary">
+                    <div class="summary-row">
+                        <span>الضريبة (متضمنة):</span>
+                        <span id="mod-tax">0.00 ر.س</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span>الإجمالي الكلي:</span>
+                        <span id="mod-total">0.00 ر.س</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="order-modal-actions">
+                <button class="btn btn-outline" onclick="printOrder()"><i class="ph ph-printer"></i> طباعة الفاتورة مرة أخرى</button>
+                <button class="btn btn-danger" id="btn-return-modal"><i class="ph ph-arrow-u-down-left"></i> بدء إجراءات مرتجع</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="orders.js"></script>
+</body>
+</html>

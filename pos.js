@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Elements
     const productsGrid = document.getElementById('products-grid');
-    const categoriesScroll = document.querySelector('.categories-scroll'); // Needs to exist
+    const categoriesScroll = document.querySelector('.pos-categories'); // Correct Target
     const searchInput = document.getElementById('product-search');
     const cartContainer = document.getElementById('cart-items-container');
     
@@ -60,41 +60,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const _db = _loadDB();
 
-    let catData = (_db.categories && _db.categories.length > 0)
-        ? _db.categories
-        : JSON.parse(localStorage.getItem('pos_categories') || '[]');
-
-    let prodData = (_db.products && _db.products.length > 0)
-        ? _db.products
-        : JSON.parse(localStorage.getItem('pos_products') || '[]');
-
-    // Initial fallback if system is entirely empty
-    if(catData.length === 0) {
-        catData = [
-            { id: 'cat_1', nameAr: 'شعبيات ومندي', icon: 'ph-bowl-food', color: 'orange', order: 1 },
-            { id: 'cat_2', nameAr: 'مشويات', icon: 'ph-fire', color: 'red', order: 2 }
-        ];
-    }
-    if(prodData.length === 0) {
-        prodData = [
-            { id: 'p_1', sku: 'SKU-M001', categoryId: 'cat_1', nameAr: 'مندي دجاج', price: 40, cost: 18, image: 'placeholder.svg', isActive: true },
-            { id: 'p_2', sku: 'SKU-M002', categoryId: 'cat_1', nameAr: 'مظبي لحم', price: 65, cost: 30, image: 'placeholder.svg', isActive: true }
-        ];
-    }
+    let catData = _db.categories || JSON.parse(localStorage.getItem('pos_categories') || '[]');
+    let prodData = _db.products || JSON.parse(localStorage.getItem('pos_products') || '[]');
 
     // Render Categories
     if(categoriesScroll) {
         categoriesScroll.innerHTML = `
             <button class="category-btn active" data-category="الكل">
-                <div class="cat-icon" style="background: rgba(255, 255, 255, 0.1);"><i class="ph ph-squares-four"></i></div>
-                <span class="cat-name">الكل</span>
+                <div class="cat-icon"><i class="ph ph-squares-four"></i></div>
+                <span>الكل</span>
             </button>
         `;
         catData.sort((a,b) => (a.order||0) - (b.order||0)).forEach(c => {
             const html = `
                 <button class="category-btn" data-category="${c.id}">
-                    <div class="cat-icon" style="background: var(--accent-${c.color||'blue'});"><i class="ph ${c.icon||'ph-folder'}"></i></div>
-                    <span class="cat-name">${c.nameAr}</span>
+                    <div class="cat-icon" style="color: var(--accent-${c.color||'blue'});"><i class="ph ${c.icon||'ph-folder'}"></i></div>
+                    <span>${c.nameAr}</span>
                 </button>
             `;
             categoriesScroll.insertAdjacentHTML('beforeend', html);
@@ -458,10 +439,15 @@ document.addEventListener('DOMContentLoaded', () => {
             orderId = '#ORD-' + Math.floor(1000 + Math.random() * 9000);
             document.getElementById('display-order-id').innerText = orderId;
 
-            alert('تمت العملية بنجاح! تم حفظ المبيعات وتحديث المخزون. ستظهر الفاتورة للطباعة الآن.');
+            alert('تمت العملية بنجاح! تم حفظ المبيعات وتحديث المخزون. ستتم الآن طباعة الفواتير.');
+
+            // Silent print to category-specific printers
+            try {
+                await printToCategoryPrinters(orderData);
+            } catch(e) { console.error('Category printing failed', e); }
 
             openCashDrawer();
-            await downloadReceipt('all', 'الفاتورة');
+            await printCustomerReceipt();
 
         } catch(e) {
             console.error("Save or Print Failed", e);
@@ -538,45 +524,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function downloadReceipt(elementId, namePrefix) {
-        return new Promise(async (resolve) => {
-            try {
-                // Ensure print-zone is temporarily visible for html2canvas to capture if it was display:none
-                // In pos.html, it's positioned off-screen (top: -9999px) so it's fine.
-                const receiptCustomer = document.getElementById('receipt-customer');
-                if(!receiptCustomer) {
-                    window.print();
-                    return resolve();
-                }
+    async function printCustomerReceipt() {
+        const { ipcRenderer } = require('electron');
+        const path = require('path');
+        const receiptCustomer = document.getElementById('receipt-customer');
+        if(!receiptCustomer) return;
 
-                // Render the receipt to a canvas
-                const canvas = await html2canvas(receiptCustomer, { scale: 2 });
-                const imgData = canvas.toDataURL('image/png');
-                
-                // Trigger download
-                const link = document.createElement('a');
-                link.download = namePrefix + '_' + orderId + '.png';
-                link.href = imgData;
-                link.click();
-                
-                // Also do the kitchen receipt
-                const receiptKitchen = document.getElementById('receipt-kitchen');
-                if(receiptKitchen) {
-                    const canvasK = await html2canvas(receiptKitchen, { scale: 2 });
-                    const linkK = document.createElement('a');
-                    linkK.download = 'مطبخ_' + orderId + '.png';
-                    linkK.href = canvasK.toDataURL('image/png');
-                    linkK.click();
-                }
+        // Clone the element to safely modify logo path for print
+        const printClone = receiptCustomer.cloneNode(true);
+        const logo = printClone.querySelector('img#r-store-logo');
+        if (logo) {
+            // Must use absolute path because print webContents loads from data: URI
+            logo.src = 'file://' + path.join(__dirname, '1111.png').replace(/\\/g, '/');
+        }
 
-                resolve();
-            } catch(e) {
-                console.error("html2canvas failed", e);
-                // Fallback
-                window.print();
-                resolve();
-            }
-        });
+        // Add styling for 80mm thermal printers
+        const html = `
+            <style>
+                @import url('node_modules/@fontsource/cairo/index.css');
+                @page { margin: 0; }
+                body { 
+                    font-family: 'Cairo', sans-serif; 
+                    margin: 0; padding: 0; 
+                    display: flex; justify-content: center;
+                }
+                #receipt-container { 
+                    width: 72mm; /* ~80mm printer safe width */
+                    color: #000;
+                    margin: 0;
+                    padding: 5mm; 
+                }
+            </style>
+            <div id="receipt-container">
+                ${printClone.innerHTML}
+            </div>
+        `;
+
+        try {
+            await ipcRenderer.invoke('print-to-device', { html: html, printerName: '' }); // Empty name = default printer
+        } catch(e) { 
+            console.error('Customer receipt print failed', e); 
+        }
     }
 
     function openCashDrawer() {
@@ -609,4 +597,50 @@ document.addEventListener('DOMContentLoaded', () => {
             notif.remove();
         }, 4000);
     }
+
+    async function printToCategoryPrinters(order) {
+        const { ipcRenderer } = require('electron');
+        let printerMap = {}; 
+        
+        order.items.forEach(itm => {
+            const prod = prodData.find(p => p.id === itm.id);
+            if(!prod) return;
+            const cat = catData.find(c => c.id === prod.categoryId);
+            if(!cat || !cat.printers || cat.printers.length === 0) return; 
+            
+            cat.printers.forEach(pName => {
+                if(!printerMap[pName]) printerMap[pName] = [];
+                // Prevent duplicate item in same printer
+                if(!printerMap[pName].find(i => i.id === itm.id)) {
+                    printerMap[pName].push(itm);
+                }
+            });
+        });
+
+        for (const [pName, items] of Object.entries(printerMap)) {
+            let itemsHtml = items.map(i => `
+                <div class="item-row" style="display:flex; justify-content:space-between; border-bottom:1px solid #ccc; padding:5px 0; font-size:16px; font-weight:bold;">
+                    <span>[ ] ${i.name}</span>
+                    <span style="font-size:22px;">${i.qty}</span>
+                </div>
+            `).join('');
+
+            let html = `
+                <div class="ticket-header" style="text-align:center; border-bottom:2px dashed #000; margin-bottom:10px; padding-bottom:10px; font-weight:bold; font-size:18px;">
+                    <h2 style="margin:0; font-size:22px;">طلب تجهيز (KDS)</h2>
+                    <div>الطلب: ${order.orderId}</div>
+                    <div>طريقة التقديم: ${order.type}</div>
+                    <div>الوقت: ${order.date}</div>
+                </div>
+                <div>
+                    ${itemsHtml}
+                </div>
+            `;
+            
+            try {
+                await ipcRenderer.invoke('print-to-device', { html, printerName: pName });
+            } catch(e) { console.error('Silent print failed for', pName, e); }
+        }
+    }
+
 });
