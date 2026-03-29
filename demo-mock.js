@@ -148,6 +148,7 @@ window.addEventListener('beforeprint', () => {
     if (!header) {
         header = document.createElement('div');
         header.id = 'global-print-header';
+        header.style.display = 'none'; // مخفي عن الشاشة، يظهر فقط أثناء الطباعة بإعدادات CSS
         const main = document.querySelector('.main-content') || document.body;
         if(main.firstChild) main.insertBefore(header, main.firstChild);
         else main.appendChild(header);
@@ -189,4 +190,9 @@ window.addEventListener('beforeprint', () => {
             
         </div>
     `;
+});
+
+window.addEventListener('afterprint', () => {
+    const header = document.getElementById('global-print-header');
+    if (header) header.remove();
 });
