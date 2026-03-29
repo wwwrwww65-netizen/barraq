@@ -744,8 +744,8 @@ window.generateVoucher = async function(typeStr) {
         printContainer.style.opacity = '0';
 
         // Resize to exact target: 1132 × 1600 px
-        const TARGET_W = 1132;
-        const TARGET_H = 1600;
+        const TARGET_W = 1600;
+        const TARGET_H = 1132;
         const finalCanvas = document.createElement('canvas');
         finalCanvas.width  = TARGET_W;
         finalCanvas.height = TARGET_H;
