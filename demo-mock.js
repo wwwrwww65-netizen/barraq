@@ -111,6 +111,37 @@ window.exportTableToCSV = function(filename = 'export.csv') {
     link.click();
 };
 
+window.exportPageToPDF = async function(filename = 'تقرير.pdf') {
+    if (typeof require !== 'undefined') {
+        const { ipcRenderer } = require('electron');
+        if (ipcRenderer && ipcRenderer.invoke) {
+            try {
+                // Trigger CSS print layout logic
+                window.dispatchEvent(new Event('beforeprint'));
+                
+                const res = await ipcRenderer.invoke('export-pdf', filename);
+                
+                // Cleanup CSS print layout logic
+                const header = document.getElementById('global-print-header');
+                if(header) {
+                    header.remove(); // or window.dispatchEvent(new Event('afterprint')); but simple remove is fine
+                }
+                
+                if (res && res.success) {
+                    alert('تم استخراج وحفظ التقرير كـ PDF بنجاح! ✅\n' + res.path);
+                } else if (res && res.error) {
+                    alert('حدث خطأ أثناء الاستخراج: ' + res.error);
+                }
+                return;
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    }
+    // Fallback if not electron
+    window.print();
+};
+
 // ============== GLOBAL PRINT & PDF DESIGN ENGINE ==============
 window.addEventListener('beforeprint', () => {
     let header = document.getElementById('global-print-header');

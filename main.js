@@ -1,4 +1,5 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const fs = require('fs');
 const path = require('path');
 const dgram = require('dgram');
 const http = require('http');
@@ -168,6 +169,31 @@ function setupNetworkSync() {
       server.send(message, 0, message.length, PORT, BROADCAST_ADDR);
     } catch(e) {
       console.error(e);
+    }
+  });
+
+  // Handle direct PDF Export saving
+  ipcMain.handle('export-pdf', async (event, filename) => {
+    try {
+        const { filePath } = await dialog.showSaveDialog({
+            title: 'حفظ التقرير كـ PDF',
+            defaultPath: filename || 'report.pdf',
+            filters: [{ name: 'PDF', extensions: ['pdf'] }]
+        });
+        
+        if (filePath) {
+            const pdfData = await event.sender.printToPDF({
+                printBackground: true,
+                landscape: false,
+                margin: { marginType: 'default' }
+            });
+            fs.writeFileSync(filePath, pdfData);
+            return { success: true, path: filePath };
+        }
+        return { success: false, cancel: true };
+    } catch (e) {
+        console.error('PDF export failed:', e);
+        return { success: false, error: e.message };
     }
   });
 
