@@ -710,6 +710,7 @@ window.generateVoucher = async function(typeStr) {
         } catch(e) {}
 
         // Position container at start of page with correct size BEFORE capturing
+        const voucherEl = document.getElementById('voucher-template');
         printContainer.style.position = 'fixed';
         printContainer.style.top = '-9999px';
         printContainer.style.left = '0';
