@@ -245,62 +245,96 @@ document.addEventListener('DOMContentLoaded', () => {
         const { ipcRenderer } = require('electron');
         const QRCode = require('qrcode');
 
-        // Check if already authenticated on load
-        const wasWaConnected = localStorage.getItem('wa_connected') === 'true';
-        if(wasWaConnected) {
-            waStatusText.innerText = 'متصل (تم تسجيل الدخول)';
-            waStatusText.style.color = '#10b981';
-            btnWaLink.innerHTML = '<i class="ph-bold ph-plugs"></i> جاري الاتصال بالخلفية...';
-            waQrContainer.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin" style="font-size:40px; color:#10b981;"></i>';
-            ipcRenderer.send('wa-start'); // Auto start if previously linked
+        function setWaStatus(state) {
+            if (state === 'connected') {
+                waStatusText.innerText = 'متصل (البوت جاهز ونشط الآن)';
+                waStatusText.style.color = '#10b981';
+                btnWaLink.innerHTML = '<i class="ph-fill ph-check-circle"></i> البوت نشط الآن';
+                btnWaLink.style.background = '#10b981';
+                btnWaLink.disabled = true;
+                waQrContainer.innerHTML = '<i class="ph-fill ph-check-circle" style="font-size:60px; color:#10b981;"></i><br><span style="color:#10b981;font-weight:700;">واتساب مرتبط بنجاح ✓</span>';
+                localStorage.setItem('wa_connected', 'true');
+            } else if (state === 'loading') {
+                waStatusText.innerText = 'جاري التهيئة...';
+                waStatusText.style.color = 'var(--text-muted)';
+                btnWaLink.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin"></i> جاري التشغيل...';
+                btnWaLink.disabled = true;
+                waQrContainer.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin" style="font-size:40px; color:#ccc;"></i>';
+            } else if (state === 'disconnected') {
+                waStatusText.innerText = 'غير متصل';
+                waStatusText.style.color = 'var(--accent-red)';
+                btnWaLink.innerHTML = '<i class="ph-bold ph-link"></i> ربط واتساب';
+                btnWaLink.disabled = false;
+                btnWaLink.style.background = '';
+                waQrContainer.innerHTML = '<i class="ph ph-qr-code" style="font-size:60px; color:var(--text-muted);"></i>';
+                localStorage.setItem('wa_connected', 'false');
+            }
         }
 
+        // On page load: check current status instantly without re-initializing
+        const wasWaConnected = localStorage.getItem('wa_connected') === 'true';
+        if (wasWaConnected) {
+            setWaStatus('loading');
+            ipcRenderer.send('wa-check-status'); // Fast check - no Chromium launch
+        } else {
+            setWaStatus('disconnected');
+        }
+
+        // Handle immediate status response (already running)
+        ipcRenderer.on('wa-still-loading', () => {
+            waStatusText.innerText = 'جاري التهيئة في الخلفية...';
+        });
+
         btnWaLink.addEventListener('click', () => {
-            waStatusText.innerText = 'جاري الاتصال بالسيرفر...';
-            waStatusText.style.color = 'var(--text-muted)';
-            btnWaLink.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin"></i> جاري التشغيل...';
-            btnWaLink.disabled = true;
+            setWaStatus('loading');
             waQrContainer.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin" style="font-size:40px; color:#ccc;"></i>';
-            
             ipcRenderer.send('wa-start');
         });
 
         ipcRenderer.on('wa-qr', async (e, qrString) => {
-            waStatusText.innerText = 'يرجى مسح الكود باستخدام واتساب';
+            waStatusText.innerText = 'يرجى مسح الكود باستخدام واتساب (تبويب الواتساب > الأجهزة المرتبطة)';
             waStatusText.style.color = 'var(--accent-orange)';
+            btnWaLink.innerHTML = '<i class="ph ph-qr-code"></i> انتظار المسح...';
             try {
-                const qrImageBase64 = await QRCode.toDataURL(qrString, { width: 180, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
-                waQrContainer.innerHTML = `<img src="${qrImageBase64}" style="width:180px; height:180px; border-radius:8px;">`;
+                const qrImageBase64 = await QRCode.toDataURL(qrString, {
+                    width: 220,
+                    margin: 2,
+                    color: { dark: '#000000', light: '#ffffff' }
+                });
+                waQrContainer.innerHTML = `<img src="${qrImageBase64}" style="width:220px;height:220px;border-radius:12px;border:4px solid #10b981;box-shadow:0 0 20px rgba(16,185,129,0.4);"><br><small style="color:var(--text-muted);font-size:12px;">افتح واتساب > الأجهزة المرتبطة > ربط جهاز</small>`;
             } catch(e) {
-                waQrContainer.innerHTML = '<span style="color:red; font-size:12px;">فشل توليد التشفير للصورة</span>';
+                waQrContainer.innerHTML = '<span style="color:red;font-size:12px;">فشل توليد رمز QR</span>';
             }
         });
 
         ipcRenderer.on('wa-ready', () => {
-            waStatusText.innerText = 'متصل (البوت جاهز)';
-            waStatusText.style.color = '#10b981';
-            btnWaLink.innerHTML = '<i class="ph-fill ph-check-circle"></i> البوت نشط الآن';
-            btnWaLink.style.background = '#10b981';
-            waQrContainer.innerHTML = '<i class="ph-fill ph-check-circle" style="font-size:60px; color:#10b981;"></i>';
-            localStorage.setItem('wa_connected', 'true');
+            setWaStatus('connected');
         });
 
         ipcRenderer.on('wa-authenticated', () => {
-            waStatusText.innerText = 'تم المصادقة جاري التجهيز...';
+            waStatusText.innerText = 'تم المصادقة، جاري التجهيز النهائي...';
+            waStatusText.style.color = '#10b981';
+            waQrContainer.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin" style="font-size:40px; color:#10b981;"></i>';
         });
 
         ipcRenderer.on('wa-disconnected', (e, msg) => {
+            if (msg === 'not_started') {
+                setWaStatus('disconnected');
+                return;
+            }
             waStatusText.innerText = 'انقطع الاتصال: ' + msg;
             waStatusText.style.color = 'var(--accent-red)';
             btnWaLink.innerHTML = '<i class="ph-bold ph-link"></i> إعادة محاولة الاتصال';
             btnWaLink.disabled = false;
-            waQrContainer.innerHTML = '<i class="ph ph-warning-circle" style="font-size:48px; color:var(--accent-red);"></i>';
+            btnWaLink.style.background = '';
+            waQrContainer.innerHTML = '<i class="ph ph-warning-circle" style="font-size:48px; color:var(--accent-red);"></i><br><small style="color:var(--accent-red);">انقطع الاتصال</small>';
             localStorage.setItem('wa_connected', 'false');
         });
 
     } catch(e) {
         // If not running in Electron
-        waStatusText.innerText = 'تقنية الواتساب تتطلب تشغيل النظام عبر التطبيق الفعلي';
+        waStatusText.innerText = 'تقنية الواتساب تتطلب تشغيل النظام عبر التطبيق الفعلي (.exe)';
+        waQrContainer.innerHTML = '<i class="ph ph-desktop" style="font-size:48px; color:var(--text-muted);"></i>';
         btnWaLink.disabled = true;
     }
 

@@ -287,60 +287,144 @@ app.whenReady().then(() => {
   });
 });
 
-// --- WhatsApp Bot Integration ---
+// --- WhatsApp Bot Integration (Optimized - Fast QR) ---
 let waClient = null;
+let waReady = false;
+let waCurrentSender = null;
+
+// Find Chrome path (use installed Chrome for 10x faster startup vs downloading Chromium)
+function findChromePath() {
+  const candidates = [
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe',
+  ];
+  const fs = require('fs');
+  for (const c of candidates) {
+    try { if (fs.existsSync(c)) return c; } catch(_) {}
+  }
+  return null; // fallback: use puppeteer's bundled browser
+}
+
+// New: Check current WA status without re-initializing
+ipcMain.on('wa-check-status', (event) => {
+  if (waReady && waClient) {
+    event.sender.send('wa-ready');
+  } else if (waClient) {
+    // Client exists but not ready yet - still initializing
+    waCurrentSender = event;
+    event.sender.send('wa-still-loading');
+  } else {
+    event.sender.send('wa-disconnected', 'not_started');
+  }
+});
 
 ipcMain.on('wa-start', async (event) => {
+  waCurrentSender = event;
+
+  // If already ready, report immediately — no re-initialization needed
+  if (waReady && waClient) {
+    event.sender.send('wa-ready');
+    return;
+  }
+
+  // If currently initializing, just update sender to receive events
+  if (waClient && !waReady) {
+    waCurrentSender = event;
+    event.sender.send('wa-still-loading');
+    return;
+  }
+
   try {
     const { Client, LocalAuth } = require('whatsapp-web.js');
-    if (waClient) {
-      try { await waClient.destroy(); } catch(e){}
+
+    const chromePath = findChromePath();
+    const puppeteerArgs = [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--disable-gpu',
+      '--no-first-run',
+      '--no-zygote',
+      '--disable-extensions',
+      '--disable-background-networking',
+      '--disable-default-apps',
+      '--disable-sync',
+      '--disable-translate',
+      '--metrics-recording-only',
+      '--mute-audio',
+      '--safebrowsing-disable-auto-update',
+    ];
+
+    const puppeteerConfig = {
+      headless: true,
+      args: puppeteerArgs,
+    };
+
+    // Use installed Chrome if found (dramatically faster — no Chromium download/search)
+    if (chromePath) {
+      puppeteerConfig.executablePath = chromePath;
+      console.log('[WA] Using installed Chrome:', chromePath);
+    } else {
+      console.log('[WA] Chrome not found, using bundled Chromium (may be slower)');
     }
-    
-    // Using LocalAuth saves the session so we don't need to scan QR again
+
     waClient = new Client({
-      authStrategy: new LocalAuth({ clientId: 'pos-main-client' }),
-      puppeteer: { 
-        headless: true,
-        args: [
-          '--no-sandbox', 
-          '--disable-setuid-sandbox', 
-          '--disable-extensions',
-          '--disable-gpu',
-          '--disable-dev-shm-usage'
-        ] 
-      }
+      authStrategy: new LocalAuth({
+        clientId: 'pos-main-client',
+        dataPath: path.join(app.getPath('userData'), 'wa_sessions')
+      }),
+      puppeteer: puppeteerConfig,
+      qrMaxRetries: 5,
+      authTimeoutMs: 0, // no timeout for QR scan
+      restartOnAuthFail: true,
     });
+
+    waReady = false;
 
     waClient.on('qr', (qr) => {
-      // Send QR to frontend
-      event.sender.send('wa-qr', qr);
-    });
-
-    waClient.on('ready', () => {
-      event.sender.send('wa-ready');
+      console.log('[WA] QR code received - sending to renderer');
+      // Send to all known windows in case sender changed
+      BrowserWindow.getAllWindows().forEach(win => win.webContents.send('wa-qr', qr));
     });
 
     waClient.on('authenticated', () => {
-      event.sender.send('wa-authenticated');
+      console.log('[WA] Authenticated!');
+      BrowserWindow.getAllWindows().forEach(win => win.webContents.send('wa-authenticated'));
     });
 
-    waClient.on('auth_failure', msg => {
-      event.sender.send('wa-disconnected', msg);
+    waClient.on('ready', () => {
+      console.log('[WA] Client is READY!');
+      waReady = true;
+      BrowserWindow.getAllWindows().forEach(win => win.webContents.send('wa-ready'));
+    });
+
+    waClient.on('auth_failure', (msg) => {
+      console.error('[WA] Auth failure:', msg);
+      waReady = false;
+      waClient = null;
+      BrowserWindow.getAllWindows().forEach(win => win.webContents.send('wa-disconnected', msg));
     });
 
     waClient.on('disconnected', (reason) => {
-      event.sender.send('wa-disconnected', reason);
+      console.log('[WA] Disconnected:', reason);
+      waReady = false;
+      waClient = null;
+      BrowserWindow.getAllWindows().forEach(win => win.webContents.send('wa-disconnected', reason));
     });
 
-    try {
-      waClient.initialize();
-    } catch(e) {
-      event.sender.send('wa-disconnected', e.toString());
-    }
+    console.log('[WA] Starting client initialization...');
+    waClient.initialize().catch(e => {
+      console.error('[WA] Initialize error:', e);
+      waClient = null;
+      BrowserWindow.getAllWindows().forEach(win => win.webContents.send('wa-disconnected', e.toString()));
+    });
+
   } catch(e) {
-    console.log("WhatsApp Web module not loaded yet or failed.", e);
-    event.sender.send('wa-disconnected', "فشل تحميل مكتبة واتساب: " + e.message);
+    console.error('[WA] Fatal error:', e);
+    waClient = null;
+    event.sender.send('wa-disconnected', 'فشل تحميل مكتبة واتساب: ' + e.message);
   }
 });
 
