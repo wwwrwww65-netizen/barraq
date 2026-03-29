@@ -692,26 +692,40 @@ window.generateVoucher = async function(typeStr) {
     try {
         // Populate dynamic restaurant settings before render
         try {
-            const sysRaw = localStorage.getItem('sys_settings');
+            const sysRaw = localStorage.getItem('restaurant_settings'); // ← المفتاح الصحيح
             if (sysRaw) {
                 const sysSettings = JSON.parse(sysRaw);
-                const titleEl = document.querySelector('.v-right-text h2');
-                const pEls = document.querySelectorAll('.v-right-text p');
-                const logoEl = document.querySelector('.v-center-logo img');
+                const titleEl = document.querySelector('#voucher-template .v-right-text h2');
+                const pEls = document.querySelectorAll('#voucher-template .v-right-text p');
+                const logoEl = document.querySelector('#voucher-template .v-center-logo img');
                 if (titleEl && sysSettings.name) titleEl.innerText = sysSettings.name;
                 if (pEls[0] && sysSettings.branch) pEls[0].innerText = sysSettings.branch;
                 if (pEls[1] && sysSettings.phone) pEls[1].innerText = sysSettings.phone;
-                if (logoEl && sysSettings.logo) logoEl.src = sysSettings.logo;
+                if (logoEl && sysSettings.logo && sysSettings.logo !== '1111.png') {
+                    logoEl.src = sysSettings.logo;
+                    // Wait for image to load before capturing
+                    await new Promise(resolve => { logoEl.onload = resolve; logoEl.onerror = resolve; setTimeout(resolve, 500); });
+                }
             }
         } catch(e) {}
 
-        // Fix rendering dimensions
-        const canvas  = await html2canvas(document.getElementById('voucher-template'), { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, 
-            onclone: (clonedDoc) => {
-                const el = clonedDoc.getElementById('voucher-template');
-                el.style.width = '800px';
-            }
+        // Fix rendering dimensions - force wide voucher
+        const voucherEl = document.getElementById('voucher-template');
+        const originalWidth = voucherEl.style.width;
+        voucherEl.style.width = '800px';
+        voucherEl.style.minWidth = '800px';
+
+        const canvas = await html2canvas(voucherEl, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            width: 800,
+            windowWidth: 900,
+            logging: false
         });
+
+        voucherEl.style.width = originalWidth;
+        voucherEl.style.minWidth = '';
         printContainer.style.top  = '-9999px';
         printContainer.style.left = '-9999px';
 
