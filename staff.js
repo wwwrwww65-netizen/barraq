@@ -674,14 +674,14 @@ window.generateVoucher = async function(typeStr) {
     }
 
     const todayStr = new Date().toISOString().split('T')[0].replace(/-/g, '/');
-    document.getElementById('v-date').innerText         = todayStr;
-    document.getElementById('v-bottom-date').innerText  = todayStr;
-    document.getElementById('v-number').innerText       = Math.floor(Math.random() * 90000) + 10000;
-    document.getElementById('v-name').innerText         = employee;
-    document.getElementById('v-amt').innerText          = Number(amount).toFixed(2);
-    document.getElementById('v-amt-text').innerText     = Number(amount).toFixed(2);
-    document.getElementById('v-reason-text').innerText  = reason;
-    document.getElementById('v-balance-text').innerText = typeStr.includes('له') ? 'له ' + amount : 'عليه ' + amount;
+    if (document.getElementById('v-date')) document.getElementById('v-date').innerText = todayStr;
+    if (document.getElementById('v-bottom-date')) document.getElementById('v-bottom-date').innerText = todayStr;
+    if (document.getElementById('v-number')) document.getElementById('v-number').innerText = Math.floor(Math.random() * 90000) + 10000;
+    if (document.getElementById('v-name')) document.getElementById('v-name').innerText = employee;
+    if (document.getElementById('v-amt')) document.getElementById('v-amt').innerText = Number(amount).toFixed(2);
+    if (document.getElementById('v-amt-text')) document.getElementById('v-amt-text').innerText = Number(amount).toFixed(2);
+    if (document.getElementById('v-reason-text')) document.getElementById('v-reason-text').innerText = reason;
+    if (document.getElementById('v-balance-text')) document.getElementById('v-balance-text').innerText = typeStr.includes('له') ? 'له ' + amount : 'عليه ' + amount;
 
     const printContainer = document.getElementById('voucher-print-container');
     printContainer.style.top     = '0';
