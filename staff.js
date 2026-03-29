@@ -743,7 +743,25 @@ window.generateVoucher = async function(typeStr) {
         printContainer.style.width = '';
         printContainer.style.opacity = '0';
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        // Resize to exact target: 1132 × 1600 px
+        const TARGET_W = 1132;
+        const TARGET_H = 1600;
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width  = TARGET_W;
+        finalCanvas.height = TARGET_H;
+        const ctx = finalCanvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, TARGET_W, TARGET_H);
+
+        // Scale canvas to fit within target while maintaining ratio (centered)
+        const ratio   = Math.min(TARGET_W / canvas.width, TARGET_H / canvas.height);
+        const dw      = canvas.width  * ratio;
+        const dh      = canvas.height * ratio;
+        const offsetX = (TARGET_W - dw) / 2;
+        const offsetY = (TARGET_H - dh) / 2;
+        ctx.drawImage(canvas, offsetX, offsetY, dw, dh);
+
+        const imgData = finalCanvas.toDataURL('image/jpeg', 0.95);
 
         document.getElementById('advance-modal').classList.remove('active');
         document.getElementById('voucher-amount').value = '';
