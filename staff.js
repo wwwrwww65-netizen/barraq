@@ -709,25 +709,36 @@ window.generateVoucher = async function(typeStr) {
             }
         } catch(e) {}
 
-        // Fix rendering dimensions - force wide voucher
-        const voucherEl = document.getElementById('voucher-template');
-        const originalWidth = voucherEl.style.width;
+        // Position container at start of page with correct size BEFORE capturing
+        printContainer.style.position = 'fixed';
+        printContainer.style.top = '-9999px';
+        printContainer.style.left = '0';
+        printContainer.style.width = '820px';
+        printContainer.style.opacity = '0';
+        printContainer.style.zIndex = '-1';
         voucherEl.style.width = '800px';
         voucherEl.style.minWidth = '800px';
+
+        // Wait one frame for layout engine to apply
+        await new Promise(r => setTimeout(r, 150));
 
         const canvas = await html2canvas(voucherEl, {
             scale: 2,
             useCORS: true,
             backgroundColor: '#ffffff',
             width: 800,
-            windowWidth: 900,
+            windowWidth: 1200,
             logging: false
         });
 
-        voucherEl.style.width = originalWidth;
+        // Cleanup
+        voucherEl.style.width = '';
         voucherEl.style.minWidth = '';
+        printContainer.style.position = 'absolute';
         printContainer.style.top  = '-9999px';
         printContainer.style.left = '-9999px';
+        printContainer.style.width = '';
+        printContainer.style.opacity = '0';
 
         const imgData = canvas.toDataURL('image/jpeg', 0.95);
 

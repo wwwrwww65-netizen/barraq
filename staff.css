@@ -421,9 +421,11 @@
     color: #475569;
 }
 .v-center-logo img {
-    height: 100px;
-    border-radius: 50%;
-    border: 2px solid #1e40af;
+    height: 90px;
+    max-width: 160px;
+    object-fit: contain;
+    border-radius: 0;
+    border: none;
 }
 .v-right-text {
     text-align: right;
