@@ -754,12 +754,7 @@ window.generateVoucher = async function(typeStr) {
         ctx.fillRect(0, 0, TARGET_W, TARGET_H);
 
         // Scale canvas to fit within target while maintaining ratio (centered)
-        const ratio   = Math.min(TARGET_W / canvas.width, TARGET_H / canvas.height);
-        const dw      = canvas.width  * ratio;
-        const dh      = canvas.height * ratio;
-        const offsetX = (TARGET_W - dw) / 2;
-        const offsetY = (TARGET_H - dh) / 2;
-        ctx.drawImage(canvas, offsetX, offsetY, dw, dh);
+        ctx.drawImage(canvas, 0, 0, TARGET_W, TARGET_H);
 
         const imgData = finalCanvas.toDataURL('image/jpeg', 0.95);
 
