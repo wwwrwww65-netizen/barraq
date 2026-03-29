@@ -701,6 +701,8 @@ window.generateVoucher = async function(typeStr) {
                 if (titleEl && sysSettings.name) titleEl.innerText = sysSettings.name;
                 if (pEls[0] && sysSettings.branch) pEls[0].innerText = sysSettings.branch;
                 if (pEls[1] && sysSettings.phone) pEls[1].innerText = sysSettings.phone;
+                const stampEl = document.getElementById('v-stamp-name');
+                if (stampEl && sysSettings.name) stampEl.innerText = sysSettings.name;
                 if (logoEl && sysSettings.logo && sysSettings.logo !== '1111.png') {
                     logoEl.src = sysSettings.logo;
                     // Wait for image to load before capturing
