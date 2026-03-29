@@ -393,7 +393,7 @@
 }
 .voucher-wrapper {
     background-color: #ffffff;
-    width: 210mm; /* A4 width roughly */
+    width: 800px;
     box-sizing: border-box;
     padding: 40px;
     font-family: 'Cairo', Arial, sans-serif;

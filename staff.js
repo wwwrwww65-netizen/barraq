@@ -690,20 +690,32 @@ window.generateVoucher = async function(typeStr) {
     printContainer.style.zIndex  = '-100';
 
     try {
-        const canvas  = await html2canvas(document.getElementById('voucher-template'), { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+        // Populate dynamic restaurant settings before render
+        try {
+            const sysRaw = localStorage.getItem('sys_settings');
+            if (sysRaw) {
+                const sysSettings = JSON.parse(sysRaw);
+                const titleEl = document.querySelector('.v-right-text h2');
+                const pEls = document.querySelectorAll('.v-right-text p');
+                const logoEl = document.querySelector('.v-center-logo img');
+                if (titleEl && sysSettings.name) titleEl.innerText = sysSettings.name;
+                if (pEls[0] && sysSettings.branch) pEls[0].innerText = sysSettings.branch;
+                if (pEls[1] && sysSettings.phone) pEls[1].innerText = sysSettings.phone;
+                if (logoEl && sysSettings.logo) logoEl.src = sysSettings.logo;
+            }
+        } catch(e) {}
+
+        // Fix rendering dimensions
+        const canvas  = await html2canvas(document.getElementById('voucher-template'), { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0, 
+            onclone: (clonedDoc) => {
+                const el = clonedDoc.getElementById('voucher-template');
+                el.style.width = '800px';
+            }
+        });
         printContainer.style.top  = '-9999px';
         printContainer.style.left = '-9999px';
 
         const imgData = canvas.toDataURL('image/jpeg', 0.95);
-
-        if (confirm('✅ تم إنشاء السند والموافقة عليه.\nهل تريد تحميل صورة إلكترونية للسند للموظف؟')) {
-            const link = document.createElement('a');
-            link.download = `سند_${employee.replace(/\s+/g,'_')}_${Date.now()}.jpg`;
-            link.href = imgData;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
 
         document.getElementById('advance-modal').classList.remove('active');
         document.getElementById('voucher-amount').value = '';
