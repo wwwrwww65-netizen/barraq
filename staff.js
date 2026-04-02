@@ -257,6 +257,97 @@ window.openFullProfile = function(id) {
     // Attendance Table
     renderProfileAttendance(emp.id);
 
+    // ── Sales Tab (cashiers only) ──────────────────────────────────────
+    const cashierRoles = ['كاشير', 'cashier', 'مبيعات'];
+    const isCashier = cashierRoles.some(r => (emp.role || '').toLowerCase().includes(r.toLowerCase()));
+    const salesTabBtn = document.getElementById('pro-sales-tab-btn');
+    if (salesTabBtn) salesTabBtn.style.display = isCashier ? 'inline-flex' : 'none';
+
+    if (isCashier) {
+        // Read orders from pos_database via db-helper if available, else try ipcRenderer
+        (async () => {
+            let allOrders = [];
+            try {
+                if (window.dbRead) {
+                    const posDb = await window.dbRead();
+                    allOrders = posDb.orders || [];
+                } else {
+                    const { ipcRenderer } = require('electron');
+                    const posDb = ipcRenderer.sendSync('db-read');
+                    allOrders = (posDb && posDb.orders) || [];
+                }
+            } catch(e) { console.error('Sales load failed', e); }
+
+            // Match orders to this employee by name (cashier field or legacy)
+            const myOrders = allOrders.filter(o => {
+                const c = o.cashier || '';
+                return c === emp.name || c === emp.username || (!c && false);
+            });
+
+            const salesBody = document.getElementById('pro-sales-body');
+            const salesKpi  = document.getElementById('pro-sales-kpi');
+            if (!salesBody) return;
+
+            const totalSales = myOrders.reduce((s, o) => s + (o.total || 0), 0);
+            const fmt2 = n => n.toLocaleString('ar-SA', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ر.س';
+            const payColor = m => m === 'كاش' ? '#10b981' : m === 'مجزأ' ? '#f59e0b' : '#60a5fa';
+
+            if (salesKpi) {
+                salesKpi.innerHTML = `
+                    <span style="background:rgba(16,185,129,0.12); color:#10b981; padding:6px 14px; border-radius:20px; font-weight:700;">${myOrders.length} طلب</span>
+                    <span style="background:rgba(16,185,129,0.12); color:#10b981; padding:6px 14px; border-radius:20px; font-weight:700;">${fmt2(totalSales)}</span>
+                `;
+            }
+
+            if (myOrders.length === 0) {
+                salesBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px;">لا توجد مبيعات مسجلة بهذا الاسم بعد.</td></tr>';
+                return;
+            }
+
+            const sorted = [...myOrders].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            salesBody.innerHTML = sorted.map(o => `
+                <tr>
+                    <td><strong>${o.orderId || '—'}</strong></td>
+                    <td style="font-size:12px; color:var(--text-muted);">${o.date || '—'}</td>
+                    <td>${o.type || 'محلي'}</td>
+                    <td style="color:${payColor(o.paymentMethod)}; font-weight:700;">${o.paymentMethod || '—'}</td>
+                    <td style="font-weight:800; color:#10b981;">${fmt2(o.total)}</td>
+                </tr>`).join('');
+        })();
+    }
+
+    // ── Print Button ──────────────────────────────────────────────────
+    document.getElementById('pro-btn-print').onclick = () => window.print();
+
+    // ── Delete Button ─────────────────────────────────────────────────
+    document.getElementById('pro-btn-delete').onclick = () => {
+        const confirmed = confirm(
+            `⚠️ حذف الموظف: ${emp.name}\n\n` +
+            `• سيُحذف ملف الموظف من قائمة الموظفين.\n` +
+            `• ستبقى جميع سجلاته المالية والمبيعات محفوظة في قاعدة البيانات لأسباب محاسبية.\n` +
+            `• لا يمكن التراجع عن هذا الإجراء.\n\n` +
+            `هل أنت متأكد؟`
+        );
+        if (!confirmed) return;
+
+        // Remove employee from db
+        db.employees = db.employees.filter(e => e.id !== emp.id);
+
+        // Remove system login if exists
+        try {
+            const users = JSON.parse(localStorage.getItem('system_users') || '[]');
+            const updated = users.filter(u => u.username !== emp.username && u.name !== emp.name);
+            localStorage.setItem('system_users', JSON.stringify(updated));
+        } catch(e) {}
+
+        // Save and navigate
+        saveDB(db);
+        showView('view-employees', 'nav-employees');
+        renderStaff();
+        updateKPIs();
+        alert(`✅ تم حذف الموظف "${emp.name}" بنجاح.\nسجلاته المالية محفوظة في قاعدة البيانات.`);
+    };
+
     // Switch view
     showView('view-emp-profile');
     // Ensure first tab is active

@@ -4,19 +4,68 @@
     <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ربط منصة فوترة (الزكاة) - هـــش HASH</title>
+    <title>بوابة زاتكا للربط المباشر - هـــش HASH</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="settings.css">
-    <link rel="stylesheet" href="fatora.css">
     <!-- Google Fonts -->
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Phosphor Icons -->
     <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
+    <style>
+        :root {
+            --zatca-green: #0ec074;
+            --zatca-dark: #075231;
+            --zatca-glow: rgba(14, 192, 116, 0.4);
+            --bg-base: #0b1120;
+            --card-glass: rgba(17, 24, 39, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+        }
+        body { background-color: var(--bg-base); font-family: 'Cairo', 'Outfit', sans-serif; color: var(--text-primary); overflow-x: hidden; }
+        .premium-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: radial-gradient(circle at 15% 50%, rgba(14, 192, 116, 0.08), transparent 25%), radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.08), transparent 25%); animation: pulse-bg 15s infinite alternate; }
+        @keyframes pulse-bg { 0% { transform: scale(1); } 100% { transform: scale(1.1); } }
+        .premium-container { padding: 40px; max-width: 1200px; margin: 0 auto; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+        .page-title { display: flex; align-items: center; gap: 15px; }
+        .title-icon { width: 50px; height: 50px; background: linear-gradient(135deg, var(--zatca-green), #10b981); border-radius: 14px; display: flex; justify-content: center; align-items: center; font-size: 28px; color: white; box-shadow: 0 10px 20px var(--zatca-glow); animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-5px); } 100% { transform: translateY(0px); } }
+        .page-title h1 { margin: 0; font-size: 28px; font-weight: 800; background: linear-gradient(to left, #fff, #a7f3d0); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+        .page-title p { margin: 5px 0 0; font-size: 14px; color: var(--text-secondary); }
+        .glass-card { background: var(--card-glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--card-border); border-radius: 24px; padding: 30px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden; }
+        .glass-card::before { content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(to right, transparent, rgba(255,255,255,0.03), transparent); transform: skewX(-20deg); animation: shine 8s infinite; }
+        @keyframes shine { 0% { left: -100%; } 20% { left: 200%; } 100% { left: 200%; } }
+        .grid-layout { display: grid; grid-template-columns: 1fr 1.5fr; gap: 30px; }
+        .status-hero { text-align: center; padding: 20px 0; }
+        .status-circle { width: 120px; height: 120px; border-radius: 50%; background: rgba(239, 68, 68, 0.1); border: 2px solid rgba(239, 68, 68, 0.3); margin: 0 auto 20px; display: flex; justify-content: center; align-items: center; font-size: 50px; color: #ef4444; position: relative; transition: all 0.5s ease; }
+        .status-circle.connected { background: rgba(14, 192, 116, 0.1); border-color: rgba(14, 192, 116, 0.4); color: var(--zatca-green); box-shadow: 0 0 30px var(--zatca-glow); }
+        .status-circle i { z-index: 2; }
+        .pulse-ring { position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 2px solid currentColor; opacity: 0; }
+        .status-circle.connected .pulse-ring { animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
+        @keyframes pulse-ring { 0% { transform: scale(0.95); opacity: 0.8; } 100% { transform: scale(1.5); opacity: 0; } }
+        .status-text { font-size: 22px; font-weight: 700; margin: 0 0 10px; color: #ef4444; transition: color 0.3s ease; }
+        .connected .status-text { color: var(--zatca-green); }
+        .status-desc { color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
+        .form-section { display: flex; flex-direction: column; gap: 24px; }
+        .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+        .section-header i { color: var(--zatca-green); font-size: 20px; }
+        .section-header h3 { margin: 0; font-size: 18px; font-weight: 700; }
+        .input-group { position: relative; }
+        .input-group label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 600; color: #cbd5e1; }
+        .input-modern { width: 100%; padding: 16px 45px 16px 20px; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; color: white; font-family: 'Outfit', 'Cairo', sans-serif; font-size: 15px; transition: all 0.3s ease; box-sizing: border-box; }
+        .input-modern:focus { outline: none; border-color: var(--zatca-green); box-shadow: 0 0 0 3px rgba(14, 192, 116, 0.2); background: rgba(0, 0, 0, 0.3); }
+        .input-icon { position: absolute; right: 15px; top: 41px; color: var(--text-secondary); font-size: 20px; }
+        .btn-save { background: linear-gradient(135deg, var(--zatca-green), #10b981); color: white; border: none; padding: 16px 30px; border-radius: 12px; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%; gap: 10px; transition: all 0.3s ease; box-shadow: 0 10px 20px -5px var(--zatca-glow); }
+        .btn-save:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 15px 25px -5px var(--zatca-glow); }
+        .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+        .otp-input { text-align: center; font-size: 24px; letter-spacing: 5px; font-weight: 800; font-family: monospace; }
+    </style>
 </head>
-<body class="dark-theme">
-    <div class="app-container">
+<body>
+    <div class="premium-bg"></div>
+    <div class="app-container" style="background: transparent;">
         <!-- Sidebar Navigation -->
-        <aside class="sidebar">
+        <aside class="sidebar" style="background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(20px); border-left: 1px solid rgba(255,255,255,0.05);">
             <div class="logo">
                 <img src="1111.png" alt="هش HASH" class="restaurant-logo">
                 <span>هـــش HASH <span class="highlight">POS</span></span>
@@ -25,193 +74,176 @@
             <nav class="nav-menu">
                 <a href="index.html" class="nav-item"><i class="ph ph-squares-four"></i><span>الرئيسية</span></a>
                 <a href="pos.html" class="nav-item"><i class="ph ph-monitor"></i><span>نقطة البيع (الكاشير)</span></a>
-                <a href="kitchen.html" class="nav-item"><i class="ph ph-cooking-pot"></i><span>شاشة المطبخ (KDS)</span></a>
-                <a href="orders.html" class="nav-item"><i class="ph ph-list-numbers"></i><span>سجل الطلبات</span></a>
-                <a href="sales.html" class="nav-item"><i class="ph ph-receipt"></i><span>المبيعات</span></a>
-                <a href="menu.html" class="nav-item"><i class="ph ph-list-dashes"></i><span>الأصناف والمنيو</span></a>
-                
                 <div class="nav-divider"></div>
-                <p class="nav-label">العمليات والمخزون</p>
-                <a href="inventory.html" class="nav-item"><i class="ph ph-package"></i><span>المخازن والمستودعات</span></a>
-                <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>المشتريات والموردين</span></a>
-                <a href="returns.html" class="nav-item"><i class="ph ph-arrow-u-down-left"></i><span>المرتجعات</span></a>
-                
-                <div class="nav-divider"></div>
-                <p class="nav-label">الإدارة والتقارير</p>
-                <a href="staff.html" class="nav-item"><i class="ph ph-users"></i><span>الموظفين والعمال</span></a>
-                <a href="customers.html" class="nav-item"><i class="ph ph-users-three"></i><span>العملاء</span></a>
-                <a href="accounting.html" class="nav-item"><i class="ph ph-calculator"></i><span>النظام المحاسبي</span></a>
-                <a href="statistics.html" class="nav-item"><i class="ph ph-chart-pie"></i><span>الإحصائيات</span></a>
-                <a href="profit-loss.html" class="nav-item"><i class="ph ph-scales"></i><span>الأرباح والخسائر</span></a>
-                <a href="settings.html" class="nav-item"><i class="ph ph-gear"></i><span>الإعدادات</span></a>
-                
-                <div class="nav-divider" style="margin: 15px 0; border-top: 1px solid var(--border-color); width: 80%; align-self: center;"></div>
                 <p class="nav-label">مؤسسة الزكاة والضريبة</p>
-                <a href="fatora.html" class="nav-item active" style="background: rgba(16, 185, 129, 0.15); border-right: 3px solid #10b981; color: #fff;"><i class="ph ph-link" style="color: #10b981;"></i><span>الربط مع منصة فوترة (الزكاة)</span></a>
+                <a href="fatora.html" class="nav-item active" style="background: rgba(14, 192, 116, 0.15); border-right: 3px solid #0ec074; color: #fff;"><i class="ph ph-link" style="color: #0ec074;"></i><span>الربط المباشر مع الزكاة</span></a>
             </nav>
         </aside>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Header -->
-            <header class="top-header">
-                <div class="header-left">
-                    <div class="breadcrumbs pt-0" style="display: flex; align-items: center; gap: 10px;">
-                        <h2 style="margin: 0; font-size: 20px;">الربط مع منصة فوترة (الزكاة)</h2>
-                        <span class="separator" style="color: var(--text-muted);">/</span>
-                        <span style="color: var(--text-secondary);">إعدادات واجهة برمجة التطبيقات (API)</span>
-                    </div>
-                </div>
-                
-                <div class="header-actions">
-                    <div class="user-profile">
-                        <img src="avatar.svg" alt="المدير" class="avatar">
-                        <div class="user-info">
-                            <span class="user-name">جاري التحميل...</span>
-                            <span class="user-role">...</span>
+        <main class="main-content" style="background: transparent;">
+            <div class="premium-container">
+                <header class="page-header">
+                    <div class="page-title">
+                        <div class="title-icon"><i class="ph-bold ph-shield-check"></i></div>
+                        <div>
+                            <h1>مرحلة الربط المباشر لتسجيل العناوين (Onboarding)</h1>
+                            <p>تتم هذه العملية بالربط المباشر (Direct Integration) بالمنصة وتوليد الشهادات الرقمية (CSID) محلياً.</p>
                         </div>
                     </div>
-                </div>
-            </header>
+                </header>
 
-            <!-- Dashboard Content -->
-            <div class="settings-container" style="padding: 30px; overflow-y: auto;">
-                <form id="fatora-settings-form">
-                    <div class="settings-grid" style="display: flex; flex-direction: column; gap: 20px;">
-                        
-                        <!-- Connection Status & Credentials -->
-                        <div class="settings-card" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); padding: 25px; display: grid; grid-template-columns: 1fr 2fr; gap: 40px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);">
+                <div class="grid-layout">
+                    <!-- Status Panel -->
+                    <div class="glass-card">
+                        <div class="section-header" style="justify-content: center;"><h3 style="color: white;">حالة شهادة الربط</h3></div>
+                        <div class="status-hero" id="status-hero">
+                            <div class="status-circle" id="fatora-status-icon-wrapper">
+                                <div class="pulse-ring"></div>
+                                <i class="ph-fill ph-warning-circle" id="fatora-status-icon"></i>
+                            </div>
+                            <h2 class="status-text" id="fatora-status-title">غير مربط</h2>
+                            <p class="status-desc" id="fatora-status-desc">نظام الكاشير غير موثق حالياً بشهادة CSID الرقمية. يرجى إدخال OTP من منصة فاتورة.</p>
+                        </div>
+                    </div>
+
+                    <!-- Onboarding Form -->
+                    <div class="glass-card">
+                        <form id="onboarding-form" class="form-section">
+                            <!-- Overlay Loading Indicator -->
+                            <div id="loading-overlay" style="display: none; flex-direction: column; align-items: center; justify-content: center; position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(17, 24, 39, 0.85); backdrop-filter: blur(10px); z-index: 10; border-radius: 24px; text-align: center;">
+                                <div class="loader-spinner" style="font-size: 50px; color: var(--zatca-green); margin-bottom: 20px;"><i class="ph ph-circle-notch ph-spin"></i></div>
+                                <h3 id="loading-step-title" style="margin:0 0 10px; font-size: 20px; font-weight: 700;">جاري تهيئة النظام...</h3>
+                                <p id="loading-step-desc" style="color: var(--text-secondary); margin: 0; max-width: 80%; font-size:14px;">بدء عملية التشفير محلياً</p>
+                                
+                                <div style="width: 70%; background: rgba(255,255,255,0.1); border-radius: 10px; height: 6px; margin-top:25px; overflow: hidden; position: relative;">
+                                    <div id="loading-progress-bar" style="width: 5%; height: 100%; background: linear-gradient(90deg, #10b981, #3b82f6); transition: width 0.4s ease; border-radius: 10px;"></div>
+                                </div>
+                            </div>
+
+                            <div class="section-header">
+                                <i class="ph-fill ph-fingerprint"></i>
+                                <h3>معلومات المنشأة والتوثيق</h3>
+                            </div>
+
+                            <div class="input-group">
+                                <label>اسم المنشأة التجاري (Company Name)</label>
+                                <input type="text" id="company_name" class="input-modern" placeholder="مطعم هاش HASH" required>
+                                <i class="ph-fill ph-buildings input-icon"></i>
+                            </div>
                             
-                            <!-- Left Column: Status -->
-                            <div>
-                                <div class="sc-header" style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                                    <i class="ph-fill ph-plugs-connected" style="color: var(--accent-blue); font-size: 24px;"></i>
-                                    <h3 style="margin: 0; font-size: 18px;">حالة الربط مع فوترة</h3>
-                                </div>
-                                <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 25px; line-height: 1.6;">
-                                    يتيح لك هذا القسم ربط نظام هش POS مع منصة فوترة المعتمدة من هيئة الزكاة والضريبة والجمارك (ZATCA) لرفع الفواتير بشكل تلقائي.
-                                </p>
-                                
-                                <div class="cloud-status-box" id="fatora-connection-status" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; transition: all 0.3s ease;">
-                                    <i class="ph-fill ph-warning-circle" style="color: var(--accent-red); font-size: 32px;" id="fatora-status-icon"></i>
-                                    <div>
-                                        <h4 style="margin: 0; color: white; font-size: 16px; margin-bottom: 5px;" id="fatora-status-title">غير متصل</h4>
-                                        <span style="font-size: 0.85rem; color: var(--text-muted);" id="fatora-status-desc">يرجى إدخال بيانات الربط أدناه والتحقق من الاتصال</span>
-                                    </div>
-                                </div>
+                            <div class="input-group">
+                                <label>الرقم الضريبي (VAT Number)</label>
+                                <input type="text" id="vat_number" class="input-modern" placeholder="310000000000003" pattern="^3[0-9]{14}$" title="يبدأ برقم 3 ويتكون من 15 رقم" required>
+                                <i class="ph-fill ph-identification-card input-icon"></i>
+                            </div>
 
-                                <div class="form-group">
-                                    <button type="button" class="btn btn-primary" id="btn-test-fatora" style="background: transparent; color: var(--text-primary); border: 1px solid var(--border-light); width: 100%; display: flex; justify-content: center; align-items: center; gap: 10px; padding: 12px; border-radius: 8px; cursor: pointer; transition: 0.3s;">
-                                        <i class="ph-bold ph-arrows-out-line-horizontal" style="font-size: 18px;"></i> اختبار الاتصال مع المنصة
-                                    </button>
+                            <div style="background: rgba(59, 130, 246, 0.1); border: 1px dashed rgba(59, 130, 246, 0.4); padding: 15px; border-radius: 12px; margin-top: 10px;">
+                                <h4 style="margin:0 0 10px; color:#60a5fa;"><i class="ph-bold ph-key"></i> رمز التوثيق (OTP)</h4>
+                                <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 10px;">احصل على رمز الـ OTP عبر تسجيل الدخول لحسابك في منصة "فاتورة" (هيئة الزكاة).</p>
+                                <div class="input-group">
+                                    <input type="text" id="zatca_otp" class="input-modern otp-input" placeholder="123456" maxlength="8" required>
                                 </div>
                             </div>
 
-                            <!-- Right Column: Form -->
-                            <div style="padding-top: 10px;">
-                                <div class="sc-header" style="margin-bottom: 20px; border-bottom: none; padding-bottom: 0; display: flex; align-items: center; gap: 10px;">
-                                    <i class="ph-fill ph-key" style="color: var(--accent-orange); font-size: 22px;"></i>
-                                    <h3 style="margin: 0; font-size: 18px;">بيانات الاعتماد (API Credentials)</h3>
-                                </div>
-
-                                <div class="form-group" style="margin-bottom: 25px;">
-                                    <label style="display: block; margin-bottom: 12px; font-weight: 600; color: var(--text-primary);">بيئة التشغيل (Environment)</label>
-                                    <div style="display: flex; gap: 20px; background: rgba(0,0,0,0.2); padding: 12px 20px; border-radius: 10px; border: 1px solid var(--border-color);">
-                                        <label class="radio-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                                            <input type="radio" name="fatora_env" value="sandbox" checked style="accent-color: var(--accent-blue); width: 18px; height: 18px;">
-                                            <span style="color: white; font-size: 14px; font-weight: 500;">بيئة الاختبار (Sandbox)</span>
-                                        </label>
-                                        <label class="radio-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                                            <input type="radio" name="fatora_env" value="production" style="accent-color: var(--accent-blue); width: 18px; height: 18px;">
-                                            <span style="color: white; font-size: 14px; font-weight: 500;">بيئة الإنتاج (Production)</span>
-                                        </label>
-                                    </div>
-                                    <small style="color: var(--text-muted); font-size: 12px; margin-top: 8px; display: block;">
-                                        <i class="ph ph-info"></i> استخدم بيئة الاختبار للتأكد من صحة الربط قبل تفعيل بيئة الإنتاج.
-                                    </small>
-                                </div>
-
-                                <div class="form-group" style="margin-bottom: 25px;">
-                                    <label style="display: block; margin-bottom: 10px; font-weight: 600; color: var(--text-primary);">مفتاح الربط (API Key)</label>
-                                    <div class="input-icon-wrapper" style="position: relative;">
-                                        <i class="ph-fill ph-password" style="color:var(--accent-orange); position: absolute; right: 15px; top: 50%; transform: translateY(-50%); font-size: 20px; pointer-events: none;"></i>
-                                        <input type="password" id="fatora_api_key" class="input-modern" placeholder="أدخل مفتاح الـ API الخاص بفوترة" required style="width: 100%; padding: 14px 45px 14px 45px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 10px; color: white; font-family: inherit; font-size: 14px;">
-                                        <button type="button" class="btn-icon" id="toggle-api-key" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: var(--text-muted); cursor: pointer; height: 100%; display: flex; align-items: center; padding: 0 10px;">
-                                            <i class="ph ph-eye" style="font-size: 20px;"></i>
-                                        </button>
-                                    </div>
-                                    <small style="color:var(--text-muted); font-size:12px; margin-top:8px; display:block;">
-                                        يمكنك الحصول على مفتاح الربط من لوحة تحكم منصة فوترة الخاصة بك.
-                                    </small>
-                                </div>
-
-                                <div class="form-group" style="margin-bottom: 25px;">
-                                    <label style="display: block; margin-bottom: 10px; font-weight: 600; color: var(--text-primary);">رقم المنشأة / التاجر (Merchant ID)</label>
-                                    <div class="input-icon-wrapper" style="position: relative;">
-                                        <i class="ph-fill ph-identification-card" style="color:var(--accent-blue); position: absolute; right: 15px; top: 50%; transform: translateY(-50%); font-size: 20px; pointer-events: none;"></i>
-                                        <input type="text" id="fatora_merchant_id" class="input-modern" placeholder="أدخل رقم التاجر الخاص بك" style="width: 100%; padding: 14px 45px 14px 15px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 10px; color: white; font-family: inherit; font-size: 14px;">
-                                    </div>
-                                </div>
-                                
-                                <div class="form-group" style="background:rgba(255,255,255,0.02); padding:20px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
-                                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                                        <div>
-                                            <h4 style="margin:0; font-size:16px; color:white; margin-bottom: 5px;">إرسال الفواتير التلقائي</h4>
-                                            <span style="font-size:13px; color:var(--text-secondary);">رفع الفواتير فوراً للمنصة (ZATCA) عند إصدارها في الكاشير.</span>
-                                        </div>
-                                        <label class="switch" style="position: relative; display: inline-block; width: 50px; height: 26px;">
-                                            <input type="checkbox" id="fatora_auto_sync" checked style="opacity: 0; width: 0; height: 0;">
-                                            <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px;"></span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Action Bar -->
-                        <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--border-radius-lg); padding: 20px 25px; display: flex; justify-content: flex-end; gap: 15px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);">
-                            <button type="button" id="btn-reset-fatora" class="btn btn-outline" style="border: 1px solid var(--border-light); color: var(--text-muted); background: transparent; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: 0.3s;"><i class="ph ph-arrow-counter-clockwise" style="font-size: 18px;"></i> تصفير الحقول</button>
-                            <button type="submit" class="btn btn-primary" style="background: #10b981; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: 0.3s;"><i class="ph-fill ph-floppy-disk" style="font-size: 18px;"></i> حفظ إعدادات الربط</button>
-                        </div>
-
+                            <button type="submit" class="btn-save" id="btn-onboard">
+                                <i class="ph-bold ph-rocket-launch"></i> بدء عملية التوثيق واستخراج CSID
+                            </button>
+                        </form>
                     </div>
-                </form>
+                </div>
             </div>
         </main>
     </div>
 
-    <!-- Scripts -->
     <script src="script.js"></script>
-    <script src="settings.js"></script>
-    <script src="fatora.js"></script>
-    <style>
-        /* Switch styling override if needed for this page specifically to ensure it looks good */
-        .switch input:checked + .slider {
-            background-color: #10b981;
-        }
-        .switch input:focus + .slider {
-            box-shadow: 0 0 1px #10b981;
-        }
-        .switch input:checked + .slider:before {
-            transform: translateX(-24px); /* For RTL */
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        /* Custom input focus styling */
-        .input-modern:focus {
-            border-color: var(--accent-blue) !important;
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
-            outline: none;
-        }
-    </style>
+    <script src="db-helper.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const { ipcRenderer } = require('electron');
+            
+            const btnOnboard = document.getElementById('btn-onboard');
+            const statusIconWrapper = document.getElementById('fatora-status-icon-wrapper');
+            const statusIcon = document.getElementById('fatora-status-icon');
+            const statusTitle = document.getElementById('fatora-status-title');
+            const statusDesc = document.getElementById('fatora-status-desc');
+
+            // Load logic
+            try {
+                const db = await window.dbRead();
+                
+                // Prefill basic settings
+                try {
+                    const settings = JSON.parse(localStorage.getItem('restaurant_settings')||'{}');
+                    if(settings.name) document.getElementById('company_name').value = settings.name;
+                    if(settings.taxNumber) document.getElementById('vat_number').value = settings.taxNumber;
+                }catch(e){}
+
+                if (db && db.zatca_csid && db.zatca_csid.onboarded) {
+                    setConnectedStatus();
+                }
+            } catch(e) {}
+
+            document.getElementById('onboarding-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const companyName = document.getElementById('company_name').value;
+                const vatNumber = document.getElementById('vat_number').value;
+                const otp = document.getElementById('zatca_otp').value;
+
+                // UI loading logic
+                const loadingOverlay = document.getElementById('loading-overlay');
+                const loadingTitle = document.getElementById('loading-step-title');
+                const loadingDesc = document.getElementById('loading-step-desc');
+                const progressBar = document.getElementById('loading-progress-bar');
+                
+                function updateStep(val, title, desc) {
+                    progressBar.style.width = val + '%';
+                    loadingTitle.innerText = title;
+                    loadingDesc.innerText = desc;
+                }
+
+                loadingOverlay.style.display = 'flex';
+                updateStep(10, 'جاري تأسيس البنية التحتية', 'يتم التحقق من مكتبة OpenSSL المدمجة');
+
+                try {
+                    // Step 1: Init EGS
+                    await new Promise(r => setTimeout(r, 600)); // Smooth UX delay
+                    updateStep(30, 'توليد مفاتيح التشفير', 'جاري إنشاء المفتاح الخاص (Private Key) وخوارزمية ECDSA');
+                    
+                    const initRes = await ipcRenderer.invoke('zatca-init', {
+                        vatNumber, companyName, branchName: 'الفرع الرئيسي'
+                    });
+                    if(!initRes.success) throw new Error(initRes.error);
+
+                    updateStep(60, 'إنشاء طلب CSR', 'تم توليد التشفير بنجاح، جاري الآن التجهيز للربط مع هيئة الزكاة...');
+                    await new Promise(r => setTimeout(r, 800));
+
+                    // Step 2: Onboard using OTP
+                    updateStep(85, 'جلب الشهادات الرقمية CSID', 'يتم التخاطب المباشر مع سيرفرات هيئة الزكاة والضريبة والجمارك باستخدام الـ OTP...');
+                    const onboardRes = await ipcRenderer.invoke('zatca-onboard', { otp });
+                    
+                    if(!onboardRes.success) throw new Error(onboardRes.error);
+
+                    updateStep(100, 'تم التوثيق بنجاح!', 'يتم حفظ الشهادة في النظام الآن...');
+                    await new Promise(r => setTimeout(r, 500));
+
+                    setConnectedStatus();
+                    loadingOverlay.style.display = 'none';
+                    alert('تم الربط واستخراج الشهادة الرقمية بنجاح عالي التشفير! النظام جاهز الآن للعمل بفوترة.');
+                } catch(error) {
+                    loadingOverlay.style.display = 'none';
+                    alert('فشل في إتمام الربط:\n' + error.message);
+                }
+            });
+
+            function setConnectedStatus() {
+                statusIconWrapper.classList.add('connected');
+                statusIcon.className = 'ph-fill ph-check-circle';
+                statusTitle.textContent = 'المنظومة مصدّقة (CSID Actived)';
+                statusDesc.innerHTML = 'رائع! هذا الجهاز يمتلك شهادة رقمية مشفرة وهو متعرف عليه كسيرفر مرخص لدى هيئة الزكاة. الفواتير ترفع مباشرة بصيغة UBL 2.1 XML.';
+                btnOnboard.style.display = 'none'; // Hide form if onboarded
+            }
+        });
+    </script>
 </body>
 </html>

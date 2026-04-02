@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <script src="demo-mock.js"></script>
@@ -330,6 +330,7 @@
                 <div style="position:absolute; top:32px; left:32px; display:flex; gap:8px;">
                     <button class="icon-btn-subtle" id="pro-btn-edit" title="تعديل الملف" style="background:rgba(255,255,255,0.1); width:40px; height:40px; border-radius:10px;"><i class="ph ph-pencil-simple"></i></button>
                     <button class="icon-btn-subtle" id="pro-btn-print" title="طباعة كشف الحساب" style="background:rgba(255,255,255,0.1); width:40px; height:40px; border-radius:10px;"><i class="ph ph-printer"></i></button>
+                    <button class="icon-btn-subtle" id="pro-btn-delete" title="حذف الموظف" style="background:rgba(239,68,68,0.15); color:#ef4444; width:40px; height:40px; border-radius:10px; border:1px solid rgba(239,68,68,0.3);"><i class="ph ph-trash"></i></button>
                 </div>
             </div>
 
@@ -338,6 +339,7 @@
                 <button class="ptab-btn active" onclick="switchProTab('tab-attendance', this)"><i class="ph ph-calendar-check"></i> سجل الحضور والغياب</button>
                 <button class="ptab-btn" onclick="switchProTab('tab-finances', this)"><i class="ph ph-money"></i> السجل المالي والسندات</button>
                 <button class="ptab-btn" onclick="switchProTab('tab-personal', this)"><i class="ph ph-identification-card"></i> البيانات والمرفقات</button>
+                <button class="ptab-btn" id="pro-sales-tab-btn" onclick="switchProTab('tab-sales', this)" style="display:none;"><i class="ph ph-shopping-cart-simple" style="color:#10b981;"></i> <span style="color:#10b981;">سجل المبيعات</span></button>
             </div>
 
             <div id="tab-attendance" class="ptab-content active card" style="padding:24px;">
@@ -362,6 +364,18 @@
                 <table class="data-table">
                     <thead><tr><th>التاريخ</th><th>نوع السند</th><th>المبلغ</th><th>البيان</th></tr></thead>
                     <tbody id="pro-finances-body"></tbody>
+                </table>
+            </div>
+
+            <!-- Sales Tab -->
+            <div id="tab-sales" class="ptab-content card" style="padding:24px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h3 style="color:#10b981;"><i class="ph ph-shopping-cart-simple"></i> سجل مبيعات الكاشير</h3>
+                    <div id="pro-sales-kpi" style="display:flex; gap:16px; font-size:13px;"></div>
+                </div>
+                <table class="data-table">
+                    <thead><tr><th>رقم الطلب</th><th>التاريخ</th><th>نوع الطلب</th><th>طريقة الدفع</th><th>المبلغ</th></tr></thead>
+                    <tbody id="pro-sales-body"></tbody>
                 </table>
             </div>
 

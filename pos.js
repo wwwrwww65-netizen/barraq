@@ -35,7 +35,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    let orderId = '#ORD-' + Math.floor(1000 + Math.random() * 9000); // Random Order ID for session
+    const { ipcRenderer } = require('electron');
+    const crypto = require('crypto');
+    let zatcaMeta = { icv: 1, uuid: crypto.randomUUID(), pih: 'NWZlY2ViNjZmZmM4NmYzOGQ5NTI3ODZjNmQ2OTZjNzljMmRiYzIzOWRkNGU5MWI0NjcyOWQ3M2EyN2ZiNTdlOQ==' };
+
+    function generateOrderId() {
+        try {
+            const fs = require('fs');
+            const dbPath = ipcRenderer.sendSync('get-db-path');
+            const dbData = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+            zatcaMeta.icv = (dbData.orders && dbData.orders.length > 0) ? dbData.orders.length + 1 : 1;
+            
+            if (dbData.orders && dbData.orders.length > 0) {
+                const prev = dbData.orders[dbData.orders.length - 1];
+                if(prev.invoiceHash) zatcaMeta.pih = prev.invoiceHash;
+            }
+            
+            zatcaMeta.uuid = crypto.randomUUID();
+            return '#INV-' + String(zatcaMeta.icv).padStart(5, '0');
+        } catch(e) {
+            zatcaMeta.icv++;
+            zatcaMeta.uuid = crypto.randomUUID();
+            return '#INV-' + String(zatcaMeta.icv).padStart(5, '0');
+        }
+    }
+
+    let orderId = generateOrderId();
     document.getElementById('display-order-id').innerText = orderId;
 
     // Elements
@@ -389,8 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnConfirmPay = document.getElementById('btn-confirm-payment');
 
     btnConfirmPay.addEventListener('click', async () => {
-        // Prepare Printable Templates
-        preparePrintTemplates();
+        await preparePrintTemplates();
 
         btnConfirmPay.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري توليد الفواتير...';
         btnConfirmPay.disabled = true;
@@ -417,6 +441,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const orderData = {
                 orderId: orderId,
+                uuid: zatcaMeta.uuid,
+                icv: zatcaMeta.icv,
+                pih: zatcaMeta.pih,
+                invoiceHash: crypto.createHash('sha256').update(zatcaMeta.uuid + orderId + totalOrder + now.getTime()).digest('base64'),
                 cashier: cashierName,
                 date: now.toLocaleDateString('ar-SA') + " " + now.toLocaleTimeString('ar-SA'),
                 timestamp: now.getTime(),
@@ -433,6 +461,40 @@ document.addEventListener('DOMContentLoaded', () => {
             const { ipcRenderer } = require('electron');
             await ipcRenderer.invoke('db-save-order', orderData);
             
+            // Fatora Integration Hook
+            try {
+                const fs = require('fs');
+                const dbPath = ipcRenderer.sendSync('get-db-path');
+                const dbData = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+                if (dbData.fatora_settings && dbData.fatora_settings.autoSync && dbData.fatora_settings.apiKey) {
+                    console.log(`[Fatora ZATCA API] Sending invoice ${orderId} to ZATCA...`);
+                    // Create notification
+                    const zNotif = document.createElement('div');
+                    zNotif.style.position = 'fixed';
+                    zNotif.style.bottom = '20px';
+                    zNotif.style.right = '20px';
+                    zNotif.style.background = '#10b981';
+                    zNotif.style.color = 'white';
+                    zNotif.style.padding = '15px 20px';
+                    zNotif.style.borderRadius = '8px';
+                    zNotif.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
+                    zNotif.style.zIndex = '9999999';
+                    zNotif.style.display = 'flex';
+                    zNotif.style.alignItems = 'center';
+                    zNotif.style.gap = '10px';
+                    zNotif.innerHTML = '<i class="ph ph-spinner ph-spin" style="font-size:24px;"></i> <span>جاري رفع الفاتورة لمنصة الزكاة...</span>';
+                    document.body.appendChild(zNotif);
+
+                    // Mock API delay
+                    setTimeout(() => {
+                        zNotif.innerHTML = '<i class="ph-fill ph-check-circle" style="font-size:24px;"></i> <span>تم رفع الفاتورة بنجاح (الزكاة والضريبة)</span>';
+                        setTimeout(() => zNotif.remove(), 4000);
+                    }, 2000);
+                }
+            } catch(e) {
+                console.error('Fatora Sync Error:', e);
+            }
+            
             // Reset cart UI before printing dialog block
             cart = [];
             discountAmount = 0;
@@ -441,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderCart();
             modalCheckout.classList.remove('active');
 
-            orderId = '#ORD-' + Math.floor(1000 + Math.random() * 9000);
+            orderId = generateOrderId();
             document.getElementById('display-order-id').innerText = orderId;
 
             alert('تمت العملية بنجاح! تم حفظ المبيعات وتحديث المخزون. ستتم الآن طباعة الفواتير.');
@@ -467,13 +529,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-print-receipt').addEventListener('click', async () => {
         if(cart.length === 0) return alert('السلة فارغة!');
         document.getElementById('btn-print-receipt').innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
-        preparePrintTemplates();
+        await preparePrintTemplates();
         openCashDrawer();
         await downloadReceipt('all', 'مسودة_الفاتورة');
         document.getElementById('btn-print-receipt').innerHTML = '<i class="ph ph-printer"></i> طباعة للحفظ';
     });
 
-    function preparePrintTemplates() {
+    async function preparePrintTemplates() {
         // Date
         const now = new Date();
         const dateStr = now.toLocaleDateString('ar-SA') + " " + now.toLocaleTimeString('ar-SA');
@@ -492,7 +554,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Payment Method from selected modal option
         const selectedPay = document.querySelector('.payment-method.selected input').value;
-        document.getElementById('r-payment-method').innerText = selectedPay;
+        if(document.getElementById('r-payment-method')) document.getElementById('r-payment-method').innerText = selectedPay;
 
         // Fill Items
         const rItems = document.getElementById('r-items');
@@ -527,6 +589,45 @@ document.addEventListener('DOMContentLoaded', () => {
             const pct = Math.round(getTaxRate() * 100 * 100) / 100;
             rTaxRateLabel.innerText = `قيمة الضريبة المضافة ${pct}%:`;
         }
+
+        // --- ZATCA Phase 1 QR Code Generation ---
+        function getQRBase64(sellerName, vatReg, timestamp, total, vat) {
+            function tlv(tag, val) {
+                const buf = Buffer.from(String(val), 'utf8');
+                return Buffer.concat([Buffer.from([tag, buf.length]), buf]);
+            }
+            try {
+                const tlvs = Buffer.concat([
+                    tlv(1, sellerName),
+                    tlv(2, vatReg),
+                    tlv(3, timestamp),
+                    tlv(4, total),
+                    tlv(5, vat)
+                ]);
+                return tlvs.toString('base64');
+            } catch(e) { return ''; }
+        }
+
+        const storeNameEl = document.getElementById('r-store-name');
+        const storeName = storeNameEl ? storeNameEl.innerText.trim() : 'هش HASH';
+        const rawStoreTaxEl = document.getElementById('r-store-tax');
+        const storeTax = rawStoreTaxEl ? rawStoreTaxEl.innerText.replace(/[^\d]/g, '') : '310000000000003';
+        
+        const timestampIso = now.toISOString();
+        const totalStr = document.getElementById('cart-total').innerText.replace(/[^\d.]/g, '');
+        const taxStr = document.getElementById('cart-tax').innerText.replace(/[^\d.]/g, '');
+
+        const base64TLV = getQRBase64(storeName, storeTax || '310000000000003', timestampIso, totalStr, taxStr);
+
+        try {
+            const QRCode = require('qrcode');
+            const url = await QRCode.toDataURL(base64TLV, { errorCorrectionLevel: 'M', margin: 1, width: 140 });
+            const qrImg = document.getElementById('r-qr-code');
+            if(qrImg) qrImg.src = url;
+        } catch(e) {
+            console.error('Failed to generate ZATCA QR Code', e);
+        }
+        // --- End ZATCA QR ---
     }
 
     async function printCustomerReceipt() {

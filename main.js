@@ -313,6 +313,19 @@ ipcMain.handle('db-save-order', async (event, data) => {
   const result = dbAPI.saveOrder(data);
   // 🚨 Broadcast immediately so kitchen + all devices see the new order NOW
   broadcastDBChanged();
+  
+  // ZATCA Direct Auto-Sync
+  setTimeout(async () => {
+      try {
+          if(typeof zatcaService !== 'undefined' && zatcaService.isReady) {
+              const dbData = zatcaService.getDbData();
+              if(dbData.zatca_csid && dbData.zatca_csid.onboarded) {
+                  await zatcaService.reportInvoice(data);
+              }
+          }
+      } catch(e) {}
+  }, 1000);
+  
   return result;
 });
 ipcMain.handle('db-get-orders',   async ()        => dbAPI.getOrders());
@@ -340,6 +353,24 @@ ipcMain.handle('db-read-full', () => {
 ipcMain.handle('db-write-full', (event, data) => {
   try { fs.writeFileSync(_dbPath, JSON.stringify(data, null, 2)); broadcastDBChanged(); return true; }
   catch(e) { console.error('db-write-full error:', e); return false; }
+});
+
+/* ===============================
+   ZATCA Fatoora Native Engine
+=============================== */
+const ZatcaEngine = require('./zatca-engine');
+const zatcaService = new ZatcaEngine(_dbPath);
+
+ipcMain.handle('zatca-init', async (event, data) => {
+    try {
+        return await zatcaService.initializeEGS(data.vatNumber, data.companyName, data.branchName);
+    } catch(e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('zatca-onboard', async (event, data) => {
+    try {
+        return await zatcaService.onboardDevice(data.otp);
+    } catch(e) { return { success: false, error: e.message }; }
 });
 
 function createWindow () {
