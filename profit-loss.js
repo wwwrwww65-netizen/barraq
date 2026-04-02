@@ -74,10 +74,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         let db = {};
         try { db = JSON.parse(fs.readFileSync(dbPath, 'utf8')); } catch(e) {}
         
-        const orders = await ipcRenderer.invoke('db-get-orders') || [];
-        const returns = db.returns || [];
-        const hrExpenses = db.hrExpenses || [];      // Real HR expenses when implemented
-        const purchases = db.purchases || [];        // Real Purchases
+        let orders = await ipcRenderer.invoke('db-get-orders') || [];
+        let returns = db.returns || [];
+        let hrExpenses = db.hrExpenses || [];      // Real HR expenses when implemented
+        let purchases = db.purchases || [];        // Real Purchases
+
+        if(window.isDateInPeriod) {
+            orders = orders.filter(o => window.isDateInPeriod(o.timestamp || o.dateStr || o.date, period));
+            returns = returns.filter(r => window.isDateInPeriod(r.timestamp || r.date, period));
+            hrExpenses = hrExpenses.filter(h => window.isDateInPeriod(h.timestamp || h.date, period));
+            purchases = purchases.filter(p => window.isDateInPeriod(p.date, period));
+        }
         
         // 1. Calculate Income
         let cashSales = 0;

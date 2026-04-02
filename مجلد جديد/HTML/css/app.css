@@ -1,0 +1,23 @@
+/*!
+ *
+ * Getting started Fatora Template - Shop Homepage
+ */
+.main-color{
+    color:#5ac99d !Important;
+}
+body {
+  padding-top: 56px;
+}
+.rating{color: #ccc}
+.rating .checked{
+  color: orange;
+}.p-image{height:220px;}
+
+.p-image img{
+    object-fit: cover;
+    height: 100%;
+}
+.card-text{
+    height:110px;
+}
+.card-title{height:60px;}

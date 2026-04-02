@@ -1,3 +1,4 @@
+(function() {
 const { ipcRenderer } = require('electron');
 const fs = require('fs');
 const path = require('path');
@@ -11,13 +12,14 @@ function saveDB(db) { fs.writeFileSync(dbPath, JSON.stringify(db, null, 2)); }
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-    // ✅ 1. Data Retrieval from JSON DB (The Accounting Core needs everything)
-    const posOrders = await ipcRenderer.invoke('db-get-orders') || [];
+    let accChart = null;
 
-    const db = loadDB();
-    const erpPurchases = db.purchases || [];
-    let erpExpenses = db.expenses || [];
-    const bankTransfers = db.bankTransfers || [];
+    async function loadAccountingData(period = 'this_month') {
+        const db = await window.dbRead();
+        let posOrders = db.orders || [];
+        let erpPurchases = db.purchases || [];
+        let erpExpenses = db.expenses || [];
+        let bankTransfers = db.bankTransfers || [];
 
     // Seed initial expenses if empty
     if(erpExpenses.length === 0) {
@@ -28,6 +30,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         ];
         db.expenses = erpExpenses;
         saveDB(db);
+    }
+
+    if(window.isDateInPeriod) {
+        posOrders = posOrders.filter(o => window.isDateInPeriod(o.timestamp || o.dateStr || o.date, period));
+        erpPurchases = erpPurchases.filter(p => window.isDateInPeriod(p.date, period));
+        erpExpenses = erpExpenses.filter(e => window.isDateInPeriod(e.date, period));
+        bankTransfers = bankTransfers.filter(t => window.isDateInPeriod(t.date, period));
     }
 
     // 2. ✅ Financial Aggregation Engine
@@ -57,8 +66,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         totalExp += e.amount;
         if(e.pMethod === 'cash') cashExp += e.amount;
         if(e.pMethod === 'bank') bankExp += e.amount;
-        if(e.cat.includes('رواتب')) salaries += e.amount;
-        else if(e.cat.includes('إيجار')) rent += e.amount;
+        if(e.cat && e.cat.includes('رواتب')) salaries += e.amount;
+        else if(e.cat && e.cat.includes('إيجار')) rent += e.amount;
         else others += e.amount;
     });
 
@@ -130,7 +139,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const ctx = document.getElementById('financeChart');
         if(ctx) {
-            new Chart(ctx, {
+            if(accChart) accChart.destroy();
+            accChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: ['السبت','الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'],
@@ -146,13 +156,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         const rentries = document.getElementById('recent-entries');
         if(rentries) {
             let combined = [
-                ...posOrders.map(o => ({ date: new Date(o.timestamp||Date.now()), id: o.orderId, desc: 'مبيعات الكاشير', amt: o.total, type: 'in', acc:'صندوق الإيرادات' })),
-                ...erpPurchases.map(p => ({ date: new Date(p.date), id: p.id, desc: 'شراء فاتورة مورد: '+p.supName, amt: p.total, type: 'out', acc:'المشتريات' })),
-                ...erpExpenses.map(e => ({ date: new Date(e.date), id: e.id, desc: e.desc, amt: e.amount, type: 'out', acc: e.cat }))
+                ...posOrders.map(o => ({ date: new Date(o.timestamp||o.date||Date.now()), id: o.orderId, desc: 'مبيعات الكاشير', amt: o.total, type: 'in', acc:'صندوق الإيرادات' })),
+                ...erpPurchases.map(p => ({ date: new Date(p.date||Date.now()), id: p.id, desc: 'شراء فاتورة مورد: '+(p.supName||'عام'), amt: p.total, type: 'out', acc:'المشتريات' })),
+                ...erpExpenses.map(e => ({ date: new Date(e.date||Date.now()), id: e.id, desc: e.desc, amt: e.amount, type: 'out', acc: e.cat }))
             ];
+            
+            // Clean invalid dates
+            combined.forEach(c => { if(isNaN(c.date.getTime())) c.date = new Date(); });
+            
             combined.sort((a,b) => b.date - a.date);
-            combined.slice(0, 5).forEach(c => {
-                const dStr = c.date.toISOString().split('T')[0];
+            rentries.innerHTML = ''; // Clear loader
+            
+            if(combined.length === 0) {
+                rentries.innerHTML = '<div style="text-align:center; padding:20px; color:gray;">لا توجد حركات مسجلة</div>';
+            }
+            
+            combined.slice(0, 7).forEach(c => {
+                let dStr = "تاريخ غير متوفر";
+                try { dStr = c.date.toISOString().split('T')[0]; } catch(e) {}
+                
                 const isOut = c.type === 'out';
                 rentries.innerHTML += `
                     <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); padding:12px 16px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
@@ -184,7 +206,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const tbody = document.getElementById('exp-tbody');
             tbody.innerHTML = '';
             const q = (document.getElementById('search-exp')?.value || '').toLowerCase();
-            const filt = erpExpenses.filter(e => e.desc.toLowerCase().includes(q) || e.cat.includes(q));
+            const filt = erpExpenses.filter(e => e.desc.toLowerCase().includes(q) || (e.cat && e.cat.includes(q)));
             filt.sort((a,b) => new Date(b.date) - new Date(a.date));
             if(filt.length===0) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;">لا توجد مصروفات.</td></tr>'; return; }
             filt.forEach(e => {
@@ -207,7 +229,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const modal = document.getElementById('expenseModal');
         document.getElementById('btn-add-expense')?.addEventListener('click', () => modal.classList.add('active'));
         document.querySelectorAll('.btn-close-modal').forEach(b => b.addEventListener('click', () => modal.classList.remove('active')));
-        if(document.getElementById('exp-date')) document.getElementById('exp-date').valueAsDate = new Date();
+        if(document.getElementById('exp-date')) {
+            const tzDate = new Date();
+            const localYMD = tzDate.getFullYear() + '-' + String(tzDate.getMonth()+1).padStart(2, '0') + '-' + String(tzDate.getDate()).padStart(2, '0');
+            document.getElementById('exp-date').value = localYMD;
+        }
 
         document.getElementById('form-expense')?.addEventListener('submit', async (ev) => {
             ev.preventDefault();
@@ -344,4 +370,35 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('bs-total-liabilities').innerText = fmt4(cashBal + bankBal);
         }
     }
+    } // End of loadAccountingData
+
+    // Setup filter listeners
+    const filterBtns = document.querySelectorAll('.header-actions .filter-btn, .time-filters .filter-btn');
+    if(filterBtns.length > 0) {
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                filterBtns.forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                let txt = e.target.innerText;
+                let p = 'this_month';
+                if(txt.includes('اليوم')) p = 'today';
+                else if(txt.includes('ربع')) p = 'quarter';
+                else if(txt.includes('سنة') || txt.includes('سنوي')) p = 'year';
+                loadAccountingData(p);
+            });
+        });
+        
+        let initialPeriod = 'this_month';
+        const activeBtn = document.querySelector('.time-filters .filter-btn.active');
+        if(activeBtn) {
+            let txt = activeBtn.innerText;
+            if(txt.includes('اليوم')) initialPeriod = 'today';
+            else if(txt.includes('ربع')) initialPeriod = 'quarter';
+            else if(txt.includes('سنة')) initialPeriod = 'year';
+        }
+        await loadAccountingData(initialPeriod);
+    } else {
+        await loadAccountingData('all');
+    }
 });
+})();

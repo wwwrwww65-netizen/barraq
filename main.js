@@ -209,6 +209,52 @@ function setupNetworkSync() {
     }
   });
 
+  ipcMain.handle('print-to-device', async (event, data) => {
+    return new Promise((resolve, reject) => {
+      try {
+        const { html, printerName } = data;
+        let printWin = new BrowserWindow({
+          show: false,
+          webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            webSecurity: false // Necessary for loading locale file:/// images
+          }
+        });
+
+        const htmlContent = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+        printWin.loadURL(htmlContent);
+
+        printWin.webContents.on('did-finish-load', () => {
+          const printOptions = {
+            silent: true,
+            printBackground: true,
+            color: true,
+            margin: { marginType: 'printableArea' }
+          };
+
+          if (printerName && printerName.trim() !== '') {
+            printOptions.deviceName = printerName;
+          }
+
+          printWin.webContents.print(printOptions, (success, failureReason) => {
+            if (!success) {
+              console.error('Print failed:', failureReason);
+            }
+            resolve({ success, reason: failureReason });
+            if (printWin) {
+              printWin.close();
+              printWin = null;
+            }
+          });
+        });
+      } catch (e) {
+        console.error('Error in print-to-device handler:', e);
+        resolve({ success: false, error: e.message });
+      }
+    });
+  });
+
   // Renderer saved pos_database.json → broadcast to all peers
   ipcMain.on('notify-db-changed', () => {
     try {
@@ -284,6 +330,18 @@ ipcMain.handle('db-save-category', async (event, data) => {
 ipcMain.handle('db-get-categories', async ()      => dbAPI.getCategories());
 ipcMain.handle('db-get-inventory',async ()        => dbAPI.getInventory());
 
+// Async full-DB read/write — used by renderer files to avoid blocking readFileSync on UI thread
+const _dbPath = path.join(app.getPath('userData'), 'pos_database.json');
+const _emptyDB = { orders:[], products:[], categories:[], inventory:[], purchases:[], suppliers:[], inventoryTx:[], returns:[], expenses:[], bankTransfers:[], hrExpenses:[], employees:[], attendance:[], penaltyRules:[] };
+ipcMain.handle('db-read-full', () => {
+  try { return JSON.parse(fs.readFileSync(_dbPath, 'utf8')); }
+  catch(e) { return _emptyDB; }
+});
+ipcMain.handle('db-write-full', (event, data) => {
+  try { fs.writeFileSync(_dbPath, JSON.stringify(data, null, 2)); broadcastDBChanged(); return true; }
+  catch(e) { console.error('db-write-full error:', e); return false; }
+});
+
 function createWindow () {
   const win = new BrowserWindow({
     width: 1280,
@@ -306,10 +364,13 @@ app.whenReady().then(() => {
   setupHTTPServer();
   createWindow();
 
-  // Auto-start WhatsApp in background so QR is ready when user opens Settings
+  // Auto-start WhatsApp AFTER app is fully loaded and user can interact
+  // Using a longer delay (15s) so the main window is 100% ready first
+  // Puppeteer runs asynchronously and won't block the UI thread
   setTimeout(() => {
-    startWhatsApp();
-  }, 3000); // 3s delay so app window loads first
+    // setImmediate ensures this runs only when the event loop is idle
+    setImmediate(() => startWhatsApp());
+  }, 15000);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -365,6 +426,13 @@ function startWhatsApp() {
         '--disable-translate',
         '--mute-audio',
         '--safebrowsing-disable-auto-update',
+        '--disable-background-timer-throttling',
+        '--disable-renderer-backgrounding',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-ipc-flooding-protection',
+        '--memory-pressure-off',
+        '--js-flags=--max-old-space-size=256',
+        // NOTE: --single-process removed — caused Chrome instability on some machines
       ],
     };
 
@@ -381,28 +449,47 @@ function startWhatsApp() {
         dataPath: path.join(app.getPath('userData'), 'wa_sessions')
       }),
       puppeteer: puppeteerConfig,
-      // No qrMaxRetries limit - keep showing QR until user scans it
       authTimeoutMs: 0,
+      qrMaxRetries: 10, // Gives user 10 refresh cycles (~3+ minutes) to get their phone ready
       restartOnAuthFail: false,
+      // SOLUTION: Force a highly stable, specific version of WhatsApp Web from a remote cloud.
+      // This GUARANTEES the connection won't get stuck on "Loading/Connecting" regardless of the PC 
+      // or what WhatsApp pushes in recent updates.
+      webVersionCache: {
+        type: 'remote',
+        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html'
+      },
     });
 
     waReady = false;
     waCachedQR = null;
+    let _forcedReadyTimer = null;
 
     waClient.on('qr', (qr) => {
       console.log('[WA] QR code ready - cached for instant display');
-      waCachedQR = qr; // Cache it!
+      waCachedQR = qr;
       BrowserWindow.getAllWindows().forEach(win => win.webContents.send('wa-qr', qr));
     });
 
     waClient.on('authenticated', () => {
-      console.log('[WA] Authenticated!');
-      waCachedQR = null; // Clear QR cache after auth
+      console.log('[WA] Authenticated! Starting forced-ready timer...');
+      waCachedQR = null;
       BrowserWindow.getAllWindows().forEach(win => win.webContents.send('wa-authenticated'));
+
+      // Failsafe: if 'ready' never fires within 35s after auth, force-send ready anyway
+      // (happens on slow machines where Chrome takes long to finalize WA Web session)
+      _forcedReadyTimer = setTimeout(() => {
+        if (!waReady && waClient) {
+          console.log('[WA] Forcing ready state after 35s timeout — authenticated but ready event was delayed');
+          waReady = true;
+          BrowserWindow.getAllWindows().forEach(win => win.webContents.send('wa-ready'));
+        }
+      }, 35000);
     });
 
     waClient.on('ready', () => {
       console.log('[WA] Client is READY!');
+      if (_forcedReadyTimer) clearTimeout(_forcedReadyTimer); // Cancel failsafe if ready fires normally
       waReady = true;
       waCachedQR = null;
       BrowserWindow.getAllWindows().forEach(win => win.webContents.send('wa-ready'));
@@ -410,6 +497,7 @@ function startWhatsApp() {
 
     waClient.on('auth_failure', (msg) => {
       console.error('[WA] Auth failure:', msg);
+      if (_forcedReadyTimer) clearTimeout(_forcedReadyTimer);
       waReady = false;
       waClient = null;
       waCachedQR = null;
@@ -418,6 +506,7 @@ function startWhatsApp() {
 
     waClient.on('disconnected', (reason) => {
       console.log('[WA] Disconnected:', reason);
+      if (_forcedReadyTimer) clearTimeout(_forcedReadyTimer);
       waReady = false;
       waClient = null;
       waCachedQR = null;
@@ -471,6 +560,44 @@ ipcMain.on('wa-start', (event) => {
   }
   startWhatsApp();
   event.sender.send('wa-still-loading');
+});
+
+// Disconnect: destroy session + clear credentials folder
+ipcMain.on('wa-disconnect', async () => {
+  console.log('[WA] Disconnecting and clearing session...');
+  try {
+    if (waClient) {
+      await waClient.logout().catch(() => {});
+      await waClient.destroy().catch(() => {});
+    }
+  } catch(e) {}
+  waClient = null;
+  waReady = false;
+  waCachedQR = null;
+  // Delete session folder so next start requires fresh QR
+  try {
+    const sessionDir = path.join(app.getPath('userData'), 'wa_sessions');
+    if (fs.existsSync(sessionDir)) {
+      fs.rmSync(sessionDir, { recursive: true, force: true });
+      console.log('[WA] Session folder cleared.');
+    }
+  } catch(e) { console.error('[WA] Could not clear session folder:', e.message); }
+  BrowserWindow.getAllWindows().forEach(win => win.webContents.send('wa-disconnected', 'manual_disconnect'));
+});
+
+// Refresh: destroy and restart without clearing session (keeps QR if already scanned)
+ipcMain.on('wa-refresh', async () => {
+  console.log('[WA] Refreshing WhatsApp connection...');
+  try {
+    if (waClient) {
+      await waClient.destroy().catch(() => {});
+    }
+  } catch(e) {}
+  waClient = null;
+  waReady = false;
+  waCachedQR = null;
+  // Restart after short delay
+  setTimeout(() => startWhatsApp(), 1500);
 });
 
 // Handle sending messages from any renderer window

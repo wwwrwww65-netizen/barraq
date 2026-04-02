@@ -21,6 +21,18 @@ async function loadSales() {
     let orders = await ipcRenderer.invoke('db-get-orders');
     if (!orders) orders = [];
 
+    const fDate = document.getElementById('filter-date');
+    if(fDate && fDate.value) {
+        let selectedDate = new Date(fDate.value);
+        let selectedStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+        let selectedEnd = new Date(selectedStart.getTime());
+        selectedEnd.setDate(selectedEnd.getDate() + 1);
+        orders = orders.filter(o => {
+            let d = new Date(o.timestamp || o.dateStr || o.date);
+            return d >= selectedStart && d < selectedEnd;
+        });
+    }
+
     // Sort descending by timestamp
     orders.sort((a, b) => b.timestamp - a.timestamp);
 

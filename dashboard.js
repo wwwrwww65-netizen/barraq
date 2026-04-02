@@ -3,18 +3,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     const kpiValues = document.querySelectorAll('.kpi-card .kpi-value');
     if(!kpiValues || kpiValues.length < 5) return; // Not on index page
 
-    // FETCH LIVE DATA
-    const { ipcRenderer } = require('electron');
-    let orders = await ipcRenderer.invoke('db-get-orders');
-    if(!orders) orders = [];
+    let dashboardChart = null;
 
-    const rStr = localStorage.getItem('pos_returns');
-    const hStr = localStorage.getItem('hr_expenses');
-    let returns = rStr ? JSON.parse(rStr) : [];
-    let hrExpenses = hStr ? JSON.parse(hStr) : [];
+    async function loadDashboardData(period = 'today') {
+        let db = await window.dbRead();
+        let orders = db.orders || [];
+        let returns = db.returns || [];
+        
+        // Combine all expenses into one central expense array to be subtracted during shift close
+        let hrExpenses = (db.hrExpenses || []).concat(db.expenses || []);
 
-    // --- 1. CALCULATE KPIs (Daily Logic Simplified for Demo) ---
-    // In a real app we'd filter by today's date, here we just sum them all assuming they are current session
+        const lastZReport = parseInt(localStorage.getItem('last_z_report_time')) || 0;
+
+        // Apply global date filter and Z-report session cutoff
+        if(window.isDateInPeriod) {
+            orders = orders.filter(o => 
+                window.isDateInPeriod(o.timestamp || o.dateStr || o.date, period) && 
+                ((o.timestamp || o.createdAt || Date.now()) >= lastZReport)
+            );
+            returns = returns.filter(r => 
+                window.isDateInPeriod(r.timestamp || r.date, period) &&
+                ((r.timestamp || Date.now()) >= lastZReport)
+            );
+            hrExpenses = hrExpenses.filter(h => 
+                window.isDateInPeriod(h.timestamp || h.date, period) &&
+                ((h.timestamp || new Date(h.date).getTime()) >= lastZReport)
+            );
+        }
+
+        // --- 1. CALCULATE KPIs ---
     let dailySales = 0;
     let cashSales = 0;
     let networkSales = 0;
@@ -77,6 +94,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let shiftCashFloat = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
     // Only cash goes to drawer
     let drawerBalance = shiftCashFloat + cashSales - totalExp + (totalReturnsAmt < 0 ? 0 : 0); // returns are handled in cashSales directly since cashSales -= r.amount
+
+    window.__dashboardData = { dailySales, cashSales, networkSales, totalTax, totalReturnsAmt, totalExp, shiftCashFloat, drawerBalance };
 
     // Apply to UI
     kpiValues[0].innerHTML = `${dailySales.toFixed(2)}<span class="currency">ر.س</span>`;
@@ -181,23 +200,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // --- 4. RENDER CHART ---
-    // We already included Chart.js in index.html, we can just attach to canvas
     const ctxCanvas = document.getElementById('salesChart');
     if(ctxCanvas && typeof Chart !== 'undefined') {
         const ctx = ctxCanvas.getContext('2d');
-        
-        // Simulating chart data around the live dailySales
         let fakeData = [
-            dailySales * 0.4, 
-            dailySales * 0.7, 
-            dailySales * 0.5, 
-            dailySales * 0.9, 
-            dailySales * 0.6, 
-            dailySales * 1.1, 
-            dailySales
+            dailySales * 0.4, dailySales * 0.7, dailySales * 0.5, 
+            dailySales * 0.9, dailySales * 0.6, dailySales * 1.1, dailySales
         ];
 
-        new Chart(ctx, {
+        if(dashboardChart) dashboardChart.destroy();
+        dashboardChart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'اليوم'],
@@ -206,20 +218,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     data: fakeData,
                     borderColor: '#10b981',
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    borderWidth: 3,
-                    tension: 0.4,
-                    fill: true,
-                    pointBackgroundColor: '#10b981',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
+                    borderWidth: 3, tension: 0.4, fill: true,
+                    pointBackgroundColor: '#10b981', pointBorderWidth: 2, pointRadius: 4,
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
                 scales: {
                     x: { grid: { display: false, drawBorder: false }, ticks: { color: 'rgba(255,255,255,0.5)', font: { family: 'Cairo' } } },
                     y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.5)', font: { family: 'Cairo' } } }
@@ -227,6 +232,35 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     }
+    } // End of loadDashboardData
+
+    // Bind Time Filters
+    const timeFilters = document.querySelectorAll('.time-filters .filter-btn');
+    timeFilters.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            timeFilters.forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            
+            // map text to period if data-period not set
+            let p = e.target.dataset.period;
+            if(!p) {
+                let txt = e.target.innerText;
+                if(txt.includes('اليوم')) p = 'today';
+                else if(txt.includes('الأمس')) p = 'yesterday';
+                else if(txt.includes('7 أيام')) p = 'week';
+                else if(txt.includes('شهر')) p = 'month';
+            }
+            loadDashboardData(p || 'today');
+        });
+    });
+
+    // Initial Load
+    const activeBtn = document.querySelector('.time-filters .filter-btn.active');
+    let initPeriod = 'today';
+    if(activeBtn) {
+        initPeriod = activeBtn.dataset.period || (activeBtn.innerText.includes('اليوم') ? 'today' : (activeBtn.innerText.includes('الأمس') ? 'yesterday' : 'week'));
+    }
+    await loadDashboardData(initPeriod);
 
     // --- 5. SHIFT REPORT MODAL LOGIC ---
     window.openShiftFloatModal = function() {
@@ -269,19 +303,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         const now = new Date();
         document.getElementById('shift-datetime').innerText = now.toLocaleString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        const currentUserConf = localStorage.getItem('currentUser');
+        let cashierName = "المدير";
+        if(currentUserConf) {
+            try {
+                const p = JSON.parse(currentUserConf);
+                if(p.name) cashierName = p.name;
+            } catch(e){}
+        }
+        document.getElementById('shift-cashier-name').innerText = "الموظف (إغلاق الوردية): " + cashierName;
         
-        document.getElementById('shift-float-cash').innerText = shiftCashFloat.toFixed(2) + ' ر.س';
-        document.getElementById('shift-cash').innerText = cashSales.toFixed(2) + ' ر.س';
-        document.getElementById('shift-network').innerText = networkSales.toFixed(2) + ' ر.س';
-        document.getElementById('shift-total-income').innerText = (cashSales + networkSales).toFixed(2) + ' ر.س';
+        const d = window.__dashboardData || { dailySales:0, cashSales:0, networkSales:0, totalTax:0, totalReturnsAmt:0, totalExp:0, shiftCashFloat:0, drawerBalance:0 };
+
+        document.getElementById('shift-float-cash').innerText = d.shiftCashFloat.toFixed(2) + ' ر.س';
+        document.getElementById('shift-cash').innerText = d.cashSales.toFixed(2) + ' ر.س';
+        document.getElementById('shift-network').innerText = d.networkSales.toFixed(2) + ' ر.س';
+        document.getElementById('shift-total-income').innerText = (d.cashSales + d.networkSales).toFixed(2) + ' ر.س';
         
-        document.getElementById('shift-tax').innerText = totalTax.toFixed(2) + ' ر.س';
-        document.getElementById('shift-returns').innerText = totalReturnsAmt.toFixed(2) + ' ر.س';
-        document.getElementById('shift-expenses').innerText = totalExp.toFixed(2) + ' ر.س';
+        document.getElementById('shift-tax').innerText = d.totalTax.toFixed(2) + ' ر.س';
+        document.getElementById('shift-returns').innerText = d.totalReturnsAmt.toFixed(2) + ' ر.س';
+        document.getElementById('shift-expenses').innerText = d.totalExp.toFixed(2) + ' ر.س';
         
-        document.getElementById('shift-drawer').innerText = drawerBalance.toFixed(2) + ' ر.س';
+        document.getElementById('shift-drawer').innerText = d.drawerBalance.toFixed(2) + ' ر.س';
         
-        document.getElementById('shift-grand-total').innerText = dailySales.toFixed(2) + ' ر.س';
+        document.getElementById('shift-grand-total').innerText = d.dailySales.toFixed(2) + ' ر.س';
 
         modal.style.display = 'flex';
     };
@@ -289,6 +335,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.closeShiftReport = function() {
         const modal = document.getElementById('shiftReportModal');
         if(modal) modal.style.display = 'none';
+    };
+
+    window.confirmCloseShift = function() {
+        if(!confirm('هل أنت متأكد من إغلاق الوردية وبدء وردية جديدة بـ 0.00؟')) return;
+        
+        // Mark current time as start of new shift
+        localStorage.setItem('last_z_report_time', Date.now());
+        localStorage.setItem('shift_cash_float', 0); // Zero drawer
+        
+        alert('تم إغلاق الوردية وتصفير الدرج بنجاح. أي مبيعات قادمة ستحسب للوردية الجديدة.');
+        window.location.reload();
     };
 
     window.printShiftReport = async function() {
@@ -327,7 +384,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
 
         try {
-            await ipcRenderer.invoke('print-to-device', { html: html, printerName: '' });
+            const { ipcRenderer } = require('electron');
+            const cashierPrinter = localStorage.getItem('cashier_printer') || '';
+            await ipcRenderer.invoke('print-to-device', { html: html, printerName: cashierPrinter });
         } catch(e) { 
             console.error('Z-Report print failed', e); 
         }

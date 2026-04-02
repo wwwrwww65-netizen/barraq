@@ -162,6 +162,16 @@
                                     <input type="text" id="set-footer" class="input-modern" placeholder="شكرًا لزيارتكم.. نتشرف بخدمتكم دائماً">
                                 </div>
                             </div>
+
+                            <div class="form-group">
+                                <label>طابعة الكاشير الرئيسية (لفواتير العميل وفتح الدرج)</label>
+                                <div class="input-icon-wrapper">
+                                    <i class="ph-fill ph-printer"></i>
+                                    <select id="set-cashier-printer" class="input-modern" style="padding-right: 40px; width: 100%; border: none; background: transparent; outline: none; color: var(--text-primary); font-family: 'Cairo', sans-serif;">
+                                        <option value="" style="color: #000;">الطابعة الافتراضية للويندوز (Default)</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Col 1.5: WhatsApp Integration -->
@@ -183,6 +193,14 @@
                                     <button type="button" class="btn btn-primary" id="btn-wa-link" style="background: #25D366; border: none; width: 100%; display: flex; justify-content: center; align-items: center; gap: 10px;">
                                         <i class="ph-bold ph-link"></i> تشغيل البوت وتوليد QR
                                     </button>
+                                    <div style="display:flex; gap:8px; margin-top:10px;">
+                                        <button type="button" id="btn-wa-refresh" style="flex:1; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.4); color:#f59e0b; border-radius:8px; padding:8px; font-family:Cairo,sans-serif; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;" title="تحديث الاتصال">
+                                            <i class="ph ph-arrows-clockwise"></i> تحديث
+                                        </button>
+                                        <button type="button" id="btn-wa-disconnect" style="flex:1; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.4); color:#ef4444; border-radius:8px; padding:8px; font-family:Cairo,sans-serif; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;" title="إلغاء الربط ومسح الجلسة">
+                                            <i class="ph ph-plugs-connected"></i> إلغاء الربط
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -302,6 +320,8 @@
 
     <!-- Scripts -->
     <script src="script.js"></script>
+    <script src="db-helper.js"></script>
     <script src="settings.js"></script>
 </body>
 </html>
+

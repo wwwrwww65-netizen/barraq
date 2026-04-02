@@ -33,6 +33,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- Load Printers for Cashier ---
+    const setCashierPrinter = document.getElementById('set-cashier-printer');
+    const savedCashierPrinter = localStorage.getItem('cashier_printer') || '';
+    
+    try {
+        const { ipcRenderer } = require('electron');
+        ipcRenderer.invoke('get-printers').then(printers => {
+            if(printers && printers.length > 0) {
+                printers.forEach(p => {
+                    const option = document.createElement('option');
+                    option.value = p.name;
+                    option.text = p.name;
+                    option.style.color = '#000';
+                    if(p.name === savedCashierPrinter) option.selected = true;
+                    setCashierPrinter.appendChild(option);
+                });
+            }
+        }).catch(e => console.error(e));
+    } catch(e) {}
+
     // --- Drag & Drop Image Logic ---
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         dropZone.addEventListener(eventName, preventDefaults, false);
@@ -97,6 +117,9 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         localStorage.setItem('restaurant_settings', JSON.stringify(data));
+        if (setCashierPrinter) {
+            localStorage.setItem('cashier_printer', setCashierPrinter.value);
+        }
 
         setTimeout(() => {
             alert('تم تطبيق إعدادات الهوية بنجاح على النظام الكلي (الكاشير والمطبخ والفواتير)!');
@@ -288,6 +311,29 @@ document.addEventListener('DOMContentLoaded', () => {
             ipcRenderer.send('wa-start');
         });
 
+        // زر التحديث - يعيد الاتصال بدون مسح الجلسة
+        const btnWaRefresh = document.getElementById('btn-wa-refresh');
+        if(btnWaRefresh) {
+            btnWaRefresh.addEventListener('click', () => {
+                setWaStatus('loading');
+                ipcRenderer.send('wa-refresh');
+                setTimeout(() => ipcRenderer.send('wa-check-status'), 2000);
+            });
+        }
+
+        // زر إلغاء الربط - يمسح الجلسة ويقطع الاتصال نهائياً
+        const btnWaDisconnect = document.getElementById('btn-wa-disconnect');
+        if(btnWaDisconnect) {
+            btnWaDisconnect.addEventListener('click', () => {
+                if(!confirm('هل أنت متأكد من إلغاء ربط واتساب؟\nسيتم مسح جلسة الاتصال وستحتاج لمسح QR من جديد.')) return;
+                ipcRenderer.send('wa-disconnect');
+                setWaStatus('disconnected');
+                localStorage.removeItem('wa_connected');
+                waQrContainer.innerHTML = '<i class="ph ph-plugs" style="font-size:48px; color:var(--accent-red);"></i><br><small style="color:var(--accent-red); margin-top:8px; display:block;">تم إلغاء الربط</small>';
+                waStatusText.innerText = 'تم قطع الاتصال ومسح الجلسة';
+            });
+        }
+
         ipcRenderer.on('wa-qr', async (e, qrString) => {
             waStatusText.innerText = 'يرجى مسح الكود باستخدام واتساب (تبويب الواتساب > الأجهزة المرتبطة)';
             waStatusText.style.color = 'var(--accent-orange)';
@@ -309,9 +355,39 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         ipcRenderer.on('wa-authenticated', () => {
-            waStatusText.innerText = 'تم المصادقة، جاري التجهيز النهائي...';
+            waStatusText.innerText = 'تم مسح الكود ✓ — جاري تهيئة الجلسة...';
             waStatusText.style.color = '#10b981';
-            waQrContainer.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin" style="font-size:40px; color:#10b981;"></i>';
+            btnWaLink.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin"></i> جاري الاتصال...';
+            btnWaLink.disabled = true;
+
+            let secondsLeft = 35;
+            waQrContainer.innerHTML = `
+                <div style="text-align:center; padding:10px;">
+                    <i class="ph-fill ph-check-circle" style="font-size:52px; color:#10b981;"></i>
+                    <div style="margin-top:12px; font-size:15px; color:#10b981; font-weight:800;">تم مسح الكود بنجاح ✓</div>
+                    <div style="margin-top:6px; font-size:13px; color:var(--text-muted);">جاري تهيئة الجلسة مع خوادم واتساب...</div>
+                    <div style="margin:14px auto; width:190px; height:7px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden;">
+                        <div id="wa-cd-fill" style="height:100%; width:100%; background:linear-gradient(90deg,#10b981,#34d399); border-radius:4px; transition:width 1s linear;"></div>
+                    </div>
+                    <div id="wa-cd-text" style="font-size:13px; color:var(--text-muted);">
+                        يُتوقع الاتصال خلال <strong style="color:#10b981; font-size:18px;">${secondsLeft}</strong> ثانية
+                    </div>
+                </div>`;
+
+            const fillEl = document.getElementById('wa-cd-fill');
+            const txtEl  = document.getElementById('wa-cd-text');
+            const cdTimer = setInterval(() => {
+                secondsLeft--;
+                if(fillEl) fillEl.style.width = Math.max((secondsLeft / 35) * 100, 0) + '%';
+                if(txtEl) {
+                    if(secondsLeft > 0) {
+                        txtEl.innerHTML = `يُتوقع الاتصال خلال <strong style="color:#10b981; font-size:18px;">${secondsLeft}</strong> ثانية`;
+                    } else {
+                        txtEl.innerHTML = '<strong style="color:#10b981;">جاري التأكيد النهائي...</strong>';
+                    }
+                }
+                if(secondsLeft <= 0) clearInterval(cdTimer);
+            }, 1000);
         });
 
         ipcRenderer.on('wa-disconnected', (e, msg) => {

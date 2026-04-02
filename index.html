@@ -116,6 +116,7 @@
                             <a href="inventory.html" class="btn btn-outline" style="border-color: #60a5fa; color: #60a5fa; text-decoration: none;"><i class="ph ph-packages"></i> المخازن</a>
                             <a href="returns.html" class="btn btn-outline" style="border-color: #a78bfa; color: #a78bfa; text-decoration: none;"><i class="ph ph-arrow-u-up-left"></i> المرتجعات</a>
                             <a href="acc-expenses.html" class="btn btn-outline" style="text-decoration: none; border-color:var(--text-secondary); color:var(--text-secondary);"><i class="ph ph-hand-coins"></i> مصروف</a>
+                            <a href="cashier-report.html" class="btn btn-outline" style="text-decoration: none; border-color: #a78bfa; color: #a78bfa;"><i class="ph ph-identification-card"></i> تقارير الكاشيرين</a>
                             <a href="pos.html" class="btn btn-primary" style="text-decoration: none;"><i class="ph ph-plus-circle"></i> طلب جديد</a>
                             <button class="btn btn-outline" style="border-color: #fcd34d; color: #fcd34d; background: transparent;" onclick="openShiftFloatModal()"><i class="ph ph-money"></i> رصيد مبدئي للدرج</button>
                             <button class="btn btn-danger" onclick="openShiftReport()"><i class="ph ph-lock-key"></i> إغلاق الوردية</button>
@@ -356,6 +357,7 @@
                         <img src="1111.png" alt="الشعار" class="restaurant-logo" id="shift-logo">
                         <h3 id="shift-res-name">هش HASH</h3>
                         <p>تقرير إغلاق الوردية (Z-Report)</p>
+                        <div class="receipt-datetime" style="font-weight:bold;border:none;" id="shift-cashier-name">الكاشير: —</div>
                         <div class="receipt-datetime" id="shift-datetime"></div>
                     </div>
                     
@@ -415,6 +417,7 @@
                 <div class="shift-modal-actions">
                     <button class="btn btn-outline" style="border-color:var(--border-color); color:var(--text-primary);" onclick="closeShiftReport()">رجوع</button>
                     <button class="btn btn-primary" style="background:#10b981; border:none; color:white;" onclick="printShiftReport()"><i class="ph ph-printer"></i> طباعة الفاتورة</button>
+                    <button class="btn btn-danger" style="background:#ef4444; border:none; color:white;" onclick="confirmCloseShift()"><i class="ph ph-lock-key"></i> إغلاق وبدء جديدة</button>
                 </div>
             </div>
         </div>
@@ -512,6 +515,7 @@
         </style>
     <!-- Scripts -->
     <script src="script.js"></script>
+    <script src="db-helper.js"></script>
     <!-- Live Dashboard Injector -->
     <script src="dashboard.js"></script>
 </body>

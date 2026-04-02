@@ -1010,3 +1010,35 @@ window.exportTableToCSV = function(filename = 'export.csv') {
     link.download = filename;
     link.click();
 };
+
+window.isDateInPeriod = function(dateInput, period) {
+    if(!period || period === 'all') return true;
+    if(!dateInput) return false;
+    let d = new Date(dateInput);
+    if(isNaN(d.getTime())) return false;
+    let now = new Date();
+    let startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    if(period === 'today' || period === 'day') {
+        return d >= startOfToday;
+    } else if(period === 'yesterday') {
+        let startOfYest = new Date(startOfToday.getTime());
+        startOfYest.setDate(startOfYest.getDate() - 1);
+        return d >= startOfYest && d < startOfToday;
+    } else if(period === 'week' || period === '1week' || period === '7days') {
+        let startOfWeek = new Date(startOfToday.getTime());
+        startOfWeek.setDate(startOfWeek.getDate() - 7);
+        return d >= startOfWeek;
+    } else if(period === 'month' || period === 'this_month') {
+        let startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        return d >= startOfMonth;
+    } else if(period === 'quarter') {
+        let qMonth = Math.floor(now.getMonth() / 3) * 3;
+        let startOfQ = new Date(now.getFullYear(), qMonth, 1);
+        return d >= startOfQ;
+    } else if(period === 'year') {
+        let startOfYear = new Date(now.getFullYear(), 0, 1);
+        return d >= startOfYear;
+    }
+    return true;
+};

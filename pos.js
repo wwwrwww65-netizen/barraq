@@ -411,8 +411,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 finalSplitNet = totalOrder;
             }
 
+            const currentUserConf = localStorage.getItem('currentUser');
+            let cashierName = 'كاشير';
+            try { cashierName = (JSON.parse(currentUserConf || '{}')).name || 'كاشير'; } catch(e){}
+
             const orderData = {
                 orderId: orderId,
+                cashier: cashierName,
                 date: now.toLocaleDateString('ar-SA') + " " + now.toLocaleTimeString('ar-SA'),
                 timestamp: now.getTime(),
                 type: currentOrderType,
@@ -561,7 +566,8 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         try {
-            await ipcRenderer.invoke('print-to-device', { html: html, printerName: '' }); // Empty name = default printer
+            const cashierPrinter = localStorage.getItem('cashier_printer') || '';
+            await ipcRenderer.invoke('print-to-device', { html: html, printerName: cashierPrinter });
         } catch(e) { 
             console.error('Customer receipt print failed', e); 
         }

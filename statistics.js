@@ -87,9 +87,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         let orders = await ipcRenderer.invoke('db-get-orders') || [];
 
         // بقية البيانات من ملف JSON مباشرة
-        const returns      = _db.returns      || [];
-        const hrExpenses   = _db.hrExpenses   || [];
-        const purchases    = _db.purchases    || [];
+        let returns      = _db.returns      || [];
+        let hrExpenses   = _db.hrExpenses   || [];
+        let purchases    = _db.purchases    || [];
+
+        if(window.isDateInPeriod) {
+            orders = orders.filter(o => window.isDateInPeriod(o.timestamp || o.dateStr || o.date, range));
+            returns = returns.filter(r => window.isDateInPeriod(r.timestamp || r.date, range));
+            hrExpenses = hrExpenses.filter(h => window.isDateInPeriod(h.timestamp || h.date, range));
+            purchases = purchases.filter(p => window.isDateInPeriod(p.date, range));
+        }
 
         let totalRevenue = 0;
         let cashSales = 0;

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تقارير الكاشيرين — هـــش HASH</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
+    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
+    <style>
+        body { background: var(--bg-dark, #0a0f1e); color: var(--text-primary, #f1f5f9); font-family: 'Cairo', sans-serif; margin: 0; }
+        .page-wrapper { display: flex; min-height: 100vh; }
+        
+        /* Sidebar */
+        .sidebar { width: 220px; background: var(--bg-sidebar, #0f172a); border-left: 1px solid rgba(255,255,255,0.06); display: flex; flex-direction: column; padding: 20px 0; flex-shrink: 0; }
+        .sidebar-logo { text-align: center; padding: 10px 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .sidebar-logo img { width: 48px; border-radius: 12px; }
+        .sidebar-logo h2 { font-size: 16px; margin: 8px 0 0; background: linear-gradient(90deg,#10b981,#34d399); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .sidebar nav { padding: 16px 12px; flex: 1; }
+        .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; color: var(--text-muted, #64748b); text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.2s; margin-bottom: 4px; }
+        .nav-item:hover, .nav-item.active { background: rgba(16,185,129,0.12); color: #10b981; }
+        .nav-item i { font-size: 18px; }
+
+        /* Main Content */
+        .main-content { flex: 1; padding: 28px; overflow-y: auto; }
+        .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 14px; }
+        .page-title { font-size: 24px; font-weight: 800; }
+        .page-title span { color: #10b981; }
+
+        /* Filters Bar */
+        .filters-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 14px 18px; margin-bottom: 24px; }
+        .filter-group { display: flex; flex-direction: column; gap: 4px; }
+        .filter-group label { font-size: 11px; color: var(--text-muted,#64748b); font-weight: 700; text-transform: uppercase; }
+        .filter-group select, .filter-group input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: var(--text-primary,#f1f5f9); padding: 8px 12px; font-family: 'Cairo',sans-serif; font-size: 13px; min-width: 140px; }
+        .btn-apply { background: #10b981; border: none; color: white; padding: 10px 22px; border-radius: 10px; font-family: 'Cairo',sans-serif; font-weight: 700; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 8px; transition: all .2s; margin-top: 18px; }
+        .btn-apply:hover { background: #059669; transform: translateY(-1px); }
+
+        /* Summary KPI Cards */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 28px; }
+        .kpi-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 18px; }
+        .kpi-card .kpi-label { font-size: 12px; color: var(--text-muted,#64748b); font-weight: 700; margin-bottom: 8px; }
+        .kpi-card .kpi-val { font-size: 22px; font-weight: 900; }
+        .kpi-card .kpi-val.green { color: #10b981; }
+        .kpi-card .kpi-val.blue { color: #60a5fa; }
+        .kpi-card .kpi-val.orange { color: #f59e0b; }
+        .kpi-card .kpi-val.red { color: #ef4444; }
+
+        /* Table */
+        .table-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; overflow: hidden; margin-bottom: 28px; }
+        .table-card-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .table-card-header h3 { font-size: 16px; font-weight: 700; margin: 0; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: rgba(255,255,255,0.04); padding: 12px 16px; text-align: right; font-size: 12px; font-weight: 700; color: var(--text-muted,#64748b); text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        td { padding: 13px 16px; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+        .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+        .badge-green { background: rgba(16,185,129,0.15); color: #10b981; }
+        .badge-blue { background: rgba(96,165,250,0.15); color: #60a5fa; }
+        .badge-red { background: rgba(239,68,68,0.15); color: #ef4444; }
+        .badge-orange { background: rgba(245,158,11,0.15); color: #f59e0b; }
+        .cashier-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg,#10b981,#34d399); display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: white; margin-left: 10px; }
+        .no-data { text-align: center; padding: 50px 20px; color: var(--text-muted,#64748b); }
+        .no-data i { font-size: 48px; opacity: .4; display: block; margin-bottom: 12px; }
+
+        /* My report banner (for non-admin) */
+        .my-report-banner { background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(52,211,153,0.06)); border: 1px solid rgba(16,185,129,0.25); border-radius: 14px; padding: 16px 20px; margin-bottom: 22px; display: flex; align-items: center; gap: 14px; }
+        .my-report-banner i { font-size: 32px; color: #10b981; }
+        .my-report-banner h3 { margin: 0; font-size: 18px; font-weight: 800; }
+        .my-report-banner p { margin: 3px 0 0; font-size: 13px; color: var(--text-muted,#64748b); }
+    </style>
+</head>
+<body class="dark-theme">
+<div class="page-wrapper">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <img src="1111.png" alt="Logo" onerror="this.style.display='none'">
+            <h2>هـــش HASH</h2>
+        </div>
+        <nav>
+            <a href="index.html" class="nav-item"><i class="ph ph-squares-four"></i> الرئيسية</a>
+            <a href="accounting.html" class="nav-item"><i class="ph ph-vault"></i> المحاسبة</a>
+            <a href="statistics.html" class="nav-item"><i class="ph ph-chart-pie-slice"></i> الإحصائيات</a>
+            <a href="cashier-report.html" class="nav-item active"><i class="ph ph-identification-card"></i> تقارير الكاشيرين</a>
+            <a href="staff.html" class="nav-item"><i class="ph ph-users-three"></i> شؤون الموظفين</a>
+            <a href="inventory.html" class="nav-item"><i class="ph ph-package"></i> المخزون</a>
+            <a href="settings.html" class="nav-item"><i class="ph ph-gear"></i> الإعدادات</a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="page-header">
+            <div>
+                <div class="page-title">تقارير <span>الكاشيرين</span></div>
+                <p style="color:var(--text-muted,#64748b); margin:4px 0 0; font-size:13px;">أداء كل موظف — المبيعات، الورديات، والعمليات</p>
+            </div>
+            <button onclick="window.print()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:#f1f5f9; padding:10px 18px; border-radius:10px; font-family:'Cairo',sans-serif; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:8px; font-size:14px;">
+                <i class="ph ph-printer"></i> طباعة التقرير
+            </button>
+        </div>
+
+        <!-- My Report Banner (shown for non-admins) -->
+        <div class="my-report-banner" id="my-report-banner" style="display:none;">
+            <i class="ph ph-identification-badge"></i>
+            <div>
+                <h3 id="banner-name">مرحباً، الكاشير</h3>
+                <p id="banner-desc">يعرض هذا التقرير أداءك الشخصي فقط. يستطيع المدير الاطلاع على تقارير جميع الكاشيرين.</p>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-bar">
+            <div class="filter-group">
+                <label>الفترة الزمنية</label>
+                <select id="filter-period">
+                    <option value="today">اليوم</option>
+                    <option value="yesterday">الأمس</option>
+                    <option value="this_week">هذا الأسبوع</option>
+                    <option value="this_month" selected>هذا الشهر</option>
+                    <option value="all">كل الوقت</option>
+                </select>
+            </div>
+            <div class="filter-group" id="cashier-filter-group">
+                <label>الكاشير</label>
+                <select id="filter-cashier">
+                    <option value="all">الكل</option>
+                </select>
+            </div>
+            <div class="filter-group" style="display:none;" id="date-from-group">
+                <label>من تاريخ</label>
+                <input type="date" id="filter-from">
+            </div>
+            <div class="filter-group" style="display:none;" id="date-to-group">
+                <label>إلى تاريخ</label>
+                <input type="date" id="filter-to">
+            </div>
+            <button class="btn-apply" onclick="applyFilters()"><i class="ph ph-funnel"></i> تحديث</button>
+        </div>
+
+        <!-- KPI Summary -->
+        <div class="kpi-grid" id="kpi-grid">
+            <div class="kpi-card"><div class="kpi-label">إجمالي المبيعات</div><div class="kpi-val green" id="kpi-total">0.00 ر.س</div></div>
+            <div class="kpi-card"><div class="kpi-label">عدد الطلبات</div><div class="kpi-val blue" id="kpi-orders">0 طلب</div></div>
+            <div class="kpi-card"><div class="kpi-label">متوسط الفاتورة</div><div class="kpi-val orange" id="kpi-avg">0.00 ر.س</div></div>
+            <div class="kpi-card"><div class="kpi-label">مبيعات كاش</div><div class="kpi-val green" id="kpi-cash">0.00 ر.س</div></div>
+            <div class="kpi-card"><div class="kpi-label">مبيعات شبكة</div><div class="kpi-val blue" id="kpi-network">0.00 ر.س</div></div>
+            <div class="kpi-card"><div class="kpi-label">إجمالي المرتجعات</div><div class="kpi-val red" id="kpi-returns">0.00 ر.س</div></div>
+        </div>
+
+        <!-- Per-Cashier Summary Table (Admin only) -->
+        <div class="table-card" id="cashier-summary-card">
+            <div class="table-card-header">
+                <h3><i class="ph ph-identification-card" style="color:#10b981;margin-left:8px;"></i> ملخص أداء كل كاشير</h3>
+            </div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>الكاشير</th>
+                            <th>الطلبات</th>
+                            <th>إجمالي المبيعات</th>
+                            <th>كاش</th>
+                            <th>شبكة</th>
+                            <th>متوسط الفاتورة</th>
+                            <th>المرتجعات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cashier-summary-tbody">
+                        <tr><td colspan="7" class="no-data"><i class="ph ph-circle-notch ph-spin"></i>جاري التحميل...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Orders Detail Table -->
+        <div class="table-card">
+            <div class="table-card-header">
+                <h3><i class="ph ph-receipt" style="color:#60a5fa; margin-left:8px;"></i> تفاصيل الطلبات</h3>
+                <span id="orders-count-badge" class="badge badge-blue">0 طلب</span>
+            </div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>رقم الطلب</th>
+                            <th>الكاشير</th>
+                            <th>التاريخ والوقت</th>
+                            <th>النوع</th>
+                            <th>طريقة الدفع</th>
+                            <th>المبلغ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-tbody">
+                        <tr><td colspan="6" class="no-data"><i class="ph ph-circle-notch ph-spin"></i>جاري التحميل...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="script.js"></script>
+<script src="db-helper.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+    // ── Determine current user ───────────────────────────────────────
+    let currentUser = { name: 'كاشير', role: 'كاشير' };
+    try { currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}'); } catch(e) {}
+
+    const isAdmin = ['المدير العام', 'مدير', 'أدمن', 'admin', 'manager'].includes(currentUser.role);
+
+    // ── Setup UI based on role ───────────────────────────────────────
+    if (!isAdmin) {
+        // Non-admin: show only their own data, hide cashier filter
+        document.getElementById('cashier-filter-group').style.display = 'none';
+        document.getElementById('cashier-summary-card').style.display = 'none';
+        const banner = document.getElementById('my-report-banner');
+        banner.style.display = 'flex';
+        document.getElementById('banner-name').textContent = 'مرحباً، ' + (currentUser.name || 'الكاشير');
+    }
+
+    // ── Load data ────────────────────────────────────────────────────
+    const db = await window.dbRead();
+    let allOrders = db.orders || [];
+    let allReturns = db.returns || [];
+
+    // Populate cashier filter (admin only)
+    const cashierNames = [...new Set(allOrders.map(o => o.cashier || 'غير معروف'))];
+    const cashierSelect = document.getElementById('filter-cashier');
+    cashierNames.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        cashierSelect.appendChild(opt);
+    });
+
+    window.applyFilters = function() {
+        const period = document.getElementById('filter-period').value;
+        const cashierFilter = isAdmin
+            ? document.getElementById('filter-cashier').value
+            : (currentUser.name || '');
+
+        const now = new Date();
+        function inPeriod(ts) {
+            if (!ts) return false;
+            const d = new Date(typeof ts === 'number' ? ts : ts);
+            if (isNaN(d)) return false;
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const startOfYest  = new Date(startOfToday); startOfYest.setDate(startOfYest.getDate() - 1);
+            const startOfWeek  = new Date(startOfToday); startOfWeek.setDate(startOfToday.getDate() - startOfToday.getDay());
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            if (period === 'today')      return d >= startOfToday;
+            if (period === 'yesterday')  return d >= startOfYest && d < startOfToday;
+            if (period === 'this_week')  return d >= startOfWeek;
+            if (period === 'this_month') return d >= startOfMonth;
+            return true; // 'all'
+        }
+
+        // Resolve cashier name: use saved or fallback to 'المدير' for legacy orders
+        function resolveCashier(o) {
+            if (o.cashier && o.cashier.trim()) return o.cashier;
+            // Legacy order before multi-cashier feature — attribute to manager
+            return 'المدير';
+        }
+
+        let orders = allOrders
+            .filter(o => inPeriod(o.timestamp || o.createdAt))
+            .map(o => ({ ...o, cashier: resolveCashier(o) }));
+
+        let returns = allReturns.filter(r => inPeriod(r.timestamp));
+
+        if (cashierFilter && cashierFilter !== 'all') {
+            orders = orders.filter(o => o.cashier === cashierFilter);
+        }
+
+        renderKPIs(orders, returns);
+        if (isAdmin) renderCashierSummary(orders, returns);
+        renderOrdersTable(orders);
+    };
+
+    function renderKPIs(orders, returns) {
+        let total = 0, cash = 0, network = 0;
+        orders.forEach(o => {
+            total += o.total || 0;
+            if (o.paymentMethod === 'كاش') cash += o.total || 0;
+            else if (o.paymentMethod === 'شبكة / بطاقة' || o.paymentMethod === 'شبكة') network += o.total || 0;
+            else if (o.paymentMethod === 'مجزأ') { cash += o.splitCash || 0; network += o.splitNetwork || 0; }
+        });
+        let totalReturns = returns.reduce((s, r) => s + (r.amount || 0), 0);
+        const fmt = n => n.toLocaleString('ar-SA', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ر.س';
+        document.getElementById('kpi-total').textContent = fmt(total);
+        document.getElementById('kpi-orders').textContent = orders.length + ' طلب';
+        document.getElementById('kpi-avg').textContent = fmt(orders.length ? total / orders.length : 0);
+        document.getElementById('kpi-cash').textContent = fmt(cash);
+        document.getElementById('kpi-network').textContent = fmt(network);
+        document.getElementById('kpi-returns').textContent = fmt(totalReturns);
+    }
+
+    function renderCashierSummary(orders, returns, names) {
+        const tbody = document.getElementById('cashier-summary-tbody');
+        const allCashiers = [...new Set(orders.map(o => o.cashier || 'غير معروف'))];
+        if (allCashiers.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="no-data"><i class="ph ph-user-circle"></i> لا توجد بيانات للفترة المحددة</td></tr>`;
+            return;
+        }
+        const fmt = n => n.toLocaleString('ar-SA', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ر.س';
+        tbody.innerHTML = allCashiers.map(name => {
+            const myOrders = orders.filter(o => (o.cashier || 'غير معروف') === name);
+            const myReturns = returns.filter(r => (r.emp || '') === name);
+            let total=0, cash=0, network=0, retTotal=0;
+            myOrders.forEach(o => {
+                total += o.total||0;
+                if(o.paymentMethod==='كاش') cash += o.total||0;
+                else if(o.paymentMethod==='شبكة / بطاقة'||o.paymentMethod==='شبكة') network += o.total||0;
+                else if(o.paymentMethod==='مجزأ') { cash+=o.splitCash||0; network+=o.splitNetwork||0; }
+            });
+            myReturns.forEach(r => retTotal += r.amount||0);
+            const initials = name.split(' ').map(w=>w[0]||'').join('').substring(0,2);
+            return `<tr>
+                <td><span class="cashier-avatar">${initials}</span>${name}</td>
+                <td><span class="badge badge-blue">${myOrders.length} طلب</span></td>
+                <td style="font-weight:800; color:#10b981;">${fmt(total)}</td>
+                <td>${fmt(cash)}</td>
+                <td>${fmt(network)}</td>
+                <td>${fmt(myOrders.length ? total/myOrders.length : 0)}</td>
+                <td style="color:#ef4444;">${fmt(retTotal)}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function renderOrdersTable(orders) {
+        const tbody = document.getElementById('orders-tbody');
+        document.getElementById('orders-count-badge').textContent = orders.length + ' طلب';
+        if (orders.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="no-data"><i class="ph ph-receipt"></i> لا توجد طلبات للفترة المحددة</td></tr>`;
+            return;
+        }
+        const sorted = [...orders].sort((a,b) => (b.timestamp||0)-(a.timestamp||0));
+        const fmt = n => (n||0).toLocaleString('ar-SA', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ر.س';
+        const payClass = m => m==='كاش' ? 'badge-green' : m==='مجزأ' ? 'badge-orange' : 'badge-blue';
+        const typeClass = t => t==='سفري' ? 'badge-orange' : 'badge-blue';
+        tbody.innerHTML = sorted.map(o => `<tr>
+            <td><strong>${o.orderId||'—'}</strong></td>
+            <td>${o.cashier||'غير معروف'}</td>
+            <td style="font-size:12px;color:var(--text-muted,#64748b);">${o.date||'—'}</td>
+            <td><span class="badge ${typeClass(o.type)}">${o.type||'محلي'}</span></td>
+            <td><span class="badge ${payClass(o.paymentMethod)}">${o.paymentMethod||'—'}</span></td>
+            <td style="font-weight:800;color:#10b981;">${fmt(o.total)}</td>
+        </tr>`).join('');
+    }
+
+    // Initial load
+    applyFilters();
+
+    // Period change handler
+    document.getElementById('filter-period').addEventListener('change', applyFilters);
+    document.getElementById('filter-cashier').addEventListener('change', applyFilters);
+});
+</script>
+</body>
+</html>
