@@ -337,6 +337,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('pl-total-exp').innerText = `(${fmt3(totalExp)})`;
         document.getElementById('pl-net-profit').innerText = fmt3(netProfit) + ' ر.س';
 
+        // Zakat & Taxes calculations
+        let dynamicTaxRate = 0.15;
+        try {
+           const sysRaw = JSON.parse(localStorage.getItem('restaurant_settings')||'{}');
+           if(sysRaw.taxRate !== undefined) dynamicTaxRate = Number(sysRaw.taxRate)/100;
+        } catch(e) {}
+
+        const taxCollected = totalRev - (totalRev / (1 + dynamicTaxRate));
+        const extZakatAmount = netProfit > 0 ? (netProfit * 0.025) : 0;
+        const netTaxStatement = taxCollected; // Usually minus tax paid on purchases, but keeping simple
+
+        if(document.getElementById('pl-tax-collected')) {
+            document.getElementById('pl-tax-collected').innerText = fmt3(taxCollected);
+            document.getElementById('pl-zakat-est').innerText = fmt3(extZakatAmount);
+            document.getElementById('pl-net-tax').innerText = fmt3(netTaxStatement);
+        }
+
         // General Ledger
         const lTbody = document.getElementById('ledger-tbody');
         if(lTbody) {
