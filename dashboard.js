@@ -337,16 +337,307 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(modal) modal.style.display = 'none';
     };
 
-    window.confirmCloseShift = function() {
+    window.confirmCloseShift = async function() {
         if(!confirm('هل أنت متأكد من إغلاق الوردية وبدء وردية جديدة بـ 0.00؟')) return;
-        
+
+        const closeTime = Date.now();
+
+        // ─── حفظ وقت إغلاق الوردية في قائمة التواريخ — لإعادة بناء التقرير لاحقاً ───
+        let zTimestamps = [];
+        try { zTimestamps = JSON.parse(localStorage.getItem('z_report_timestamps') || '[]'); } catch(e){}
+        const lastZTime = parseInt(localStorage.getItem('last_z_report_time')) || 0;
+
+        // اجمع بيانات الكاشير
+        const currentUserConf = localStorage.getItem('currentUser');
+        let cashierName = 'موظف';
+        if (currentUserConf) { try { const p = JSON.parse(currentUserConf); if (p.name) cashierName = p.name; } catch(e){} }
+
+        zTimestamps.push({ startTime: lastZTime || closeTime - 3600000, endTime: closeTime, cashierName });
+        localStorage.setItem('z_report_timestamps', JSON.stringify(zTimestamps));
+
         // Mark current time as start of new shift
-        localStorage.setItem('last_z_report_time', Date.now());
-        localStorage.setItem('shift_cash_float', 0); // Zero drawer
-        
+        localStorage.setItem('last_z_report_time', closeTime);
+        localStorage.setItem('shift_cash_float', 0);
+
         alert('تم إغلاق الوردية وتصفير الدرج بنجاح. أي مبيعات قادمة ستحسب للوردية الجديدة.');
         window.location.reload();
     };
+
+
+    // =============================================
+    // DAY CLOSE REPORT LOGIC
+    // =============================================
+
+    window.openDayCloseReport = async function() {
+        const modal = document.getElementById('dayCloseModal');
+        if (!modal) return;
+
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+        // Fill header
+        document.getElementById('day-datetime').innerText = now.toLocaleString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        document.getElementById('day-date').innerText = todayStr;
+
+        const currentUserConf = localStorage.getItem('currentUser');
+        let managerName = 'المدير';
+        if (currentUserConf) {
+            try { const p = JSON.parse(currentUserConf); if (p.name) managerName = p.name; } catch(e){}
+        }
+        document.getElementById('day-cashier-name').innerText = 'المسؤول: ' + managerName;
+
+        // Restore restaurant name AND logo from settings (same as shift modal)
+        const sysSet = localStorage.getItem('restaurant_settings');
+        if (sysSet) {
+            try {
+                const s = JSON.parse(sysSet);
+                // اسم المطعم
+                const displayName = (s.name && s.name !== 'هش HASH' && s.name !== 'هـــش HASH') ? s.name : 'هش HASH';
+                document.getElementById('day-res-name').innerText = displayName;
+                // شعار المطعم
+                const dayLogoEl = document.getElementById('day-logo');
+                if (dayLogoEl && s.logo && s.logo !== '1111.png' && s.logo !== '1(1).png') {
+                    dayLogoEl.src = s.logo;
+                }
+            } catch(e){}
+        }
+
+        // Get tax rate
+        let taxRate = 15;
+        if (sysSet) { try { const s = JSON.parse(sysSet); if (s.taxRate !== undefined) taxRate = parseFloat(s.taxRate); } catch(e){} }
+        const TAX_RATE = taxRate / 100;
+
+        // Read database
+        let db = await window.dbRead();
+        let allOrders = db.orders || [];
+        let allReturns = db.returns || [];
+        let allHrExpenses = (db.hrExpenses || []).concat(db.expenses || []);
+
+        // Filter only TODAY's data (full day, ignore shift boundaries)
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const endOfDay = startOfDay + 86400000;
+
+        function isToday(ts) {
+            const t = typeof ts === 'string' ? new Date(ts).getTime() : (ts || 0);
+            return t >= startOfDay && t < endOfDay;
+        }
+
+        const todayOrders   = allOrders.filter(o   => isToday(o.timestamp || o.createdAt || o.dateStr || o.date));
+        const todayReturns  = allReturns.filter(r  => isToday(r.timestamp || r.date));
+        const todayExpenses = allHrExpenses.filter(e => isToday(e.timestamp || e.date || (e.createdAt)));
+
+        // ---- بناء قائمة الفترات الزمنية لكل وردية — من قاعدة البيانات الفعلية ----
+        let zTimestamps = [];
+        try { zTimestamps = JSON.parse(localStorage.getItem('z_report_timestamps') || '[]'); } catch(e){}
+
+        const lastZTime = parseInt(localStorage.getItem('last_z_report_time')) || startOfDay;
+        const shiftFloat = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
+
+        // فلترة اليوم فقط
+        const todayZTimestamps = zTimestamps.filter(z => isToday(z.endTime || z.startTime));
+
+        // بناء فترات الورديات: نبدأ من بداية اليوم
+        // كل وردية = من startTime إلى endTime
+        let shiftRanges = [];
+
+        if (todayZTimestamps.length === 0) {
+            // لا توجد سجلات ورديات مغلقة — اعتبر كل شيء قبل lastZTime وردية واحدة مغلقة
+            const prevOrders = todayOrders.filter(o => (o.timestamp || o.createdAt || 0) < lastZTime);
+            if (prevOrders.length > 0) {
+                shiftRanges.push({ startTime: startOfDay, endTime: lastZTime, cashierName: 'وردية سابقة', isClosed: true });
+            }
+        } else {
+            // بناء من z_report_timestamps — كل إدخال فيه startTime و endTime
+            todayZTimestamps.forEach(z => {
+                shiftRanges.push({ startTime: z.startTime || startOfDay, endTime: z.endTime, cashierName: z.cashierName || 'موظف', isClosed: true });
+            });
+        }
+
+        // إضافة الوردية الحالية (مفتوحة)
+        shiftRanges.push({ startTime: lastZTime, endTime: now.getTime(), cashierName: managerName, isCurrent: true });
+
+        // ---- احتساب بيانات كل وردية من قاعدة البيانات الفعلية ----
+        const allDayShifts = shiftRanges.map(range => {
+            const rOrders   = todayOrders.filter(o   => { const t = o.timestamp || o.createdAt || 0; return t >= range.startTime && t < range.endTime; });
+            const rReturns  = todayReturns.filter(r  => { const t = r.timestamp || new Date(r.date||0).getTime() || 0; return t >= range.startTime && t < range.endTime; });
+            const rExpenses = todayExpenses.filter(e => { const t = e.timestamp || new Date(e.date||0).getTime() || 0; return t >= range.startTime && t < range.endTime; });
+
+            let cash = 0, net = 0, tax = 0, ret = 0, exp = 0;
+            rOrders.forEach(o => {
+                tax += o.total - (o.total / (1 + TAX_RATE));
+                if (o.paymentMethod && o.paymentMethod.includes('كاش')) cash += o.total;
+                else net += o.total;
+            });
+            rReturns.forEach(r => {
+                ret += r.amount;
+                if (r.method && r.method.includes('كاش')) cash -= r.amount;
+                else net -= r.amount;
+            });
+            rExpenses.forEach(ex => exp += ex.amount);
+
+            const floatAmt = range.isCurrent ? shiftFloat : 0;
+
+            return {
+                ...range,
+                ordersCount: rOrders.length,
+                cashSales: cash,
+                networkSales: net,
+                totalTax: tax,
+                totalReturns: ret,
+                totalExpenses: exp,
+                drawerBalance: floatAmt + cash - exp
+            };
+        });
+
+        // ---- Grand Day Totals ----
+        let dayTotalCash = 0, dayTotalNet = 0, dayTotalTax = 0, dayTotalRet = 0, dayTotalExp = 0, dayTotalOrders = 0;
+        allDayShifts.forEach(s => {
+            dayTotalCash    += s.cashSales    || 0;
+            dayTotalNet     += s.networkSales || 0;
+            dayTotalTax     += s.totalTax     || 0;
+            dayTotalRet     += s.totalReturns || 0;
+            dayTotalExp     += s.totalExpenses|| 0;
+            dayTotalOrders  += s.ordersCount  || 0;
+        });
+        const dayTotalIncome = dayTotalCash + dayTotalNet;
+        const dayNetTotal    = dayTotalIncome - dayTotalRet - dayTotalExp;
+
+        // Populate summary
+        document.getElementById('day-shifts-count').innerText  = allDayShifts.length + ' وردية';
+        document.getElementById('day-orders-count').innerText  = dayTotalOrders + ' طلب';
+        document.getElementById('day-total-cash').innerText    = dayTotalCash.toFixed(2)    + ' ر.س';
+        document.getElementById('day-total-network').innerText = dayTotalNet.toFixed(2)     + ' ر.س';
+        document.getElementById('day-total-income').innerText  = dayTotalIncome.toFixed(2)  + ' ر.س';
+        document.getElementById('day-total-tax').innerText     = dayTotalTax.toFixed(2)     + ' ر.س';
+        document.getElementById('day-total-returns').innerText = dayTotalRet.toFixed(2)     + ' ر.س';
+        document.getElementById('day-total-expenses').innerText= dayTotalExp.toFixed(2)     + ' ر.س';
+        document.getElementById('day-net-total').innerText     = dayNetTotal.toFixed(2)     + ' ر.س';
+
+        // ---- Render Per-Shift Breakdown ----
+        const breakdownEl = document.getElementById('day-shifts-breakdown');
+        breakdownEl.innerHTML = '';
+
+        allDayShifts.forEach((s, idx) => {
+            const sStart = new Date(s.startTime).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+            const sEnd   = s.isCurrent ? 'الآن' : new Date(s.endTime).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+            const badge  = s.isCurrent ? '<span style="color:#059669; font-size:10px;">(مفتوحة الآن)</span>' : '<span style="color:#7c3aed; font-size:10px;">(مغلقة)</span>';
+            const sIncome = ((s.cashSales||0) + (s.networkSales||0)).toFixed(2);
+
+            breakdownEl.insertAdjacentHTML('beforeend', `
+                <div class="day-shift-block">
+                    <div class="shift-block-header">
+                        <span>الوردية ${idx + 1} — ${s.cashierName || 'موظف'} ${badge}</span>
+                        <span>${sStart} ← ${sEnd}</span>
+                    </div>
+                    <div class="receipt-row"><span>عدد الطلبات:</span><span>${s.ordersCount || 0} طلب</span></div>
+                    <div class="receipt-row"><span>مبيعات كاش:</span><span>${(s.cashSales||0).toFixed(2)} ر.س</span></div>
+                    <div class="receipt-row"><span>مبيعات شبكة:</span><span>${(s.networkSales||0).toFixed(2)} ر.س</span></div>
+                    <div class="receipt-row"><span>إجمالي الدخل:</span><span style="font-weight:800;">${sIncome} ر.س</span></div>
+                    <div class="receipt-row"><span>المرتجعات:</span><span style="color:#c00;">${(s.totalReturns||0).toFixed(2)} ر.س</span></div>
+                    <div class="receipt-row"><span>المصروفات:</span><span style="color:#c00;">${(s.totalExpenses||0).toFixed(2)} ر.س</span></div>
+                    <div class="receipt-row"><span>رصيد الدرج:</span><span style="font-weight:800; color:#047857;">${(s.drawerBalance||0).toFixed(2)} ر.س</span></div>
+                </div>
+            `);
+        });
+
+        // Store snapshot for confirmCloseDay
+        window.__dayCloseSnapshot = { allDayShifts, dayTotalCash, dayTotalNet, dayTotalTax, dayTotalRet, dayTotalExp, dayTotalIncome, dayNetTotal, dayTotalOrders, dayDate: todayStr, closedAt: now.getTime() };
+
+        modal.style.display = 'flex';
+    };
+
+    window.closeDayCloseReport = function() {
+        const modal = document.getElementById('dayCloseModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    window.confirmCloseDay = function() {
+        if (!confirm('هل أنت متأكد من إقفال اليوم بالكامل؟\nسيتم حفظ سجل كامل لكل الورديات وإعادة تعيين النظام ليوم جديد.')) return;
+
+        const snap = window.__dayCloseSnapshot || {};
+
+        // Save day summary to day_history in localStorage
+        let dayHistory = [];
+        try { dayHistory = JSON.parse(localStorage.getItem('day_history') || '[]'); } catch(e){}
+
+        dayHistory.push({
+            date: snap.dayDate,
+            closedAt: snap.closedAt || Date.now(),
+            shiftsCount: (snap.allDayShifts || []).length,
+            ordersCount: snap.dayTotalOrders || 0,
+            totalCash: snap.dayTotalCash || 0,
+            totalNetwork: snap.dayTotalNet || 0,
+            totalIncome: snap.dayTotalIncome || 0,
+            totalTax: snap.dayTotalTax || 0,
+            totalReturns: snap.dayTotalRet || 0,
+            totalExpenses: snap.dayTotalExp || 0,
+            netTotal: snap.dayNetTotal || 0,
+            shifts: snap.allDayShifts || []
+        });
+        localStorage.setItem('day_history', JSON.stringify(dayHistory));
+
+        // Close all shifts — reset shift time to NOW and zero the drawer
+        localStorage.setItem('last_z_report_time', Date.now());
+        localStorage.setItem('shift_cash_float', 0);
+
+        // Also clear z_report_timestamps (day closed, fresh start)
+        localStorage.setItem('z_report_timestamps', '[]');
+        // Also clear shift_history (legacy)
+        localStorage.setItem('shift_history', '[]');
+
+        alert('✅ تم إقفال اليوم بالكامل بنجاح!\nبيانات اليوم محفوظة. أي مبيعات جديدة ستحسب لليوم الجديد.');
+        window.location.reload();
+    };
+
+    window.printDayReport = async function() {
+        const path = require('path');
+        const printClone = document.getElementById('day-print-area').cloneNode(true);
+
+        // Fix logo path
+        const logo = printClone.querySelector('img#day-logo');
+        if (logo) {
+            logo.src = 'file://' + path.join(__dirname, '1111.png').replace(/\\/g, '/');
+        }
+
+        const html = `
+            <style>
+                @import url('node_modules/@fontsource/cairo/index.css');
+                @page { margin: 0; }
+                body { font-family: 'Cairo', sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; direction: rtl; }
+                #receipt-container { width: 72mm; color: #000; margin: 0; padding: 5mm; }
+                .shift-receipt { width:100%; background: #fff; color: #000; font-size: 13px; }
+                .receipt-header { text-align: center; margin-bottom: 15px; }
+                .receipt-header img { width: 60px; height: 60px; object-fit: contain; filter: grayscale(100%); margin-bottom: 5px; }
+                .receipt-header h3 { margin: 0; font-size: 18px; font-weight: 800; }
+                .receipt-header p { margin: 2px 0; font-size: 13px; color: #444; font-weight: 700;}
+                .receipt-datetime { margin-top: 5px; font-size: 12px; color: #666; border-top: 1px dashed #ccc; padding-top: 5px; }
+                .receipt-divider { border-top: 1px dashed #000; margin: 10px 0; }
+                .receipt-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-weight: 600; font-size: 12px;}
+                .receipt-row.bold { font-weight: 800; font-size: 14px; }
+                .receipt-row.highlight { background: #f0f0f0; padding: 5px; border-radius: 4px; margin-top: 6px; }
+                .receipt-row.grand-total { background: #000; color: #fff; padding: 8px; border-radius: 4px; font-size: 14px; margin-top: 12px; }
+                .receipt-footer { text-align: center; font-size: 11px; font-weight:700; margin-top: 15px;}
+                .day-shift-block { border: 1px dashed #bbb; border-radius: 4px; margin-bottom: 10px; padding: 8px; background: #fafafa; }
+                .shift-block-header { font-weight: 800; font-size: 12px; background: #e8e8e8; padding: 4px 6px; border-radius: 3px; margin-bottom: 6px; display: flex; justify-content: space-between; }
+                .day-shift-block .receipt-row { font-size: 11px; margin-bottom: 4px; }
+            </style>
+            <div id="receipt-container">
+                ${printClone.innerHTML}
+            </div>
+        `;
+
+        try {
+            const { ipcRenderer } = require('electron');
+            const cashierPrinter = localStorage.getItem('cashier_printer') || '';
+            await ipcRenderer.invoke('print-to-device', { html: html, printerName: cashierPrinter });
+        } catch(e) {
+            console.error('Day Report print failed', e);
+        }
+    };
+
+    // ─── تحديث confirmCloseShift النسخة القديمة (legacy override — للتوافق) ───
+    // النسخة الجديدة معرفة أعلى وتحفظ z_report_timestamps
+    // لا نحتاج لأي override إضافي هنا
 
     window.printShiftReport = async function() {
         const path = require('path');

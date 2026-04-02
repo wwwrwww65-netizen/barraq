@@ -29,7 +29,7 @@
                     <p class="nav-label">الرئيسية</p>
                     <a href="index.html" class="nav-item active"><i class="ph ph-squares-four"></i><span>لوحة القيادة</span></a>
                     <a href="pos.html" class="nav-item"><i class="ph ph-calculator"></i><span>نقطة البيع (الكاشير)</span></a>
-                    <a href="kitchen.html" class="nav-item"><i class="ph ph-cooking-pot"></i><span>شاشة المطبخ (KDS)</span></a>
+                    <a href="kitchen-production.html" class="nav-item"><i class="ph ph-cooking-pot"></i><span>المطبخ والإنتاج</span></a>
                 </div>
 
                 <div class="nav-group">
@@ -123,6 +123,7 @@
                             <a href="pos.html" class="btn btn-primary" style="text-decoration: none;"><i class="ph ph-plus-circle"></i> طلب جديد</a>
                             <button class="btn btn-outline" style="border-color: #fcd34d; color: #fcd34d; background: transparent;" onclick="openShiftFloatModal()"><i class="ph ph-money"></i> رصيد مبدئي للدرج</button>
                             <button class="btn btn-danger" onclick="openShiftReport()"><i class="ph ph-lock-key"></i> إغلاق الوردية</button>
+                            <button class="btn btn-danger" style="background: linear-gradient(135deg, #7c3aed, #4f46e5); border:none;" onclick="openDayCloseReport()"><i class="ph ph-moon-stars"></i> اقفال اليوم</button>
                         </div>
                     </div>
                 </div>
@@ -425,6 +426,101 @@
             </div>
         </div>
 
+        <!-- Modal اقفال اليوم الكامل -->
+        <div id="dayCloseModal" class="shift-modal" style="display:none;">
+            <div class="shift-modal-content" style="width:600px; max-width:96vw; max-height:90vh;">
+                <div class="shift-modal-header" style="background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(79,70,229,0.15));">
+                    <h2 style="color:#a78bfa;"><i class="ph ph-moon-stars"></i> تقرير إقفال اليوم الكامل</h2>
+                    <button class="close-btn" onclick="closeDayCloseReport()"><i class="ph ph-x"></i></button>
+                </div>
+
+                <div id="day-print-area" class="shift-receipt" style="max-height:65vh;">
+                    <!-- Header -->
+                    <div class="receipt-header">
+                        <img src="1111.png" alt="الشعار" class="restaurant-logo" id="day-logo">
+                        <h3 id="day-res-name">هش HASH</h3>
+                        <p style="font-weight:800; font-size:14px;">تقرير إقفال اليوم الكامل (X-Report)</p>
+                        <div class="receipt-datetime" style="font-weight:bold;border:none;" id="day-cashier-name">المسؤول: —</div>
+                        <div class="receipt-datetime" id="day-datetime"></div>
+                    </div>
+
+                    <div class="receipt-divider"></div>
+
+                    <!-- ملخص اليوم الكامل -->
+                    <div style="text-align:center; background:#f0f0f0; padding:6px 10px; border-radius:6px; font-weight:800; font-size:13px; margin-bottom:10px;">▌ ملخص اليوم الكامل</div>
+
+                    <div class="receipt-row">
+                        <span>تاريخ اليوم:</span>
+                        <span id="day-date">—</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span>عدد الورديات:</span>
+                        <span id="day-shifts-count">0</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span>إجمالي الطلبات:</span>
+                        <span id="day-orders-count">0 طلب</span>
+                    </div>
+
+                    <div class="receipt-divider"></div>
+
+                    <!-- تفاصيل الورديات -->
+                    <div style="text-align:center; background:#f0f0f0; padding:6px 10px; border-radius:6px; font-weight:800; font-size:13px; margin-bottom:10px;">▌ تفاصيل الورديات</div>
+                    <div id="day-shifts-breakdown"></div>
+
+                    <div class="receipt-divider"></div>
+
+                    <!-- الإجماليات الكاملة -->
+                    <div style="text-align:center; background:#f0f0f0; padding:6px 10px; border-radius:6px; font-weight:800; font-size:13px; margin-bottom:10px;">▌ الإجماليات الكاملة لليوم</div>
+
+                    <div class="receipt-row">
+                        <span>إجمالي الكاش:</span>
+                        <span id="day-total-cash">0.00 ر.س</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span>إجمالي الشبكة:</span>
+                        <span id="day-total-network">0.00 ر.س</span>
+                    </div>
+                    <div class="receipt-row bold highlight">
+                        <span>إجمالي الدخل:</span>
+                        <span id="day-total-income">0.00 ر.س</span>
+                    </div>
+
+                    <div class="receipt-divider"></div>
+
+                    <div class="receipt-row">
+                        <span>إجمالي الضريبة (مشمولة):</span>
+                        <span id="day-total-tax">0.00 ر.س</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span>إجمالي المرتجعات:</span>
+                        <span id="day-total-returns" class="negative">0.00 ر.س</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span>إجمالي المصروفات:</span>
+                        <span id="day-total-expenses" class="negative">0.00 ر.س</span>
+                    </div>
+
+                    <div class="receipt-divider"></div>
+
+                    <div class="receipt-row bold grand-total">
+                        <span>صافي اليوم الكامل:</span>
+                        <span id="day-net-total">0.00 ر.س</span>
+                    </div>
+
+                    <div class="receipt-footer" id="day-footer">
+                        تم إقفال اليوم بالكامل — شكراً لجهود فريق العمل!
+                    </div>
+                </div>
+
+                <div class="shift-modal-actions">
+                    <button class="btn btn-outline" style="border-color:var(--border-color); color:var(--text-primary);" onclick="closeDayCloseReport()">رجوع</button>
+                    <button class="btn btn-primary" style="background:#10b981; border:none; color:white;" onclick="printDayReport()"><i class="ph ph-printer"></i> طباعة التقرير</button>
+                    <button class="btn btn-danger" style="background: linear-gradient(135deg,#7c3aed,#4f46e5); border:none; color:white;" onclick="confirmCloseDay()"><i class="ph ph-moon-stars"></i> تأكيد الاقفال</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Modal رصيد مبدئي للدرج -->
         <div id="floatModal" class="shift-modal" style="display:none;">
             <div class="shift-modal-content" style="width: 350px;">
@@ -514,6 +610,31 @@
                 .shift-modal-header, .shift-modal-actions { display: none !important; }
                 #shift-print-area, #shift-print-area * { visibility: visible; }
                 #shift-print-area { position: absolute; left: 0; top: 0; width: 80mm; padding: 0; box-shadow: none; max-height: none; overflow: visible;}
+                #day-print-area, #day-print-area * { visibility: visible; }
+                #day-print-area { position: absolute; left: 0; top: 0; width: 80mm; padding: 0; box-shadow: none; max-height: none; overflow: visible;}
+            }
+
+            /* Day shifts breakdown styles */
+            .day-shift-block {
+                border: 1px dashed #bbb;
+                border-radius: 6px;
+                margin-bottom: 14px;
+                padding: 10px;
+                background: #fafafa;
+            }
+            .day-shift-block .shift-block-header {
+                font-weight: 800;
+                font-size: 13px;
+                background: #e8e8e8;
+                padding: 5px 8px;
+                border-radius: 4px;
+                margin-bottom: 8px;
+                display: flex;
+                justify-content: space-between;
+            }
+            .day-shift-block .receipt-row {
+                font-size: 12px;
+                margin-bottom: 5px;
             }
         </style>
     <!-- Scripts -->

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <script src="demo-mock.js"></script>
@@ -24,7 +24,7 @@
             <nav class="nav-menu">
                 <a href="index.html" class="nav-item"><i class="ph ph-squares-four"></i><span>الرئيسية</span></a>
                 <a href="pos.html" class="nav-item"><i class="ph ph-monitor"></i><span>نقطة البيع (الكاشير)</span></a>
-                <a href="kitchen.html" class="nav-item"><i class="ph ph-cooking-pot"></i><span>شاشة المطبخ (KDS)</span></a>
+                <a href="kitchen-production.html" class="nav-item"><i class="ph ph-cooking-pot"></i><span>المطبخ والإنتاج</span></a>
                 <a href="orders.html" class="nav-item"><i class="ph ph-list-numbers"></i><span>سجل الطلبات</span></a>
                 <a href="sales.html" class="nav-item"><i class="ph ph-receipt"></i><span>المبيعات</span></a>
                 <a href="menu.html" class="nav-item"><i class="ph ph-list-dashes"></i><span>الأصناف والمنيو</span></a>
@@ -159,6 +159,41 @@
                                         <p>الوصول لصفحات المشتريات وإضافة كميات وتعديل مستودعات.</p>
                                     </div>
                                     <label class="switch"><input type="checkbox" id="p_inv_manage"><span class="slider"></span></label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Group: Kitchen & Production -->
+                        <div class="perm-group">
+                            <h4 class="perm-group-title"><i class="ph-fill ph-cooking-pot"></i> المطبخ والإنتاج</h4>
+                            <div class="perm-grid">
+                                <div class="perm-toggle-row">
+                                    <div class="perm-text">
+                                        <h5>الوصول لصفحة المطبخ والإنتاج</h5>
+                                        <p>السماح برؤية لوحة الإنتاج الرئيسية وشاشة KDS ومتابعة الطلبات.</p>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="p_kitchen_access"><span class="slider"></span></label>
+                                </div>
+                                <div class="perm-toggle-row">
+                                    <div class="perm-text">
+                                        <h5>استلام المواد من المخزن للمطبخ</h5>
+                                        <p>تسجيل سندات الاستلام من المستودع لداخل المطبخ وخصمها من الرصيد.</p>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="p_kitchen_receive"><span class="slider"></span></label>
+                                </div>
+                                <div class="perm-toggle-row">
+                                    <div class="perm-text">
+                                        <h5>تسليم المنتجات للمبيعات</h5>
+                                        <p>إصدار سندات تسليم الأصناف الجاهزة والمنتجة لنقطة البيع.</p>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="p_kitchen_handover"><span class="slider"></span></label>
+                                </div>
+                                <div class="perm-toggle-row">
+                                    <div class="perm-text">
+                                        <h5>تقارير وطباعة سندات المطبخ</h5>
+                                        <p>الوصول لتقارير الاستلام والتسليم وطباعة الفواتير والسندات.</p>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="p_kitchen_reports"><span class="slider"></span></label>
                                 </div>
                             </div>
                         </div>

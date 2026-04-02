@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <script src="demo-mock.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>المطبخ والانتاج - هـــش HASH</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="kitchen-production.css">
+    <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
+    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
+    <script src="node_modules/chart.js/dist/chart.umd.js"></script>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar kp-sidebar">
+            <div class="logo">
+                <img src="1111.png" alt="شعار المطبخ" class="restaurant-logo">
+                <span>المطبخ <span class="highlight">والإنتاج</span></span>
+            </div>
+            
+            <nav class="nav-menu" id="kp-nav-menu">
+                <div class="nav-group">
+                    <p class="nav-label">العمليات اليومية</p>
+                    <a href="#" class="nav-item active" data-tab="dashboard"><i class="ph ph-presentation-chart"></i><span>اللوحة الرئيسية</span></a>
+                    <a href="#" class="nav-item" data-tab="receive"><i class="ph ph-download-simple"></i><span>استلام من المخزن</span></a>
+                    <a href="#" class="nav-item" data-tab="handover"><i class="ph ph-upload-simple"></i><span>تسليم للمبيعات</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">المراقبة والتقارير</p>
+                    <a href="kitchen.html" class="nav-item"><i class="ph ph-cooking-pot"></i><span>شاشة المطبخ (KDS)</span></a>
+                    <a href="#" class="nav-item" data-tab="reports"><i class="ph ph-file-text"></i><span>التقارير والاسناد</span></a>
+                    <a href="#" class="nav-item" data-tab="options"><i class="ph ph-gear"></i><span>خيارات المطبخ</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>العودة للرئيسية</span></a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content kp-main">
+            <!-- Header -->
+            <header class="top-header kp-header">
+                <div class="header-left-title">
+                    <h2 id="page-title">لوحة رئيسية الإنتاج</h2>
+                </div>
+                
+                <div class="header-actions">
+                    <button class="icon-btn notification-btn">
+                        <i class="ph ph-bell"></i>
+                    </button>
+                    <div class="user-profile">
+                        <img src="avatar.svg" alt="الشيف" class="avatar">
+                        <div class="user-info">
+                            <span class="user-name">الشيف التنفيذي</span>
+                            <span class="user-role">مدير المطبخ</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="kp-content-area" id="main-content-area">
+                <!-- Content injected via JS -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="script.js"></script>
+    <script src="db-helper.js"></script>
+    <script src="kitchen-production.js"></script>
+</body>
+</html>

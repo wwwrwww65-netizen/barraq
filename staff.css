@@ -387,7 +387,7 @@
 
 /* ==== Highly Accurate Voucher Template Printing Styles ==== */
 #voucher-print-container {
-    opacity: 0;  /* Hidden but takes space to render, overriden by JS during print */
+    opacity: 0;  
     position: absolute;
     pointer-events: none;
 }
@@ -397,49 +397,67 @@
     box-sizing: border-box;
     padding: 40px;
     font-family: 'Cairo', Arial, sans-serif;
-    color: #1e3a8a; /* Deep blue used in text */
+    color: #1a1a2e;
     position: relative;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #d1d5db;
+    border-top: 15px solid #0f172a; /* Solid elegant header line instead of gradient */
+    direction: rtl; /* Crucial for html2canvas to render text properly */
 }
+
 .v-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 30px;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 20px;
 }
 .v-left-box {
-    border: 2px solid #94a3b8;
-    border-radius: 12px;
-    padding: 12px 20px;
-    width: 200px;
+    border: 2px solid #e5e7eb;
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 10px 15px;
+    width: 220px;
+    box-sizing: border-box;
 }
 .v-row {
     display: flex;
     justify-content: space-between;
     font-size: 16px;
-    margin-bottom: 4px;
-    color: #475569;
+    margin-bottom: 5px;
+    color: #4b5563;
+}
+.v-row strong {
+    color: #111827;
+    font-weight: bold;
+}
+.v-center-logo {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 .v-center-logo img {
     height: 90px;
+    width: auto;
     max-width: 160px;
     object-fit: contain;
-    border-radius: 0;
-    border: none;
 }
 .v-right-text {
+    width: 220px;
     text-align: right;
+    box-sizing: border-box;
 }
 .v-right-text h2 {
-    color: #0284c7;
-    font-size: 22px;
-    font-weight: 800;
-    margin: 0 0 6px 0;
+    color: #111827;
+    font-size: 20px;
+    font-weight: bold;
+    margin: 0 0 5px 0;
 }
 .v-right-text p {
-    color: #64748b;
+    color: #4b5563;
     font-size: 15px;
-    margin: 4px 0;
+    margin: 3px 0;
 }
 .v-title-area {
     text-align: center;
@@ -447,103 +465,113 @@
     margin-bottom: 30px;
 }
 .v-main-title {
-    color: #0284c7;
-    font-size: 32px;
-    font-weight: 800;
+    display: inline-block;
+    color: #111827;
+    font-size: 28px;
+    font-weight: bold;
     margin: 0;
+    padding: 10px 30px;
+    background: #f3f4f6;
+    border: 2px solid #e5e7eb;
+    border-radius: 6px;
 }
 .v-balance-box {
     position: absolute;
     left: 0;
-    top: 5px;
-    background-color: #0284c7;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #10b981;
     color: white;
-    padding: 8px 24px;
-    border-radius: 30px;
+    padding: 8px 20px;
+    border-radius: 6px;
     font-size: 16px;
-    font-weight: 700;
+    font-weight: bold;
     display: flex;
+    align-items: center;
     gap: 8px;
 }
 .v-body-box {
-    border: 2px solid #000000;
-    border-radius: 15px;
+    background: #ffffff;
+    border: 2px solid #d1d5db;
+    border-radius: 10px;
     padding: 30px;
     margin-bottom: 20px;
 }
+
 .v-table {
     width: 100%;
-    margin-bottom: 60px;
+    margin-bottom: 40px;
     border-collapse: collapse;
 }
 .v-table td {
-    padding: 14px 0;
-    font-size: 20px;
+    padding: 15px 0;
+    font-size: 18px;
+    border-bottom: 1px dotted #d1d5db;
+}
+.v-table tr:last-child td {
+    border-bottom: none;
 }
 .v-label {
-    color: #0284c7;
-    font-weight: 700;
+    color: #4b5563;
+    font-weight: bold;
     width: 25%;
-    vertical-align: top;
 }
 .v-dots {
-    color: #0284c7;
-    font-weight: 700;
+    color: #9ca3af;
+    font-weight: bold;
     width: 5%;
     text-align: center;
-    vertical-align: top;
 }
 .v-val {
-    color: #0284c7;
-    vertical-align: top;
+    color: #111827;
 }
 .v-val strong {
-    font-weight: 800;
-    color: #0284c7;
+    font-weight: bold;
+    font-size: 20px;
 }
 .v-sub {
     font-size: 16px;
-    color: #0284c7;
+    color: #6b7280;
+    margin-right: 10px;
 }
 .v-signatures {
     display: flex;
     justify-content: space-between;
     padding: 0 40px;
+    margin-top: 30px;
 }
 .v-sig-box {
     text-align: center;
+    width: 200px;
 }
 .v-sig-box p {
-    font-size: 18px;
-    font-weight: 800;
-    margin-bottom: 20px;
-    color: #000;
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 25px;
+    color: #4b5563;
 }
 .v-sig-box span {
     display: block;
-    margin-bottom: 8px;
-    color: #94a3b8;
+    margin-bottom: 10px;
+    color: #9ca3af;
 }
 .v-sig-box small {
     display: block;
-    color: #000;
-    font-weight: 700;
+    color: #111827;
+    font-weight: bold;
+    font-size: 15px;
 }
 .v-footer {
-    background-color: #0284c7;
-    color: white;
-    padding: 12px 20px;
-    font-size: 16px;
-    font-weight: 800;
-    margin-bottom: 30px;
-}
-.v-footer p {
-    margin: 0;
-}
-.v-bottom-meta {
+    color: #6b7280;
+    padding: 20px 0 0 0;
+    font-size: 14px;
+    border-top: 2px solid #e5e7eb;
     display: flex;
     justify-content: space-between;
-    color: #475569;
-    font-size: 14px;
+    align-items: center;
+}
+.v-bottom-meta {
+    color: #9ca3af;
+    font-size: 13px;
 }
 

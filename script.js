@@ -403,6 +403,10 @@ window.syncGlobalSettings = function() {
             const shiftName = document.getElementById('shift-res-name');
             if (shiftName) shiftName.innerText = displayName;
 
+            // تحديث اسم المطعم في تقرير إقفال اليوم الكامل
+            const dayName = document.getElementById('day-res-name');
+            if (dayName) dayName.innerText = displayName;
+
             const rTax = document.getElementById('r-store-tax');
             if (rTax && data.tax) rTax.innerText = 'الرقم الضريبي: ' + data.tax;
 
@@ -1042,3 +1046,70 @@ window.isDateInPeriod = function(dateInput, period) {
     }
     return true;
 };
+
+// Load Global Notifications Engine
+(function() {
+    try {
+        const s = document.createElement('script');
+        s.src = 'notifications.js';
+        document.head.appendChild(s);
+        console.log('[System] Notifications Engine Loaded Globally');
+        
+        // --- Theme Toggle Logic ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const body = document.body;
+            let themeBtn = null;
+            
+            // Check saved theme globally
+            const savedTheme = localStorage.getItem('sys_theme') || 'dark';
+            
+            function applyTheme(theme) {
+                if(theme === 'light') {
+                    body.classList.remove('dark-theme');
+                    body.classList.add('light-theme');
+                    if (themeBtn) {
+                        themeBtn.innerHTML = '<i class="ph-fill ph-moon"></i>';
+                        themeBtn.style.color = '#3b82f6';
+                    }
+                } else {
+                    body.classList.remove('light-theme');
+                    body.classList.add('dark-theme');
+                    if (themeBtn) {
+                        themeBtn.innerHTML = '<i class="ph-fill ph-sun"></i>';
+                        themeBtn.style.color = '#f59e0b';
+                    }
+                }
+            }
+            
+            // Always apply theme on load regardless of header actions
+            applyTheme(savedTheme);
+
+            // Add toggle button to header if it exists
+            const headerActions = document.querySelector('.header-actions');
+            if(headerActions) {
+                // Find where to insert (before the notification bell)
+                const notifBtn = document.querySelector('.notification-btn');
+                
+                themeBtn = document.createElement('button');
+                themeBtn.className = 'icon-btn theme-toggle-btn';
+                themeBtn.title = 'تغيير المظهر';
+                
+                if(notifBtn) {
+                    headerActions.insertBefore(themeBtn, notifBtn);
+                } else {
+                    headerActions.appendChild(themeBtn);
+                }
+                
+                // Set initial icon correctly based on applied theme
+                applyTheme(localStorage.getItem('sys_theme') || 'dark');
+                
+                themeBtn.addEventListener('click', () => {
+                    const isLight = body.classList.contains('light-theme');
+                    const newTheme = isLight ? 'dark' : 'light';
+                    localStorage.setItem('sys_theme', newTheme);
+                    applyTheme(newTheme);
+                });
+            }
+        });
+    } catch(e) {}
+})();

@@ -74,10 +74,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.updateKDSStatus = function(orderId, nextStatus) {
         const db = loadDB();
         const dbOrder = (db.orders || []).find(o => o.orderId === orderId);
+        
         if(dbOrder) {
             dbOrder.kitchenStatus = nextStatus;
+            
+            // Automatic Handover when completed
+            if (nextStatus === 'done' && !dbOrder.kitchenTxHandoverCreated) {
+                if (!db.kitchenTx) db.kitchenTx = [];
+                if (!db.kitchenStock) db.kitchenStock = [];
+                
+                (dbOrder.items || []).forEach(item => {
+                    const itemName = item.name || item.nameAr || "صنف غير معروف";
+                    const qty = Number(item.qty) || 1;
+                    
+                    const newTx = {
+                        id: 'OUT-' + Math.floor(Math.random() * 100000),
+                        type: 'handover',
+                        itemName: itemName,
+                        qty: qty,
+                        notes: "تسليم تلقائي - فاتورة مبيعات #" + dbOrder.orderId,
+                        date: new Date().toISOString(),
+                        user: "KDS (آلي)"
+                    };
+                    db.kitchenTx.push(newTx);
+                    
+                    // Deduct from internal kitchen stock tracker
+                    const kIdx = db.kitchenStock.findIndex(k => k.name === itemName);
+                    if (kIdx !== -1) {
+                        db.kitchenStock[kIdx].qty -= qty;
+                    }
+                });
+                
+                dbOrder.kitchenTxHandoverCreated = true;
+            }
+            
             saveDB(db);
         }
+        
         // Update local reference too
         const localOrder = orders.find(o => o.orderId === orderId);
         if(localOrder) localOrder.kitchenStatus = nextStatus;

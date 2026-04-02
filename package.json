@@ -14,9 +14,19 @@
   "build": {
     "appId": "com.hash.pos",
     "productName": "Hash POS",
+    "compression": "maximum",
+    "asar": true,
     "directories": {
       "output": "dist"
     },
+    "files": [
+      "**/*",
+      "!**/*.ts",
+      "!**/*.map",
+      "!.git/**/*",
+      "!dist/**/*",
+      "!node_modules/puppeteer/.local-chromium/**/*"
+    ],
     "win": {
       "target": "nsis",
       "icon": "1111.png"

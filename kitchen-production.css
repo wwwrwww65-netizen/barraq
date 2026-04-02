@@ -1,0 +1,193 @@
+/* kitchen-production.css */
+.kp-sidebar {
+    background: linear-gradient(180deg, #1a0f0f 0%, #000000 100%);
+}
+
+.kp-sidebar .logo span .highlight {
+    color: #ff4757;
+}
+
+.kp-header {
+    background: rgba(30, 20, 20, 0.6);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255,71,87,0.2);
+}
+
+.kp-content-area {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    animation: fadeIn 0.4s ease-in-out;
+}
+
+.kp-card {
+    background: var(--bg-card);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.kp-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.kp-stat-card {
+    background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.kp-stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(255, 71, 87, 0.1);
+    border-color: rgba(255, 71, 87, 0.3);
+}
+
+.kp-icon-box {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+}
+
+.kp-icon-box.orange { background: rgba(255, 159, 67, 0.15); color: #ff9f43; }
+.kp-icon-box.green { background: rgba(46, 213, 115, 0.15); color: #2ed573; }
+.kp-icon-box.red { background: rgba(255, 71, 87, 0.15); color: #ff4757; }
+.kp-icon-box.blue { background: rgba(83, 82, 237, 0.15); color: #5352ed; }
+
+.kp-stat-details h3 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.kp-stat-details p {
+    margin: 5px 0 0 0;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+/* Beautiful Table */
+.kp-table-container {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    margin-top: 20px;
+}
+.kp-table-container h3 {
+    padding: 15px;
+    margin: 0;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(255,255,255,0.02);
+}
+.kp-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: right;
+}
+.kp-table th {
+    background: rgba(0,0,0,0.2);
+    padding: 15px;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+.kp-table td {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+.kp-table tr:hover {
+    background: rgba(255,255,255,0.02);
+}
+.kp-badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+}
+.kp-badge.status-in { background: rgba(46, 213, 115, 0.15); color: #2ed573; }
+.kp-badge.status-out { background: rgba(83, 82, 237, 0.15); color: #5352ed; }
+.kp-badge.status-warn { background: rgba(255, 159, 67, 0.15); color: #ff9f43; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.kp-action-btn {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff4757 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.kp-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 71, 87, 0.3);
+}
+
+.kp-action-btn.secondary {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: white;
+}
+.kp-action-btn.secondary:hover {
+    background: rgba(255,255,255,0.1);
+    box-shadow: none;
+}
+
+.kp-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.kp-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.kp-input, .kp-select {
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--border-color);
+    padding: 12px;
+    border-radius: 8px;
+    color: white;
+    font-family: inherit;
+    width: 100%;
+}
+.kp-input:focus, .kp-select:focus {
+    outline: none;
+    border-color: #ff4757;
+}
+
+/* Beautiful empty state */
+.kp-empty-state {
+    text-align: center;
+    padding: 50px 20px;
+    color: var(--text-muted);
+}
+.kp-empty-state i {
+    font-size: 64px;
+    color: rgba(255,255,255,0.1);
+    margin-bottom: 20px;
+}

@@ -52,36 +52,64 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // --- Process Return Logic ---
-    btnProcess.addEventListener('click', () => {
+    btnProcess.addEventListener('click', async () => {
         if(!currentFoundOrder) return;
 
-        if(!confirm('تأكيد عملية الاسترجاع؟ سيتم خصم المبلغ من المبيعات الأصلية وإلغاء الفواتير.')) return;
+        if(!confirm('تأكيد عملية الاسترجاع؟ سيتم خصم المبلغ من المبيعات الأصلية، وإرجاع الأصناف لسجل المطبخ.')) return;
 
         const originalText = btnProcess.innerHTML;
         btnProcess.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin"></i> جاري إرجاع المبلغ...';
         btnProcess.style.pointerEvents = 'none';
 
-        setTimeout(() => {
-            const db = loadDB();
+        try {
+            await window.dbUpdate(db => {
+                // 1. Remove from orders
+                db.orders = (db.orders || []).filter(o => o.orderId !== currentFoundOrder.orderId);
 
-            // 1. Remove from orders
-            db.orders = (db.orders || []).filter(o => o.orderId !== currentFoundOrder.orderId);
+                // 2. Add to returns
+                if(!db.returns) db.returns = [];
+                const now = new Date();
+                db.returns.push({
+                    origId: currentFoundOrder.orderId,
+                    returnTime: now.toLocaleDateString('ar-SA') + ' ' + now.toLocaleTimeString('ar-SA'),
+                    timestamp: now.getTime(),
+                    amount: currentFoundOrder.total,
+                    method: currentFoundOrder.paymentMethod,
+                    emp: 'المدير / الكاشير'
+                });
 
-            // 2. Add to returns
-            if(!db.returns) db.returns = [];
-            const now = new Date();
-            db.returns.push({
-                origId: currentFoundOrder.orderId,
-                returnTime: now.toLocaleDateString('ar-SA') + ' ' + now.toLocaleTimeString('ar-SA'),
-                timestamp: now.getTime(),
-                amount: currentFoundOrder.total,
-                method: currentFoundOrder.paymentMethod,
-                emp: 'المدير'
+                // 3. Auto-Return to Kitchen Production Log
+                if (currentFoundOrder.items && currentFoundOrder.items.length > 0) {
+                    if (!db.kitchenTx) db.kitchenTx = [];
+                    if (!db.kitchenStock) db.kitchenStock = [];
+
+                    currentFoundOrder.items.forEach(item => {
+                        const itemName = item.name || item.nameAr || "صنف مسترجع";
+                        const qty = Number(item.qty) || 1;
+                        
+                        // Add an incoming return to kitchen log
+                        db.kitchenTx.push({
+                            id: 'RET-' + Math.floor(Math.random() * 100000),
+                            type: 'receive', 
+                            itemName: itemName,
+                            qty: qty,
+                            notes: "مرتجع من المبيعات - فاتورة #" + currentFoundOrder.orderId,
+                            date: new Date().toISOString(),
+                            user: "الكاشير (آلي)"
+                        });
+
+                        // Add back to kitchen stock
+                        const kIdx = db.kitchenStock.findIndex(k => k.name === itemName);
+                        if (kIdx !== -1) {
+                            db.kitchenStock[kIdx].qty += qty;
+                        } else {
+                            db.kitchenStock.push({ name: itemName, qty: qty, unit: "وحدة" });
+                        }
+                    });
+                }
             });
 
-            saveDB(db);
-
-            alert('تم استرداد المبلغ وإلغاء عملية الكاشير بنجاح!');
+            alert('✅ تم استرداد المبلغ وإلغاء عملية الكاشير بنجاح! تم تنبيه المطبخ بالمرتجعات.');
             
             resultCard.classList.remove('active');
             currentFoundOrder = null;
@@ -91,7 +119,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             loadReturns();
 
-        }, 1200);
+        } catch(e) {
+            console.error('Return process error', e);
+            alert('حدث خطأ أثناء معالجة الاسترجاع.');
+            btnProcess.innerHTML = originalText;
+            btnProcess.style.pointerEvents = 'auto';
+        }
     });
 
     // --- Load Returns Historical Data ---
