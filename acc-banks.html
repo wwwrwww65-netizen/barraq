@@ -60,7 +60,7 @@
                 <div class="acc-kpis">
                     <div class="kpi-card blue">
                         <div class="kpi-title" style="color:white;"><i class="ph-fill ph-vault text-blue"></i><span>إجمالي السيولة المتاحة</span></div>
-                        <h3 style="font-size:28px; color:white;" id="total-liquidity">جاري الحساب... <span style="font-size:14px;">ر.س</span></h3>
+                        <h3 style="font-size:28px; color:white;" id="total-liquidity">جاري الحساب... <span class="js-cur-sym" style="font-size:14px;">ر.س</span></h3>
                     </div>
                 </div>
 
@@ -110,7 +110,7 @@
                             <tr>
                                 <th>تاريخ الحركة</th>
                                 <th>نوع العملية</th>
-                                <th>المبلغ (ر.س)</th>
+                                <th>المبلغ (<span class="js-cur-sym">ر.س</span>)</th>
                                 <th>البيان والملاحظات</th>
                             </tr>
                         </thead>
@@ -147,7 +147,7 @@
             <h3 style="margin-bottom:20px; color:white;"><i class="ph ph-plus-circle"></i> إيراد إضافي</h3>
             <form id="form-other-income">
                 <div class="acc-form-group">
-                    <label>المبلغ (ر.س) <span class="required">*</span></label>
+                    <label>المبلغ (<span class="js-cur-sym">ر.س</span>) <span class="required">*</span></label>
                     <input type="number" id="oi-amount" class="input-acc" required min="0" step="any" placeholder="0.00">
                 </div>
                 <div class="acc-form-group">
@@ -181,7 +181,7 @@
                     </select>
                 </div>
                 <div class="acc-form-group">
-                    <label>المبلغ (ر.س) <span class="required">*</span></label>
+                    <label>المبلغ (<span class="js-cur-sym">ر.س</span>) <span class="required">*</span></label>
                     <input type="number" id="bm-amount" class="input-acc" required min="0" step="any" placeholder="أدخل المبلغ...">
                 </div>
                 <div class="acc-form-group">
@@ -195,6 +195,7 @@
         </div>
     </div>
 
+    <script src="currency-helper.js"></script>
     <script src="script.js"></script>
     <script src="db-helper.js"></script>
     <script src="acc-banks.js"></script>

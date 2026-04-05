@@ -172,6 +172,24 @@
                                     </select>
                                 </div>
                             </div>
+
+                            <div class="form-group">
+                                <label>عملة العرض في النظام</label>
+                                <select id="set-currency-preset" class="input-modern" style="width:100%;">
+                                    <option value="SAR">ريال سعودي (ر.س)</option>
+                                    <option value="USD">دولار أمريكي ($)</option>
+                                    <option value="EUR">يورو (€)</option>
+                                    <option value="YER">ريال يمني (ر.ي)</option>
+                                    <option value="CUSTOM">مخصص — رمز واسم بالكتابة</option>
+                                </select>
+                                <small style="color:var(--text-muted); font-size:12px; margin-top:6px; display:block;">الكاشير، التقارير، المخزون، الموظفين، المحاسبة، والإيصالات.</small>
+                            </div>
+                            <div id="set-currency-custom-wrap" class="form-group" style="display:none;">
+                                <label>رمز العملة الظاهر بجانب الأرقام</label>
+                                <input type="text" id="set-currency-symbol" class="input-modern" dir="ltr" placeholder="مثال: د.ك" maxlength="16">
+                                <label style="margin-top:10px; display:block;">الاسم الكامل في السندات (نص قانوني)</label>
+                                <input type="text" id="set-currency-label" class="input-modern" placeholder="مثال: دينار كويتي">
+                            </div>
                         </div>
 
                         <!-- Col 1.5: WhatsApp Integration -->
@@ -330,6 +348,65 @@
                             </div>
                         </div>
 
+                        <!-- تصفير كامل — يظهر للمدير العام فقط -->
+                        <div id="settings-factory-reset-wrap" class="settings-card" style="grid-column: 1 / -1; display: none; border-color: rgba(239, 68, 68, 0.45); background: rgba(127, 29, 29, 0.12);">
+                            <div class="sc-header" style="border-bottom-color: rgba(239, 68, 68, 0.25);">
+                                <i class="ph-fill ph-warning-octagon" style="color: #ef4444;"></i>
+                                <h3 style="color: #fecaca;">منطقة خطرة — تصفير النظام</h3>
+                            </div>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; margin: 0;">
+                                حذف <strong style="color:#fca5a5;">جميع</strong> بيانات العمل: الطلبات، الأصناف، المخزون، الموظفين، المحاسبة، الإعدادات المحفوظة محلياً، وغيرها. يبقى فقط اسم المستخدم وكلمة سر المدير العام للدخول لاحقاً. عند التنفيذ تختار: <strong>هذا الجهاز فقط</strong> أو <strong>كل الأجهزة على الشبكة</strong> (المزامنة المحلية). يُنصح بأخذ نسخة احتياطية قبل التنفيذ.
+                            </p>
+                            <div>
+                                <button type="button" id="btn-factory-reset-open" class="btn btn-primary" style="background: #b91c1c; border: none; color: white;">
+                                    <i class="ph-fill ph-trash"></i> تصفير النظام بالكامل
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="settings-card" style="grid-column: 1 / -1;">
+                            <div class="sc-header">
+                                <i class="ph-fill ph-hard-drives" style="color: #ea580c;"></i>
+                                <h3>نسخ احتياطي على قرص محلي أو USB</h3>
+                            </div>
+                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">يحفظ قاعدة البيانات وإعدادات النظام في مجلد تختاره (قرص آخر أو فلاشة). يُنشأ مجلد فرعي بتاريخ ووقت كل نسخة.</p>
+                            <div class="form-group">
+                                <label style="color: var(--text-secondary);">المجلد الهدف</label>
+                                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                                    <code id="local-backup-path" dir="ltr" style="flex:1; min-width:200px; display:block; padding:10px 12px; background:rgba(0,0,0,0.25); border-radius:8px; font-size:12px; word-break:break-all;">لم يُحدد بعد</code>
+                                    <button type="button" class="btn btn-primary" id="btn-local-backup-browse" style="background: var(--bg-card); border: 1px solid var(--border-light); color: white;">
+                                        <i class="ph-fill ph-folder-open"></i> اختيار مجلد
+                                    </button>
+                                    <button type="button" class="btn btn-primary" id="btn-local-backup-open" style="background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); display:none;">
+                                        <i class="ph-fill ph-folder-notch-open"></i> فتح في المستكشف
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="form-group" style="display:flex; gap:10px; flex-wrap:wrap;">
+                                <button type="button" class="btn btn-primary" id="btn-local-backup-now" style="background: #ea580c; border: none;">
+                                    <i class="ph-fill ph-floppy-disk-back"></i> نسخ الآن
+                                </button>
+                            </div>
+                            <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);">
+                                <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color: var(--text-secondary); font-size: 14px;">
+                                    <input type="checkbox" id="local-backup-auto-enabled" style="width:18px; height:18px;">
+                                    <span>نسخ تلقائي إلى نفس المجلد</span>
+                                </label>
+                                <p style="color: var(--text-muted); font-size: 0.82rem; margin: 10px 0 8px 28px;">يُنشأ مجلد نسخة جديد في كل مرة. عطّل الخيار إن لم يكن القرص متصلاً دائماً.</p>
+                                <div style="display:flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-right: 28px;">
+                                    <label for="local-backup-auto-interval" style="color: var(--text-secondary); font-size: 13px;">كل:</label>
+                                    <select id="local-backup-auto-interval" class="input-modern" style="max-width: 220px; padding: 8px 12px;">
+                                        <option value="60">ساعة واحدة</option>
+                                        <option value="360" selected>6 ساعات</option>
+                                        <option value="720">12 ساعة</option>
+                                        <option value="1440">24 ساعة (يومياً)</option>
+                                        <option value="10080">أسبوعياً</option>
+                                    </select>
+                                </div>
+                                <p id="local-backup-auto-last" style="color: var(--text-muted); font-size: 0.78rem; margin: 10px 28px 0 0;"></p>
+                            </div>
+                        </div>
+
                         <!-- Full Width Action Bar -->
                         <div style="grid-column: 1 / -1; margin-top:-10px">
                             <div class="settings-actions">
@@ -344,7 +421,42 @@
         </main>
     </div>
 
+    <!-- نوافذ تصفير النظام (المدير العام فقط) -->
+    <div id="modal-factory-confirm" class="factory-modal-overlay" aria-hidden="true">
+        <div class="factory-modal-box" role="dialog" aria-labelledby="factory-confirm-title" aria-modal="true">
+            <h3 id="factory-confirm-title" class="factory-modal-title"><i class="ph-fill ph-warning" style="color:#f87171;"></i> تأكيد تصفير النظام</h3>
+            <p class="factory-modal-text">هل أنت متأكد من <strong>تصفير كل البيانات بالكامل</strong>؟ لا يمكن التراجع عن هذا الإجراء. سيتم حذف المبيعات والمخزون والموظفين وجميع السجلات المحفوظة في هذا الجهاز (ما عدا بيانات دخول المدير العام).</p>
+            <div class="factory-modal-actions">
+                <button type="button" id="btn-factory-confirm-no" class="factory-btn factory-btn-muted">لا، إلغاء</button>
+                <button type="button" id="btn-factory-confirm-yes" class="factory-btn factory-btn-danger">نعم، متأكد</button>
+            </div>
+        </div>
+    </div>
+    <div id="modal-factory-password" class="factory-modal-overlay" aria-hidden="true">
+        <div class="factory-modal-box" role="dialog" aria-labelledby="factory-pwd-title" aria-modal="true">
+            <h3 id="factory-pwd-title" class="factory-modal-title"><i class="ph-fill ph-key" style="color:#94a3b8;"></i> كلمة سر المدير العام</h3>
+            <p class="factory-modal-text">أدخل كلمة السر نفسها المستخدمة لتسجيل الدخول كـ <strong>المدير العام</strong> (الحساب الافتراضي admin أو الذي ضبطته من الإعدادات).</p>
+            <fieldset class="factory-reset-scope-fieldset">
+                <legend>نطاق التصفير</legend>
+                <label class="factory-reset-scope-label">
+                    <input type="radio" name="factory-reset-scope" value="local" checked>
+                    <span><strong>هذا الجهاز فقط</strong> — لا يُبلَّغ الأجهزة الأخرى؛ بقية الأجهزة تحتفظ ببياناتها حتى تُصفَّر يدوياً أو تزامن لاحقاً.</span>
+                </label>
+                <label class="factory-reset-scope-label">
+                    <input type="radio" name="factory-reset-scope" value="lan">
+                    <span><strong>كل الأجهزة على الشبكة المحلية</strong> — تُفرَّغ القاعدة على هذا الجهاز ثم تُبلَّغ الأجهزة المتصلة لتسحب نفس القاعدة الفارغة وتُمسح إعداداتها المحلية (مع الإبقاء على بيانات المدير على كل جهاز). يجب أن يبقى هذا الجهاز والشبكة يعملان.</span>
+                </label>
+            </fieldset>
+            <input type="password" id="factory-pwd-input" class="input-modern" autocomplete="current-password" placeholder="كلمة السر">
+            <div class="factory-modal-actions" style="margin-top:18px;">
+                <button type="button" id="btn-factory-pwd-cancel" class="factory-btn factory-btn-muted">رجوع</button>
+                <button type="button" id="btn-factory-pwd-submit" class="factory-btn factory-btn-danger"><i class="ph-fill ph-trash"></i> تنفيذ التصفير</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
+    <script src="currency-helper.js"></script>
     <script src="script.js"></script>
     <script src="db-helper.js"></script>
     <script src="settings.js"></script>

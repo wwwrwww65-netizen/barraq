@@ -12,8 +12,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputPhone = document.getElementById('set-phone');
     const inputWhatsapp = document.getElementById('set-whatsapp');
     const inputFooter = document.getElementById('set-footer');
+    const selCurrencyPreset = document.getElementById('set-currency-preset');
+    const wrapCurrencyCustom = document.getElementById('set-currency-custom-wrap');
+    const inputCurrencySymbol = document.getElementById('set-currency-symbol');
+    const inputCurrencyLabel = document.getElementById('set-currency-label');
 
     let base64Logo = '';
+
+    function toggleCurrencyCustom() {
+        if (!wrapCurrencyCustom || !selCurrencyPreset) return;
+        wrapCurrencyCustom.style.display = selCurrencyPreset.value === 'CUSTOM' ? 'block' : 'none';
+    }
 
     // --- LocalStorage Integration: Load Existing ---
     const saved = localStorage.getItem('restaurant_settings');
@@ -31,7 +40,12 @@ document.addEventListener('DOMContentLoaded', () => {
             previewLogo.src = base64Logo;
             previewLogo.style.display = 'block';
         }
+        if (selCurrencyPreset && d.currencyPreset) selCurrencyPreset.value = d.currencyPreset;
+        if (inputCurrencySymbol && d.currencySymbol) inputCurrencySymbol.value = d.currencySymbol;
+        if (inputCurrencyLabel && d.currencyLabel) inputCurrencyLabel.value = d.currencyLabel;
     }
+    toggleCurrencyCustom();
+    if (selCurrencyPreset) selCurrencyPreset.addEventListener('change', toggleCurrencyCustom);
 
     // --- Load Printers for Cashier ---
     const setCashierPrinter = document.getElementById('set-cashier-printer');
@@ -105,7 +119,13 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.style.pointerEvents = 'none';
 
         const taxRateVal = parseFloat(inputTaxRate.value);
+        let prev = {};
+        try {
+            const pr = localStorage.getItem('restaurant_settings');
+            prev = pr ? JSON.parse(pr) : {};
+        } catch (e) {}
         const data = {
+            ...prev,
             name: inputName.value || 'هـــش HASH',
             branch: inputBranch.value,
             tax: inputTax.value || '300123456780003',
@@ -113,8 +133,16 @@ document.addEventListener('DOMContentLoaded', () => {
             phone: inputPhone.value,
             whatsapp: inputWhatsapp.value,
             footer: inputFooter.value,
-            logo: base64Logo || '1111.png' // شعار هش HASH الرسمي كافتراضي
+            logo: base64Logo || '1111.png',
+            currencyPreset: selCurrencyPreset ? selCurrencyPreset.value : 'SAR',
         };
+        if (data.currencyPreset === 'CUSTOM') {
+            data.currencySymbol = inputCurrencySymbol ? inputCurrencySymbol.value.trim() : '';
+            data.currencyLabel = inputCurrencyLabel ? inputCurrencyLabel.value.trim() : '';
+        } else {
+            delete data.currencySymbol;
+            delete data.currencyLabel;
+        }
 
         localStorage.setItem('restaurant_settings', JSON.stringify(data));
         if (setCashierPrinter) {
@@ -382,6 +410,155 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadDriveAutoUi();
 
+    // --- نسخ احتياطي على قرص / USB ---
+    const elLocalPath = document.getElementById('local-backup-path');
+    const btnLocalBrowse = document.getElementById('btn-local-backup-browse');
+    const btnLocalOpen = document.getElementById('btn-local-backup-open');
+    const btnLocalNow = document.getElementById('btn-local-backup-now');
+    const localAutoEn = document.getElementById('local-backup-auto-enabled');
+    const localAutoInt = document.getElementById('local-backup-auto-interval');
+    const localAutoLast = document.getElementById('local-backup-auto-last');
+    let prevLocalAutoEnabled = false;
+
+    function collectAllLocalStorage() {
+        const o = {};
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            o[k] = localStorage.getItem(k);
+        }
+        return o;
+    }
+
+    async function refreshLocalBackupUi() {
+        try {
+            const { ipcRenderer } = require('electron');
+            const s = await ipcRenderer.invoke('local-disk-backup-get-settings');
+            const p = (s && s.folderPath) || '';
+            if (elLocalPath) {
+                elLocalPath.textContent = p || 'لم يُحدد بعد — يمكنك الضغط «نسخ الآن» لاختيار المجلد';
+            }
+            if (btnLocalOpen) {
+                btnLocalOpen.style.display = p ? 'inline-flex' : 'none';
+            }
+            if (localAutoEn) {
+                localAutoEn.checked = !!(s && s.enabled);
+                prevLocalAutoEnabled = !!(s && s.enabled);
+            }
+            if (localAutoInt && s) localAutoInt.value = String(s.intervalMinutes || 360);
+            if (localAutoLast && s) {
+                let t = s.lastAutoRunAt
+                    ? 'آخر نسخ تلقائي ناجح: ' + new Date(s.lastAutoRunAt).toLocaleString('ar-SA')
+                    : 'لم يُسجَّل نسخ تلقائي ناجح بعد';
+                if (s.lastAutoError) t += ' — آخر خطأ: ' + s.lastAutoError;
+                localAutoLast.textContent = t;
+            }
+        } catch (e) {}
+    }
+
+    async function saveLocalBackupSettings(partial) {
+        try {
+            const { ipcRenderer } = require('electron');
+            await ipcRenderer.invoke('local-disk-backup-save-settings', partial);
+            await refreshLocalBackupUi();
+        } catch (e) {
+            alert('فشل حفظ إعداد النسخ المحلي');
+        }
+    }
+
+    if (btnLocalBrowse) {
+        btnLocalBrowse.addEventListener('click', async () => {
+            try {
+                const { ipcRenderer } = require('electron');
+                const r = await ipcRenderer.invoke('local-disk-backup-pick-folder');
+                if (r.canceled || !r.folderPath) return;
+                await saveLocalBackupSettings({ folderPath: r.folderPath });
+            } catch (e) {
+                alert('خطأ: ' + (e && e.message));
+            }
+        });
+    }
+
+    if (btnLocalOpen) {
+        btnLocalOpen.addEventListener('click', async () => {
+            try {
+                const { ipcRenderer } = require('electron');
+                const s = await ipcRenderer.invoke('local-disk-backup-get-settings');
+                const p = (s && s.folderPath) || '';
+                if (!p) return;
+                const res = await ipcRenderer.invoke('local-disk-backup-open-folder', p);
+                if (!res.success && res.error) console.warn(res.error);
+            } catch (e) {}
+        });
+    }
+
+    if (btnLocalNow) {
+        btnLocalNow.addEventListener('click', async () => {
+            const orig = btnLocalNow.innerHTML;
+            btnLocalNow.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin"></i> جاري النسخ...';
+            btnLocalNow.style.pointerEvents = 'none';
+            try {
+                const { ipcRenderer } = require('electron');
+                const s = await ipcRenderer.invoke('local-disk-backup-get-settings');
+                const parentDir = (s && s.folderPath) || '';
+                const res = await ipcRenderer.invoke('local-disk-backup-execute', {
+                    parentDir: parentDir || undefined,
+                    localStorageSnapshot: collectAllLocalStorage(),
+                });
+                if (res.canceled) {
+                    /* لا شيء */
+                } else if (res.success) {
+                    alert('تم حفظ النسخة في:\n' + (res.destDir || ''));
+                } else {
+                    alert('فشل النسخ: ' + (res.error || 'غير معروف'));
+                }
+            } catch (e) {
+                alert('خطأ: ' + (e && e.message));
+            }
+            btnLocalNow.innerHTML = orig;
+            btnLocalNow.style.pointerEvents = 'auto';
+        });
+    }
+
+    if (localAutoEn) {
+        localAutoEn.addEventListener('change', async () => {
+            const nowOn = localAutoEn.checked;
+            const s = await (async () => {
+                try {
+                    const { ipcRenderer } = require('electron');
+                    return await ipcRenderer.invoke('local-disk-backup-get-settings');
+                } catch (e) {
+                    return {};
+                }
+            })();
+            if (nowOn && !(s && s.folderPath)) {
+                localAutoEn.checked = false;
+                alert('حدّد أولاً مجلداً هدفاً بزر «اختيار مجلد» (قرص آخر أو USB).');
+                return;
+            }
+            await saveLocalBackupSettings({
+                enabled: nowOn,
+                resetSchedule: nowOn && !prevLocalAutoEnabled,
+            });
+            prevLocalAutoEnabled = nowOn;
+        });
+    }
+
+    if (localAutoInt) {
+        localAutoInt.addEventListener('change', async () => {
+            const mins = parseInt(localAutoInt.value, 10) || 360;
+            await saveLocalBackupSettings({ intervalMinutes: mins });
+        });
+    }
+
+    try {
+        const { ipcRenderer } = require('electron');
+        ipcRenderer.on('local-disk-auto-backup', () => {
+            refreshLocalBackupUi();
+        });
+    } catch (e) {}
+
+    refreshLocalBackupUi();
+
     // --- WhatsApp Bot Logic ---
     const btnWaLink = document.getElementById('btn-wa-link');
     const waStatusText = document.getElementById('wa-status-text');
@@ -559,5 +736,131 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         localStorage.setItem('wa_settings', JSON.stringify(waData));
     });
+
+    // --- تصفير النظام بالكامل (يظهر للمدير العام فقط) ---
+    (function initFactoryReset() {
+        const EMPTY_DB = {
+            orders: [], products: [], categories: [], inventory: [],
+            purchases: [], suppliers: [], inventoryTx: [], returns: [],
+            expenses: [], bankTransfers: [], hrExpenses: [], otherIncome: [],
+            employees: [], attendance: [], penaltyRules: [],
+            chartOfAccounts: [], journalEntries: [],
+            systemNotifications: [], inventoryAlertState: {}
+        };
+
+        let cUser = {};
+        try {
+            cUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        } catch (e) { /* ignore */ }
+
+        const wrap = document.getElementById('settings-factory-reset-wrap');
+        if (wrap && cUser.role === 'المدير العام') {
+            wrap.style.display = '';
+        }
+
+        const mConfirm = document.getElementById('modal-factory-confirm');
+        const mPwd = document.getElementById('modal-factory-password');
+        const inpPwd = document.getElementById('factory-pwd-input');
+        const btnOpen = document.getElementById('btn-factory-reset-open');
+        if (!btnOpen || !mConfirm || !mPwd || !inpPwd) return;
+
+        function openModal(el) {
+            el.classList.add('active');
+            el.setAttribute('aria-hidden', 'false');
+        }
+        function closeModal(el) {
+            el.classList.remove('active');
+            el.setAttribute('aria-hidden', 'true');
+        }
+
+        btnOpen.addEventListener('click', () => openModal(mConfirm));
+
+        const btnNo = document.getElementById('btn-factory-confirm-no');
+        const btnYes = document.getElementById('btn-factory-confirm-yes');
+        const btnPwdCancel = document.getElementById('btn-factory-pwd-cancel');
+        const btnPwdSubmit = document.getElementById('btn-factory-pwd-submit');
+        if (btnNo) btnNo.addEventListener('click', () => closeModal(mConfirm));
+        if (btnYes) {
+            btnYes.addEventListener('click', () => {
+                closeModal(mConfirm);
+                inpPwd.value = '';
+                openModal(mPwd);
+                setTimeout(() => inpPwd.focus(), 80);
+            });
+        }
+        if (btnPwdCancel) {
+            btnPwdCancel.addEventListener('click', () => {
+                closeModal(mPwd);
+                inpPwd.value = '';
+            });
+        }
+        if (btnPwdSubmit) {
+            btnPwdSubmit.addEventListener('click', async () => {
+                const pwd = inpPwd.value.trim();
+                const expected = localStorage.getItem('admin_pwd') || '123456';
+                if (pwd !== expected) {
+                    alert('كلمة السر غير صحيحة. أدخل نفس كلمة سر حساب المدير العام المستخدمة في شاشة تسجيل الدخول.');
+                    return;
+                }
+                if (typeof window.dbWrite !== 'function') {
+                    alert('تعذر الاتصال بقاعدة البيانات. شغّل التطبيق من البرنامج الرسمي (Electron).');
+                    return;
+                }
+                const prevHtml = btnPwdSubmit.innerHTML;
+                btnPwdSubmit.disabled = true;
+                btnPwdSubmit.innerHTML = '<i class="ph ph-spinner-gap ph-spin"></i> جاري التصفير...';
+                try {
+                    const scopeEl = document.querySelector('input[name="factory-reset-scope"]:checked');
+                    const scope = scopeEl && scopeEl.value === 'lan' ? 'lan' : 'local';
+                    const writeOpts = { broadcast: false };
+                    const ok = await window.dbWrite(JSON.parse(JSON.stringify(EMPTY_DB)), writeOpts);
+                    if (!ok) {
+                        alert('فشل حفظ قاعدة البيانات. لم يُمس التخزين المحلي.');
+                        return;
+                    }
+                    if (scope === 'lan') {
+                        try {
+                            const { ipcRenderer } = require('electron');
+                            ipcRenderer.send('broadcast-lan-factory-reset');
+                        } catch (ipcErr) {
+                            alert('تعذر إخطار الأجهزة الأخرى. شغّل التطبيق من Electron، أو اختر «هذا الجهاز فقط». تم حفظ القاعدة الفارغة على هذا الجهاز فقط.');
+                        }
+                    }
+                    const aUser = localStorage.getItem('admin_username');
+                    const aPwd = localStorage.getItem('admin_pwd');
+                    window._networkSyncing = true;
+                    try {
+                        localStorage.clear();
+                        if (aUser != null && aUser !== '') {
+                            localStorage.setItem('admin_username', aUser);
+                        }
+                        if (aPwd != null && aPwd !== '') {
+                            localStorage.setItem('admin_pwd', aPwd);
+                        }
+                    } finally {
+                        window._networkSyncing = false;
+                    }
+                    closeModal(mPwd);
+                    window.location.href = 'login.html';
+                } catch (err) {
+                    console.error(err);
+                    alert('حدث خطأ أثناء التصفير: ' + (err && err.message ? err.message : String(err)));
+                } finally {
+                    btnPwdSubmit.disabled = false;
+                    btnPwdSubmit.innerHTML = prevHtml;
+                }
+            });
+        }
+
+        mConfirm.addEventListener('click', (e) => {
+            if (e.target === mConfirm) closeModal(mConfirm);
+        });
+        mPwd.addEventListener('click', (e) => {
+            if (e.target === mPwd) closeModal(mPwd);
+        });
+        inpPwd.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') btnPwdSubmit.click();
+        });
+    })();
 
 });

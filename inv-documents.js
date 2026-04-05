@@ -7,6 +7,7 @@ function whLabel(id) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
     const txBody = document.getElementById('tx-tbody');
     const searchInput = document.getElementById('search-tx');
     const tabs = document.querySelectorAll('.filter-tab');
@@ -98,7 +99,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td><strong>${tx.id}</strong></td>
                 <td><span class="type-label ${lblClass}">${lblName}</span></td>
                 <td>${dateStr}</td>
-                <td style="font-weight:700;">${total.toFixed(2)} ر.س</td>
+                <td style="font-weight:700;">${xf(total)}</td>
                 <td>${note}</td>
                 <td>
                     <button type="button" class="action-btn text-blue print-rx" data-id="${tx.id}" title="طباعة ملخص"><i class="ph ph-printer"></i></button>
@@ -120,7 +121,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <p><strong>رقم السند:</strong> ${tx.id}</p>
                     <p><strong>النوع:</strong> ${lblNameFor(tx)}</p>
                     <p><strong>التاريخ:</strong> ${new Date(tx.date || Date.now()).toLocaleString('ar-SA')}</p>
-                    <p><strong>القيمة:</strong> ${(Number(tx.total) || 0).toFixed(2)} ر.س</p>
+                    <p><strong>القيمة:</strong> ${xf(Number(tx.total) || 0)}</p>
                     <p><strong>ملاحظات:</strong> ${noteForPrint(tx)}</p>
                     </body></html>`);
                 w.document.close();

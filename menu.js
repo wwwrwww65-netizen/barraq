@@ -7,6 +7,8 @@ async function saveDB(db) {
 
 document.addEventListener('DOMContentLoaded', async () => {
 
+    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
+
     let db = await window.dbRead();
     if(!db.categories) db.categories = [];
     if(!db.products) db.products = [];
@@ -53,8 +55,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td style="font-weight:700;">${p.nameAr}</td>
                 <td><span style="font-family:monospace; font-size:12px; color:var(--accent-blue); background:rgba(59,130,246,0.1); padding:2px 6px; border-radius:4px;">${p.sku||'-'}</span></td>
                 <td><i class="ph ${cat ? cat.icon : 'ph-folder'}"></i> ${catName}</td>
-                <td style="color:var(--accent-green); font-weight:800;">${Number(p.price).toFixed(2)} ر.س</td>
-                <td style="color:var(--accent-orange); font-weight:700;">${(p.cost||0) > 0 ? Number(p.cost).toFixed(2) + ' ر.س' : '-'}</td>
+                <td style="color:var(--accent-green); font-weight:800;">${xf(p.price)}</td>
+                <td style="color:var(--accent-orange); font-weight:700;">${(p.cost||0) > 0 ? xf(p.cost) : '-'}</td>
                 <td>
                     ${p.isActive ? '<span class="status-badge available" style="position:static; display:inline-flex;">متاح <i class="ph-fill ph-check-circle"></i></span>' : '<span class="status-badge hidden-badge" style="position:static; display:inline-flex;">مخفي <i class="ph-fill ph-eye-slash"></i></span>'}
                 </td>

@@ -208,22 +208,22 @@
                     <div class="pl-kpi-card income">
                         <i class="ph ph-trend-up pl-kpi-icon"></i>
                         <p class="pl-kpi-title">صافي الإيرادات (مبيعات − مرتجعات + إيرادات أخرى)</p>
-                        <h3 class="pl-kpi-value acc-glow-green" id="pl-total-revenue">0.00 ر.س</h3>
+                        <h3 class="pl-kpi-value acc-glow-green" id="pl-total-revenue">0.00 <span class="js-cur-sym">ر.س</span></h3>
                     </div>
                     <div class="pl-kpi-card expense">
                         <i class="ph ph-trend-down pl-kpi-icon"></i>
                         <p class="pl-kpi-title">إجمالي المصروفات (مشتريات، رواتب، تشغيل)</p>
-                        <h3 class="pl-kpi-value acc-glow-red" id="pl-total-expense">0.00 ر.س</h3>
+                        <h3 class="pl-kpi-value acc-glow-red" id="pl-total-expense">0.00 <span class="js-cur-sym">ر.س</span></h3>
                     </div>
                     <div class="pl-kpi-card profit">
                         <i class="ph ph-coins pl-kpi-icon"></i>
                         <p class="pl-kpi-title">إجمالي المرتجعات / خصومات</p>
-                        <h3 class="pl-kpi-value" id="pl-total-returns" style="color:var(--text-muted)">0.00 ر.س</h3>
+                        <h3 class="pl-kpi-value" id="pl-total-returns" style="color:var(--text-muted)">0.00 <span class="js-cur-sym">ر.س</span></h3>
                     </div>
                     <div class="pl-kpi-card profit-net">
                         <i class="ph ph-scales pl-kpi-icon"></i>
                         <p class="pl-kpi-title">صافي الربح التقديري (قبل الضريبة)</p>
-                        <h3 class="pl-kpi-value" id="pl-net-profit">0.00 ر.س</h3>
+                        <h3 class="pl-kpi-value" id="pl-net-profit">0.00 <span class="js-cur-sym">ر.س</span></h3>
                     </div>
                 </div>
 
@@ -279,7 +279,7 @@
                         
                         <div class="grand-total-box">
                             <h4>النتيجة النهائية (عن الفترة المحددة)</h4>
-                            <div class="huge-amount" id="bd-grand-total">0.00 ر.س</div>
+                            <div class="huge-amount" id="bd-grand-total">0.00 <span class="js-cur-sym">ر.س</span></div>
                         </div>
                     </div>
                 </div>
@@ -287,6 +287,7 @@
         </main>
     </div>
 
+    <script src="currency-helper.js"></script>
     <script src="script.js"></script>
     <script src="db-helper.js"></script>
     <script src="profit-loss.js"></script>

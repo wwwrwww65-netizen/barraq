@@ -103,7 +103,7 @@
                             <h4>إجمالي الإيرادات</h4>
                             <span class="trend-badge up"><i class="ph ph-trend-up"></i> 12%</span>
                         </div>
-                        <span class="stat-value highlight-green" id="dash-revenue">145,200 <small style="font-size:16px;">ر.س</small></span>
+                        <span class="stat-value highlight-green" id="dash-revenue">145,200 <small class="js-cur-sym" style="font-size:16px;">ر.س</small></span>
                     </div>
 
                     <!-- Expenses -->
@@ -113,7 +113,7 @@
                             <h4>إجمالي المصروفات</h4>
                             <span class="trend-badge down"><i class="ph ph-trend-up"></i> 5%</span>
                         </div>
-                        <span class="stat-value" id="dash-expenses">64,500 <small style="font-size:16px;">ر.س</small></span>
+                        <span class="stat-value" id="dash-expenses">64,500 <small class="js-cur-sym" style="font-size:16px;">ر.س</small></span>
                     </div>
 
                     <!-- Net Profit -->
@@ -123,7 +123,7 @@
                             <h4>صافي الربح التقديري</h4>
                             <span class="trend-badge up"><i class="ph ph-trend-up"></i> 18%</span>
                         </div>
-                        <span class="stat-value" id="dash-profit">80,700 <small style="font-size:16px;">ر.س</small></span>
+                        <span class="stat-value" id="dash-profit">80,700 <small class="js-cur-sym" style="font-size:16px;">ر.س</small></span>
                     </div>
 
                     <!-- Margin -->
@@ -240,7 +240,7 @@
                                     </div>
                                 </div>
                                 <div class="perf-amount pos">
-                                    <h3>145,200 ر.س</h3>
+                                    <h3>145,200 <span class="js-cur-sym">ر.س</span></h3>
                                 </div>
                             </div>
                             
@@ -254,7 +254,7 @@
                                     </div>
                                 </div>
                                 <div class="perf-amount neg">
-                                    <h3>-64,500 ر.س</h3>
+                                    <h3>-64,500 <span class="js-cur-sym">ر.س</span></h3>
                                 </div>
                             </div>
 
@@ -268,7 +268,7 @@
                                     </div>
                                 </div>
                                 <div class="perf-amount pos" style="color:var(--accent-blue)">
-                                    <h3 style="color:var(--accent-blue)">80,700 ر.س</h3>
+                                    <h3 style="color:var(--accent-blue)">80,700 <span class="js-cur-sym">ر.س</span></h3>
                                 </div>
                             </div>
                         </div>
@@ -282,6 +282,7 @@
 
     <!-- Scripts -->
     <script src="statistics.js"></script>
+    <script src="currency-helper.js"></script>
     <script src="script.js"></script>
     <script src="db-helper.js"></script>
 </body>

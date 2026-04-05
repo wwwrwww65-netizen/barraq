@@ -12,6 +12,7 @@ function fmt(n) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : fmt(n) + ' ر.س');
     const tbody = document.getElementById('sup-tbody');
     const searchInput = document.getElementById('search-sup');
     const modal = document.getElementById('supModal');
@@ -51,7 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const totalBalance = suppliers.reduce((s, sup) => s + (sup.balance || 0), 0);
         const zeroBalance = suppliers.filter((s) => (s.balance || 0) === 0).length;
         document.getElementById('kpi-count').innerText = String(activeCount);
-        document.getElementById('kpi-total-balance').innerText = fmt(totalBalance) + ' ر.س';
+        document.getElementById('kpi-total-balance').innerText = xf(totalBalance);
         document.getElementById('kpi-zero-balance').innerText = String(zeroBalance);
     }
 
@@ -75,7 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         filtered.forEach((s) => {
             const bal = Number(s.balance) || 0;
             const balColor = bal > 0 ? 'var(--accent-red)' : 'var(--accent-green)';
-            const balText = bal === 0 ? 'لا يوجد مستحقات' : fmt(bal) + ' ر.س';
+            const balText = bal === 0 ? 'لا يوجد مستحقات' : xf(bal);
             const statusTag = s.active
                 ? '<span class="inv-tag tag-safe">مورد نشط</span>'
                 : '<span class="inv-tag tag-empty">موقوف</span>';
@@ -107,7 +108,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const sup = suppliers.find((x) => x.id === btn.dataset.id);
                 if (!sup) return;
                 const amtStr = prompt(
-                    `دفعة سداد للمورد: "${sup.name}"\nالرصيد الحالي المستحق: ${fmt(sup.balance || 0)} ر.س\n\nأدخل مبلغ الدفعة:`
+                    `دفعة سداد للمورد: "${sup.name}"\nالرصيد الحالي المستحق: ${xf(sup.balance || 0)}\n\nأدخل مبلغ الدفعة:`
                 );
                 const amt = parseFloat(amtStr);
                 if (isNaN(amt) || amt <= 0) return;
@@ -119,7 +120,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 db.suppliers = suppliers;
                 await saveDB(db);
                 await render();
-                alert(`تم تسجيل الدفعة بمبلغ ${fmt(amt)} ر.س\nالرصيد المتبقي: ${fmt(sup.balance)} ر.س`);
+                alert(`تم تسجيل الدفعة بمبلغ ${xf(amt)}\nالرصيد المتبقي: ${xf(sup.balance)}`);
             });
         });
 

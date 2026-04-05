@@ -45,6 +45,17 @@ function escapeHtmlPrint(text) {
     .replace(/"/g, '&quot;');
 }
 
+/** هل يعرض السطر مبلغاً غير صفري؟ (يعمل بدون HashCurrency في اختبارات Node) */
+function isNonZeroMoneyDisplay(s) {
+  if (!s) return false;
+  if (typeof globalThis.HashCurrency !== 'undefined' && HashCurrency.parseLoose) {
+    const v = HashCurrency.parseLoose(s);
+    return Number.isFinite(v) && Math.abs(v) > 0.0001;
+  }
+  const m = String(s).match(/-?\d+(?:\.\d+)?/);
+  return !!(m && parseFloat(m[0]) > 0.0001);
+}
+
 /**
  * @param {object} [receiptSnap] — إن وُجد يُبنى HTML منه (أمثل قبل مسح السلة/بعد IPC طويل). وإلا يُقرأ من عناصر #r-* في الصفحة.
  */
@@ -419,7 +430,7 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
                 <span class="total-value">${rSubtotal || rTotal}</span>
             </div>
             ${(() => {
-                if (rDiscount && rDiscount !== '0.00 ر.س') {
+                if (isNonZeroMoneyDisplay(rDiscount)) {
                     return `
                     <div class="total-row">
                         <span class="total-label">الخصم:</span>

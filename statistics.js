@@ -2,6 +2,10 @@ const { ipcRenderer } = require('electron');
 
 document.addEventListener('DOMContentLoaded', async () => {
 
+    const curNum = (n) => (window.HashCurrency ? HashCurrency.formatNumber(n) : Number(n).toFixed(2));
+    const curSym = () => (window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س');
+    const curFmt = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
+
     let currentStatsRange = 'today';
 
     // --- Date Filter Buttons Toggle ---
@@ -125,9 +129,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         let margin = netRevenue > 0 ? ((netProfit / netRevenue) * 100).toFixed(1) : 0;
 
         const el = (id) => document.getElementById(id);
-        if(el('dash-revenue')) el('dash-revenue').innerHTML = netRevenue.toFixed(2) + ' <small style="font-size:16px;">ر.س</small>';
-        if(el('dash-expenses')) el('dash-expenses').innerHTML = exactExpenses.toFixed(2) + ' <small style="font-size:16px;">ر.س</small>';
-        if(el('dash-profit')) el('dash-profit').innerHTML = netProfit.toFixed(2) + ' <small style="font-size:16px;">ر.س</small>';
+        if(el('dash-revenue')) el('dash-revenue').innerHTML = `${curNum(netRevenue)} <small class="js-cur-sym" style="font-size:16px;">${curSym()}</small>`;
+        if(el('dash-expenses')) el('dash-expenses').innerHTML = `${curNum(exactExpenses)} <small class="js-cur-sym" style="font-size:16px;">${curSym()}</small>`;
+        if(el('dash-profit')) el('dash-profit').innerHTML = `${curNum(netProfit)} <small class="js-cur-sym" style="font-size:16px;">${curSym()}</small>`;
         
         const mEl = el('dash-margin');
         if(mEl) {
@@ -137,10 +141,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const posEls = document.querySelectorAll('.perf-amount');
         if(posEls.length >= 3) {
-            posEls[0].querySelector('h3').innerText = netRevenue.toFixed(2) + ' ر.س';
-            posEls[1].querySelector('h3').innerText = '-' + exactExpenses.toFixed(2) + ' ر.س';
+            posEls[0].querySelector('h3').innerText = curFmt(netRevenue);
+            posEls[1].querySelector('h3').innerText = '-' + curFmt(exactExpenses);
             const bal = posEls[2].querySelector('h3');
-            bal.innerText = netProfit.toFixed(2) + ' ر.س';
+            bal.innerText = curFmt(netProfit);
             bal.style.color = netProfit < 0 ? 'var(--accent-red)' : 'var(--accent-blue)';
         }
 

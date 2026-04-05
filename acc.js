@@ -5,6 +5,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentAccPeriod = 'this_month';
 
     async function loadAccountingData(period = 'this_month') {
+        const xf = (n) =>
+            window.HashCurrency
+                ? HashCurrency.format(n)
+                : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س';
         const db = await window.dbRead();
         let posOrders = db.orders || [];
         let erpPurchases = db.purchases || [];
@@ -202,9 +206,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(document.getElementById('kpi-revenue')) {
         const fmt = (n) => n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
 
-        document.getElementById('kpi-revenue').innerText = fmt(totalRevNet) + ' ر.س';
-        document.getElementById('kpi-expenses').innerText = fmt(totalPur + totalExp) + ' ر.س';
-        document.getElementById('kpi-profit').innerText = fmt(netProfit) + ' ر.س';
+        document.getElementById('kpi-revenue').innerText = xf(totalRevNet);
+        document.getElementById('kpi-expenses').innerText = xf(totalPur + totalExp);
+        document.getElementById('kpi-profit').innerText = xf(netProfit);
 
         const kpiProfitEl = document.getElementById('kpi-profit');
         const pt = document.getElementById('kpi-profit-trend');
@@ -220,9 +224,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        if(document.getElementById('bal-total')) document.getElementById('bal-total').innerText = fmt(cashBal + bankBal) + ' ر.س';
-        if(document.getElementById('bal-cash')) document.getElementById('bal-cash').innerText = fmt(cashBal) + ' ر.س';
-        if(document.getElementById('bal-bank')) document.getElementById('bal-bank').innerText = fmt(bankBal) + ' ر.س';
+        if(document.getElementById('bal-total')) document.getElementById('bal-total').innerText = xf(cashBal + bankBal);
+        if(document.getElementById('bal-cash')) document.getElementById('bal-cash').innerText = xf(cashBal);
+        if(document.getElementById('bal-bank')) document.getElementById('bal-bank').innerText = xf(bankBal);
 
         const today = new Date().toLocaleDateString('ar-SA', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
         if(document.getElementById('current-date')) document.getElementById('current-date').innerText = today;
@@ -302,7 +306,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </div>
                         </div>
                         <div style="text-align:left;">
-                            <div style="font-weight:800; color:${isOut?'var(--text)':'var(--accent-green)'};">${isOut?'- ':'+ '}${c.amt.toLocaleString()} ر.س</div>
+                            <div style="font-weight:800; color:${isOut?'var(--text)':'var(--accent-green)'};">${isOut?'- ':'+ '}${xf(c.amt)}</div>
                             <div style="font-size:11px; color:var(--text-muted); background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; display:inline-block; margin-top:4px;">${c.acc}</div>
                         </div>
                     </div>`;
@@ -314,7 +318,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(document.getElementById('exp-tbody')) {
         const fmt2 = (n) => n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
         const kpiExp = document.getElementById('kpi-total-exp');
-        if(kpiExp) kpiExp.innerText = fmt2(totalExp) + ' ر.س';
+        if(kpiExp) kpiExp.innerText = xf(totalExp);
 
         const renderExp = () => {
             const tbody = document.getElementById('exp-tbody');
@@ -395,7 +399,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             erpExpenses.push(newExp);
             totalExp += newExp.amount;
-            if(kpiExp) kpiExp.innerText = totalExp.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ر.س';
+            if(kpiExp) kpiExp.innerText = xf(totalExp);
 
             closeExpenseModal();
             const formExp = document.getElementById('form-expense');
@@ -424,7 +428,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         if(document.getElementById('ev-date')) document.getElementById('ev-date').innerText = todayStr;
                         if(document.getElementById('ev-number')) document.getElementById('ev-number').innerText = newExp.id;
                         if(document.getElementById('ev-cat')) document.getElementById('ev-cat').innerText = newExp.cat;
-                        if(document.getElementById('ev-amt')) document.getElementById('ev-amt').innerText = newExp.amount.toLocaleString('en-US', {minimumFractionDigits:2}) + ' ر.س';
+                        if(document.getElementById('ev-amt')) document.getElementById('ev-amt').innerText = xf(newExp.amount);
                         if(document.getElementById('ev-desc')) document.getElementById('ev-desc').innerText = newExp.desc;
                         if(document.getElementById('ev-pay')) document.getElementById('ev-pay').innerText = newExp.pMethod === 'cash' ? 'كاش نقدي' : 'حوالة بنكية';
                         if(document.getElementById('ev-rest-name')) document.getElementById('ev-rest-name').innerText = sysSet.name || '';
@@ -453,7 +457,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             ctx2.drawImage(canvas, 0, 0, 1600, 1132);
                             const imgData = fc.toDataURL('image/jpeg', 0.95);
 
-                            const captionMsg = `سند مصروف — ${newExp.cat}\nالمبلغ: ${newExp.amount.toLocaleString('en-US')} ر.س\n${newExp.desc}`;
+                            const captionMsg = `سند مصروف — ${newExp.cat}\nالمبلغ: ${xf(newExp.amount)}\n${newExp.desc}`;
                             const { ipcRenderer } = require('electron');
                             const hubIp =
                                 typeof window.resolveWaHubIp === 'function'
@@ -502,7 +506,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('pl-exp-rent').innerText = `(${fmt3(rent)})`;
         document.getElementById('pl-exp-other').innerText = `(${fmt3(others)})`;
         document.getElementById('pl-total-exp').innerText = `(${fmt3(totalExp)})`;
-        document.getElementById('pl-net-profit').innerText = fmt3(netProfit) + ' ر.س';
+        document.getElementById('pl-net-profit').innerText = xf(netProfit);
 
         // Zakat & Taxes calculations
         let dynamicTaxRate = 0.15;
@@ -571,12 +575,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Balance Sheet
         if(document.getElementById('bs-cash')) {
-            const fmt4 = (n) => n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ر.س';
-            document.getElementById('bs-cash').innerText = fmt4(cashBal);
-            document.getElementById('bs-bank').innerText = fmt4(bankBal);
-            document.getElementById('bs-total-assets').innerText = fmt4(cashBal + bankBal);
-            document.getElementById('bs-retained-earnings').innerText = fmt4(netProfit);
-            document.getElementById('bs-total-liabilities').innerText = fmt4(cashBal + bankBal);
+            document.getElementById('bs-cash').innerText = xf(cashBal);
+            document.getElementById('bs-bank').innerText = xf(bankBal);
+            document.getElementById('bs-total-assets').innerText = xf(cashBal + bankBal);
+            document.getElementById('bs-retained-earnings').innerText = xf(netProfit);
+            document.getElementById('bs-total-liabilities').innerText = xf(cashBal + bankBal);
         }
     }
     } // End of loadAccountingData

@@ -1,5 +1,9 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
-const { setupGoogleDriveIpc, startGoogleDriveAutoScheduler } = require('./google-drive-main');
+const {
+  setupGoogleDriveIpc,
+  startGoogleDriveAutoScheduler,
+  collectLocalStorageSnapshot,
+} = require('./google-drive-main');
 const fs = require('fs');
 const path = require('path');
 const dgram = require('dgram');
@@ -254,7 +258,9 @@ function scheduleSilentPrint(html, printerName) {
 }
 
 // === Fetch pos_database.json from a peer device via HTTP ===
-function fetchDatabaseFromPeer(ip) {
+// callback(err) — اختياري؛ يُستدعى بعد الكتابة الناجحة (err === null) أو عند الفشل
+function fetchDatabaseFromPeer(ip, callback) {
+  const cb = typeof callback === 'function' ? callback : null;
   const url = `http://${ip}:${HTTP_PORT}/database`;
   http.get(url, (res) => {
     let body = '';
@@ -262,6 +268,7 @@ function fetchDatabaseFromPeer(ip) {
     res.on('end', () => {
       if (res.statusCode !== 200) {
         console.error('[HTTP Sync] ❌ Bad status from', ip, ':', res.statusCode);
+        if (cb) cb(new Error('http_' + res.statusCode));
         return;
       }
       try {
@@ -273,15 +280,18 @@ function fetchDatabaseFromPeer(ip) {
         probePeerWaReady(ip, (capable) => {
           if (capable) notifyLanSyncHubCandidate(ip);
         });
-        BrowserWindow.getAllWindows().forEach(win => {
-          win.webContents.send('db-file-updated');
+        BrowserWindow.getAllWindows().forEach((win) => {
+          if (!win.isDestroyed()) win.webContents.send('db-file-updated');
         });
-      } catch(e) {
+        if (cb) cb(null);
+      } catch (e) {
         console.error('[HTTP Sync] ❌ Failed to apply database from', ip, ':', e.message);
+        if (cb) cb(e);
       }
     });
-  }).on('error', e => {
+  }).on('error', (e) => {
     console.error('[HTTP Sync] ❌ Pull error from', ip, ':', e.message);
+    if (cb) cb(e);
   });
 }
 
@@ -465,6 +475,17 @@ function setupNetworkSync() {
         else probePeerWaReady(sourceIp, sendFull);
       } else if (data.type === 'db_changed') {
         fetchDatabaseFromPeer(rinfo.address);
+      } else if (data.type === 'lan_factory_reset_ls' && data.hubIp && typeof data.hubIp === 'string') {
+        // تصفير شبكي: سحب قاعدة الجهاز المركزي ثم إشعار الواجهات بمسح localStorage (مع الإبقاء على بيانات المدير)
+        fetchDatabaseFromPeer(data.hubIp.trim(), (err) => {
+          if (err) {
+            console.error('[Factory reset LAN] فشل سحب القاعدة من', data.hubIp, err.message || err);
+            return;
+          }
+          BrowserWindow.getAllWindows().forEach((win) => {
+            if (!win.isDestroyed()) win.webContents.send('lan-factory-reset-clear-localstorage');
+          });
+        });
       } else {
         BrowserWindow.getAllWindows().forEach(win => {
           win.webContents.send('network-sync-update', data);
@@ -715,10 +736,184 @@ ipcMain.handle('db-read-full', () => {
   try { return JSON.parse(fs.readFileSync(_dbPath, 'utf8')); }
   catch(e) { return _emptyDB; }
 });
-ipcMain.handle('db-write-full', (event, data) => {
-  try { fs.writeFileSync(_dbPath, JSON.stringify(data, null, 2)); broadcastDBChanged(); return true; }
-  catch(e) { console.error('db-write-full error:', e); return false; }
+ipcMain.handle('db-write-full', (event, data, opts) => {
+  try {
+    fs.writeFileSync(_dbPath, JSON.stringify(data, null, 2));
+    const broadcast = !opts || opts.broadcast !== false;
+    if (broadcast) broadcastDBChanged();
+    return true;
+  } catch (e) {
+    console.error('db-write-full error:', e);
+    return false;
+  }
 });
+
+// بث أمر تصفير التخزين المحلي على الأجهزة الأخرى (بعد أن تُكتب القاعدة الفارغة على الجهاز المرسل)
+ipcMain.on('broadcast-lan-factory-reset', () => {
+  try {
+    if (!server) return;
+    const hubIp = getLocalIP();
+    if (!hubIp || hubIp === '127.0.0.1') {
+      console.warn('[Factory reset LAN] لا يوجد عنوان LAN صالح للبث');
+      return;
+    }
+    const msg = Buffer.from(
+      JSON.stringify({ type: 'lan_factory_reset_ls', instanceId: myInstanceId, hubIp })
+    );
+    server.send(msg, 0, msg.length, PORT, BROADCAST_ADDR);
+    console.log('[Factory reset LAN] بث تصفير الشبكة، المركز:', hubIp);
+  } catch (e) {
+    console.error('[Factory reset LAN] broadcast error:', e);
+  }
+});
+
+// --- نسخ احتياطي على قرص / USB / مسار شبكة محلي ---
+const _localBackupSettingsPath = () => path.join(app.getPath('userData'), 'local_disk_backup_settings.json');
+
+function loadLocalDiskBackupSettings() {
+  try {
+    const o = JSON.parse(fs.readFileSync(_localBackupSettingsPath(), 'utf8'));
+    const mins = Number(o.intervalMinutes);
+    return {
+      folderPath: String(o.folderPath || '').trim(),
+      enabled: !!o.enabled,
+      intervalMinutes: Number.isFinite(mins) ? Math.max(15, Math.min(10080, mins)) : 360,
+      lastAutoRunAt: o.lastAutoRunAt || null,
+      lastAutoError: String(o.lastAutoError || ''),
+    };
+  } catch (_) {
+    return { folderPath: '', enabled: false, intervalMinutes: 360, lastAutoRunAt: null, lastAutoError: '' };
+  }
+}
+
+function saveLocalDiskBackupSettings(data) {
+  fs.writeFileSync(_localBackupSettingsPath(), JSON.stringify(data, null, 2), 'utf8');
+}
+
+function runLocalDiskBackupJob(parentDir, dbFilePath, localStorageSnapshot) {
+  try {
+    if (!parentDir || typeof parentDir !== 'string') return { success: false, error: 'no_folder' };
+    const norm = path.normalize(parentDir.trim());
+    if (!fs.existsSync(norm)) return { success: false, error: 'folder_missing' };
+    if (!fs.statSync(norm).isDirectory()) return { success: false, error: 'not_a_directory' };
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const destDir = path.join(norm, `HashPOS_backup_${stamp}`);
+    fs.mkdirSync(destDir, { recursive: true });
+    let dbRaw = '{}';
+    if (fs.existsSync(dbFilePath)) dbRaw = fs.readFileSync(dbFilePath, 'utf8');
+    const dbObj = JSON.parse(dbRaw);
+    fs.writeFileSync(path.join(destDir, 'pos_database.json'), JSON.stringify(dbObj, null, 2), 'utf8');
+    const ls = localStorageSnapshot && typeof localStorageSnapshot === 'object' ? localStorageSnapshot : {};
+    fs.writeFileSync(path.join(destDir, 'hashpos_localStorage.json'), JSON.stringify(ls, null, 2), 'utf8');
+    const manifest = {
+      hashPosLocalBackupVersion: 1,
+      exportedAt: new Date().toISOString(),
+      hostname: os.hostname(),
+    };
+    fs.writeFileSync(path.join(destDir, 'backup_manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
+    return { success: true, destDir };
+  } catch (err) {
+    return { success: false, error: err && err.message ? err.message : String(err) };
+  }
+}
+
+ipcMain.handle('local-disk-backup-pick-folder', async () => {
+  const r = await dialog.showOpenDialog({
+    title: 'اختر مجلداً للنسخ الاحتياطي (قرص آخر، USB، …)',
+    properties: ['openDirectory', 'createDirectory'],
+  });
+  if (r.canceled || !r.filePaths || !r.filePaths[0]) return { canceled: true, folderPath: '' };
+  return { canceled: false, folderPath: r.filePaths[0] };
+});
+
+ipcMain.handle('local-disk-backup-execute', async (event, payload) => {
+  const snap = payload && payload.localStorageSnapshot && typeof payload.localStorageSnapshot === 'object'
+    ? payload.localStorageSnapshot
+    : {};
+  let parentDir = payload && payload.parentDir ? String(payload.parentDir).trim() : '';
+  if (!parentDir) {
+    const r = await dialog.showOpenDialog({
+      title: 'أين تُحفظ النسخة؟ (يُنشأ مجلد فرعي بتاريخ ووقت كل عملية)',
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    if (r.canceled || !r.filePaths || !r.filePaths[0]) return { success: false, canceled: true };
+    parentDir = r.filePaths[0];
+  }
+  return runLocalDiskBackupJob(parentDir, _dbPath, snap);
+});
+
+ipcMain.handle('local-disk-backup-get-settings', () => loadLocalDiskBackupSettings());
+
+ipcMain.handle('local-disk-backup-save-settings', async (event, data) => {
+  const cur = loadLocalDiskBackupSettings();
+  const mins = data && Number(data.intervalMinutes);
+  const next = {
+    folderPath: data && data.folderPath != null ? String(data.folderPath).trim() : cur.folderPath,
+    enabled: data && data.enabled !== undefined ? !!data.enabled : cur.enabled,
+    intervalMinutes: Number.isFinite(mins) ? Math.max(15, Math.min(10080, mins)) : cur.intervalMinutes,
+    lastAutoRunAt: cur.lastAutoRunAt,
+    lastAutoError: cur.lastAutoError,
+  };
+  if (data && data.resetSchedule) {
+    next.lastAutoRunAt = new Date().toISOString();
+  }
+  saveLocalDiskBackupSettings(next);
+  return { success: true, settings: next };
+});
+
+ipcMain.handle('local-disk-backup-open-folder', async (event, folderPath) => {
+  const { shell } = require('electron');
+  const p = folderPath && String(folderPath).trim();
+  if (!p || !fs.existsSync(p)) return { success: false, error: 'missing' };
+  const err = await shell.openPath(p);
+  return err ? { success: false, error: err } : { success: true };
+});
+
+const LOCAL_DISK_AUTO_CHECK_MS = 60 * 1000;
+let localDiskAutoInterval = null;
+
+function startLocalDiskAutoScheduler(appRef, BrowserWindowRef) {
+  if (localDiskAutoInterval) clearInterval(localDiskAutoInterval);
+  localDiskAutoInterval = setInterval(async () => {
+    try {
+      const auto = loadLocalDiskBackupSettings();
+      if (!auto.enabled) return;
+      if (!auto.folderPath || !fs.existsSync(auto.folderPath)) {
+        const next = { ...auto, lastAutoError: 'folder_missing' };
+        saveLocalDiskBackupSettings(next);
+        return;
+      }
+      const intervalMs = (auto.intervalMinutes || 360) * 60 * 1000;
+      if (!auto.lastAutoRunAt) {
+        const cur = loadLocalDiskBackupSettings();
+        cur.lastAutoRunAt = new Date().toISOString();
+        saveLocalDiskBackupSettings(cur);
+        return;
+      }
+      const last = new Date(auto.lastAutoRunAt).getTime();
+      if (Number.isNaN(last) || Date.now() - last < intervalMs) return;
+      const snap = await collectLocalStorageSnapshot(BrowserWindowRef);
+      const res = runLocalDiskBackupJob(auto.folderPath, _dbPath, snap);
+      const next = loadLocalDiskBackupSettings();
+      if (res.success) {
+        next.lastAutoRunAt = new Date().toISOString();
+        next.lastAutoError = '';
+        saveLocalDiskBackupSettings(next);
+        try {
+          BrowserWindowRef.getAllWindows().forEach((win) => {
+            if (!win.isDestroyed()) win.webContents.send('local-disk-auto-backup', { ok: true, destDir: res.destDir });
+          });
+        } catch (_) {}
+      } else {
+        next.lastAutoError = res.error || 'backup_failed';
+        saveLocalDiskBackupSettings(next);
+        console.warn('[Local backup] scheduled failed:', res);
+      }
+    } catch (e) {
+      console.error('[Local backup] scheduler', e);
+    }
+  }, LOCAL_DISK_AUTO_CHECK_MS);
+}
 
 /* ===============================
    ZATCA Fatoora Native Engine
@@ -764,6 +959,7 @@ app.whenReady().then(() => {
     () => path.join(app.getPath('userData'), 'pos_database.json'),
     BrowserWindow
   );
+  startLocalDiskAutoScheduler(app, BrowserWindow);
   setupNetworkSync();
   setupHTTPServer();
   createWindow();

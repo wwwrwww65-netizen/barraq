@@ -534,6 +534,7 @@ module.exports = {
   setupGoogleDriveIpc,
   loadOAuthConfig,
   startGoogleDriveAutoScheduler,
+  collectLocalStorageSnapshot,
   OAUTH_PORT,
   REDIRECT_PATH,
 };

@@ -120,7 +120,9 @@
         const bankBal = bankRev - bankPur - bankExp - bankRetOut + manualBankIn - manualBankOut;
 
         const fmt = (n) =>
-            Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س';
+            window.HashCurrency
+                ? HashCurrency.format(n)
+                : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س';
 
         const set = (id, text) => {
             const el = document.getElementById(id);

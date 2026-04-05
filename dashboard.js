@@ -1,5 +1,15 @@
 document.addEventListener('DOMContentLoaded', async () => {
 
+    function curPlain(n) {
+        return window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س';
+    }
+    function curNum(n) {
+        return window.HashCurrency ? HashCurrency.formatNumber(n) : Number(n).toFixed(2);
+    }
+    function curSym() {
+        return window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س';
+    }
+
     const { getReceiptFooterLine, escapeHtmlPrint } = require('./thermal-receipt-updated.js');
 
     const kpiValues = document.querySelectorAll('.kpi-card .kpi-value');
@@ -101,7 +111,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.__dashboardData = { dailySales, cashSales, networkSales, totalTax, totalReturnsAmt, totalExp, shiftCashFloat, drawerBalance };
 
     // Apply to UI
-    kpiValues[0].innerHTML = `${dailySales.toFixed(2)}<span class="currency">ر.س</span>`;
+    kpiValues[0].innerHTML = `${curNum(dailySales)}<span class="currency">${curSym()}</span>`;
     kpiValues[1].innerHTML = `${orders.length} <span class="text-sm">طلب</span>`;
     const invList = db.inventory || [];
     const lowStockCount = invList.filter(
@@ -113,10 +123,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         kpiValues[2].style.color = 'var(--accent-orange)';
         kpiValues[2].style.textShadow = '0 0 10px rgba(245, 158, 11, 0.5)';
     }
-    kpiValues[3].innerHTML = `${totalExp.toFixed(2)}<span class="currency">ر.س</span>`;
+    kpiValues[3].innerHTML = `${curNum(totalExp)}<span class="currency">${curSym()}</span>`;
     
     const dBalEl = kpiValues[4];
-    dBalEl.innerHTML = `${drawerBalance.toFixed(2)}<span class="currency">ر.س</span>`;
+    dBalEl.innerHTML = `${curNum(drawerBalance)}<span class="currency">${curSym()}</span>`;
     if(drawerBalance < 0) dBalEl.style.color = 'var(--accent-red)';
 
 
@@ -149,7 +159,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <td><span class="order-type ${oTypeClass}">${oTypeNames}</span></td>
                         <td>عميل عام</td>
                         <td style="color:var(--text-secondary)">${tStr}</td>
-                        <td style="font-weight:bold">${o.total.toFixed(2)} ر.س</td>
+                        <td style="font-weight:bold">${curPlain(o.total)}</td>
                         <td><span class="status completed">مكتمل</span></td>
                         <td><a href="orders.html" class="action-btn" title="عرض في سجل الطلبات" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:inherit;"><i class="ph ph-eye"></i></a></td>
                     </tr>
@@ -190,7 +200,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                     <div class="item-sales">
                         <span class="sales-count">${itm.qty} طلب</span>
-                        <span class="sales-revenue">${itm.revenue.toFixed(2)} ر.س</span>
+                        <span class="sales-revenue">${curPlain(itm.revenue)}</span>
                     </div>
                 </div>
                 `;
@@ -215,7 +225,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             data: {
                 labels: ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'اليوم'],
                 datasets: [{
-                    label: 'إجمالي المبيعات (ر.س)',
+                    label: 'إجمالي المبيعات (' + curSym() + ')',
                     data: fakeData,
                     borderColor: '#10b981',
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
@@ -343,18 +353,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         const d = window.__dashboardData || { dailySales:0, cashSales:0, networkSales:0, totalTax:0, totalReturnsAmt:0, totalExp:0, shiftCashFloat:0, drawerBalance:0 };
 
-        document.getElementById('shift-float-cash').innerText = d.shiftCashFloat.toFixed(2) + ' ر.س';
-        document.getElementById('shift-cash').innerText = d.cashSales.toFixed(2) + ' ر.س';
-        document.getElementById('shift-network').innerText = d.networkSales.toFixed(2) + ' ر.س';
-        document.getElementById('shift-total-income').innerText = (d.cashSales + d.networkSales).toFixed(2) + ' ر.س';
+        document.getElementById('shift-float-cash').innerText = curPlain(d.shiftCashFloat);
+        document.getElementById('shift-cash').innerText = curPlain(d.cashSales);
+        document.getElementById('shift-network').innerText = curPlain(d.networkSales);
+        document.getElementById('shift-total-income').innerText = curPlain(d.cashSales + d.networkSales);
         
-        document.getElementById('shift-tax').innerText = d.totalTax.toFixed(2) + ' ر.س';
-        document.getElementById('shift-returns').innerText = d.totalReturnsAmt.toFixed(2) + ' ر.س';
-        document.getElementById('shift-expenses').innerText = d.totalExp.toFixed(2) + ' ر.س';
+        document.getElementById('shift-tax').innerText = curPlain(d.totalTax);
+        document.getElementById('shift-returns').innerText = curPlain(d.totalReturnsAmt);
+        document.getElementById('shift-expenses').innerText = curPlain(d.totalExp);
         
-        document.getElementById('shift-drawer').innerText = d.drawerBalance.toFixed(2) + ' ر.س';
+        document.getElementById('shift-drawer').innerText = curPlain(d.drawerBalance);
         
-        document.getElementById('shift-grand-total').innerText = d.dailySales.toFixed(2) + ' ر.س';
+        document.getElementById('shift-grand-total').innerText = curPlain(d.dailySales);
 
         modal.style.display = 'flex';
     };
@@ -532,13 +542,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Populate summary
         document.getElementById('day-shifts-count').innerText  = allDayShifts.length + ' وردية';
         document.getElementById('day-orders-count').innerText  = dayTotalOrders + ' طلب';
-        document.getElementById('day-total-cash').innerText    = dayTotalCash.toFixed(2)    + ' ر.س';
-        document.getElementById('day-total-network').innerText = dayTotalNet.toFixed(2)     + ' ر.س';
-        document.getElementById('day-total-income').innerText  = dayTotalIncome.toFixed(2)  + ' ر.س';
-        document.getElementById('day-total-tax').innerText     = dayTotalTax.toFixed(2)     + ' ر.س';
-        document.getElementById('day-total-returns').innerText = dayTotalRet.toFixed(2)     + ' ر.س';
-        document.getElementById('day-total-expenses').innerText= dayTotalExp.toFixed(2)     + ' ر.س';
-        document.getElementById('day-net-total').innerText     = dayNetTotal.toFixed(2)     + ' ر.س';
+        document.getElementById('day-total-cash').innerText    = curPlain(dayTotalCash);
+        document.getElementById('day-total-network').innerText = curPlain(dayTotalNet);
+        document.getElementById('day-total-income').innerText  = curPlain(dayTotalIncome);
+        document.getElementById('day-total-tax').innerText     = curPlain(dayTotalTax);
+        document.getElementById('day-total-returns').innerText = curPlain(dayTotalRet);
+        document.getElementById('day-total-expenses').innerText= curPlain(dayTotalExp);
+        document.getElementById('day-net-total').innerText     = curPlain(dayNetTotal);
 
         // ---- Render Per-Shift Breakdown ----
         const breakdownEl = document.getElementById('day-shifts-breakdown');
@@ -557,12 +567,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <span>${sStart} ← ${sEnd}</span>
                     </div>
                     <div class="receipt-row"><span>عدد الطلبات:</span><span>${s.ordersCount || 0} طلب</span></div>
-                    <div class="receipt-row"><span>مبيعات كاش:</span><span>${(s.cashSales||0).toFixed(2)} ر.س</span></div>
-                    <div class="receipt-row"><span>مبيعات شبكة:</span><span>${(s.networkSales||0).toFixed(2)} ر.س</span></div>
-                    <div class="receipt-row"><span>إجمالي الدخل:</span><span style="font-weight:800;">${sIncome} ر.س</span></div>
-                    <div class="receipt-row"><span>المرتجعات:</span><span style="color:#c00;">${(s.totalReturns||0).toFixed(2)} ر.س</span></div>
-                    <div class="receipt-row"><span>المصروفات:</span><span style="color:#c00;">${(s.totalExpenses||0).toFixed(2)} ر.س</span></div>
-                    <div class="receipt-row"><span>رصيد الدرج:</span><span style="font-weight:800; color:#047857;">${(s.drawerBalance||0).toFixed(2)} ر.س</span></div>
+                    <div class="receipt-row"><span>مبيعات كاش:</span><span>${curPlain(s.cashSales||0)}</span></div>
+                    <div class="receipt-row"><span>مبيعات شبكة:</span><span>${curPlain(s.networkSales||0)}</span></div>
+                    <div class="receipt-row"><span>إجمالي الدخل:</span><span style="font-weight:800;">${curPlain(parseFloat(sIncome)||0)}</span></div>
+                    <div class="receipt-row"><span>المرتجعات:</span><span style="color:#c00;">${curPlain(s.totalReturns||0)}</span></div>
+                    <div class="receipt-row"><span>المصروفات:</span><span style="color:#c00;">${curPlain(s.totalExpenses||0)}</span></div>
+                    <div class="receipt-row"><span>رصيد الدرج:</span><span style="font-weight:800; color:#047857;">${curPlain(s.drawerBalance||0)}</span></div>
                 </div>
             `);
         });
@@ -669,13 +679,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Collect all rows from day report
         const totalOrders = document.getElementById('day-total-orders')?.innerText || '0';
-        const totalCash = document.getElementById('day-total-cash')?.innerText || '0.00 ر.س';
-        const totalNetwork = document.getElementById('day-total-network')?.innerText || '0.00 ر.س';
-        const totalIncome = document.getElementById('day-total-income')?.innerText || '0.00 ر.س';
-        const totalTax = document.getElementById('day-total-tax')?.innerText || '0.00 ر.س';
-        const totalReturns = document.getElementById('day-total-returns')?.innerText || '0.00 ر.س';
-        const totalExpenses = document.getElementById('day-total-expenses')?.innerText || '0.00 ر.س';
-        const netTotal = document.getElementById('day-net-total')?.innerText || '0.00 ر.س';
+        const totalCash = document.getElementById('day-total-cash')?.innerText || curPlain(0);
+        const totalNetwork = document.getElementById('day-total-network')?.innerText || curPlain(0);
+        const totalIncome = document.getElementById('day-total-income')?.innerText || curPlain(0);
+        const totalTax = document.getElementById('day-total-tax')?.innerText || curPlain(0);
+        const totalReturns = document.getElementById('day-total-returns')?.innerText || curPlain(0);
+        const totalExpenses = document.getElementById('day-total-expenses')?.innerText || curPlain(0);
+        const netTotal = document.getElementById('day-net-total')?.innerText || curPlain(0);
 
         console.log('🖨️  Printing day closure report...');
         console.log('   Logo:', logoBase64 ? '✓ Base64 (' + logoBase64.length + ' bytes)' : '✗ No logo');

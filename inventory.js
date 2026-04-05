@@ -6,6 +6,8 @@ async function saveDB(db) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
+    const curSym = () => (window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س');
     const tbody = document.querySelector('.inv-table tbody');
     if (!tbody) return;
 
@@ -85,15 +87,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (el) el.innerHTML = html;
         };
 
-        setHtml('kpi-inv-valuation', `${totalVal.toLocaleString()}<span class="currency">ر.س</span>`);
+        setHtml('kpi-inv-valuation', `${totalVal.toLocaleString()}<span class="currency">${curSym()}</span>`);
         const subVal = document.getElementById('kpi-inv-valuation-sub');
         if (subVal) subVal.textContent = whTitles[currentWH]?.split('(')[1]?.replace(')', '') || 'المخزن النشط';
 
-        setHtml('kpi-inv-in-month', `${inVal.toLocaleString()}<span class="currency">ر.س</span>`);
+        setHtml('kpi-inv-in-month', `${inVal.toLocaleString()}<span class="currency">${curSym()}</span>`);
         const inSub = document.getElementById('kpi-inv-in-sub');
         if (inSub) inSub.innerHTML = `<i class="ph ph-tag"></i> ${inThisMonth.length} حركة إدخال هذا الشهر`;
 
-        setHtml('kpi-inv-out-month', `${outVal.toLocaleString()}<span class="currency">ر.س</span>`);
+        setHtml('kpi-inv-out-month', `${outVal.toLocaleString()}<span class="currency">${curSym()}</span>`);
         const outSub = document.getElementById('kpi-inv-out-sub');
         if (outSub) outSub.innerHTML = `<i class="ph ph-receipt"></i> ${outThisMonth.length} حركة صرف هذا الشهر`;
 
@@ -137,9 +139,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td><strong>${item.name}</strong></td>
                 <td>${item.category || ''}</td>
                 <td>${item.unit || ''}</td>
-                <td>${Number(item.cost).toFixed(2)} ر.س</td>
+                <td>${xf(item.cost)}</td>
                 <td class="qty-col ${qty === 0 ? 'empty' : qty <= minQ ? 'low' : 'safe'}">${qty}</td>
-                <td>${(qty * Number(item.cost)).toLocaleString()} ر.س</td>
+                <td>${xf(qty * Number(item.cost))}</td>
                 <td>${statusTag}</td>
                 <td>
                     <div class="tbl-actions">
@@ -396,19 +398,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div style="background: rgba(15,23,42,0.5); border-radius:12px; padding:20px; text-align:right;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
                         <span>المستودع الرئيسي:</span>
-                        <strong style="color:var(--accent-blue)">${valMain.toFixed(2)} ر.س</strong>
+                        <strong style="color:var(--accent-blue)">${xf(valMain)}</strong>
                     </div>
                     <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
                         <span>مخزن المطعم (التشغيل):</span>
-                        <strong style="color:var(--accent-orange)">${valRest.toFixed(2)} ر.س</strong>
+                        <strong style="color:var(--accent-orange)">${xf(valRest)}</strong>
                     </div>
                     <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
                         <span>مخزن المشروبات:</span>
-                        <strong style="color:var(--accent-green)">${valBev.toFixed(2)} ر.س</strong>
+                        <strong style="color:var(--accent-green)">${xf(valBev)}</strong>
                     </div>
                     <div style="display:flex; justify-content:space-between; margin-top:16px; font-size:18px;">
                         <span>إجمالي التقييم النهائي:</span>
-                        <strong style="color:white; font-size:22px;">${(valMain + valRest + valBev).toFixed(2)} ر.س</strong>
+                        <strong style="color:white; font-size:22px;">${xf(valMain + valRest + valBev)}</strong>
                     </div>
                 </div>
             `;
@@ -638,8 +640,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <p><span class="label">رمز الصنف:</span> ${item.sku}</p>
                     <p><span class="label">اسم الصنف:</span> ${item.name}</p>
                     <p><span class="label">الكمية:</span> ${qty} ${item.unit}</p>
-                    <p><span class="label">تكلفة الوحدة:</span> ${Number(item.cost).toFixed(2)} ر.س</p>
-                    <p><span class="label">إجمالي التكلفة:</span> ${Number(tx.total).toFixed(2)} ر.س</p>
+                    <p><span class="label">تكلفة الوحدة:</span> ${xf(item.cost)}</p>
+                    <p><span class="label">إجمالي التكلفة:</span> ${xf(tx.total)}</p>
                     <p><span class="label">المشرف المسؤول:</span> سالم أحمد</p>
                 </div>
 

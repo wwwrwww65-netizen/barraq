@@ -1,6 +1,8 @@
 const { ipcRenderer } = require('electron');
 
 document.addEventListener('DOMContentLoaded', async () => {
+
+    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
     
     // Elements
     const grid = document.getElementById('orders-grid');
@@ -94,7 +96,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <span class="oc-status ${statusClass}">${statusText}</span>
                 </div>
                 <div class="oc-body" onclick="openOrderDetails('${o.orderId}')">
-                    <p>المبلغ <span class="price">${Number(o.total).toFixed(2)} ر.س</span></p>
+                    <p>المبلغ <span class="price">${xf(o.total)}</span></p>
                     <p>تاريخ ووقت <span style="font-size:12px">${tStr}</span></p>
                     <p>نوع وحالة <span style="color:var(--accent-blue)">${o.type || 'عام'} - ${o.paymentMethod || 'كاش'}</span></p>
                     
@@ -135,8 +137,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const taxAmt = order.total - (order.total / (1 + taxRate));
-        document.getElementById('mod-tax').innerText = taxAmt.toFixed(2) + ' ر.س';
-        document.getElementById('mod-total').innerText = Number(order.total).toFixed(2) + ' ر.س';
+        document.getElementById('mod-tax').innerText = xf(taxAmt);
+        document.getElementById('mod-total').innerText = xf(order.total);
         
         // Loop items
         const listContainer = document.getElementById('mod-items-list');
@@ -150,10 +152,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <img src="${img}" class="om-item-img" onerror="this.src='placeholder.svg'">
                     <div class="om-item-info">
                         <h4>${itm.name}</h4>
-                        <p>الكمية: ${itm.qty} × ${Number(itm.price).toFixed(2)} ر.س</p>
+                        <p>الكمية: ${itm.qty} × ${xf(itm.price)}</p>
                     </div>
                     <div class="om-item-price">
-                        ${(itm.qty * itm.price).toFixed(2)} ر.س
+                        ${xf(itm.qty * itm.price)}
                     </div>
                 `;
                 listContainer.appendChild(tr);

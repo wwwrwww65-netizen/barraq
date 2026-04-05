@@ -31,7 +31,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.addEventListener('storage', (e) => {
         if (e.key === 'restaurant_settings') {
             updateTaxLabel();
-            renderCart(); // recalculate totals
+            renderCart();
+            if (typeof reloadPosCatalogFromNetwork === 'function') reloadPosCatalogFromNetwork();
         }
     });
 
@@ -84,8 +85,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
-    // UI Formatters
-    const formatCurrency = (amount) => Number(amount).toFixed(2) + ' ر.س';
+    const formatCurrency = (amount) =>
+        window.HashCurrency ? HashCurrency.format(amount) : Number(amount).toFixed(2) + ' ر.س';
 
     /* ===============================
        Dynamic Data Loading from JSON DB
@@ -126,7 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="product-details">
                         <h4>${p.nameAr}</h4>
                         <div class="price-row">
-                            <span class="product-price">${Number(p.price).toFixed(2)} ر.س</span>
+                            <span class="product-price">${formatCurrency(p.price)}</span>
                             <button class="add-btn"><i class="ph ph-plus"></i></button>
                         </div>
                     </div>
@@ -400,8 +401,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cashChangeDisplay = document.getElementById('cash-change');
 
     function calculateChange() {
-        const totalStr = document.getElementById('cart-total').innerText.replace(' ر.س', '');
-        const total = parseFloat(totalStr) || 0;
+        const rawTot = document.getElementById('cart-total').innerText;
+        const total =
+            window.HashCurrency && HashCurrency.parseLoose
+                ? HashCurrency.parseLoose(rawTot) || 0
+                : parseFloat(String(rawTot).replace(/[^\d.]/g, '')) || 0;
         
         // Handling normal cash
         const received = parseFloat(cashReceivedInput.value) || 0;
@@ -435,7 +439,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Save to LocalStorage for Sales page FIRST
             const now = new Date();
             const selectedPay = document.querySelector('.payment-method.selected input').value;
-            const totalOrder = parseFloat(document.getElementById('cart-total').innerText.replace(' ر.س', ''));
+            const _ct = document.getElementById('cart-total').innerText;
+            const totalOrder =
+                window.HashCurrency && HashCurrency.parseLoose
+                    ? HashCurrency.parseLoose(_ct) || 0
+                    : parseFloat(String(_ct).replace(/[^\d.]/g, '')) || 0;
             let finalSplitCash = 0, finalSplitNet = 0;
 
             if(selectedPay === 'مجزأ') {
@@ -622,7 +630,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const rSub = document.getElementById('r-subtotal');
         if (rSub) rSub.innerText = document.getElementById('cart-subtotal').innerText;
         document.getElementById('r-total').innerText = document.getElementById('cart-total').innerText;
-        document.getElementById('r-discount').innerText = discountAmount > 0 ? formatCurrency(discountAmount) : '0.00 ر.س';
+        document.getElementById('r-discount').innerText =
+            discountAmount > 0 ? formatCurrency(discountAmount) : formatCurrency(0);
         document.getElementById('r-tax').innerText = document.getElementById('cart-tax').innerText;
 
         // Update tax rate label in receipt
@@ -1023,7 +1032,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="product-details">
                         <h4>${p.nameAr}</h4>
                         <div class="price-row">
-                            <span class="product-price">${Number(p.price).toFixed(2)} ر.س</span>
+                            <span class="product-price">${formatCurrency(p.price)}</span>
                             <button class="add-btn"><i class="ph ph-plus"></i></button>
                         </div>
                     </div>

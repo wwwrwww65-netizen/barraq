@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadSales() {
+    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
     // Read from SQLite JSON database via IPC
     let orders = await ipcRenderer.invoke('db-get-orders');
     if (!orders) orders = [];
@@ -70,7 +71,7 @@ async function loadSales() {
                 <td><span class="badge ${typeClass}">${order.type || ''}</span></td>
                 <td><span class="badge ${methodClass}"><i class="ph ph-${(order.paymentMethod||'').includes('كاش') ? 'money' : 'credit-card'}"></i> ${order.paymentMethod || ''}</span></td>
                 <td>${itemsCount} أصناف</td>
-                <td style="color:var(--accent-green); font-weight:800;">${Number(order.total).toFixed(2)} ر.س</td>
+                <td style="color:var(--accent-green); font-weight:800;">${xf(order.total)}</td>
                 <td style="text-align:center;">
                     <button class="sales-action-btn" title="طباعة الفاتورة مرة أخرى" onclick="reprintOrder('${order.orderId}')"><i class="ph ph-printer"></i></button>
                     <button class="sales-action-btn" title="عرض الفاتورة HTML" style="color:#8b5cf6" onclick="viewInvoiceHTML('${order.orderId}')"><i class="ph ph-file-html"></i></button>
@@ -84,6 +85,7 @@ async function loadSales() {
 }
 
 function updateKPIs(orders) {
+    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
     let totalRev = 0;
     let cashRev = 0;
     let cardRev = 0;
@@ -99,10 +101,10 @@ function updateKPIs(orders) {
     });
 
     const el = (id) => document.getElementById(id);
-    if(el('kpi-total-revenue')) el('kpi-total-revenue').innerText = totalRev.toFixed(2) + ' ر.س';
+    if(el('kpi-total-revenue')) el('kpi-total-revenue').innerText = xf(totalRev);
     if(el('kpi-total-orders')) el('kpi-total-orders').innerText = orderCount;
-    if(el('kpi-cash-revenue')) el('kpi-cash-revenue').innerText = cashRev.toFixed(2) + ' ر.س';
-    if(el('kpi-card-revenue')) el('kpi-card-revenue').innerText = cardRev.toFixed(2) + ' ر.س';
+    if(el('kpi-cash-revenue')) el('kpi-cash-revenue').innerText = xf(cashRev);
+    if(el('kpi-card-revenue')) el('kpi-card-revenue').innerText = xf(cardRev);
 }
 
 async function clearSales() {

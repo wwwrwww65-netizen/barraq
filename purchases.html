@@ -66,14 +66,14 @@
                         <div class="kpi-icon green"><i class="ph-fill ph-money"></i></div>
                         <div>
                             <p style="color:var(--text-muted); font-size:12px; margin-bottom:5px;">قيمة المشتريات (المدفوعة نقداً)</p>
-                            <h3 style="font-size:24px; color:var(--accent-green);" id="kpi-paid">0 <span style="font-size:12px; font-weight:normal;">ر.س</span></h3>
+                            <h3 style="font-size:24px; color:var(--accent-green);" id="kpi-paid">0 <span class="js-cur-sym" style="font-size:12px; font-weight:normal;">ر.س</span></h3>
                         </div>
                     </div>
                     <div class="kpi-card">
                         <div class="kpi-icon red"><i class="ph-fill ph-hand-coins"></i></div>
                         <div>
                             <p style="color:var(--text-muted); font-size:12px; margin-bottom:5px;">قيمة المشتريات (آجلة على الحساب)</p>
-                            <h3 style="font-size:24px; color:var(--accent-red);" id="kpi-credit">0 <span style="font-size:12px; font-weight:normal;">ر.س</span></h3>
+                            <h3 style="font-size:24px; color:var(--accent-red);" id="kpi-credit">0 <span class="js-cur-sym" style="font-size:12px; font-weight:normal;">ر.س</span></h3>
                         </div>
                     </div>
                     <div class="kpi-card">
@@ -172,7 +172,7 @@
                     <div class="totals-box">
                         <div class="tot-line"><span>الإجمالي الفرعي:</span> <strong id="subtotal">0.00</strong></div>
                         <div class="tot-line"><span id="pur-tax-label">ضريبة القيمة المضافة (15%):</span> <strong id="tax">0.00</strong></div>
-                        <div class="tot-line grand"><span>الإجمالي النهائي:</span> <span id="grandtotal">0.00 ر.س</span></div>
+                        <div class="tot-line grand"><span>الإجمالي النهائي:</span> <span id="grandtotal">0.00 <span class="js-cur-sym">ر.س</span></span></div>
                     </div>
                 </div>
 
@@ -209,6 +209,7 @@
 
     <script src="db-helper.js"></script>
     <script src="purchases.js"></script>
-<script src="script.js"></script>
+<script src="currency-helper.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

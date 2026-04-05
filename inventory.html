@@ -114,7 +114,7 @@
                         </div>
                         <div class="kpi-details">
                             <p class="kpi-title">إجمالي قيمة المخزون التقديرية</p>
-                            <h3 class="kpi-value inv-glow-indigo" id="kpi-inv-valuation">0<span class="currency">ر.س</span></h3>
+                            <h3 class="kpi-value inv-glow-indigo" id="kpi-inv-valuation">0<span class="currency js-cur-sym">ر.س</span></h3>
                             <p class="kpi-trend text-blue" id="kpi-inv-valuation-sub">المخزن النشط</p>
                         </div>
                     </div>
@@ -125,7 +125,7 @@
                         </div>
                         <div class="kpi-details">
                             <p class="kpi-title">الوارد للمخزن (هذا الشهر)</p>
-                            <h3 class="kpi-value text-green" id="kpi-inv-in-month">0<span class="currency">ر.س</span></h3>
+                            <h3 class="kpi-value text-green" id="kpi-inv-in-month">0<span class="currency js-cur-sym">ر.س</span></h3>
                             <p class="kpi-trend positive" id="kpi-inv-in-sub"><i class="ph ph-tag"></i> 0 حركة إدخال</p>
                         </div>
                     </div>
@@ -136,7 +136,7 @@
                         </div>
                         <div class="kpi-details">
                             <p class="kpi-title">المنصرف من المخزن (هذا الشهر)</p>
-                            <h3 class="kpi-value text-orange" id="kpi-inv-out-month">0<span class="currency">ر.س</span></h3>
+                            <h3 class="kpi-value text-orange" id="kpi-inv-out-month">0<span class="currency js-cur-sym">ر.س</span></h3>
                             <p class="kpi-trend negative" id="kpi-inv-out-sub"><i class="ph ph-receipt"></i> 0 حركة صرف</p>
                         </div>
                     </div>
@@ -227,7 +227,7 @@
                         <input type="text" id="item-unit" class="input-modern" placeholder="كيس، كرتون، كيلو..." required>
                     </div>
                     <div class="form-group">
-                        <label>تكلفة الوحدة (ر.س)</label>
+                        <label>تكلفة الوحدة (<span class="js-cur-sym">ر.س</span>)</label>
                         <input type="number" step="0.01" id="item-cost" class="input-modern" required>
                     </div>
                 </div>
@@ -366,6 +366,7 @@
         </div>
     </div>
 
+    <script src="currency-helper.js"></script>
     <script src="script.js"></script>
     <script src="db-helper.js"></script>
     <script src="inventory.js"></script>

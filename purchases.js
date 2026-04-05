@@ -7,6 +7,8 @@ async function saveDB(db) {
 
 document.addEventListener('DOMContentLoaded', async () => {
 
+    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س');
+
     let db = await window.dbRead();
     if(!db.purchases) db.purchases = [];
     if(!db.suppliers) db.suppliers = [];
@@ -31,10 +33,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('kpi-count').innerText = thisMonth.length + ' فاتورة';
 
         const paid = purchases.filter(p => ['cash', 'bank'].includes(p.payMethod)).reduce((s, p) => s + p.total, 0);
-        document.getElementById('kpi-paid').innerText = paid.toLocaleString() + ' ر.س';
+        document.getElementById('kpi-paid').innerText = xf(paid);
 
         const credit = purchases.filter(p => p.payMethod === 'credit').reduce((s, p) => s + p.total, 0);
-        document.getElementById('kpi-credit').innerText = credit.toLocaleString() + ' ر.س';
+        document.getElementById('kpi-credit').innerText = xf(credit);
 
         // Top Supplier
         const supCounts = {};
@@ -77,7 +79,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td><strong>${p.id}</strong> <div style="font-size:11px; color:var(--text-muted)">مرجع: ${p.ref}</div></td>
                 <td>${p.supName}</td>
                 <td>${p.date}</td>
-                <td style="font-weight:700;">${p.total.toLocaleString()} ر.س</td>
+                <td style="font-weight:700;">${xf(p.total)}</td>
                 <td style="${pColor}">${pLabel}</td>
                 <td><span class="inv-tag tag-safe"><i class="ph-fill ph-check-circle"></i> مُورد للمستودع</span></td>
                 <td>
@@ -209,7 +211,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.getElementById('subtotal').innerText = sub.toFixed(2);
         document.getElementById('tax').innerText = tax.toFixed(2);
-        document.getElementById('grandtotal').innerText = grand.toFixed(2) + ' ر.س';
+        document.getElementById('grandtotal').innerText = xf(grand);
 
         // Update label text to show current rate
         const purTaxLabel = document.getElementById('pur-tax-label');
@@ -258,8 +260,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const supObj = suppliers.find(s => s.id === supId);
         const pMethod = document.getElementById('inv-payment').value;
         const destWh = document.getElementById('inv-warehouse').value;
-        const grandTotalStr = document.getElementById('grandtotal').innerText.replace(' ر.س', '');
-        const grandTot = Number(grandTotalStr);
+        const grandTotalRaw = document.getElementById('grandtotal').innerText;
+        const grandTot =
+            window.HashCurrency && HashCurrency.parseLoose
+                ? HashCurrency.parseLoose(grandTotalRaw) || 0
+                : Number(String(grandTotalRaw).replace(/[^\d.]/g, '')) || 0;
 
         const newPurchase = {
             id: 'PUR-' + Math.floor(Math.random() * 90000 + 10000), // Random 5-digit
@@ -404,9 +409,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </table>
 
                 <div class="totals" style="margin-right:0; margin-left:auto; text-align:right;">
-                    <div class="tot-line"><span>الإجمالي قبل الضريبة:</span> <span>${sub.toFixed(2)} ر.س</span></div>
-                    <div class="tot-line"><span>(${taxPct}%) ضريبة القيمة المضافة:</span> <span>${tax.toFixed(2)} ر.س</span></div>
-                    <div class="tot-line grand"><span>الإجمالي النهائي المستحق:</span> <span>${pur.total.toFixed(2)} ر.س</span></div>
+                    <div class="tot-line"><span>الإجمالي قبل الضريبة:</span> <span>${xf(sub)}</span></div>
+                    <div class="tot-line"><span>(${taxPct}%) ضريبة القيمة المضافة:</span> <span>${xf(tax)}</span></div>
+                    <div class="tot-line grand"><span>الإجمالي النهائي المستحق:</span> <span>${xf(pur.total)}</span></div>
                 </div>
 
                 <div class="footer">

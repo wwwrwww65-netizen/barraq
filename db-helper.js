@@ -30,13 +30,13 @@
     };
 
     /**
-     * حفظ كامل لقاعدة البيانات — async ويُرسل broadcast تلقائياً
-     * الاستخدام: await window.dbWrite(db);
+     * حفظ كامل لقاعدة البيانات — async ويُرسل broadcast تلقائياً ما لم يُمرَّر { broadcast: false }
+     * الاستخدام: await window.dbWrite(db) أو await window.dbWrite(db, { broadcast: false })
      */
-    window.dbWrite = async function(data) {
+    window.dbWrite = async function(data, opts) {
         try {
-            return await ipcRenderer.invoke('db-write-full', data);
-        } catch(e) {
+            return await ipcRenderer.invoke('db-write-full', data, opts || {});
+        } catch (e) {
             console.warn('[db-helper] dbWrite error:', e);
             return false;
         }

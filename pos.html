@@ -92,7 +92,7 @@
                     <div class="product-details">
                         <h4>نفر مندي لحم بلدي</h4>
                         <div class="price-row">
-                            <span class="product-price">65 ر.س</span>
+                            <span class="product-price">65 <span class="js-cur-sym">ر.س</span></span>
                             <button class="add-btn"><i class="ph ph-plus"></i></button>
                         </div>
                     </div>
@@ -105,7 +105,7 @@
                     <div class="product-details">
                         <h4>مكرونة باشميل الدجاج</h4>
                         <div class="price-row">
-                            <span class="product-price">35 ر.س</span>
+                            <span class="product-price">35 <span class="js-cur-sym">ر.س</span></span>
                             <button class="add-btn"><i class="ph ph-plus"></i></button>
                         </div>
                     </div>
@@ -118,7 +118,7 @@
                     <div class="product-details">
                         <h4>برجر لحم كلاسيك</h4>
                         <div class="price-row">
-                            <span class="product-price">25 ر.س</span>
+                            <span class="product-price">25 <span class="js-cur-sym">ر.س</span></span>
                             <button class="add-btn"><i class="ph ph-plus"></i></button>
                         </div>
                     </div>
@@ -131,7 +131,7 @@
                     <div class="product-details">
                         <h4>بيتزا مارغريتا حجم وسط</h4>
                         <div class="price-row">
-                            <span class="product-price">40 ر.س</span>
+                            <span class="product-price">40 <span class="js-cur-sym">ر.س</span></span>
                             <button class="add-btn"><i class="ph ph-plus"></i></button>
                         </div>
                     </div>
@@ -145,7 +145,7 @@
                     <div class="product-details">
                         <h4>سلطة خضراء</h4>
                         <div class="price-row">
-                            <span class="product-price">10 ر.س</span>
+                            <span class="product-price">10 <span class="js-cur-sym">ر.س</span></span>
                             <button class="add-btn"><i class="ph ph-plus"></i></button>
                         </div>
                     </div>
@@ -159,7 +159,7 @@
                     <div class="product-details">
                         <h4>عصير برتقال طازج</h4>
                         <div class="price-row">
-                            <span class="product-price">15 ر.س</span>
+                            <span class="product-price">15 <span class="js-cur-sym">ر.س</span></span>
                             <button class="add-btn"><i class="ph ph-plus"></i></button>
                         </div>
                     </div>
@@ -205,27 +205,27 @@
                 <div class="cart-summary">
                     <div class="summary-line">
                         <span>المجموع الفرعي</span>
-                        <span id="cart-subtotal">0.00 ر.س</span>
+                        <span id="cart-subtotal">0.00 <span class="js-cur-sym">ر.س</span></span>
                     </div>
                     <div class="summary-line">
                         <span id="cart-tax-label"><i class="ph ph-receipt"></i> ضريبة ق.م (15%)</span>
-                        <span id="cart-tax">0.00 ر.س</span>
+                        <span id="cart-tax">0.00 <span class="js-cur-sym">ر.س</span></span>
                     </div>
                     <div class="summary-line discount">
                         <span><i class="ph ph-tag"></i> خصم الإجمالي</span>
                         <input type="number" id="cart-discount-input" class="discount-input" placeholder="0" min="0">
-                        <span>ر.س</span>
+                        <span class="js-cur-sym">ر.س</span>
                     </div>
                     <div class="summary-line total">
                         <span>الإجمالي المطلوب</span>
-                        <span id="cart-total">0.00 ر.س</span>
+                        <span id="cart-total">0.00 <span class="js-cur-sym">ر.س</span></span>
                     </div>
                 </div>
 
                 <div class="cart-actions-grid">
                     <button class="btn-suspend" id="btn-suspend"><i class="ph ph-pause"></i> تعليق الطلب</button>
                     <button class="btn-print" id="btn-print-receipt"><i class="ph ph-printer"></i> طباعة للحفظ</button>
-                    <button class="btn-pay" id="btn-checkout"><i class="ph ph-wallet"></i> الدفع (<span id="btn-checkout-total">0</span> ر.س)</button>
+                    <button class="btn-pay" id="btn-checkout"><i class="ph ph-wallet"></i> الدفع (<span id="btn-checkout-total">0</span> <span class="js-cur-sym">ر.س</span>)</button>
                 </div>
             </div>
         </aside>
@@ -239,7 +239,7 @@
                 <button class="close-modal" id="btn-close-checkout"><i class="ph ph-x"></i></button>
             </div>
             <div class="modal-body text-center">
-                <h1 style="font-size: 36px; color: var(--accent-green); margin-bottom: 20px;" id="checkout-total-display">0.00 ر.س</h1>
+                <h1 style="font-size: 36px; color: var(--accent-green); margin-bottom: 20px;" id="checkout-total-display">0.00 <span class="js-cur-sym">ر.س</span></h1>
                 
                 <h4 style="text-align: right; margin-bottom: 10px; color: var(--text-secondary);">طريقة الدفع:</h4>
                 <div class="payment-methods" style="display: flex; gap: 10px; margin-bottom: 20px;">
@@ -268,11 +268,11 @@
                 </div>
 
                 <div id="cash-calculator" style="display:flex; flex-direction: column; gap: 10px; margin-bottom: 20px; text-align:right;">
-                    <label style="color: var(--text-secondary); font-size:14px; font-weight:700;">المبلغ المستلم من العميل (ر.س):</label>
+                    <label style="color: var(--text-secondary); font-size:14px; font-weight:700;">المبلغ المستلم من العميل (<span class="js-cur-sym">ر.س</span>):</label>
                     <input type="number" id="cash-received" class="input-modern" placeholder="0.00" style="font-size: 20px; text-align: center; font-weight:800; color:var(--accent-green);">
                     <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 8px; border: 1px dashed var(--accent-red);">
                         <span style="font-weight: 700; color:var(--text-secondary);">المتبقي للعميل (الصرف):</span>
-                        <strong id="cash-change" style="font-size: 20px; color: var(--accent-red);">0.00 ر.س</strong>
+                        <strong id="cash-change" style="font-size: 20px; color: var(--accent-red);">0.00 <span class="js-cur-sym">ر.س</span></strong>
                     </div>
                 </div>
 
@@ -315,7 +315,7 @@
             
             <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;">
                 <span>مجموع الأصناف:</span>
-                <strong id="r-subtotal">0.00 ر.س</strong>
+                <strong id="r-subtotal">0.00 <span class="js-cur-sym">ر.س</span></strong>
             </div>
             <div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:5px;">
                 <span>الإجمالي النهائي (شامل الضريبة):</span>
@@ -368,6 +368,7 @@
 
     <script src="node_modules/html2canvas/dist/html2canvas.min.js"></script>
     <script src="db-helper.js"></script>
+    <script src="currency-helper.js"></script>
     <script src="script.js"></script>
     <script src="pos.js"></script>
 </body>

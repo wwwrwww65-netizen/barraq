@@ -1,6 +1,9 @@
 // ✅ staff.js — HR Module fully connected to pos_database.json (Premium Full-Page Design)
 const nodePath = require('path');
 const fmt = (n) => Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const curSym = () => (window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س');
+const xfNum = (n) => (window.HashCurrency ? HashCurrency.formatNumber(n) : fmt(n));
+const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : fmt(n) + ' ر.س');
 
 let db = {};
 
@@ -136,8 +139,8 @@ function updateKPIs() {
     const payroll   = db.employees.reduce((s, e) => s + (e.salary || 0), 0);
     
     document.getElementById('kpi-total').innerHTML     = `${db.employees.length} <span style="font-size:14px">موظف</span>`;
-    document.getElementById('kpi-loans').innerHTML      = `${fmt(totalLoan)} <span style="font-size:14px">ر.س</span>`;
-    document.getElementById('kpi-payroll').innerHTML    = `${fmt(payroll)} <span style="font-size:14px">ر.س</span>`;
+    document.getElementById('kpi-loans').innerHTML      = `${xfNum(totalLoan)} <span style="font-size:14px">${curSym()}</span>`;
+    document.getElementById('kpi-payroll').innerHTML    = `${xfNum(payroll)} <span style="font-size:14px">${curSym()}</span>`;
 }
 
 // ── Render Employees Grid ─────────────────────────────────────
@@ -275,9 +278,9 @@ window.openFullProfile = function(id) {
     const proStatusEl = document.getElementById('pro-status');
     if(proStatusEl) proStatusEl.outerHTML = `<span class="p-tag" id="pro-status">${statusHtml}</span>`;
     
-    document.getElementById('pro-salary').innerHTML = `${fmt(emp.salary || 0)} <span style="font-size:12px">ر.س</span>`;
-    document.getElementById('pro-loans').innerHTML  = `${fmt(emp.loans || 0)} <span style="font-size:12px">ر.س</span>`;
-    document.getElementById('pro-net').innerHTML    = `${fmt(netSalary)} <span style="font-size:12px">ر.س</span>`;
+    document.getElementById('pro-salary').innerHTML = `${xfNum(emp.salary || 0)} <span style="font-size:12px">${curSym()}</span>`;
+    document.getElementById('pro-loans').innerHTML  = `${xfNum(emp.loans || 0)} <span style="font-size:12px">${curSym()}</span>`;
+    document.getElementById('pro-net').innerHTML    = `${xfNum(netSalary)} <span style="font-size:12px">${curSym()}</span>`;
     document.getElementById('pro-absent').innerHTML = `${absentDays} <span style="font-size:12px">يوم</span>`;
 
     // Personal Details
@@ -323,7 +326,7 @@ window.openFullProfile = function(id) {
             if (!salesBody) return;
 
             const totalSales = myOrders.reduce((s, o) => s + (o.total || 0), 0);
-            const fmt2 = n => n.toLocaleString('ar-SA', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ر.س';
+            const fmt2 = (n) => (window.HashCurrency ? HashCurrency.format(n) : n.toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س');
             const payColor = m => m === 'كاش' ? '#10b981' : m === 'مجزأ' ? '#f59e0b' : '#60a5fa';
 
             if (salesKpi) {
@@ -428,7 +431,7 @@ function renderProfileFinances(empName) {
         <tr>
             <td dir="ltr" style="text-align:right">${v.date}</td>
             <td style="color:${v.type.includes('سلفة')||v.type.includes('عليه')?'#f87171':'#34d399'}; font-weight:700;">${v.type}</td>
-            <td style="font-weight:800; font-size:16px;">${fmt(v.amount)} ر.س</td>
+            <td style="font-weight:800; font-size:16px;">${xf(v.amount)}</td>
             <td>${v.reason || '—'}</td>
         </tr>`).join('');
 }
@@ -481,7 +484,7 @@ window.markAttendanceQuick = async function(empId, status) {
             const absenceRule = db.penaltyRules.find(r => r.type === 'absence');
             if(absenceRule) {
                 setTimeout(async () => {
-                    if(confirm(`هل تريد تطبيق خصم آلي (جزاء غياب) بقيمة ${absenceRule.amount} ر.س على الموظف؟`)) {
+                    if(confirm(`هل تريد تطبيق خصم آلي (جزاء غياب) بقيمة ${xf(absenceRule.amount)} على الموظف؟`)) {
                         emp.loans = (emp.loans || 0) + absenceRule.amount;
                         if(!db.hrExpenses) db.hrExpenses = [];
                         db.hrExpenses.push({
@@ -613,15 +616,15 @@ function renderPayroll() {
         html += `<tr>
             <td><strong>${emp.name}</strong></td>
             <td>${emp.role}</td>
-            <td style="color:var(--accent-green); font-weight:700;">${fmt(emp.salary || 0)} ر.س</td>
-            <td style="color:var(--accent-orange);">${emp.loans > 0 ? '-' + fmt(emp.loans) + ' ر.س' : '—'}</td>
-            <td style="color:var(--accent-blue); font-weight:800; font-size:16px;">${fmt(net)} ر.س</td>
+            <td style="color:var(--accent-green); font-weight:700;">${xf(emp.salary || 0)}</td>
+            <td style="color:var(--accent-orange);">${emp.loans > 0 ? '-' + xf(emp.loans) : '—'}</td>
+            <td style="color:var(--accent-blue); font-weight:800; font-size:16px;">${xf(net)}</td>
             <td><span class="inv-tag tag-safe">صافي</span></td>
         </tr>`;
     });
     html += `<tr style="background:rgba(255,255,255,0.05); font-weight:900;">
         <td colspan="4" style="text-align:left; color:white; padding:14px;">إجمالي المسير للصرف</td>
-        <td colspan="2" style="color:var(--accent-green); font-size:20px; font-weight:900;">${fmt(totalPayroll)} ر.س</td>
+        <td colspan="2" style="color:var(--accent-green); font-size:20px; font-weight:900;">${xf(totalPayroll)}</td>
     </tr>`;
     tbody.innerHTML = html;
 }
@@ -639,7 +642,7 @@ function renderVouchers() {
             <td dir="ltr" style="text-align:right">${v.date}</td>
             <td><strong>${v.employee}</strong></td>
             <td style="color:${v.type.includes('سلفة')||v.type.includes('عليه')||v.type.includes('جزاء') ? '#f87171' : '#34d399'}; font-weight:700;">${v.type}</td>
-            <td style="font-weight:800; font-size:16px;">${fmt(v.amount)} ر.س</td>
+            <td style="font-weight:800; font-size:16px;">${xf(v.amount)}</td>
             <td>${v.reason || '—'}</td>
         </tr>`).join('');
 }
@@ -663,7 +666,7 @@ async function renderDeductions() {
             rulesTbody.innerHTML = db.penaltyRules.map((r, i) => `
                 <tr>
                     <td><strong>${r.name}</strong></td>
-                    <td style="color:#34d399; font-weight:bold;">${r.amount} ر.س</td>
+                    <td style="color:#34d399; font-weight:bold;">${xf(r.amount)}</td>
                     <td>
                         <button onclick="editPenaltyRule(${i})" style="background:none; border:none; color:var(--accent-blue); font-size:16px; cursor:pointer;" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
                         ${!r.isSystem ? `<button onclick="deletePenaltyRule(${i})" style="background:none; border:none; color:#ef4444; font-size:16px; cursor:pointer; margin-right:8px;" title="حذف"><i class="ph ph-trash"></i></button>` : `<i class="ph ph-lock-key" style="color:var(--text-muted); font-size:16px; margin-right:8px;" title="قاعدة نظام"></i>`}
@@ -686,7 +689,7 @@ async function renderDeductions() {
         html += `<tr>
             <td dir="ltr" style="text-align:right">${d.date}</td>
             <td><strong>${d.employee}</strong></td>
-            <td style="color:var(--accent-red); font-weight:800; font-size:16px;">${fmt(d.amount)} ر.س</td>
+            <td style="color:var(--accent-red); font-weight:800; font-size:16px;">${xf(d.amount)}</td>
             <td>${d.reason}</td>
         </tr>`;
     });
@@ -1002,7 +1005,7 @@ window.generateVoucher = async function(typeStr) {
                     const empObj = db.employees?.find(e => e.name === employee);
                     if (empObj && empObj.phone) {
                         let phoneNum = String(empObj.phone).replace(/^0/, '+966');
-                        const captionMsg = `مرحباً ${empObj.name}،\nتم إصدار سند لعملية ( ${typeStr} ) بقيمة ${amount} ر.س.\nالبيان: ${reason}`;
+                        const captionMsg = `مرحباً ${empObj.name}،\nتم إصدار سند لعملية ( ${typeStr} ) بقيمة ${xf(amount)}.\nالبيان: ${reason}`;
                         const { ipcRenderer } = require('electron');
                         const hubIp =
                             typeof window.resolveWaHubIp === 'function'

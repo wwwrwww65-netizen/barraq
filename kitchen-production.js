@@ -442,8 +442,9 @@ function renderReceive() {
 }
 
 function renderHandover() {
+    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
     let menuItems = (currentDb && currentDb.products) ? currentDb.products : [];
-    let optionsJSON = menuItems.map(i => `<option value="${i.nameAr}">${i.nameAr} (${i.price} ر.س)</option>`).join('');
+    let optionsJSON = menuItems.map((i) => `<option value="${i.nameAr}">${i.nameAr} (${xf(i.price)})</option>`).join('');
 
     return `
         <div class="kp-card">

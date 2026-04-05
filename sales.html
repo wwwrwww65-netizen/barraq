@@ -95,7 +95,7 @@
                     <div class="sales-kpi-card green">
                         <div class="sk-icon green"><i class="ph ph-coins"></i></div>
                         <p class="sk-title">إجمالي المبيعات (نقداً وشبكة)</p>
-                        <h3 class="sk-value" id="kpi-total-revenue">0.00 ر.س</h3>
+                        <h3 class="sk-value" id="kpi-total-revenue">0.00 <span class="js-cur-sym">ر.س</span></h3>
                     </div>
                     
                     <div class="sales-kpi-card blue">
@@ -107,13 +107,13 @@
                     <div class="sales-kpi-card orange">
                         <div class="sk-icon orange"><i class="ph ph-money"></i></div>
                         <p class="sk-title">المبيعات النقدية (الكاش)</p>
-                        <h3 class="sk-value" id="kpi-cash-revenue">0.00 ر.س</h3>
+                        <h3 class="sk-value" id="kpi-cash-revenue">0.00 <span class="js-cur-sym">ر.س</span></h3>
                     </div>
 
                     <div class="sales-kpi-card purple">
                         <div class="sk-icon purple"><i class="ph ph-credit-card"></i></div>
                         <p class="sk-title">مبيعات الشبكة (البطاقات)</p>
-                        <h3 class="sk-value" id="kpi-card-revenue">0.00 ر.س</h3>
+                        <h3 class="sk-value" id="kpi-card-revenue">0.00 <span class="js-cur-sym">ر.س</span></h3>
                     </div>
                 </div>
 
@@ -162,6 +162,7 @@
 
     <!-- Scripts -->
     <script src="sales.js"></script>
+    <script src="currency-helper.js"></script>
     <script src="script.js"></script>
     <script src="db-helper.js"></script>
 </body>

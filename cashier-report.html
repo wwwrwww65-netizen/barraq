@@ -142,12 +142,12 @@
 
         <!-- KPI Summary -->
         <div class="kpi-grid" id="kpi-grid">
-            <div class="kpi-card"><div class="kpi-label">إجمالي المبيعات</div><div class="kpi-val green" id="kpi-total">0.00 ر.س</div></div>
+            <div class="kpi-card"><div class="kpi-label">إجمالي المبيعات</div><div class="kpi-val green" id="kpi-total">0.00 <span class="js-cur-sym">ر.س</span></div></div>
             <div class="kpi-card"><div class="kpi-label">عدد الطلبات</div><div class="kpi-val blue" id="kpi-orders">0 طلب</div></div>
-            <div class="kpi-card"><div class="kpi-label">متوسط الفاتورة</div><div class="kpi-val orange" id="kpi-avg">0.00 ر.س</div></div>
-            <div class="kpi-card"><div class="kpi-label">مبيعات كاش</div><div class="kpi-val green" id="kpi-cash">0.00 ر.س</div></div>
-            <div class="kpi-card"><div class="kpi-label">مبيعات شبكة</div><div class="kpi-val blue" id="kpi-network">0.00 ر.س</div></div>
-            <div class="kpi-card"><div class="kpi-label">إجمالي المرتجعات</div><div class="kpi-val red" id="kpi-returns">0.00 ر.س</div></div>
+            <div class="kpi-card"><div class="kpi-label">متوسط الفاتورة</div><div class="kpi-val orange" id="kpi-avg">0.00 <span class="js-cur-sym">ر.س</span></div></div>
+            <div class="kpi-card"><div class="kpi-label">مبيعات كاش</div><div class="kpi-val green" id="kpi-cash">0.00 <span class="js-cur-sym">ر.س</span></div></div>
+            <div class="kpi-card"><div class="kpi-label">مبيعات شبكة</div><div class="kpi-val blue" id="kpi-network">0.00 <span class="js-cur-sym">ر.س</span></div></div>
+            <div class="kpi-card"><div class="kpi-label">إجمالي المرتجعات</div><div class="kpi-val red" id="kpi-returns">0.00 <span class="js-cur-sym">ر.س</span></div></div>
         </div>
 
         <!-- Per-Cashier Summary Table (Admin only) -->
@@ -202,6 +202,7 @@
     </main>
 </div>
 
+<script src="currency-helper.js"></script>
 <script src="script.js"></script>
 <script src="db-helper.js"></script>
 <script>
@@ -298,7 +299,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             else if (o.paymentMethod === 'مجزأ') { cash += o.splitCash || 0; network += o.splitNetwork || 0; }
         });
         let totalReturns = returns.reduce((s, r) => s + (r.amount || 0), 0);
-        const fmt = n => n.toLocaleString('ar-SA', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ر.س';
+        const fmt = (n) => (window.HashCurrency ? HashCurrency.format(n) : n.toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س');
         document.getElementById('kpi-total').textContent = fmt(total);
         document.getElementById('kpi-orders').textContent = orders.length + ' طلب';
         document.getElementById('kpi-avg').textContent = fmt(orders.length ? total / orders.length : 0);
@@ -314,7 +315,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             tbody.innerHTML = `<tr><td colspan="7" class="no-data"><i class="ph ph-user-circle"></i> لا توجد بيانات للفترة المحددة</td></tr>`;
             return;
         }
-        const fmt = n => n.toLocaleString('ar-SA', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ر.س';
+        const fmt = (n) => (window.HashCurrency ? HashCurrency.format(n) : n.toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س');
         tbody.innerHTML = allCashiers.map(name => {
             const myOrders = orders.filter(o => (o.cashier || 'غير معروف') === name);
             const myReturns = returns.filter(r => (r.emp || '') === name);
@@ -347,7 +348,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         const sorted = [...orders].sort((a,b) => (b.timestamp||0)-(a.timestamp||0));
-        const fmt = n => (n||0).toLocaleString('ar-SA', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ر.س';
+        const fmt = (n) => (window.HashCurrency ? HashCurrency.format(n || 0) : (n || 0).toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س');
         const payClass = m => m==='كاش' ? 'badge-green' : m==='مجزأ' ? 'badge-orange' : 'badge-blue';
         const typeClass = t => t==='سفري' ? 'badge-orange' : 'badge-blue';
         tbody.innerHTML = sorted.map(o => `<tr>

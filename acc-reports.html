@@ -197,7 +197,7 @@
                             <span>قيمة البضاعة في المستودع</span><strong style="color:var(--text-muted)">يُحدد بجرد نهاية الفترة</strong>
                         </div>
                         <div style="display:flex; justify-content:space-between; margin-top:24px; padding-top:16px; border-top:1px dashed var(--border-color); color:var(--accent-blue); font-size:18px; font-weight:800;">
-                            <span>إجمالي الأصول</span><strong id="bs-total-assets">0.00 ر.س</strong>
+                            <span>إجمالي الأصول</span><strong id="bs-total-assets">0.00 <span class="js-cur-sym">ر.س</span></strong>
                         </div>
                     </div>
 
@@ -216,7 +216,7 @@
                         </div>
 
                         <div style="display:flex; justify-content:space-between; margin-top:24px; padding-top:16px; border-top:1px dashed var(--border-color); color:var(--accent-orange); font-size:18px; font-weight:800;">
-                            <span>إجمالي الخصوم وحق الملكية</span><strong id="bs-total-liabilities">0.00 ر.س</strong>
+                            <span>إجمالي الخصوم وحق الملكية</span><strong id="bs-total-liabilities">0.00 <span class="js-cur-sym">ر.س</span></strong>
                         </div>
                     </div>
                 </div>
@@ -225,6 +225,7 @@
         </main>
     </div>
 
+    <script src="currency-helper.js"></script>
     <script src="script.js"></script>
     <script src="db-helper.js"></script>
     <script src="acc.js"></script>

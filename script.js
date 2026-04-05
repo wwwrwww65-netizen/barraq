@@ -152,6 +152,25 @@ try {
         recordLanSyncHubIp(ip, { mergeIntoWaSettings: true });
     });
 
+    // تصفير شبكي: بعد سحب قاعدة فارغة من المركز — مسح localStorage مع الإبقاء على بيانات دخول المدير
+    ipcRenderer.on('lan-factory-reset-clear-localstorage', () => {
+        try {
+            const aUser = localStorage.getItem('admin_username');
+            const aPwd = localStorage.getItem('admin_pwd');
+            window._networkSyncing = true;
+            try {
+                localStorage.clear();
+                if (aUser != null && aUser !== '') localStorage.setItem('admin_username', aUser);
+                if (aPwd != null && aPwd !== '') localStorage.setItem('admin_pwd', aPwd);
+            } finally {
+                window._networkSyncing = false;
+            }
+            window.location.href = 'login.html';
+        } catch (e) {
+            console.error('[Factory reset LAN] clear localStorage:', e);
+        }
+    });
+
     window.resolveWaHubIp = function (waSettings) {
         try {
             const manual = waSettings && waSettings.hubIp && String(waSettings.hubIp).trim();
@@ -636,7 +655,6 @@ window.syncGlobalSettings = function() {
                     rTaxRateLabel.innerText = `قيمة الضريبة المضافة ${taxRatePct}%:`;
                 }
             }
-
         } catch(e) {
             console.error('Settings parse error', e);
         }
@@ -738,6 +756,10 @@ window.syncGlobalSettings = function() {
         } catch(e) {
             console.error('Profile auth error', e);
         }
+    }
+
+    if (window.HashCurrency && typeof window.HashCurrency.applySymToDom === 'function') {
+        window.HashCurrency.applySymToDom();
     }
 };
 

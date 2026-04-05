@@ -1,4 +1,8 @@
 document.addEventListener('DOMContentLoaded', async () => {
+
+    const curSym = () => (window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س');
+    const curNum = (n) => (window.HashCurrency ? HashCurrency.formatNumber(n) : Number(n).toFixed(2));
+    const curFmt = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
     
     let currentPlPeriod = 'month';
 
@@ -60,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 },
                 scales: {
                     x: { grid: { color: 'rgba(255,255,255,0.05)' } },
-                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { callback: (v) => v + ' ر.س' } }
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { callback: (v) => v + ' ' + curSym() } }
                 }
             }
         });
@@ -152,12 +156,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const netProfit = netRevenue - totalExpenses;
 
         // UI Updates KPIs
-        document.getElementById('pl-total-revenue').innerHTML = netRevenue.toFixed(2) + ' <small>ر.س</small>';
-        document.getElementById('pl-total-expense').innerHTML = totalExpenses.toFixed(2) + ' <small>ر.س</small>';
-        document.getElementById('pl-total-returns').innerHTML = totalReturns.toFixed(2) + ' <small>ر.س</small>';
+        document.getElementById('pl-total-revenue').innerHTML = `${curNum(netRevenue)} <small>${curSym()}</small>`;
+        document.getElementById('pl-total-expense').innerHTML = `${curNum(totalExpenses)} <small>${curSym()}</small>`;
+        document.getElementById('pl-total-returns').innerHTML = `${curNum(totalReturns)} <small>${curSym()}</small>`;
         
         const netEl = document.getElementById('pl-net-profit');
-        netEl.innerHTML = netProfit.toFixed(2) + ' <small>ر.س</small>';
+        netEl.innerHTML = `${curNum(netProfit)} <small>${curSym()}</small>`;
         netEl.style.color = netProfit >= 0 ? 'var(--accent-blue)' : 'var(--accent-red)';
         
         // UI Breakdown Table
@@ -172,7 +176,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('bd-returns').innerText = '- ' + totalReturns.toFixed(2);
         
         const grandEl = document.getElementById('bd-grand-total');
-        grandEl.innerText = netProfit.toFixed(2) + ' ر.س';
+        grandEl.innerText = curFmt(netProfit);
         if (netProfit < 0) {
             grandEl.classList.add('loss');
         } else {

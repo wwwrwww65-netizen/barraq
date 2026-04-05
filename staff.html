@@ -150,14 +150,14 @@
                     <div class="kpi-icon orange"><i class="ph-fill ph-hand-coins"></i></div>
                     <div class="kpi-details">
                         <p class="kpi-title">السلف المفتوحة</p>
-                        <h3 class="kpi-value text-orange" id="kpi-loans">0 <span class="currency">ر.س</span></h3>
+                        <h3 class="kpi-value text-orange" id="kpi-loans">0 <span class="currency js-cur-sym">ر.س</span></h3>
                     </div>
                 </div>
                 <div class="card kpi-card hr-kpi-indigo">
                     <div class="kpi-icon indigo"><i class="ph-fill ph-wallet"></i></div>
                     <div class="kpi-details">
                         <p class="kpi-title">مسير الرواتب</p>
-                        <h3 class="kpi-value hr-glow-indigo" id="kpi-payroll">0 <span class="currency">ر.س</span></h3>
+                        <h3 class="kpi-value hr-glow-indigo" id="kpi-payroll">0 <span class="currency js-cur-sym">ر.س</span></h3>
                     </div>
                 </div>
             </div>
@@ -263,7 +263,7 @@
                                 </div>
                             </div>
                             <div class="fm-group">
-                                <label>الراتب الأساسي (ر.س) <span class="required">*</span></label>
+                                <label>الراتب الأساسي (<span class="js-cur-sym">ر.س</span>) <span class="required">*</span></label>
                                 <input type="number" id="ne-salary" class="fm-input" required min="0" step="any" placeholder="3000">
                             </div>
                             
@@ -311,15 +311,15 @@
                     <div class="profile-stats-grid">
                         <div class="p-stat-card">
                             <p>الراتب الأساسي</p>
-                            <h3 style="color:#34d399;" id="pro-salary">0.00 <span style="font-size:12px">ر.س</span></h3>
+                            <h3 style="color:#34d399;" id="pro-salary">0.00 <span class="js-cur-sym" style="font-size:12px">ر.س</span></h3>
                         </div>
                         <div class="p-stat-card">
                             <p>إجمالي السلف / الخصم</p>
-                            <h3 style="color:#f87171;" id="pro-loans">0.00 <span style="font-size:12px">ر.س</span></h3>
+                            <h3 style="color:#f87171;" id="pro-loans">0.00 <span class="js-cur-sym" style="font-size:12px">ر.س</span></h3>
                         </div>
                         <div class="p-stat-card">
                             <p>صافي المستحق للصرف</p>
-                            <h3 style="color:#60a5fa;" id="pro-net">0.00 <span style="font-size:12px">ر.س</span></h3>
+                            <h3 style="color:#60a5fa;" id="pro-net">0.00 <span class="js-cur-sym" style="font-size:12px">ر.س</span></h3>
                         </div>
                         <div class="p-stat-card" style="background:rgba(236,72,153,0.1); border-color:rgba(236,72,153,0.2);">
                             <p style="color:#f472b6;">أيام الغياب هذا الشهر</p>
@@ -489,7 +489,7 @@
             <select id="voucher-employee" class="fm-input" style="background:rgba(0,0,0,0.3);"><option value="">...</option></select>
         </div>
         <div class="fm-group">
-            <label>قيمة المبلغ (ر.س)</label>
+            <label>قيمة المبلغ (<span class="js-cur-sym">ر.س</span>)</label>
             <input type="number" id="voucher-amount" class="fm-input" step="any" min="0" dir="ltr" placeholder="0.00" style="background:rgba(0,0,0,0.3); font-size:24px; font-weight:800; color:#34d399; text-align: right;">
         </div>
         <div class="fm-group">
@@ -530,7 +530,7 @@
         <div class="v-body-box">
             <table class="v-table">
                 <tr><td class="v-label">تم صرف للأخ</td><td class="v-dots">:</td><td class="v-val"><strong id="v-name"></strong></td></tr>
-                <tr><td class="v-label">مبلغ وقدره</td><td class="v-dots">:</td><td class="v-val"><strong id="v-amt"></strong> <span class="v-sub">(فقط <span id="v-amt-text"></span> ريال لا غير)</span></td></tr>
+                <tr><td class="v-label">مبلغ وقدره</td><td class="v-dots">:</td><td class="v-val"><strong id="v-amt"></strong> <span class="v-sub">(فقط <span id="v-amt-text"></span> <span class="js-cur-label">ريال سعودي</span> لا غير)</span></td></tr>
                 <tr><td class="v-label">وذلك مقابل</td><td class="v-dots">:</td><td class="v-val"><strong id="v-reason-text"></strong></td></tr>
             </table>
             <div class="v-signatures">
@@ -561,7 +561,7 @@
                 <select id="penalty-employee" class="fm-input" style="background:rgba(0,0,0,0.3);" required></select>
             </div>
             <div class="fm-group mb-3">
-                <label>مبلغ الجزاء (ر.س) *</label>
+                <label>مبلغ الجزاء (<span class="js-cur-sym">ر.س</span>) *</label>
                 <input type="number" id="penalty-amount" class="fm-input" min="0" step="any" dir="ltr" required placeholder="مثلاً 100" style="background:rgba(0,0,0,0.3); font-size:24px; font-weight:800; color:#ef4444; text-align: right;">
             </div>
             <div class="fm-group mb-4">
@@ -601,7 +601,7 @@
                 <input type="text" id="rule-name" class="fm-input" required placeholder="مثال: غياب بدون عذر" style="background:rgba(0,0,0,0.3);">
             </div>
             <div class="fm-group mb-4">
-                <label>مبلغ الجزاء (ر.س) *</label>
+                <label>مبلغ الجزاء (<span class="js-cur-sym">ر.س</span>) *</label>
                 <input type="number" id="rule-amount" class="fm-input" min="0" step="any" dir="ltr" required placeholder="مثلاً 150" style="background:rgba(0,0,0,0.3); color:#34d399; font-weight:bold; font-size:20px; text-align: right;">
             </div>
             
@@ -614,6 +614,7 @@
 
 <script src="node_modules/html2canvas/dist/html2canvas.min.js"></script>
     <script src="db-helper.js"></script>
+    <script src="currency-helper.js"></script>
     <script src="script.js"></script>
 <script src="staff.js"></script>
 </body>

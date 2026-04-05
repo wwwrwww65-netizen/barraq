@@ -4,6 +4,8 @@
 (function () {
     const fmt = (n) =>
         Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : fmt(n) + ' ر.س');
+    const curSym = () => (window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س');
 
     function esc(s) {
         return String(s == null ? '' : s)
@@ -117,15 +119,15 @@
         const bankBox = document.getElementById('bank-balance-box');
         const totalBox = document.getElementById('total-liquidity');
         if (cashBox) {
-            cashBox.innerHTML = fmt(cashBal) + ' <span style="font-size:18px;">ر.س</span>';
+            cashBox.innerHTML = fmt(cashBal) + ' <span style="font-size:18px;">' + curSym() + '</span>';
             cashBox.style.color = cashBal < 0 ? 'var(--accent-red)' : '';
         }
         if (bankBox) {
-            bankBox.innerHTML = fmt(bankBal) + ' <span style="font-size:18px;">ر.س</span>';
+            bankBox.innerHTML = fmt(bankBal) + ' <span style="font-size:18px;">' + curSym() + '</span>';
             bankBox.style.color = bankBal < 0 ? 'var(--accent-red)' : '';
         }
         if (totalBox) {
-            totalBox.innerHTML = fmt(totalLiq) + ' <span style="font-size:14px;">ر.س</span>';
+            totalBox.innerHTML = fmt(totalLiq) + ' <span style="font-size:14px;">' + curSym() + '</span>';
             totalBox.style.color = totalLiq < 0 ? 'var(--accent-red)' : '';
         }
 
@@ -133,14 +135,14 @@
             const el = document.getElementById(id);
             if (el) el.innerText = v;
         };
-        setTxt('cb-sales', fmt(cashRev) + ' ر.س');
-        setTxt('cb-pur', fmt(cashPur) + ' ر.س');
-        setTxt('cb-exp', fmt(cashExp) + ' ر.س');
-        setTxt('cb-ret', fmt(cashRetOut) + ' ر.س');
-        setTxt('bb-sales', fmt(bankRev) + ' ر.س');
-        setTxt('bb-pur', fmt(bankPur) + ' ر.س');
-        setTxt('bb-exp', fmt(bankExp) + ' ر.س');
-        setTxt('bb-ret', fmt(bankRetOut) + ' ر.س');
+        setTxt('cb-sales', xf(cashRev));
+        setTxt('cb-pur', xf(cashPur));
+        setTxt('cb-exp', xf(cashExp));
+        setTxt('cb-ret', xf(cashRetOut));
+        setTxt('bb-sales', xf(bankRev));
+        setTxt('bb-pur', xf(bankPur));
+        setTxt('bb-exp', xf(bankExp));
+        setTxt('bb-ret', xf(bankRetOut));
 
         const bankTrxBody = document.getElementById('bank-trx-body');
         if (bankTrxBody) {
@@ -191,7 +193,7 @@
                 <td><strong>${esc(row.id || '—')}</strong></td>
                 <td dir="ltr" style="text-align:right">${esc(d)}</td>
                 <td>${esc(row.desc || row.note || '—')}</td>
-                <td style="font-weight:800;">${fmt(row.amount)} ر.س</td>
+                <td style="font-weight:800;">${xf(row.amount)}</td>
                 <td>${pm}</td>
                 <td><button type="button" class="btn-text oi-del" data-oid="${row.id}" style="color:var(--accent-red)"><i class="ph ph-trash"></i></button></td>
             </tr>`,

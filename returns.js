@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
+
+    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
     
     // --- Elements ---
     const searchInput = document.getElementById('return-search-input');
@@ -28,7 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentFoundOrder = found;
             resId.innerText = 'رقم الطلب: ' + found.orderId;
             resDate.innerText = found.date || found.dateStr || '';
-            resTotal.innerText = Number(found.total).toFixed(2) + ' ر.س';
+            resTotal.innerText = xf(found.total);
             resMethod.innerText = found.paymentMethod || '';
             resType.innerText = found.type || '';
             resultCard.classList.add('active');
@@ -132,7 +134,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         returns.forEach(r => totalVal += r.amount);
 
         const el = (id) => document.getElementById(id);
-        if(el('kpi-total-returns')) el('kpi-total-returns').innerText = totalVal.toFixed(2) + ' ر.س';
+        if(el('kpi-total-returns')) el('kpi-total-returns').innerText = xf(totalVal);
         if(el('kpi-return-count')) el('kpi-return-count').innerText = returns.length + ' طلب';
         if(returns.length > 0 && el('kpi-last-return')) {
             el('kpi-last-return').innerHTML = returns[0].returnTime + `<br><span style="font-size:14px;color:var(--text-muted)">(${returns[0].origId})</span>`;
@@ -153,7 +155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <tr>
                     <td><strong>${r.origId}</strong></td>
                     <td style="color:var(--text-secondary); font-size:12px;">${r.returnTime}</td>
-                    <td style="color:var(--accent-red); font-weight:800;">${Number(r.amount).toFixed(2)} ر.س</td>
+                    <td style="color:var(--accent-red); font-weight:800;">${xf(r.amount)}</td>
                     <td><span style="color:var(--text-secondary)"><i class="ph ph-money"></i> ${r.method}</span></td>
                     <td>${r.emp || ''}</td>
                     <td><span class="badge-returned">مسترجع</span></td>

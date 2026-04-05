@@ -97,7 +97,7 @@
                         <div class="or-details">
                             <div class="or-info">
                                 <span>قيمة الفاتورة</span>
-                                <strong id="res-total" style="color:var(--accent-green); font-size:24px;">0.00 ر.س</strong>
+                                <strong id="res-total" style="color:var(--accent-green); font-size:24px;">0.00 <span class="js-cur-sym">ر.س</span></strong>
                             </div>
                             <div class="or-info">
                                 <span>طريقة الدفع الأساسية</span>
@@ -120,7 +120,7 @@
                         <div class="ret-kpi-icon red"><i class="ph-fill ph-arrow-counter-clockwise"></i></div>
                         <div class="ret-kpi-info">
                             <h4>إجمالي المبالغ المرتجعة (هذا الشهر)</h4>
-                            <h2 id="kpi-total-returns">0.00 ر.س</h2>
+                            <h2 id="kpi-total-returns">0.00 <span class="js-cur-sym">ر.س</span></h2>
                         </div>
                     </div>
 
@@ -174,6 +174,7 @@
     </div>
 
     <!-- Scripts -->
+    <script src="currency-helper.js"></script>
     <script src="script.js"></script>
     <script src="db-helper.js"></script>
     <script src="returns.js"></script>
