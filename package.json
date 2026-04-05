@@ -1,6 +1,6 @@
 {
   "name": "baraaq",
-  "version": "1.0.6",
+  "version": "1.0.10",
   "main": "main.js",
   "description": "Hash POS Desktop — نظام نقاط البيع المتكامل للمطاعم (Techier)",
   "scripts": {
@@ -10,6 +10,9 @@
     "test:e2e": "playwright test",
     "test:all": "npm run test:unit && npm run test:e2e",
     "start": "electron .",
+    "start:sim-print": "electron . --simulate-thermal-print",
+    "start:sim-print-open": "electron . --simulate-thermal-print --simulate-thermal-print-open",
+    "test:print-sim": "electron scripts/print-sim-smoke.js",
     "build": "electron-builder"
   },
   "keywords": [],

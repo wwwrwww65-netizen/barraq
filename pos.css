@@ -157,9 +157,10 @@
 .pos-categories-wrapper { margin-bottom: 24px; }
 .pos-categories {
     display: flex;
-    gap: 16px;
-    overflow-x: auto;
-    padding-bottom: 8px;
+    gap: 12px;
+    flex-wrap: wrap; /* Allows buttons to go to the next line */
+    padding-bottom: 16px;
+    overflow-x: visible; /* Remove horizontal scroll */
 }
 .category-btn {
     display: flex;

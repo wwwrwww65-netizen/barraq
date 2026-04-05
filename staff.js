@@ -883,10 +883,29 @@ window.generateVoucher = async function(typeStr) {
     if (document.getElementById('v-bottom-date')) document.getElementById('v-bottom-date').innerText = todayStr;
     if (document.getElementById('v-number')) document.getElementById('v-number').innerText = Math.floor(Math.random() * 90000) + 10000;
     if (document.getElementById('v-name')) document.getElementById('v-name').innerText = employee;
-    if (document.getElementById('v-amt')) document.getElementById('v-amt').innerText = Number(amount).toFixed(2);
-    if (document.getElementById('v-amt-text')) document.getElementById('v-amt-text').innerText = Number(amount).toFixed(2);
+    const amtFmt = Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (document.getElementById('v-amt')) document.getElementById('v-amt').innerText = amtFmt;
+    if (document.getElementById('v-amt-text')) document.getElementById('v-amt-text').innerText = amtFmt;
     if (document.getElementById('v-reason-text')) document.getElementById('v-reason-text').innerText = reason;
-    if (document.getElementById('v-balance-text')) document.getElementById('v-balance-text').innerText = typeStr.includes('له') ? 'له ' + amount : 'عليه ' + amount;
+    if (document.getElementById('v-balance-text')) {
+        const emp = db.employees?.find((e) => e.name === employee);
+        const salary = Number(emp?.salary) || 0;
+        const loans = Number(emp?.loans) || 0;
+        const amtNum = Number(amount);
+        const netRemaining = Math.max(0, salary - loans - amtNum);
+        const netFmt = netRemaining.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+        document.getElementById('v-balance-text').innerText = netFmt;
+    }
+    if (document.getElementById('v-notes')) document.getElementById('v-notes').innerText = reason;
+    const docTitle = document.getElementById('v-doc-title');
+    if (docTitle) {
+        if (typeStr.includes('راتب')) docTitle.textContent = 'سند راتب';
+        else if (typeStr.includes('مستحقات')) docTitle.textContent = 'سند صرف مستحقات';
+        else docTitle.textContent = 'سند صرف';
+    }
 
     const paySel = document.getElementById('voucher-pay-method');
     const pMethod = paySel && paySel.value === 'bank' ? 'bank' : 'cash';
@@ -910,8 +929,6 @@ window.generateVoucher = async function(typeStr) {
                 if (titleEl && sysSettings.name) titleEl.innerText = sysSettings.name;
                 if (pEls[0] && sysSettings.branch) pEls[0].innerText = sysSettings.branch;
                 if (pEls[1] && sysSettings.phone) pEls[1].innerText = sysSettings.phone;
-                const stampEl = document.getElementById('v-stamp-name');
-                if (stampEl && sysSettings.name) stampEl.innerText = sysSettings.name;
                 if (logoEl && sysSettings.logo && sysSettings.logo !== '1111.png') {
                     logoEl.src = sysSettings.logo;
                     // Wait for image to load before capturing

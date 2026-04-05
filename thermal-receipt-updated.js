@@ -134,9 +134,10 @@ async function printCustomerReceipt(receiptSnap) {
         const cashierPrinter = localStorage.getItem('cashier_printer') || '';
         console.log('📤 Sending to printer:', cashierPrinter || 'Default');
         
-        await ipcRenderer.invoke('print-to-device', { html: html, printerName: cashierPrinter });
-        
-        console.log('✅ Print job sent successfully');
+        const pr = await ipcRenderer.invoke('print-to-device', { html: html, printerName: cashierPrinter });
+        if (pr && pr.debug) console.log('[طباعة — تشخيص]', pr.debug);
+        if (!pr || !pr.success) console.warn('[طباعة — تحقق من الطابعة]', pr);
+        else console.log('✅ Print job sent successfully');
     } catch(e) { 
         console.error('❌ Customer receipt print failed:', e); 
         alert('حدث خطأ في الطباعة: ' + e.message);
@@ -190,34 +191,40 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
             padding: 0;
         }
         
+        html {
+            overflow: visible;
+        }
+        
         body {
             font-family: 'Segoe UI', 'Cairo', 'Arial', sans-serif;
-            margin: 0;
+            margin: 0 auto;
             padding: 0;
-            width: 80mm;
-            max-width: 80mm;
-            min-width: 72mm;
+            width: 100%;
+            max-width: 72mm;
+            min-width: 0;
             background: #ffffff;
             color: #000000;
             direction: rtl;
             text-align: center;
             line-height: 1.35;
-            font-size: 12px;
+            font-size: 11px;
             -webkit-font-smoothing: antialiased;
+            overflow: visible;
         }
         
         .receipt-wrapper {
-            width: 80mm;
-            max-width: 80mm;
-            padding: 3mm 2mm;
+            width: 100%;
+            max-width: 72mm;
+            padding: 2mm 1mm 2mm 5mm;
             margin: 0 auto;
+            box-sizing: border-box;
         }
         
         .store-logo {
-            width: 15mm;
-            height: 15mm;
-            max-width: 15mm;
-            max-height: 15mm;
+            width: 28mm;
+            height: 28mm;
+            max-width: 28mm;
+            max-height: 28mm;
             object-fit: contain;
             margin: 0 auto 2mm auto;
             display: block;
@@ -278,34 +285,37 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
             table-layout: fixed;
             border-collapse: collapse;
             margin: 2mm 0;
-            font-size: 11px;
+            font-size: 10px;
+            border: 1px solid #000000;
         }
         
         .items-table thead th {
-            padding: 2mm 1mm;
-            border-bottom: 1.5px solid #000000;
+            padding: 1.5mm 1mm;
+            border: 1px solid #000000;
             font-weight: 800;
-            font-size: 10px;
+            font-size: 9px;
             text-align: center;
+            background: #f2f2f2;
         }
         
         .items-table tbody td {
-            padding: 1.5mm 1mm;
+            padding: 1.2mm 1mm;
             text-align: center;
             vertical-align: top;
             overflow-wrap: anywhere;
             word-break: break-word;
+            border: 1px solid #000000;
         }
         
         .items-table tbody tr {
-            border-bottom: 0.5px dotted #cccccc;
+            border-bottom: none;
         }
         
         .item-name {
             text-align: right !important;
             font-weight: 600;
             word-wrap: break-word;
-            max-width: 35mm;
+            max-width: none;
         }
         
         .item-qty {
@@ -328,20 +338,28 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
         .total-row {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             padding: 1mm 0;
             gap: 2mm;
+            min-width: 0;
         }
         
         .total-label {
             text-align: right;
             flex: 1;
+            min-width: 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
         
         .total-value {
             text-align: left;
             font-weight: 600;
-            min-width: 20mm;
+            min-width: 0;
+            flex-shrink: 0;
+            max-width: 46%;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
         
         .grand-total {

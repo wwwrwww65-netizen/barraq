@@ -1,4 +1,12 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const {
+  app,
+  BrowserWindow,
+  ipcMain,
+  dialog,
+  shell,
+  screen,
+  globalShortcut,
+} = require('electron');
 const {
   setupGoogleDriveIpc,
   startGoogleDriveAutoScheduler,
@@ -14,6 +22,50 @@ const PORT = 41234;
 const HTTP_PORT = 41235;
 const BROADCAST_ADDR = '255.255.255.255';
 const myInstanceId = Math.random().toString(36).substring(7);
+
+/**
+ * محاكاة طابعة حرارية: لا يُرسل إلى الطابعة؛ يُصدَّر PDF بنفس HTML وبـ @page 80mm (preferCSSPageSize).
+ * تشغيل: متغير بيئة HASH_POS_SIMULATE_PRINT=1 أو وسيط --simulate-thermal-print
+ * فتح الملف تلقائياً: HASH_POS_SIMULATE_PRINT_OPEN=1 أو --simulate-thermal-print-open
+ */
+function isSimulateThermalPrint() {
+  if (process.argv.includes('--simulate-thermal-print')) return true;
+  const v = process.env.HASH_POS_SIMULATE_PRINT;
+  return v === '1' || v === 'true' || v === 'yes';
+}
+
+function shouldOpenSimulatedPrintPdf() {
+  if (process.argv.includes('--simulate-thermal-print-open')) return true;
+  const v = process.env.HASH_POS_SIMULATE_PRINT_OPEN;
+  return v === '1' || v === 'true';
+}
+
+/** سجلات الطباعة — تظهر في طرفية التشغيل؛ واجهة الصفحة: Ctrl+Shift+I (أدوات المطوّر) */
+function logPrint(...args) {
+  console.log('[HashPOS.print]', new Date().toISOString(), ...args);
+}
+
+function placePrintWindowOnPrimaryDisplay(win) {
+  try {
+    const display = screen.getPrimaryDisplay();
+    const { x, y, width, height } = display.workArea;
+    const w = 320;
+    const h = 400;
+    // Move to corner but keep on-screen as Chromium sometimes fails to render off-screen
+    win.setBounds({
+      x: x + width - w - 8,
+      y: y + height - h - 8,
+      width: w,
+      height: h,
+    });
+    // Set low opacity and show without stealing focus
+    win.setOpacity(0.02);
+    win.showInactive();
+  } catch (e) {
+    logPrint('placePrintWindowOnPrimaryDisplay', e && e.message);
+    win.showInactive();
+  }
+}
 
 let server;
 let httpServer;
@@ -128,7 +180,12 @@ function probePeerWaReady(ip, done) {
   }).on('error', () => done(false));
 }
 
-/** طباعة HTML صامتة — مسار واحد لـ print-to-device و print-receipt (preload) */
+/**
+ * طباعة HTML صامتة — print-to-device / print-receipt
+ * ويندوز + اسم طابعة: أولاً حجم الورق من تعريف الطابعة (usePrinterDefaultPageSize)، وإن فشلت المهمة يُعاد بـ 80mm صريح.
+ * نافذة الطباعة تُعرض داخل الشاشة الرئيسية (Chromium قد يُرسم إيصالاً فارغاً إن كانت النافذة خارج الإحداثيات/بدون تركيز).
+ * تعيين HASH_POS_PRINT_EXPLICIT_FIRST=1 لعكس الترتيب (80mm ثم تعريف الطابعة).
+ */
 function scheduleSilentPrint(html, printerName) {
   return new Promise((resolve) => {
     let printWin = null;
@@ -145,6 +202,13 @@ function scheduleSilentPrint(html, printerName) {
     const finish = (payload) => {
       if (settled) return;
       settled = true;
+      try {
+        if (printWin && !printWin.isDestroyed()) {
+          printWin.setAlwaysOnTop(false);
+          printWin.close();
+        }
+      } catch (_) { /* ignore */ }
+      printWin = null;
       cleanupFile();
       resolve(payload);
     };
@@ -152,18 +216,19 @@ function scheduleSilentPrint(html, printerName) {
       const body = html && String(html).length > 0
         ? String(html)
         : '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body></body></html>';
+      const htmlLen = body.length;
       fs.writeFileSync(tmpFile, body, 'utf8');
 
-      // نافذة مرئية خارج الشاشة + عدم خفض الأولوية — يقلّل إيصالات فارغة/شريط ~2سم (Chromium لا يرسم أحياناً مع show:false)
+      const trimmedPreview = (printerName && String(printerName).trim()) ? String(printerName).trim().slice(0, 160) : '';
+      logPrint('job start', { htmlLen, printerName: trimmedPreview || '(افتراضي النظام)', platform: process.platform });
+
       printWin = new BrowserWindow({
-        show: true,
-        x: -2800,
-        y: -2800,
+        show: false,
         width: 420,
         height: 980,
         frame: false,
         skipTaskbar: true,
-        focusable: false,
+        focusable: true,
         autoHideMenuBar: true,
         webPreferences: {
           nodeIntegration: false,
@@ -173,47 +238,99 @@ function scheduleSilentPrint(html, printerName) {
         },
       });
 
+      printWin.webContents.on('console-message', (_e, level, message) => {
+        if (level >= 2) logPrint('[صفحة-طباعة]', message);
+      });
+
       printWin.webContents.once('did-fail-load', (_e, code, desc) => {
-        console.error('scheduleSilentPrint: did-fail-load', code, desc);
-        if (printWin) {
-          printWin.close();
-          printWin = null;
-        }
-        finish({ success: false, reason: desc || String(code) });
+        logPrint('did-fail-load', code, desc);
+        finish({ success: false, reason: desc || String(code), debug: { htmlLen } });
       });
 
       printWin.loadFile(tmpFile).catch((err) => {
-        console.error('scheduleSilentPrint: loadFile', err);
-        if (printWin) {
-          printWin.close();
-          printWin = null;
-        }
-        finish({ success: false, error: err.message });
+        logPrint('loadFile', err.message);
+        finish({ success: false, error: err.message, debug: { htmlLen } });
       });
 
       printWin.webContents.once('did-finish-load', () => {
         (async () => {
           if (!printWin || settled) return;
+          placePrintWindowOnPrimaryDisplay(printWin);
+
+          let meta = { sh: 0, tc: 0, docH: 0 };
           try {
-            const meta = await printWin.webContents.executeJavaScript(`(async () => {
+            meta = await printWin.webContents.executeJavaScript(`(async () => {
               try { await document.fonts.ready; } catch (e) {}
+              document.documentElement.style.background = '#ffffff';
+              document.body.style.background = '#ffffff';
+              const sh0 = document.body ? document.body.scrollHeight : 0;
+              const docH = document.documentElement ? document.documentElement.scrollHeight : 0;
+              if (Math.max(sh0, docH) < 80) {
+                document.body.style.minHeight = '120mm';
+              }
+              window.scrollTo(0, 0);
               await new Promise((r) => {
-                requestAnimationFrame(() => requestAnimationFrame(r));
+                requestAnimationFrame(() =>
+                  requestAnimationFrame(() => requestAnimationFrame(r))
+                );
               });
               const b = document.body;
               const sh = b ? b.scrollHeight : 0;
               const tc = b && b.textContent ? b.textContent.replace(/\\s+/g, '').length : 0;
-              return { sh, tc };
+              return { sh: Math.max(sh, docH), tc, docH };
             })();`);
+            logPrint('قياس التخطيط', meta);
             if (meta && meta.sh < 48 && meta.tc < 8) {
+              logPrint('محتوى قليل — انتظار إضافي 1200ms');
               await new Promise((r) => setTimeout(r, 1200));
             }
           } catch (err) {
-            console.warn('scheduleSilentPrint: layout wait', err && err.message);
+            logPrint('خطأ قياس التخطيط', err && err.message);
           }
-          await new Promise((r) => setTimeout(r, 400));
+          try {
+            await printWin.webContents.capturePage();
+          } catch (capErr) {
+            logPrint('capturePage', capErr && capErr.message);
+          }
+          await new Promise((r) => setTimeout(r, 200));
           if (!printWin || settled) return;
-          const printOptions = {
+
+          if (isSimulateThermalPrint()) {
+            try {
+              const simDir = path.join(app.getPath('userData'), 'print-simulations');
+              fs.mkdirSync(simDir, { recursive: true });
+              const outPath = path.join(simDir, `thermal-sim-${Date.now()}.pdf`);
+              const pdfBuf = await printWin.webContents.printToPDF({
+                printBackground: true,
+                preferCSSPageSize: true,
+                margins: { marginType: 'none' },
+                scale: 1,
+              });
+              fs.writeFileSync(outPath, pdfBuf);
+              logPrint('محاكاة PDF', outPath, 'bytes=', pdfBuf.length);
+              if (shouldOpenSimulatedPrintPdf()) {
+                const openErr = await shell.openPath(outPath);
+                if (openErr) logPrint('فتح PDF', openErr);
+              }
+              finish({ success: true, simulated: true, path: outPath, debug: { ...meta, htmlLen } });
+            } catch (simErr) {
+              logPrint('خطأ محاكاة PDF', simErr);
+              finish({
+                success: false,
+                simulated: true,
+                error: simErr && simErr.message ? simErr.message : String(simErr),
+                debug: { ...meta, htmlLen },
+              });
+            }
+            return;
+          }
+
+          const trimmedDevice =
+            printerName && String(printerName).trim() !== ''
+              ? String(printerName).trim()
+              : '';
+
+          const basePrint = {
             silent: true,
             printBackground: true,
             color: true,
@@ -224,33 +341,96 @@ function scheduleSilentPrint(html, printerName) {
             collate: false,
             copies: 1,
             pageRanges: [],
+            header: '',
+            footer: '',
           };
-          if (printerName && String(printerName).trim() !== '') {
-            printOptions.deviceName = printerName;
-          }
-          printWin.webContents.print(printOptions, (success, failureReason) => {
-            if (!success) {
-              finish({ success: false, reason: failureReason });
+
+          const explicit80 = { width: 80000, height: 800000 };
+
+          const runPrint = (opts, label) =>
+            new Promise((res) => {
+              if (!printWin || settled || printWin.isDestroyed()) {
+                res({ success: false, failureReason: 'no-window' });
+                return;
+              }
+              logPrint('webContents.print', label, {
+                deviceName: opts.deviceName || '(default)',
+                usePrinterDefaultPageSize: !!opts.usePrinterDefaultPageSize,
+                pageSizeMicrons: opts.pageSize || null,
+              });
+              printWin.webContents.print(opts, (success, failureReason) => {
+                logPrint('نتيجة الطباعة', label, { success, failureReason: failureReason || '' });
+                res({ success, failureReason: failureReason || '' });
+              });
+            });
+
+          const debugBase = {
+            platform: process.platform,
+            htmlLen,
+            deviceName: trimmedDevice || '(default)',
+            ...meta,
+          };
+
+          const explicitFirst = process.env.HASH_POS_PRINT_EXPLICIT_FIRST === '1';
+
+          if (process.platform === 'win32' && trimmedDevice) {
+            let r;
+            if (explicitFirst) {
+              r = await runPrint(
+                { ...basePrint, deviceName: trimmedDevice, pageSize: explicit80 },
+                'win:80mm-first'
+              );
+              if (!r.success) {
+                r = await runPrint(
+                  { ...basePrint, deviceName: trimmedDevice, usePrinterDefaultPageSize: true },
+                  'win:printer-default-retry'
+                );
+              }
             } else {
-              finish({ success: true });
+              r = await runPrint(
+                { ...basePrint, deviceName: trimmedDevice, usePrinterDefaultPageSize: true },
+                'win:printer-default-first'
+              );
+              if (!r.success) {
+                r = await runPrint(
+                  { ...basePrint, deviceName: trimmedDevice, pageSize: explicit80 },
+                  'win:80mm-retry'
+                );
+              }
             }
-            if (printWin) {
-              printWin.close();
-              printWin = null;
-            }
+            finish({
+              success: r.success,
+              reason: r.success ? undefined : r.failureReason,
+              debug: {
+                ...debugBase,
+                strategy: explicitFirst ? 'win-explicit-first' : 'win-default-first',
+              },
+            });
+            return;
+          }
+
+          const o = { ...basePrint, pageSize: explicit80 };
+          if (trimmedDevice) o.deviceName = trimmedDevice;
+          const r = await runPrint(o, 'explicit-80mm');
+          finish({
+            success: r.success,
+            reason: r.success ? undefined : r.failureReason,
+            debug: { ...debugBase, strategy: 'explicit-80mm' },
           });
-        })();
+        })().catch((e) => {
+          logPrint('خطأ مسار الطباعة', e);
+          finish({ success: false, error: e.message, debug: { error: e.message } });
+        });
       });
 
       setTimeout(() => {
-        if (printWin && !settled) {
-          printWin.close();
-          printWin = null;
+        if (!settled) {
+          logPrint('انتهت مهلة 30 ثانية');
           finish({ success: false, reason: 'timeout' });
         }
       }, 30000);
     } catch (e) {
-      console.error('scheduleSilentPrint:', e);
+      logPrint('خطأ فادح', e);
       cleanupFile();
       finish({ success: false, error: e.message });
     }
@@ -571,7 +751,6 @@ function setupNetworkSync() {
   
   // Open folder in file explorer
   ipcMain.handle('open-folder', async (event, folderPath) => {
-    const { shell } = require('electron');
     try {
       await shell.openPath(folderPath);
       return { success: true };
@@ -862,7 +1041,6 @@ ipcMain.handle('local-disk-backup-save-settings', async (event, data) => {
 });
 
 ipcMain.handle('local-disk-backup-open-folder', async (event, folderPath) => {
-  const { shell } = require('electron');
   const p = folderPath && String(folderPath).trim();
   if (!p || !fs.existsSync(p)) return { success: false, error: 'missing' };
   const err = await shell.openPath(p);
@@ -946,6 +1124,13 @@ function createWindow () {
   });
 
   win.setMenuBarVisibility(false);
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+    if (input.control && input.shift && (input.code === 'KeyI' || input.key === 'I' || input.key === 'i')) {
+      win.webContents.toggleDevTools();
+      event.preventDefault();
+    }
+  });
   win.loadFile('login.html');
   win.maximize();
 }
@@ -964,6 +1149,26 @@ app.whenReady().then(() => {
   setupHTTPServer();
   createWindow();
 
+  try {
+    const devOk = globalShortcut.register('CommandOrControl+Shift+I', () => {
+      const focused = BrowserWindow.getFocusedWindow();
+      if (focused && !focused.isDestroyed()) {
+        focused.webContents.toggleDevTools();
+        return;
+      }
+      const list = BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed());
+      if (list.length) {
+        list[0].webContents.toggleDevTools();
+        list[0].focus();
+      }
+    });
+    if (!devOk) {
+      console.warn('[HashPOS] لم يُسجَّل اختصار Ctrl+Shift+I (قد يكون محجوزاً لتطبيق آخر)');
+    }
+  } catch (e) {
+    console.warn('[HashPOS] globalShortcut DevTools:', e.message);
+  }
+
   // Auto-start WhatsApp AFTER app is fully loaded and user can interact
   // Using a longer delay (15s) so the main window is 100% ready first
   // Puppeteer runs asynchronously and won't block the UI thread
@@ -977,6 +1182,12 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+});
+
+app.on('will-quit', () => {
+  try {
+    globalShortcut.unregisterAll();
+  } catch (_) { /* ignore */ }
 });
 
 // --- WhatsApp Bot Integration (Auto-Start + QR Caching) ---

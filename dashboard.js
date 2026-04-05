@@ -319,7 +319,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(!modal) return;
         
         const now = new Date();
-        document.getElementById('shift-datetime').innerText = now.toLocaleString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        document.getElementById('shift-datetime').innerText = now.toLocaleString('ar-u-nu-latn', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
         const currentUserConf = localStorage.getItem('currentUser');
         let cashierName = "المدير";
@@ -410,10 +410,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!modal) return;
 
         const now = new Date();
-        const todayStr = now.toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const todayStr = now.toLocaleDateString('ar-u-nu-latn', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
         // Fill header
-        document.getElementById('day-datetime').innerText = now.toLocaleString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        document.getElementById('day-datetime').innerText = now.toLocaleString('ar-u-nu-latn', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         document.getElementById('day-date').innerText = todayStr;
 
         const currentUserConf = localStorage.getItem('currentUser');
@@ -555,8 +555,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         breakdownEl.innerHTML = '';
 
         allDayShifts.forEach((s, idx) => {
-            const sStart = new Date(s.startTime).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
-            const sEnd   = s.isCurrent ? 'الآن' : new Date(s.endTime).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+            const sStart = new Date(s.startTime).toLocaleTimeString('ar-u-nu-latn', { hour: '2-digit', minute: '2-digit' });
+            const sEnd   = s.isCurrent ? 'الآن' : new Date(s.endTime).toLocaleTimeString('ar-u-nu-latn', { hour: '2-digit', minute: '2-digit' });
             const badge  = s.isCurrent ? '<span style="color:#059669; font-size:10px;">(مفتوحة الآن)</span>' : '<span style="color:#7c3aed; font-size:10px;">(مغلقة)</span>';
             const sIncome = ((s.cashSales||0) + (s.networkSales||0)).toFixed(2);
 
@@ -714,34 +714,38 @@ document.addEventListener('DOMContentLoaded', async () => {
             padding: 0;
         }
         
+        html { overflow: visible; }
+        
         body {
             font-family: 'Segoe UI', 'Cairo', 'Arial', sans-serif;
-            margin: 0;
+            margin: 0 auto;
             padding: 0;
-            width: 80mm;
-            max-width: 80mm;
-            min-width: 72mm;
+            width: 100%;
+            max-width: 72mm;
+            min-width: 0;
             background: #ffffff;
             color: #000000;
             direction: rtl;
             text-align: center;
             line-height: 1.35;
-            font-size: 12px;
+            font-size: 11px;
             -webkit-font-smoothing: antialiased;
+            overflow: visible;
         }
         
         .receipt-wrapper {
-            width: 80mm;
-            max-width: 80mm;
-            padding: 3mm 2mm;
+            width: 100%;
+            max-width: 72mm;
+            padding: 2mm 1mm 2mm 5mm;
             margin: 0 auto;
+            box-sizing: border-box;
         }
         
         .store-logo {
-            width: 15mm;
-            height: 15mm;
-            max-width: 15mm;
-            max-height: 15mm;
+            width: 28mm;
+            height: 28mm;
+            max-width: 28mm;
+            max-height: 28mm;
             object-fit: contain;
             margin: 0 auto 2mm auto;
             display: block;
@@ -749,27 +753,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         .report-title {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 900;
             margin: 2mm 0 1mm 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            padding: 0 1mm;
         }
         
         .report-subtitle {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
             margin: 1mm 0;
         }
         
         .manager-info {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
             margin: 1.5mm 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            padding: 0 1mm;
         }
         
         .datetime {
-            font-size: 10px;
+            font-size: 9px;
             color: #555555;
             margin: 1mm 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            padding: 0 1mm;
         }
         
         .divider {
@@ -784,57 +797,66 @@ document.addEventListener('DOMContentLoaded', async () => {
             width: 100%;
         }
         
-        .row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1.5mm 0;
-            gap: 2mm;
-            font-size: 11px;
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin: 2mm 0;
+            font-size: 10px;
+            border: 1px solid #000000;
         }
         
-        .row-label {
-            text-align: right;
-            flex: 1;
-            font-weight: 600;
+        .report-table thead th {
+            padding: 1.5mm 1mm;
+            border: 1px solid #000000;
+            background: #e8e8e8;
+            font-weight: 800;
+            font-size: 10px;
+            text-align: center;
         }
         
-        .row-value {
-            text-align: left;
-            font-weight: 600;
-            min-width: 0;
-            max-width: 48%;
+        .report-table tbody td {
+            padding: 1.2mm 1.5mm;
+            border: 1px solid #000000;
+            vertical-align: middle;
             overflow-wrap: anywhere;
             word-break: break-word;
         }
         
-        .row.bold {
-            font-size: 13px;
-            font-weight: 800;
+        .report-table tbody td:first-child {
+            width: 56%;
+            text-align: right;
+            font-weight: 600;
         }
         
-        .row.highlight {
+        .report-table tbody td:last-child {
+            width: 44%;
+            text-align: left;
+            font-weight: 700;
+        }
+        
+        .report-table tbody tr.row-strong td {
             background: #f0f0f0;
-            padding: 2mm;
-            margin: 2mm 0;
-            border-radius: 1mm;
+            font-weight: 800;
+            font-size: 10px;
         }
         
-        .row.grand-total {
-            font-size: 14px;
+        .report-table tbody tr.grand-total td {
+            font-size: 12px;
             font-weight: 900;
             background: #000000;
             color: #ffffff;
-            padding: 2.5mm;
-            margin-top: 3mm;
-            border-radius: 1mm;
+            border-color: #000000;
+            padding: 2mm 1.5mm;
         }
         
         .footer-message {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
             margin: 3mm 0 1mm 0;
             text-align: center;
+            padding: 0 1mm;
+            overflow-wrap: anywhere;
         }
         
         .powered-by {
@@ -842,71 +864,54 @@ document.addEventListener('DOMContentLoaded', async () => {
             color: #666666;
             margin-top: 2mm;
             text-align: center;
+            padding: 0 1mm;
+            overflow-wrap: anywhere;
         }
     </style>
 </head>
 <body>
     <div class="receipt-wrapper">
-        <!-- Logo -->
         ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" class="store-logo">` : ''}
         
-        <!-- Title -->
         <div class="report-title">${restName}</div>
         <div class="report-subtitle">تقرير إقفال اليوم الكامل (X-Report)</div>
         
-        <!-- Manager & Date -->
         <div class="manager-info">${managerName}</div>
         <div class="datetime">${date} - ${datetime}</div>
         
         <div class="divider"></div>
         
-        <!-- Summary -->
-        <div style="text-align:center; background:#f0f0f0; padding:2mm; border-radius:1mm; font-weight:800; font-size:11px; margin-bottom:3mm;">
-            ▌ ملخص اليوم الكامل
-        </div>
+        <table class="report-table">
+            <thead>
+                <tr><th colspan="2">ملخص اليوم الكامل</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>عدد الطلبات</td><td>${totalOrders}</td></tr>
+                <tr><td>إجمالي الكاش</td><td>${totalCash}</td></tr>
+                <tr><td>إجمالي الشبكة</td><td>${totalNetwork}</td></tr>
+                <tr class="row-strong"><td>إجمالي الدخل</td><td>${totalIncome}</td></tr>
+            </tbody>
+        </table>
         
-        <!-- Financial Details -->
-        <div class="row">
-            <span class="row-label">عدد الطلبات:</span>
-            <span class="row-value">${totalOrders}</span>
-        </div>
-        <div class="row">
-            <span class="row-label">إجمالي الكاش:</span>
-            <span class="row-value">${totalCash}</span>
-        </div>
-        <div class="row">
-            <span class="row-label">إجمالي الشبكة:</span>
-            <span class="row-value">${totalNetwork}</span>
-        </div>
-        <div class="row bold highlight">
-            <span class="row-label">إجمالي الدخل:</span>
-            <span class="row-value">${totalIncome}</span>
-        </div>
-        
-        <div class="divider"></div>
-        
-        <div class="row">
-            <span class="row-label">الضريبة:</span>
-            <span class="row-value">${totalTax}</span>
-        </div>
-        <div class="row">
-            <span class="row-label">المرتجعات:</span>
-            <span class="row-value" style="color:#c00;">${totalReturns}</span>
-        </div>
-        <div class="row">
-            <span class="row-label">المصروفات:</span>
-            <span class="row-value" style="color:#c00;">${totalExpenses}</span>
-        </div>
+        <table class="report-table">
+            <thead>
+                <tr><th colspan="2">الضريبة والتعديلات</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>الضريبة</td><td>${totalTax}</td></tr>
+                <tr><td>المرتجعات</td><td style="color:#c00;">${totalReturns}</td></tr>
+                <tr><td>المصروفات</td><td style="color:#c00;">${totalExpenses}</td></tr>
+            </tbody>
+        </table>
         
         <div class="divider-thick"></div>
         
-        <!-- Grand Total -->
-        <div class="row grand-total">
-            <span class="row-label">صافي اليوم:</span>
-            <span class="row-value">${netTotal}</span>
-        </div>
+        <table class="report-table">
+            <tbody>
+                <tr class="grand-total"><td>صافي اليوم</td><td>${netTotal}</td></tr>
+            </tbody>
+        </table>
         
-        <!-- Footer -->
         <div class="footer-message">
             تم إقفال اليوم بالكامل<br>
             شكراً لجهود فريق العمل!
@@ -920,9 +925,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const cashierPrinter = localStorage.getItem('cashier_printer') || '';
             console.log('📤 Sending to printer:', cashierPrinter || 'Default');
             
-            await ipcRenderer.invoke('print-to-device', { html: html, printerName: cashierPrinter });
-            
-            console.log('✅ Day report printed successfully');
+            const pr = await ipcRenderer.invoke('print-to-device', { html: html, printerName: cashierPrinter });
+            if (pr && pr.debug) console.log('[طباعة إقفال يوم — تشخيص]', pr.debug);
+            if (!pr || !pr.success) console.warn('[طباعة إقفال يوم]', pr);
+            else console.log('✅ Day report printed successfully');
         } catch(e) { 
             console.error('❌ Day Report print failed:', e); 
             alert('حدث خطأ في طباعة التقرير: ' + e.message);
@@ -1019,34 +1025,38 @@ document.addEventListener('DOMContentLoaded', async () => {
             padding: 0;
         }
         
+        html { overflow: visible; }
+        
         body {
             font-family: 'Segoe UI', 'Cairo', 'Arial', sans-serif;
-            margin: 0;
+            margin: 0 auto;
             padding: 0;
-            width: 80mm;
-            max-width: 80mm;
-            min-width: 72mm;
+            width: 100%;
+            max-width: 72mm;
+            min-width: 0;
             background: #ffffff;
             color: #000000;
             direction: rtl;
             text-align: center;
             line-height: 1.35;
-            font-size: 12px;
+            font-size: 11px;
             -webkit-font-smoothing: antialiased;
+            overflow: visible;
         }
         
         .receipt-wrapper {
-            width: 80mm;
-            max-width: 80mm;
-            padding: 3mm 2mm;
+            width: 100%;
+            max-width: 72mm;
+            padding: 2mm 1mm 2mm 5mm;
             margin: 0 auto;
+            box-sizing: border-box;
         }
         
         .store-logo {
-            width: 15mm;
-            height: 15mm;
-            max-width: 15mm;
-            max-height: 15mm;
+            width: 28mm;
+            height: 28mm;
+            max-width: 28mm;
+            max-height: 28mm;
             object-fit: contain;
             margin: 0 auto 2mm auto;
             display: block;
@@ -1054,27 +1064,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         .report-title {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 900;
             margin: 2mm 0 1mm 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            padding: 0 1mm;
         }
         
         .report-subtitle {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
             margin: 1mm 0;
         }
         
         .cashier-info {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
             margin: 1.5mm 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            padding: 0 1mm;
         }
         
         .datetime {
-            font-size: 10px;
+            font-size: 9px;
             color: #555555;
             margin: 1mm 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            padding: 0 1mm;
         }
         
         .divider {
@@ -1089,57 +1108,66 @@ document.addEventListener('DOMContentLoaded', async () => {
             width: 100%;
         }
         
-        .row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1.5mm 0;
-            gap: 2mm;
-            font-size: 11px;
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin: 2mm 0;
+            font-size: 10px;
+            border: 1px solid #000000;
         }
         
-        .row-label {
-            text-align: right;
-            flex: 1;
-            font-weight: 600;
+        .report-table thead th {
+            padding: 1.5mm 1mm;
+            border: 1px solid #000000;
+            background: #e8e8e8;
+            font-weight: 800;
+            font-size: 10px;
+            text-align: center;
         }
         
-        .row-value {
-            text-align: left;
-            font-weight: 600;
-            min-width: 0;
-            max-width: 48%;
+        .report-table tbody td {
+            padding: 1.2mm 1.5mm;
+            border: 1px solid #000000;
+            vertical-align: middle;
             overflow-wrap: anywhere;
             word-break: break-word;
         }
         
-        .row.bold {
-            font-size: 13px;
-            font-weight: 800;
+        .report-table tbody td:first-child {
+            width: 56%;
+            text-align: right;
+            font-weight: 600;
         }
         
-        .row.highlight {
+        .report-table tbody td:last-child {
+            width: 44%;
+            text-align: left;
+            font-weight: 700;
+        }
+        
+        .report-table tbody tr.row-strong td {
             background: #f0f0f0;
-            padding: 2mm;
-            margin: 2mm 0;
-            border-radius: 1mm;
+            font-weight: 800;
+            font-size: 10px;
         }
         
-        .row.grand-total {
-            font-size: 14px;
+        .report-table tbody tr.grand-total td {
+            font-size: 12px;
             font-weight: 900;
             background: #000000;
             color: #ffffff;
-            padding: 2.5mm;
-            margin-top: 3mm;
-            border-radius: 1mm;
+            border-color: #000000;
+            padding: 2mm 1.5mm;
         }
         
         .footer-message {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
             margin: 3mm 0 1mm 0;
             text-align: center;
+            padding: 0 1mm;
+            overflow-wrap: anywhere;
         }
         
         .powered-by {
@@ -1147,73 +1175,63 @@ document.addEventListener('DOMContentLoaded', async () => {
             color: #666666;
             margin-top: 2mm;
             text-align: center;
+            padding: 0 1mm;
+            overflow-wrap: anywhere;
         }
     </style>
 </head>
 <body>
     <div class="receipt-wrapper">
-        <!-- Logo -->
         ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" class="store-logo">` : ''}
         
-        <!-- Title -->
         <div class="report-title">${restName}</div>
         <div class="report-subtitle">تقرير إغلاق الوردية (Z-Report)</div>
         
-        <!-- Cashier & Date -->
         <div class="cashier-info">${cashierName}</div>
         <div class="datetime">${datetime}</div>
         
         <div class="divider"></div>
         
-        <!-- Financial Details -->
-        <div class="row">
-            <span class="row-label">الرصيد الافتتاحي:</span>
-            <span class="row-value">${floatCash}</span>
-        </div>
-        <div class="row">
-            <span class="row-label">إجمالي الكاش:</span>
-            <span class="row-value">${cashSales}</span>
-        </div>
-        <div class="row">
-            <span class="row-label">إجمالي الشبكة:</span>
-            <span class="row-value">${networkSales}</span>
-        </div>
-        <div class="row bold highlight">
-            <span class="row-label">إجمالي الدخل:</span>
-            <span class="row-value">${totalIncome}</span>
-        </div>
+        <table class="report-table">
+            <thead>
+                <tr><th colspan="2">مبيعات الوردية</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>الرصيد الافتتاحي</td><td>${floatCash}</td></tr>
+                <tr><td>إجمالي الكاش</td><td>${cashSales}</td></tr>
+                <tr><td>إجمالي الشبكة</td><td>${networkSales}</td></tr>
+                <tr class="row-strong"><td>إجمالي الدخل</td><td>${totalIncome}</td></tr>
+            </tbody>
+        </table>
         
-        <div class="divider"></div>
+        <table class="report-table">
+            <thead>
+                <tr><th colspan="2">الضريبة</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>الضريبة</td><td>${tax}</td></tr>
+            </tbody>
+        </table>
         
-        <div class="row">
-            <span class="row-label">الضريبة:</span>
-            <span class="row-value">${tax}</span>
-        </div>
-        
-        <div class="divider"></div>
-        
-        <div class="row">
-            <span class="row-label">المرتجعات:</span>
-            <span class="row-value" style="color:#c00;">${returns}</span>
-        </div>
-        <div class="row">
-            <span class="row-label">المصروفات:</span>
-            <span class="row-value" style="color:#c00;">${expenses}</span>
-        </div>
-        <div class="row bold highlight">
-            <span class="row-label">رصيد الدرج:</span>
-            <span class="row-value">${drawer}</span>
-        </div>
+        <table class="report-table">
+            <thead>
+                <tr><th colspan="2">التعديلات والدرج</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>المرتجعات</td><td style="color:#c00;">${returns}</td></tr>
+                <tr><td>المصروفات</td><td style="color:#c00;">${expenses}</td></tr>
+                <tr class="row-strong"><td>رصيد الدرج</td><td>${drawer}</td></tr>
+            </tbody>
+        </table>
         
         <div class="divider-thick"></div>
         
-        <!-- Grand Total -->
-        <div class="row grand-total">
-            <span class="row-label">إجمالي المبيعات:</span>
-            <span class="row-value">${grandTotal}</span>
-        </div>
+        <table class="report-table">
+            <tbody>
+                <tr class="grand-total"><td>إجمالي المبيعات</td><td>${grandTotal}</td></tr>
+            </tbody>
+        </table>
         
-        <!-- Footer -->
         <div class="footer-message">
             تم إغلاق الوردية<br>
             شكراً لجهودكم!
@@ -1227,9 +1245,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const cashierPrinter = localStorage.getItem('cashier_printer') || '';
             console.log('📤 Sending to printer:', cashierPrinter || 'Default');
             
-            await ipcRenderer.invoke('print-to-device', { html: html, printerName: cashierPrinter });
-            
-            console.log('✅ Shift report printed successfully');
+            const pr2 = await ipcRenderer.invoke('print-to-device', { html: html, printerName: cashierPrinter });
+            if (pr2 && pr2.debug) console.log('[طباعة وردية — تشخيص]', pr2.debug);
+            if (!pr2 || !pr2.success) console.warn('[طباعة وردية]', pr2);
+            else console.log('✅ Shift report printed successfully');
         } catch(e) { 
             console.error('❌ Z-Report print failed:', e); 
             alert('حدث خطأ في طباعة التقرير: ' + e.message);

@@ -184,7 +184,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             let html = '';
             [...bankTransfers].reverse().forEach(t => {
-                let dStr = new Date(t.date).toLocaleString('ar-SA');
+                let dStr = new Date(t.date).toLocaleString('ar-u-nu-latn');
                 let typeStr = '', colorAttr = '';
                 if(t.type==='deposit_cash') { typeStr='إيداع للخزينة (كاش)'; colorAttr='var(--accent-green)'; }
                 if(t.type==='deposit_bank') { typeStr='إيداع للبنك'; colorAttr='var(--accent-blue)'; }
@@ -228,7 +228,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(document.getElementById('bal-cash')) document.getElementById('bal-cash').innerText = xf(cashBal);
         if(document.getElementById('bal-bank')) document.getElementById('bal-bank').innerText = xf(bankBal);
 
-        const today = new Date().toLocaleDateString('ar-SA', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+        const today = new Date().toLocaleDateString('ar-u-nu-latn', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
         if(document.getElementById('current-date')) document.getElementById('current-date').innerText = today;
 
         const ctx = document.getElementById('financeChart');
@@ -317,31 +317,129 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ----- B. acc-expenses.html Expenses Management -----
     if(document.getElementById('exp-tbody')) {
         const fmt2 = (n) => n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+        function tripleUnder1000(n) {
+            const num = Math.floor(Number(n)) % 1000;
+            if (num === 0) return '';
+            const a = ['', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة'];
+            const tensNames = ['', 'عشرة', 'عشرون', 'ثلاثون', 'أربعون', 'خمسون', 'ستون', 'سبعون', 'ثمانون', 'تسعون'];
+            const teens = ['عشرة', 'أحد عشر', 'اثنا عشر', 'ثلاثة عشر', 'أربعة عشر', 'خمسة عشر', 'ستة عشر', 'سبعة عشر', 'ثمانية عشر', 'تسعة عشر'];
+            const hundredsCompound = ['', '', '', 'ثلاثمائة', 'أربعمائة', 'خمسمائة', 'ستمائة', 'سبعمائة', 'ثمانمائة', 'تسعمائة'];
+            const h = Math.floor(num / 100);
+            const rest = num % 100;
+            const parts = [];
+            if (h === 1) parts.push('مائة');
+            else if (h === 2) parts.push('مائتان');
+            else if (h > 2) parts.push(hundredsCompound[h] || a[h] + 'مائة');
+            if (rest === 0) return parts.join(' و');
+            const t = Math.floor(rest / 10);
+            const u = rest % 10;
+            if (t === 0) parts.push(a[u]);
+            else if (t === 1) parts.push(teens[u]);
+            else if (u === 0) parts.push(tensNames[t]);
+            else parts.push(a[u] + ' و' + tensNames[t]);
+            return parts.filter(Boolean).join(' و');
+        }
+        function thousandsMultiplierWords(q) {
+            if (q === 1) return 'ألف';
+            if (q === 2) return 'ألفان';
+            const t = tripleUnder1000(q);
+            if (q >= 3 && q <= 10) return t + ' آلاف';
+            return t + ' ألفاً';
+        }
+        function integerToArabicWords(n) {
+            let v = Math.floor(Number(n));
+            if (v === 0) return 'صفر';
+            if (v < 0 || v > 999999999) return String(v);
+            if (v < 1000) return tripleUnder1000(v) || 'صفر';
+            const q = Math.floor(v / 1000);
+            const r = v % 1000;
+            const qw = thousandsMultiplierWords(q);
+            if (r === 0) return qw;
+            const rw = tripleUnder1000(r);
+            return rw ? qw + ' و' + rw : qw;
+        }
+        function sarAmountToArabicWords(amount) {
+            const x = Math.round(Number(amount) * 100) / 100;
+            if (!isFinite(x) || x < 0) return '';
+            const riyals = Math.floor(x + 1e-8);
+            const halalas = Math.round((x - riyals) * 100);
+            let s = 'فقط ' + integerToArabicWords(riyals) + ' ريال سعودي';
+            if (halalas > 0) s += ' و' + integerToArabicWords(halalas) + ' هللة';
+            s += ' لاغير';
+            return s.replace(/\s+/g, ' ').trim();
+        }
+
         const kpiExp = document.getElementById('kpi-total-exp');
         if(kpiExp) kpiExp.innerText = xf(totalExp);
 
         const renderExp = () => {
             const tbody = document.getElementById('exp-tbody');
+            const tfoot = document.getElementById('exp-tfoot');
             tbody.innerHTML = '';
             const q = (document.getElementById('search-exp')?.value || '').toLowerCase();
             const filt = erpExpenses.filter(e => e.desc.toLowerCase().includes(q) || (e.cat && e.cat.includes(q)));
-            filt.sort((a,b) => new Date(b.date) - new Date(a.date));
-            if(filt.length===0) { tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;">لا توجد مصروفات.</td></tr>'; return; }
-            filt.forEach(e => {
-                let m = e.pMethod === 'cash'
-                    ? '<span class="inv-tag tag-safe" style="background:#0f172a; border:1px solid #334155; color:white;"><i class="ph-fill ph-money"></i> كاش نقدي</span>'
-                    : '<span class="inv-tag tag-safe" style="background:rgba(59,130,246,0.1); color:var(--accent-blue)"><i class="ph-fill ph-bank"></i> حوالة بنكية</span>';
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${e.id}</strong></td>
-                        <td dir="ltr" style="text-align:right">${e.date}</td>
-                        <td style="color:var(--accent-orange); font-weight:700;">${e.cat}</td>
-                        <td>${e.desc}</td>
-                        <td style="font-weight:800; font-size:16px;">${e.amount.toLocaleString()}</td>
-                        <td>${m}</td>
-                        <td><button title="طباعة السند" style="background:none; border:none; color:var(--accent-blue); font-size:18px; cursor:pointer;"><i class="ph ph-printer"></i></button></td>
+            filt.sort((a,b) => new Date(a.date) - new Date(b.date)); // Sort ascending for running balance logic
+            const sum = filt.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+            const sumStr = fmt2(sum);
+            const wordsLine = sarAmountToArabicWords(sum);
+            const sym = window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س';
+
+            if(filt.length===0) {
+                tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;">لا توجد مصروفات.</td></tr>';
+            } else {
+                let runningBal = 0;
+                // We sort descending for display (recent first), but for balance column we need a cumulative sum.
+                // Let's keep it simple: if the user wants a running balance, it should be calculated base to top or top to base.
+                // Usually, the 'Balance' column in such reports is cumulative.
+                // Let's sort ASC, calculate balance, then reverse for display.
+                filt.forEach(e => {
+                    runningBal += (Number(e.amount) || 0);
+                    e._runningBal = runningBal;
+                });
+                const dispFilt = [...filt].reverse();
+
+                dispFilt.forEach(e => {
+                    let m = e.pMethod === 'cash'
+                        ? '<span class="inv-tag tag-safe" style="background:#0f172a; border:1px solid #334155; color:white;"><i class="ph-fill ph-money"></i> كاش نقدي</span>'
+                        : '<span class="inv-tag tag-safe" style="background:rgba(59,130,246,0.1); color:var(--accent-blue)"><i class="ph-fill ph-bank"></i> حوالة بنكية</span>';
+                    const amtStr = fmt2(e.amount);
+                    const rbStr = fmt2(e._runningBal);
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${e.id}</strong></td>
+                            <td dir="ltr" style="text-align:right">${e.date}</td>
+                            <td style="color:var(--accent-orange); font-weight:700;">${e.cat}</td>
+                            <td>${e.desc}</td>
+                            <td dir="ltr" style="text-align:right; font-weight:800;">${amtStr}</td>
+                            <td dir="ltr" style="text-align:right; font-weight:800;">${amtStr}</td>
+                            <td>${m}</td>
+                            <td dir="ltr" style="text-align:right; font-weight:800; color:var(--accent-amber);">${rbStr}</td>
+                            <td class="no-print"><button title="طباعة السند" style="background:none; border:none; color:var(--accent-blue); font-size:18px; cursor:pointer;"><i class="ph ph-printer"></i></button></td>
+                        </tr>`;
+                });
+            }
+
+            if (tfoot) {
+                tfoot.innerHTML = `
+                    <tr class="exp-foot-total">
+                        <td colspan="4" style="text-align:right;">إجمالي العمليات</td>
+                        <td dir="ltr" style="text-align:right;">${sumStr}</td>
+                        <td dir="ltr" style="text-align:right;">${sumStr}</td>
+                        <td>—</td>
+                        <td dir="ltr" style="text-align:right;">${sumStr}</td>
+                        <td class="no-print"></td>
+                    </tr>
+                    <tr class="exp-foot-balance">
+                        <td colspan="9" class="exp-balance-cell">
+                            <div class="exp-balance-inner" style="flex-direction:row; gap:30px; font-size:16px;">
+                                <div class="exp-balance-title" style="margin:0;">الرصيد الحالي دائن:</div>
+                                <div class="exp-balance-num" dir="ltr" style="margin:0;">${sumStr} ${sym}</div>
+                                <div class="exp-balance-words" style="margin:0;">(${wordsLine})</div>
+                            </div>
+                        </td>
                     </tr>`;
-            });
+            }
         };
 
         const modal = document.getElementById('expenseModal');
@@ -424,17 +522,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const sysRaw = localStorage.getItem('restaurant_settings');
                         const sysSet = sysRaw ? JSON.parse(sysRaw) : {};
                         const todayStr = newExp.date || new Date().toISOString().split('T')[0];
+                        const displayDate = String(todayStr).replace(/-/g, '/');
 
-                        if(document.getElementById('ev-date')) document.getElementById('ev-date').innerText = todayStr;
+                        if(document.getElementById('ev-date')) document.getElementById('ev-date').innerText = displayDate;
+                        if(document.getElementById('ev-foot-date')) document.getElementById('ev-foot-date').innerText = displayDate;
                         if(document.getElementById('ev-number')) document.getElementById('ev-number').innerText = newExp.id;
                         if(document.getElementById('ev-cat')) document.getElementById('ev-cat').innerText = newExp.cat;
                         if(document.getElementById('ev-amt')) document.getElementById('ev-amt').innerText = xf(newExp.amount);
+                        if(document.getElementById('ev-amt-balance')) document.getElementById('ev-amt-balance').innerText = xf(newExp.amount);
                         if(document.getElementById('ev-desc')) document.getElementById('ev-desc').innerText = newExp.desc;
-                        if(document.getElementById('ev-pay')) document.getElementById('ev-pay').innerText = newExp.pMethod === 'cash' ? 'كاش نقدي' : 'حوالة بنكية';
+                        if(document.getElementById('ev-pay')) document.getElementById('ev-pay').innerText = newExp.pMethod === 'cash' ? 'كاش' : 'حوالة بنكية';
+                        if(document.getElementById('ev-notes')) document.getElementById('ev-notes').innerText = newExp.desc || 'سند مصروف معتمد من النظام';
                         if(document.getElementById('ev-rest-name')) document.getElementById('ev-rest-name').innerText = sysSet.name || '';
                         if(document.getElementById('ev-branch')) document.getElementById('ev-branch').innerText = sysSet.branch || '';
                         if(document.getElementById('ev-phone')) document.getElementById('ev-phone').innerText = sysSet.phone || '';
-                        if(document.getElementById('ev-stamp')) document.getElementById('ev-stamp').innerText = sysSet.name || '';
                         const logoEl = document.getElementById('ev-logo');
                         if(logoEl && sysSet.logo && sysSet.logo !== '1111.png') logoEl.src = sysSet.logo;
 

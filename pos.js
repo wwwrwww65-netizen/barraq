@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let cart = [];
     let currentOrderType = 'محلي';
     let discountAmount = 0;
+    let currentFinalTotal = 0;
 
     // ── Dynamic Tax Rate (from restaurant_settings) ─────────────────────────
     function getTaxRate() {
@@ -345,6 +346,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('cart-tax').innerText = formatCurrency(taxAmount);
         document.getElementById('cart-total').innerText = formatCurrency(finalTotal);
         document.getElementById('btn-checkout-total').innerText = Number(finalTotal).toFixed(0); 
+        
+        currentFinalTotal = finalTotal; // Keep track for calculations
+
         // Sync with checkout modal
         document.getElementById('checkout-total-display').innerText = formatCurrency(finalTotal);
         
@@ -393,6 +397,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const pt = label.querySelector('input').value;
             document.getElementById('cash-calculator').style.display = pt === 'كاش' ? 'flex' : 'none';
             document.getElementById('split-calculator').style.display = pt === 'مجزأ' ? 'flex' : 'none';
+            
+            // Re-calculate to show full amount in split if needed
+            calculateChange();
         });
     });
 
@@ -401,27 +408,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cashChangeDisplay = document.getElementById('cash-change');
 
     function calculateChange() {
-        const rawTot = document.getElementById('cart-total').innerText;
-        const total =
-            window.HashCurrency && HashCurrency.parseLoose
-                ? HashCurrency.parseLoose(rawTot) || 0
-                : parseFloat(String(rawTot).replace(/[^\d.]/g, '')) || 0;
+        const total = Number(currentFinalTotal) || 0;
         
-        // Handling normal cash
+        // 1. Handling normal cash (Cash Change)
         const received = parseFloat(cashReceivedInput.value) || 0;
         let change = received - total;
         if (change < 0 || isNaN(change)) change = 0;
-        cashChangeDisplay.innerText = formatCurrency(change);
+        
+        if(cashChangeDisplay) cashChangeDisplay.innerText = formatCurrency(change);
 
-        // Handling split
-        const splitCash = parseFloat(document.getElementById('split-cash-amount').value) || 0;
+        // 2. Handling split (Split Payment)
+        const splitCashVal = document.getElementById('split-cash-amount').value;
+        const splitCash = parseFloat(splitCashVal) || 0;
+        
         let splitNet = total - splitCash;
         if(splitNet < 0) splitNet = 0;
-        document.getElementById('split-network-amount').innerText = formatCurrency(splitNet);
+        
+        // Final update for split network display
+        const splitNetEl = document.getElementById('split-network-amount');
+        if(splitNetEl) splitNetEl.innerText = formatCurrency(splitNet);
     }
 
     cashReceivedInput.addEventListener('input', calculateChange);
     document.getElementById('split-cash-amount').addEventListener('input', calculateChange);
+    document.getElementById('split-cash-amount').addEventListener('keyup', calculateChange); // Extra layer for speed
 
 
     /* ===============================
@@ -469,7 +479,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 pih: zatcaMeta.pih,
                 invoiceHash: crypto.createHash('sha256').update(zatcaMeta.uuid + orderId + totalOrder + now.getTime()).digest('base64'),
                 cashier: cashierName,
-                date: now.toLocaleDateString('ar-SA') + " " + now.toLocaleTimeString('ar-SA'),
+                date: now.toLocaleDateString('ar-u-nu-latn') + " " + now.toLocaleTimeString('ar-u-nu-latn'),
                 timestamp: now.getTime(),
                 type: currentOrderType,
                 paymentMethod: selectedPay,
@@ -543,26 +553,40 @@ document.addEventListener('DOMContentLoaded', async () => {
                 })(),
             };
             
-            // Reset cart UI before printing dialog block
+            // Reset cart UI before printing
             cart = [];
             discountAmount = 0;
-            discountInput.value = '';
-            cashReceivedInput.value = '';
+            if (discountInput) discountInput.value = '';
+            if (cashReceivedInput) cashReceivedInput.value = '';
             renderCart();
             modalCheckout.classList.remove('active');
 
             orderId = await generateOrderId();
             document.getElementById('display-order-id').innerText = orderId;
 
-            alert('تمت العملية بنجاح! تم حفظ المبيعات وتحديث المخزون. ستتم الآن طباعة الفواتير.');
+            // Non-blocking notification instead of alert()
+            const successNotif = document.createElement('div');
+            successNotif.style.cssText = 'position:fixed; top:20px; right:20px; background:#10b981; color:white; padding:15px 25px; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.3); z-index:9999999; display:flex; align-items:center; gap:10px; font-weight:bold; animation: slideIn 0.3s ease-out;';
+            successNotif.innerHTML = '<i class="ph-fill ph-check-circle" style="font-size:24px;"></i> <span>تم الحفظ.. جاري الطباعة التلقائية</span>';
+            document.body.appendChild(successNotif);
+            setTimeout(() => {
+                successNotif.style.opacity = '0';
+                successNotif.style.transition = 'opacity 0.5s';
+                setTimeout(() => successNotif.remove(), 500);
+            }, 3000);
 
-            // Silent print to category-specific printers
+            // 1. Open drawer and show notification (Immediate)
+            openCashDrawer();
+
+            // 2. Print Customer Receipt Ticket (Next priority)
+            try {
+                await printCustomerReceipt(thermalReceiptSnap);
+            } catch(e) { console.error('Customer receipt printing failed', e); }
+
+            // 3. Silent print to category-specific printers (Kitchen/Last priority)
             try {
                 await printToCategoryPrinters(orderData);
             } catch(e) { console.error('Category printing failed', e); }
-
-            openCashDrawer();
-            await printCustomerReceipt(thermalReceiptSnap);
 
         } catch(e) {
             console.error("Save or Print Failed", e);
@@ -586,7 +610,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function preparePrintTemplates() {
         // Date
         const now = new Date();
-        const dateStr = now.toLocaleDateString('ar-SA') + " " + now.toLocaleTimeString('ar-SA');
+        const dateStr = now.toLocaleDateString('en-GB') + " " + now.toLocaleTimeString('en-GB', { hour12: true });
         
         // Common
         document.getElementById('r-date').innerText = dateStr;
@@ -818,34 +842,38 @@ document.addEventListener('DOMContentLoaded', async () => {
             padding: 0;
         }
         
+        html { overflow: visible; }
+        
         body {
             font-family: 'Segoe UI', 'Cairo', 'Arial', sans-serif;
-            margin: 0;
+            margin: 0 auto;
             padding: 0;
-            width: 80mm;
-            max-width: 80mm;
-            min-width: 72mm;
+            width: 100%;
+            max-width: 72mm;
+            min-width: 0;
             background: #ffffff;
             color: #000000;
             direction: rtl;
             text-align: center;
             line-height: 1.35;
-            font-size: 12px;
+            font-size: 11px;
             -webkit-font-smoothing: antialiased;
+            overflow: visible;
         }
         
         .kitchen-ticket {
-            width: 80mm;
-            max-width: 80mm;
-            padding: 3mm 2mm;
+            width: 100%;
+            max-width: 72mm;
+            padding: 2mm 1mm 2mm 5mm;
             margin: 0 auto;
+            box-sizing: border-box;
         }
         
         .kitchen-logo {
-            width: 15mm;
-            height: 15mm;
-            max-width: 15mm;
-            max-height: 15mm;
+            width: 28mm;
+            height: 28mm;
+            max-width: 28mm;
+            max-height: 28mm;
             object-fit: contain;
             margin: 0 auto 2mm auto;
             display: block;
@@ -900,14 +928,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             table-layout: fixed;
             border-collapse: collapse;
             margin: 3mm 0;
+            border: 1px solid #000000;
         }
         
         .items-table thead th {
-            padding: 2mm 1mm;
+            padding: 1.5mm 1mm;
             background: #f0f0f0;
             font-weight: 800;
-            font-size: 11px;
-            border-bottom: 1.5px solid #000000;
+            font-size: 10px;
+            border: 1px solid #000000;
         }
         
         .items-table thead th:first-child {
@@ -916,29 +945,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         .items-table thead th:last-child {
             text-align: center;
-            width: 15mm;
+            width: 18mm;
         }
         
-        .kitchen-item {
-            border-bottom: 1.5px dashed #000000;
+        .kitchen-item td {
+            border: 1px solid #000000;
         }
         
         .item-name-cell {
-            padding: 3mm 2mm;
-            font-size: 14px;
+            padding: 2mm 1.5mm;
+            font-size: 13px;
             font-weight: 800;
             text-align: right;
             direction: rtl;
             overflow-wrap: anywhere;
             word-break: break-word;
+            vertical-align: middle;
         }
         
         .item-qty-cell {
             text-align: center;
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 900;
-            padding: 2mm;
-            min-width: 15mm;
+            padding: 2mm 1mm;
+            min-width: 0;
+            vertical-align: middle;
         }
         
         .divider {
@@ -988,7 +1019,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             try {
                 console.log(`🍳 Printing kitchen ticket to: ${pName} (${items.length} items)`);
-                await ipcRenderer.invoke('print-to-device', { html, printerName: pName });
+                const pr = await ipcRenderer.invoke('print-to-device', { html, printerName: pName });
+                if (pr && pr.debug) console.log('[طباعة مطبخ — تشخيص]', pr.debug);
+                if (!pr || !pr.success) console.warn('[طباعة مطبخ]', pr);
             } catch(e) { 
                 console.error('❌ Silent print failed for', pName, e); 
             }

@@ -518,29 +518,43 @@
     </div>
 </div>
 
-<!-- Voucher Template Hidden (Unchanged perfectly working HTML2Canvas) -->
+<!-- قالب سند واتساب (html2canvas) -->
 <div id="voucher-print-container" style="position:absolute; top:-9999px; left:-9999px;">
     <div class="voucher-wrapper" id="voucher-template">
         <div class="v-header">
-            <div class="v-left-box"><div class="v-row"><span>التاريخ :</span><strong id="v-date"></strong></div><div class="v-row"><span>الرقم :</span><strong id="v-number"></strong></div></div>
-            <div class="v-center-logo"><img src="1111.png" alt="Logo" onerror="this.src='placeholder.svg'"></div>
-            <div class="v-right-text"><h2>مطابخ ومحائذ هـــش HASH</h2><p>شارع المعارض جوار محطة مزايا</p><p>0539774699</p></div>
-        </div>
-        <div class="v-title-area"><div class="v-balance-box"><span>الرصيد :</span><strong id="v-balance-text"></strong></div><h1 class="v-main-title">سند صـرف</h1></div>
-        <div class="v-body-box">
-            <table class="v-table">
-                <tr><td class="v-label">تم صرف للأخ</td><td class="v-dots">:</td><td class="v-val"><strong id="v-name"></strong></td></tr>
-                <tr><td class="v-label">مبلغ وقدره</td><td class="v-dots">:</td><td class="v-val"><strong id="v-amt"></strong> <span class="v-sub">(فقط <span id="v-amt-text"></span> <span class="js-cur-label">ريال سعودي</span> لا غير)</span></td></tr>
-                <tr><td class="v-label">وذلك مقابل</td><td class="v-dots">:</td><td class="v-val"><strong id="v-reason-text"></strong></td></tr>
-            </table>
-            <div class="v-signatures">
-                <div class="v-sig-box"><p id="v-stamp-name">إدارة المطعم</p><span>.......................</span><small>الختم الرسمي</small></div>
-                <div class="v-sig-box"><p id="v-type-sig">صيغة المستلم</p><span>.......................</span><small>توقيع المقر بما فيه</small></div>
+            <div class="v-right-text">
+                <h2>مطابخ ومحائذ هـــش HASH</h2>
+                <p>شارع المعارض جوار محطة مزايا</p>
+                <p>0539774699</p>
+            </div>
+            <div class="v-logo-title-block">
+                <div class="v-center-logo">
+                    <img src="1111.png" alt="Logo" onerror="this.src='placeholder.svg'">
+                </div>
+                <h1 class="v-main-title" id="v-doc-title">سند صرف</h1>
+            </div>
+            <div class="v-left-col">
+                <div class="v-left-box">
+                    <div class="v-row"><span>التاريخ :</span><strong id="v-date"></strong></div>
+                    <div class="v-row"><span>الرقم :</span><strong id="v-number"></strong></div>
+                </div>
+                <div class="v-balance-box v-balance-under-date"><span>الرصيد لكم :</span><strong id="v-balance-text"></strong></div>
             </div>
         </div>
-        <div class="v-footer">
-            <span>النظام المحاسبي الشامل - مطابخ هـــش</span>
-            <div class="v-bottom-meta">طُبع بواسطة نظام الإدارة المتقدم (HASH ERP)</div>
+        <div class="v-body-box">
+            <div class="v-body-inner">
+                <div class="v-line"><span class="v-line-label">تم صرف للأخ :</span> <span class="v-line-val"><strong id="v-name"></strong></span></div>
+                <div class="v-line"><span class="v-line-label">مبلغ وقدره :</span> <span class="v-line-val"><strong id="v-amt"></strong> <span class="v-sub">(<span id="v-amt-text"></span> <span class="js-cur-label">ريال سعودي</span>)</span></span></div>
+                <div class="v-line"><span class="v-line-label">وذلك مقابل :</span> <span class="v-line-val"><strong id="v-reason-text"></strong></span></div>
+            </div>
+            <div class="v-notes-strip">
+                <span class="v-notes-label">ملاحظات :</span>
+                <span class="v-notes-text" id="v-notes"></span>
+            </div>
+        </div>
+        <div class="v-bottom-meta">
+            <span class="v-by">By HASH</span>
+            <span class="v-date-foot" id="v-bottom-date"></span>
         </div>
     </div>
 </div>

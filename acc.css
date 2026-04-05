@@ -2,6 +2,46 @@
    Accounting System Styles
 =============================== */
 
+/* تذييل جدول المصروفات: إجمالي + رصيد دائن (تفقيط) */
+.data-table-expenses tfoot tr.exp-foot-total td {
+    background: rgba(245, 158, 11, 0.12);
+    font-weight: 800;
+    border-top: 2px solid rgba(245, 158, 11, 0.45);
+}
+.data-table-expenses tfoot .exp-balance-cell {
+    text-align: center !important;
+    vertical-align: middle;
+    padding: 14px 12px !important;
+    background: rgba(15, 23, 42, 0.55) !important;
+    border-top: 1px solid var(--border-color);
+}
+.data-table-expenses tfoot .exp-balance-inner {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    max-width: 100%;
+    margin: 0 auto;
+    line-height: 1.65;
+}
+.data-table-expenses tfoot .exp-balance-title {
+    font-weight: 800;
+    font-size: 15px;
+    color: var(--text-secondary);
+}
+.data-table-expenses tfoot .exp-balance-num {
+    font-size: 18px;
+    font-weight: 900;
+    color: #fbbf24;
+    letter-spacing: 0.02em;
+}
+.data-table-expenses tfoot .exp-balance-words {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
 .acc-main {
     background: var(--bg-main);
 }

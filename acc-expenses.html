@@ -7,6 +7,7 @@
     <title>هـــش HASH - المصروفات والمدفوعات</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="acc.css">
+    <link rel="stylesheet" href="staff.css">
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
 </head>
@@ -62,7 +63,7 @@
             </header>
 
             <div style="padding: 30px;">
-                <div class="acc-kpis">
+                <div class="acc-kpis no-print">
                     <div class="kpi-card">
                         <div class="kpi-title" style="color:white;"><i class="ph-fill ph-wallet text-orange"></i><span>إجمالي المصروفات (هذا الشهر)</span></div>
                         <h3 style="font-size:28px; color:var(--accent-orange);" id="kpi-total-exp">0.00 <span class="js-cur-sym" style="font-size:14px;">ر.س</span></h3>
@@ -72,27 +73,30 @@
                 <div class="acc-panel">
                     <div class="acc-panel-title">
                         <span>قائمة سندات الصرف الأخيرة</span>
-                        <div class="search-box" style="width:300px;">
+                        <div class="search-box no-print" style="width:300px;">
                             <i class="ph ph-magnifying-glass"></i>
                             <input type="text" id="search-exp" placeholder="بحث باسم المصروف...">
                         </div>
                     </div>
                     
-                    <table class="data-table">
+                    <table class="data-table data-table-expenses">
                         <thead>
                             <tr>
                                 <th>رقم السند</th>
                                 <th>التاريخ</th>
                                 <th>تصنيف المصروف</th>
                                 <th>الوصف والبيان</th>
-                                <th>المبلغ (<span class="js-cur-sym">ر.س</span>)</th>
+                                <th>عليه مدين (<span class="js-cur-sym">ر.س</span>)</th>
+                                <th>له دائن (<span class="js-cur-sym">ر.س</span>)</th>
                                 <th>طريقة الدفع</th>
-                                <th>بواسطة</th>
+                                <th>الرصيد (<span class="js-cur-sym">ر.س</span>)</th>
+                                <th class="no-print">إجراء</th>
                             </tr>
                         </thead>
                         <tbody id="exp-tbody">
                             <!-- Filled by JS -->
                         </tbody>
+                        <tfoot id="exp-tfoot"></tfoot>
                     </table>
                 </div>
             </div>
@@ -153,37 +157,44 @@
         </div>
     </div>
 
-    <!-- Hidden Expense Voucher Template -->
+    <!-- سند مصروف واتساب -->
     <div id="exp-voucher-container" style="position:absolute;top:-9999px;left:-9999px;">
-        <div id="exp-voucher-template" style="background:#fff;width:800px;padding:40px;font-family:Cairo,Arial,sans-serif;color:#1e3a8a;border:1px solid #e2e8f0;box-sizing:border-box;">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:3px solid #0284c7;padding-bottom:20px;">
-                <div style="border:2px solid #94a3b8;border-radius:10px;padding:10px 18px;">
-                    <div style="display:flex;justify-content:space-between;font-size:15px;margin-bottom:4px;color:#475569;"><span>التاريخ :</span><strong id="ev-date"></strong></div>
-                    <div style="display:flex;justify-content:space-between;font-size:15px;color:#475569;"><span>رقم السند :</span><strong id="ev-number"></strong></div>
+        <div id="exp-voucher-template" class="voucher-wrapper">
+            <div class="v-header">
+                <div class="v-right-text">
+                    <h2 id="ev-rest-name">مطابخ ومحائذ هـــش HASH</h2>
+                    <p id="ev-branch"></p>
+                    <p id="ev-phone"></p>
                 </div>
-                <div style="text-align:center;">
-                    <img id="ev-logo" src="1111.png" style="height:80px;object-fit:contain;border:none;" onerror="this.src='placeholder.svg'">
+                <div class="v-logo-title-block">
+                    <div class="v-center-logo">
+                        <img id="ev-logo" src="1111.png" alt="" onerror="this.src='placeholder.svg'">
+                    </div>
+                    <h1 class="v-main-title">سند صرف — مصروفات</h1>
                 </div>
-                <div style="text-align:right;">
-                    <h2 id="ev-rest-name" style="color:#0284c7;font-size:22px;font-weight:800;margin:0 0 5px 0;"></h2>
-                    <p id="ev-branch" style="color:#64748b;font-size:14px;margin:3px 0;"></p>
-                    <p id="ev-phone" style="color:#64748b;font-size:14px;margin:3px 0;"></p>
+                <div class="v-left-col">
+                    <div class="v-left-box">
+                        <div class="v-row"><span>التاريخ :</span><strong id="ev-date"></strong></div>
+                        <div class="v-row"><span>رقم السند :</span><strong id="ev-number"></strong></div>
+                    </div>
+                    <div class="v-balance-box v-balance-under-date"><span>المبلغ :</span><strong id="ev-amt-balance"></strong></div>
                 </div>
             </div>
-            <div style="text-align:center;margin-bottom:24px;">
-                <h1 style="color:#0284c7;font-size:30px;font-weight:800;margin:0;">سند صرف — مصروفات</h1>
-            </div>
-            <div style="border:2px solid #000;border-radius:12px;padding:28px;margin-bottom:20px;">
-                <table style="width:100%;border-collapse:collapse;">
-                    <tr><td style="color:#0284c7;font-weight:700;font-size:18px;width:28%;padding:12px 0;">التصنيف</td><td style="color:#0284c7;width:4%;text-align:center;">:</td><td id="ev-cat" style="color:#1e3a8a;font-size:18px;font-weight:700;"></td></tr>
-                    <tr><td style="color:#0284c7;font-weight:700;font-size:18px;padding:12px 0;">المبلغ</td><td style="color:#0284c7;text-align:center;">:</td><td id="ev-amt" style="color:#1e3a8a;font-size:22px;font-weight:900;"></td></tr>
-                    <tr><td style="color:#0284c7;font-weight:700;font-size:18px;padding:12px 0;">البيان</td><td style="color:#0284c7;text-align:center;">:</td><td id="ev-desc" style="color:#1e3a8a;font-size:18px;"></td></tr>
-                    <tr><td style="color:#0284c7;font-weight:700;font-size:18px;padding:12px 0;">الدفع</td><td style="color:#0284c7;text-align:center;">:</td><td id="ev-pay" style="color:#1e3a8a;font-size:18px;"></td></tr>
-                </table>
-                <div style="display:flex;justify-content:space-between;margin-top:40px;padding:0 30px;">
-                    <div style="text-align:center;"><p id="ev-stamp" style="font-size:17px;font-weight:800;margin-bottom:18px;color:#000;"></p><span style="color:#94a3b8;">..............</span><br><small style="font-weight:700;color:#000;">الختم</small></div>
-                    <div style="text-align:center;"><p style="font-size:17px;font-weight:800;margin-bottom:18px;color:#000;">المستلم</p><span style="color:#94a3b8;">..............</span><br><small style="font-weight:700;color:#000;">التوقيع</small></div>
+            <div class="v-body-box">
+                <div class="v-body-inner">
+                    <div class="v-line"><span class="v-line-label">التصنيف :</span> <span class="v-line-val"><strong id="ev-cat"></strong></span></div>
+                    <div class="v-line"><span class="v-line-label">المبلغ :</span> <span class="v-line-val"><strong id="ev-amt"></strong></span></div>
+                    <div class="v-line"><span class="v-line-label">البيان :</span> <span class="v-line-val"><strong id="ev-desc"></strong></span></div>
+                    <div class="v-line"><span class="v-line-label">الدفع :</span> <span class="v-line-val"><strong id="ev-pay"></strong></span></div>
                 </div>
+                <div class="v-notes-strip">
+                    <span class="v-notes-label">ملاحظات :</span>
+                    <span class="v-notes-text" id="ev-notes"></span>
+                </div>
+            </div>
+            <div class="v-bottom-meta">
+                <span class="v-by">By HASH</span>
+                <span class="v-date-foot" id="ev-foot-date"></span>
             </div>
         </div>
     </div>

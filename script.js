@@ -1,5 +1,9 @@
 // --- Global Authentication Guard ---
-if (!window.location.pathname.includes('login.html')) {
+// setup.html: إعداد جهاز جديد مستقل من معالج المزامنة — بدون تسجيل دخول بعد
+const _isPublicAuthPage =
+    window.location.pathname.includes('login.html') ||
+    window.location.pathname.includes('setup.html');
+if (!_isPublicAuthPage) {
     const cUserRaw = localStorage.getItem('currentUser');
     if (!cUserRaw) {
         window.location.href = 'login.html';

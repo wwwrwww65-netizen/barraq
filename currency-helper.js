@@ -6,10 +6,10 @@
   'use strict';
 
   const PRESETS = {
-    SAR: { code: 'SAR', symbol: 'ر.س', label: 'ريال سعودي', localeNum: 'ar-SA' },
+    SAR: { code: 'SAR', symbol: 'ر.س', label: 'ريال سعودي', localeNum: 'en-US' },
     USD: { code: 'USD', symbol: '$', label: 'دولار أمريكي', localeNum: 'en-US' },
-    EUR: { code: 'EUR', symbol: '€', label: 'يورو', localeNum: 'de-DE' },
-    YER: { code: 'YER', symbol: 'ر.ي', label: 'ريال يمني', localeNum: 'ar-YE' },
+    EUR: { code: 'EUR', symbol: '€', label: 'يورو', localeNum: 'en-US' },
+    YER: { code: 'YER', symbol: 'ر.ي', label: 'ريال يمني', localeNum: 'en-US' },
   };
 
   function readSettingsObj() {

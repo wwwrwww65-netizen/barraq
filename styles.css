@@ -1041,7 +1041,9 @@ body:not(.light-theme) .theme-toggle-btn:hover {
     .orders-toolbar, .sales-filters, .inv-toolbar,
     .time-filters, .filter-bar, .acc-actions-bar,
     .btn-suspend, .btn-print, button, .nav-menu,
-    .cart-actions-grid, .pos-panel, .badge, .pur-header { display: none !important; }
+    .cart-actions-grid, .pos-panel, .badge, .pur-header,
+    .no-print, #net-sync-badge, .acc-kpis, .search-box,
+    .modal-overlay, #expenseModal, #exp-voucher-container { display: none !important; }
 
     /* Force EVERYTHING to transparent background and black text by default to kill Dark Mode */
     * {

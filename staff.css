@@ -387,193 +387,299 @@
 .btn-on-him { background: rgba(239, 68, 68, 0.15); border: 2px solid var(--accent-red); color: var(--accent-red); }
 .btn-on-him:hover { background: var(--accent-red); color: white; box-shadow: 0 10px 20px rgba(239, 68, 68, 0.3); transform: translateY(-3px); }
 
-/* ==== Highly Accurate Voucher Template Printing Styles ==== */
+/* ==== سند صرف / واتساب — تصميم Smart Accountant (مرجع صورة العميل) ==== */
 #voucher-print-container {
-    opacity: 0;  
+    opacity: 0;
     position: absolute;
     pointer-events: none;
 }
+
 .voucher-wrapper {
+    --v-blue: #2563eb;
+    --v-blue-dark: #1d4ed8;
+    --v-teal: #0f766e;
+    --v-grey-box: #f3f4f6;
     background-color: #ffffff;
     width: 800px;
     box-sizing: border-box;
-    padding: 40px;
-    font-family: 'Cairo', Arial, sans-serif;
-    color: #1a1a2e;
+    padding: 36px 44px 28px;
+    font-family: 'Cairo', 'Segoe UI', Arial, sans-serif;
+    color: #1e3a8a;
     position: relative;
-    border: 1px solid #d1d5db;
-    border-top: 15px solid #0f172a; /* Solid elegant header line instead of gradient */
-    direction: rtl; /* Crucial for html2canvas to render text properly */
+    border: none;
+    direction: rtl;
 }
 
+/* صف واحد: منشأة | شعار + «سند صرف» تحت الشعار | عمود التاريخ ثم الرصيد تحته */
 .v-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 30px;
-    border-bottom: 2px solid #e5e7eb;
-    padding-bottom: 20px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: start;
+    gap: 12px 20px;
+    margin-bottom: 18px;
+    padding-bottom: 0;
+    border-bottom: none;
 }
+/* في RTL: start = يمين الصفحة، end = يسار الصفحة */
+.v-header .v-right-text {
+    justify-self: start;
+    text-align: right;
+}
+.v-header .v-left-col {
+    justify-self: end;
+    width: 100%;
+    max-width: 220px;
+}
+.v-header .v-logo-title-block {
+    justify-self: center;
+    max-width: min(420px, 100%);
+}
+
+.v-left-col {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    box-sizing: border-box;
+}
+.v-balance-under-date {
+    width: 100%;
+    box-sizing: border-box;
+    justify-content: center;
+    text-align: center;
+}
+
+/* أول عنصر في RTL = يمين الصفحة = بيانات المنشأة */
+.v-right-text {
+    flex: 1;
+    min-width: 0;
+    text-align: right;
+    box-sizing: border-box;
+    padding-top: 4px;
+}
+.v-right-text h2 {
+    color: var(--v-teal);
+    font-size: 19px;
+    font-weight: 800;
+    margin: 0 0 8px 0;
+    line-height: 1.35;
+}
+.v-right-text p {
+    color: var(--v-teal);
+    font-size: 14px;
+    margin: 4px 0;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+.v-logo-title-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+}
+.v-logo-title-block .v-center-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    margin: 0;
+}
+/* أبعاد طبيعية من الملف؛ نحدّ السقف فقط دون فرض ارتفاع ثابت يشوّه الشكل */
+.v-logo-title-block .v-center-logo img {
+    width: auto;
+    height: auto;
+    max-width: 260px;
+    max-height: 100px;
+    object-fit: contain;
+    object-position: center;
+    display: block;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+/* صندوق التاريخ والرقم — عرض ثابت؛ لا نستخدم flex-basis هنا لأن الأب عمودي فـ200px كانت تُفسَّر كارتفاع فارغ */
 .v-left-box {
-    border: 2px solid #e5e7eb;
-    background: #f9fafb;
-    border-radius: 8px;
-    padding: 10px 15px;
-    width: 220px;
+    flex: 0 0 auto;
+    width: 100%;
+    align-self: stretch;
+    border: 1px solid #d1d5db;
+    background: var(--v-grey-box);
+    border-radius: 12px;
+    padding: 12px 16px;
     box-sizing: border-box;
 }
 .v-row {
     display: flex;
     justify-content: space-between;
-    font-size: 16px;
-    margin-bottom: 5px;
-    color: #4b5563;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #64748b;
+}
+.v-row:last-child {
+    margin-bottom: 0;
 }
 .v-row strong {
-    color: #111827;
-    font-weight: bold;
-}
-.v-center-logo {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-.v-center-logo img {
-    height: 90px;
-    width: auto;
-    max-width: 160px;
-    object-fit: contain;
-}
-.v-right-text {
-    width: 220px;
-    text-align: right;
-    box-sizing: border-box;
-}
-.v-right-text h2 {
-    color: #111827;
-    font-size: 20px;
-    font-weight: bold;
-    margin: 0 0 5px 0;
-}
-.v-right-text p {
-    color: #4b5563;
+    color: #1e293b;
+    font-weight: 800;
     font-size: 15px;
-    margin: 3px 0;
-}
-.v-title-area {
-    text-align: center;
-    position: relative;
-    margin-bottom: 30px;
-}
-.v-main-title {
-    display: inline-block;
-    color: #111827;
-    font-size: 28px;
-    font-weight: bold;
-    margin: 0;
-    padding: 10px 30px;
-    background: #f3f4f6;
-    border: 2px solid #e5e7eb;
-    border-radius: 6px;
-}
-.v-balance-box {
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    background: #10b981;
-    color: white;
-    padding: 8px 20px;
-    border-radius: 6px;
-    font-size: 16px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.v-body-box {
-    background: #ffffff;
-    border: 2px solid #d1d5db;
-    border-radius: 10px;
-    padding: 30px;
-    margin-bottom: 20px;
 }
 
+.v-logo-title-block .v-main-title {
+    text-align: center;
+    width: 100%;
+    margin: 4px 0 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+.v-main-title {
+    display: block;
+    color: var(--v-blue);
+    font-size: 26px;
+    font-weight: 800;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: none;
+}
+
+.v-balance-box {
+    background: var(--v-blue);
+    color: #ffffff;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+    flex-wrap: wrap;
+    line-height: 1.35;
+}
+.v-balance-box strong {
+    font-weight: 800;
+}
+
+.v-body-box {
+    border: 1px solid #0f172a;
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 18px;
+    background: #fff;
+}
+
+.v-body-inner {
+    padding: 22px 26px 18px;
+}
+
+.v-line {
+    font-size: 17px;
+    line-height: 1.75;
+    margin-bottom: 14px;
+    color: var(--v-blue);
+    font-weight: 600;
+    text-align: right;
+}
+.v-line:last-of-type {
+    margin-bottom: 0;
+}
+.v-line-label {
+    font-weight: 700;
+}
+.v-line-val strong {
+    font-size: 18px;
+    font-weight: 800;
+}
+.v-sub {
+    font-size: 15px;
+    color: #1d4ed8;
+    font-weight: 600;
+    margin-right: 6px;
+}
+
+.v-notes-strip {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: var(--v-blue);
+    color: #fff;
+    padding: 12px 18px 16px;
+    min-height: 44px;
+    font-size: 15px;
+    font-weight: 700;
+}
+.v-notes-label {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+.v-notes-text {
+    flex: 1;
+    text-align: right;
+    font-weight: 600;
+    line-height: 1.5;
+    opacity: 0.98;
+    word-break: break-word;
+}
+
+.v-footer {
+    display: none;
+}
+
+.v-bottom-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 4px 0;
+    font-size: 12px;
+    color: #94a3b8;
+    font-weight: 600;
+}
+.v-by {
+    letter-spacing: 0.02em;
+}
+.v-date-foot {
+    direction: ltr;
+    unicode-bidi: embed;
+}
+
+/* توافق قديم: جدول السند إن وُجد */
 .v-table {
     width: 100%;
-    margin-bottom: 40px;
+    margin-bottom: 0;
     border-collapse: collapse;
 }
 .v-table td {
-    padding: 15px 0;
-    font-size: 18px;
-    border-bottom: 1px dotted #d1d5db;
+    padding: 12px 0;
+    font-size: 17px;
+    border-bottom: none;
+    color: var(--v-blue);
+    font-weight: 600;
 }
 .v-table tr:last-child td {
     border-bottom: none;
 }
 .v-label {
-    color: #4b5563;
-    font-weight: bold;
-    width: 25%;
+    color: var(--v-blue);
+    font-weight: 700;
+    width: 28%;
 }
 .v-dots {
-    color: #9ca3af;
-    font-weight: bold;
-    width: 5%;
+    color: var(--v-blue);
+    width: 4%;
     text-align: center;
 }
 .v-val {
-    color: #111827;
+    color: var(--v-blue);
 }
 .v-val strong {
-    font-weight: bold;
-    font-size: 20px;
-}
-.v-sub {
-    font-size: 16px;
-    color: #6b7280;
-    margin-right: 10px;
-}
-.v-signatures {
-    display: flex;
-    justify-content: space-between;
-    padding: 0 40px;
-    margin-top: 30px;
-}
-.v-sig-box {
-    text-align: center;
-    width: 200px;
-}
-.v-sig-box p {
-    font-size: 16px;
-    font-weight: bold;
-    margin-bottom: 25px;
-    color: #4b5563;
-}
-.v-sig-box span {
-    display: block;
-    margin-bottom: 10px;
-    color: #9ca3af;
-}
-.v-sig-box small {
-    display: block;
-    color: #111827;
-    font-weight: bold;
-    font-size: 15px;
-}
-.v-footer {
-    color: #6b7280;
-    padding: 20px 0 0 0;
-    font-size: 14px;
-    border-top: 2px solid #e5e7eb;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.v-bottom-meta {
-    color: #9ca3af;
-    font-size: 13px;
+    font-weight: 800;
+    font-size: 18px;
 }
 

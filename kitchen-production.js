@@ -106,14 +106,36 @@ function maybeRunKitchenStockSoundCheck(db) {
     }
 }
 
+/** نفس مسار طباعة الكاشير (Electron)؛ عند الفشل تُفتح نافذة مع زر طباعة يدوية */
+async function sendKitchenHtmlToPrinter(fullHtmlDoc) {
+    try {
+        const { ipcRenderer } = require('electron');
+        const pName = (typeof localStorage !== 'undefined' && localStorage.getItem('cashier_printer')) || '';
+        const res = await ipcRenderer.invoke('print-to-device', { html: fullHtmlDoc, printerName: pName });
+        if (res && res.success) {
+            if (res.debug) console.log('[kitchen.print]', res.debug);
+            return;
+        }
+        console.warn('[kitchen.print]', res);
+    } catch (e) {
+        console.warn('[kitchen.print] ipc', e);
+    }
+    const win = window.open('', '_blank', 'width=480,height=720');
+    if (!win) return;
+    win.document.open();
+    win.document.write(fullHtmlDoc);
+    win.document.close();
+}
+
 function printKitchenReceiveReceipt(tx, copyLabel) {
     const wh = kitchenWhLabel(tx.sourceWarehouse || getKitchenSourceWh());
-    const win = window.open('', '_blank', 'width=450,height=620');
     const label = copyLabel ? ` — نسخة ${copyLabel}` : '';
-    win.document.write(`
+    const html = `
         <html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>سند استلام${label}</title>
         <style>
-            body { font-family:'Segoe UI',Tahoma,sans-serif; padding:22px; color:#333; text-align:center; }
+            @page { size: 80mm auto; margin: 0; }
+            html { overflow: visible; }
+            body { font-family:'Segoe UI',Tahoma,sans-serif; padding:8px 10px; box-sizing:border-box; color:#111; text-align:center; max-width:72mm; margin:0 auto; background:#fff; overflow:visible; }
             .logo { font-size:22px; font-weight:900; margin-bottom:4px; }
             .badge { display:inline-block; border:2px solid #333; padding:6px 18px; border-radius:6px; font-weight:700; margin:12px 0; }
             .details { text-align:right; background:#f9f9f9; border-radius:8px; padding:14px; margin-bottom:16px; font-size:14px; }
@@ -134,8 +156,8 @@ function printKitchenReceiveReceipt(tx, copyLabel) {
                 <p><span class="label">المستلم:</span> ${tx.user || '-'}</p>
             </div>
             <button onclick="window.print()" style="padding:8px 18px;background:#ff4757;color:white;border:none;border-radius:6px;cursor:pointer;">طباعة</button>
-        </body></html>`);
-    win.document.close();
+        </body></html>`;
+    void sendKitchenHtmlToPrinter(html);
 }
 
 async function switchTab(tab) {
@@ -623,14 +645,15 @@ window.printKitchenReport = function() {
             <td>${new Date(t.date).toLocaleString('ar-SA')}</td>
             <td>${t.user || '-'}</td>
         </tr>`).join('');
-    const win = window.open('', '_blank', 'width=900,height=700');
-    win.document.write(`
+    const html = `
         <html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير المطبخ والإنتاج</title>
         <style>
-            body { font-family: 'Segoe UI', Tahoma, sans-serif; padding:30px; color:#333; }
+            @page { size: 80mm auto; margin: 0; }
+            html { overflow: visible; }
+            body { font-family: 'Segoe UI', Tahoma, sans-serif; padding:10px 10px; box-sizing:border-box; color:#111; max-width:72mm; margin:0 auto; background:#fff; overflow:visible; }
             h1 { text-align:center; font-size:22px; margin-bottom:5px; }
             p.sub { text-align:center; color:#666; margin:0 0 20px; }
-            table { width:100%; border-collapse:collapse; margin-top:20px; }
+            table { width:100%; border-collapse:collapse; margin-top:20px; font-size:12px; }
             th { background:#1a1a2e; color:white; padding:10px 8px; }
             td { padding:9px 8px; border-bottom:1px solid #eee; }
             tr:nth-child(even) { background:#f9f9f9; }
@@ -648,8 +671,8 @@ window.printKitchenReport = function() {
             <p class="total">إجمالي عدد السندات: ${txs.length} | إجمالي الكميات: ${totalQty}</p>
             <div class="footer">تم الإنشاء بواسطة نظام هـش HASH للمطاعم</div>
             <br><button onclick="window.print()" style="padding:10px 20px;background:#ff4757;color:white;border:none;border-radius:6px;cursor:pointer;font-size:15px;">🖨️ طباعة الآن</button>
-        </body></html>`);
-    win.document.close();
+        </body></html>`;
+    void sendKitchenHtmlToPrinter(html);
 };
 
 window.printSingleTx = function(txId) {
@@ -657,11 +680,12 @@ window.printSingleTx = function(txId) {
     const t = txs.find(x => x.id === txId);
     if (!t) return;
     const typeName = t.type === 'receive' ? 'سند استلام من المخزن' : 'سند تسليم للمبيعات';
-    const win = window.open('', '_blank', 'width=450,height=650');
-    win.document.write(`
+    const html = `
         <html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>${typeName}</title>
         <style>
-            body { font-family:'Segoe UI',Tahoma,sans-serif; padding:25px; color:#333; text-align:center; }
+            @page { size: 80mm auto; margin: 0; }
+            html { overflow: visible; }
+            body { font-family:'Segoe UI',Tahoma,sans-serif; padding:8px 10px; box-sizing:border-box; color:#111; text-align:center; max-width:72mm; margin:0 auto; background:#fff; overflow:visible; }
             .logo { font-size:24px; font-weight:900; margin-bottom:5px; }
             .subtitle { color:#888; font-size:13px; margin-bottom:15px; }
             .type-badge { display:inline-block; border:2px solid #333; padding:5px 20px; border-radius:5px; font-weight:700; margin-bottom:20px; }
@@ -690,8 +714,8 @@ window.printSingleTx = function(txId) {
                 <p>هـش HASH — نظام إدارة المطاعم</p>
             </div>
             <br><button onclick="window.print()" style="padding:8px 18px;background:#ff4757;color:white;border:none;border-radius:6px;cursor:pointer;">🖨️ طباعة</button>
-        </body></html>`);
-    win.document.close();
+        </body></html>`;
+    void sendKitchenHtmlToPrinter(html);
 };
 
 
