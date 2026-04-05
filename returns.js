@@ -1,14 +1,3 @@
-const { ipcRenderer } = require('electron');
-const fs = require('fs');
-const path = require('path');
-const dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
-
-function loadDB() {
-    try { return JSON.parse(fs.readFileSync(dbPath, 'utf8')); }
-    catch(e) { return { orders:[], products:[], inventory:[], purchases:[], suppliers:[], inventoryTx:[], returns:[] }; }
-}
-function saveDB(db) { fs.writeFileSync(dbPath, JSON.stringify(db, null, 2)); }
-
 document.addEventListener('DOMContentLoaded', async () => {
     
     // --- Elements ---
@@ -31,10 +20,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const query = searchInput.value.trim();
         if(!query) return alert('الرجاء إدخال رقم الطلب أولاً');
 
-        // Fetch from JSON database
-        const orders = await ipcRenderer.invoke('db-get-orders');
-        
-        const found = (orders || []).find(o => o.orderId.toLowerCase() === query.toLowerCase());
+        const db = await window.dbRead();
+        const orders = db.orders || [];
+        const found = orders.find((o) => String(o.orderId).toLowerCase() === query.toLowerCase());
 
         if(found) {
             currentFoundOrder = found;
@@ -70,12 +58,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if(!db.returns) db.returns = [];
                 const now = new Date();
                 db.returns.push({
+                    id: 'RET-' + now.getTime(),
                     origId: currentFoundOrder.orderId,
                     returnTime: now.toLocaleDateString('ar-SA') + ' ' + now.toLocaleTimeString('ar-SA'),
                     timestamp: now.getTime(),
+                    date: now.toISOString().split('T')[0],
                     amount: currentFoundOrder.total,
                     method: currentFoundOrder.paymentMethod,
-                    emp: 'المدير / الكاشير'
+                    splitCash: currentFoundOrder.splitCash,
+                    splitNetwork: currentFoundOrder.splitNetwork,
+                    emp: 'المدير / الكاشير',
                 });
 
                 // 3. Auto-Return to Kitchen Production Log
@@ -117,7 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             btnProcess.innerHTML = originalText;
             btnProcess.style.pointerEvents = 'auto';
 
-            loadReturns();
+            await loadReturns();
 
         } catch(e) {
             console.error('Return process error', e);
@@ -128,8 +120,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // --- Load Returns Historical Data ---
-    function loadReturns() {
-        const db = loadDB();
+    async function loadReturns() {
+        const db = await window.dbRead();
         const returns = (db.returns || []).slice().sort((a,b) => b.timestamp - a.timestamp);
         
         const tbody = document.getElementById('returns-tbody');
@@ -170,7 +162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    loadReturns();
+    await loadReturns();
 
     // --- Auto Fill from URL ---
     const urlParams = new URLSearchParams(window.location.search);

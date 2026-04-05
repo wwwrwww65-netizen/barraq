@@ -432,7 +432,7 @@
                 <div class="card" style="padding:24px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                         <h3 style="color:white; margin:0;"><i class="ph ph-scales" style="color:#ec4899;"></i> قواعد الجزاءات</h3>
-                        <button class="hr-btn-solid bg-pink" style="padding:6px 12px; font-size:12px;" onclick="document.getElementById('rule-modal').classList.add('active');">
+                        <button type="button" class="hr-btn-solid bg-pink" style="padding:6px 12px; font-size:12px;" onclick="openRuleModalForCreate()">
                             <i class="ph ph-plus"></i> إضافة قاعدة
                         </button>
                     </div>
@@ -477,24 +477,31 @@
 </div>
 
 <!-- Modal: صرف راتب / سلفة -->
-<div class="modal-overlay" id="advance-modal">
+<div class="modal-overlay" id="advance-modal" inert>
     <div class="modal-content" style="max-width:450px; background:var(--bg-card); border:1px solid rgba(255,255,255,0.1); border-radius:24px; padding:24px;">
         <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
             <h3 style="color:white; margin:0;"><i class="ph ph-hand-coins" style="color:#f472b6;"></i> إصدار سند مالي</h3>
             <button class="close-modal" id="btn-close-advance-modal" style="background:none;border:none;color:#fff;cursor:pointer;"><i class="ph ph-x" style="font-size:20px;"></i></button>
         </div>
-        
+        <div id="advance-voucher-inline-error" role="alert" aria-live="polite" style="display:none;margin-bottom:14px;padding:12px 14px;border-radius:10px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.45);color:#fecaca;font-size:13px;font-weight:600;white-space:pre-line;line-height:1.5;"></div>
         <div class="fm-group">
             <label>اختر الموظف المستفيد</label>
             <select id="voucher-employee" class="fm-input" style="background:rgba(0,0,0,0.3);"><option value="">...</option></select>
         </div>
         <div class="fm-group">
             <label>قيمة المبلغ (ر.س)</label>
-            <input type="number" id="voucher-amount" class="fm-input" placeholder="0.00" style="background:rgba(0,0,0,0.3); font-size:24px; font-weight:800; color:#34d399;">
+            <input type="number" id="voucher-amount" class="fm-input" step="any" min="0" dir="ltr" placeholder="0.00" style="background:rgba(0,0,0,0.3); font-size:24px; font-weight:800; color:#34d399; text-align: right;">
         </div>
         <div class="fm-group">
             <label>البيان / السبب</label>
             <input type="text" id="voucher-reason" class="fm-input" placeholder="مثال: سلفة نقدية..." style="background:rgba(0,0,0,0.3);">
+        </div>
+        <div class="fm-group">
+            <label>صرف المبلغ من</label>
+            <select id="voucher-pay-method" class="fm-input" style="background:rgba(0,0,0,0.3);">
+                <option value="cash">الخزينة (كاش)</option>
+                <option value="bank">حساب البنك / تحويل</option>
+            </select>
         </div>
 
         <div style="background:rgba(0,0,0,0.2); padding:16px; border-radius:12px; text-align:center;">
@@ -541,7 +548,7 @@
 </div>
 
 <!-- Penalty / Deduction Modal -->
-<div class="modal-overlay" id="penalty-modal">
+<div class="modal-overlay" id="penalty-modal" inert>
     <div class="modal-content" style="max-width:450px; background:var(--bg-card); border:1px solid rgba(239,68,68,0.3); border-radius:24px; padding:24px; box-shadow:0 10px 40px rgba(239,68,68,0.1);">
         <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
             <h3 style="color:white; margin:0;"><i class="ph ph-warning-octagon text-red" style="font-size:20px; vertical-align:-3px;"></i> تسجيل جزاء مالي</h3>
@@ -555,7 +562,7 @@
             </div>
             <div class="fm-group mb-3">
                 <label>مبلغ الجزاء (ر.س) *</label>
-                <input type="number" id="penalty-amount" class="fm-input" min="0" step="any" required placeholder="مثلاً 100" style="background:rgba(0,0,0,0.3); font-size:24px; font-weight:800; color:#ef4444;">
+                <input type="number" id="penalty-amount" class="fm-input" min="0" step="any" dir="ltr" required placeholder="مثلاً 100" style="background:rgba(0,0,0,0.3); font-size:24px; font-weight:800; color:#ef4444; text-align: right;">
             </div>
             <div class="fm-group mb-4">
                 <label>السبب أو المخالفة (اختر أو اكتب)</label>
@@ -581,7 +588,7 @@
 </div>
 
 <!-- Rule Creation Modal -->
-<div class="modal-overlay" id="rule-modal">
+<div class="modal-overlay" id="rule-modal" inert>
     <div class="modal-content" style="max-width:400px; background:var(--bg-card); border:1px solid rgba(236,72,153,0.3); border-radius:24px; padding:24px;">
         <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
             <h3 style="color:white; margin:0;"><i class="ph ph-scales text-pink" style="font-size:20px; vertical-align:-3px;"></i> إضافة قاعدة جزاء</h3>
@@ -595,7 +602,7 @@
             </div>
             <div class="fm-group mb-4">
                 <label>مبلغ الجزاء (ر.س) *</label>
-                <input type="number" id="rule-amount" class="fm-input" min="0" step="any" required placeholder="مثلاً 150" style="background:rgba(0,0,0,0.3); color:#34d399; font-weight:bold; font-size:20px;">
+                <input type="number" id="rule-amount" class="fm-input" min="0" step="any" dir="ltr" required placeholder="مثلاً 150" style="background:rgba(0,0,0,0.3); color:#34d399; font-weight:bold; font-size:20px; text-align: right;">
             </div>
             
             <button type="submit" class="hr-btn-solid bg-pink" style="width:100%; justify-content:center; padding:14px; font-size:16px;">
@@ -606,9 +613,9 @@
 </div>
 
 <script src="node_modules/html2canvas/dist/html2canvas.min.js"></script>
-<script src="staff.js"></script>
-    <script src="script.js"></script>
     <script src="db-helper.js"></script>
+    <script src="script.js"></script>
+<script src="staff.js"></script>
 </body>
 </html>
 

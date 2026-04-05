@@ -1,5 +1,11 @@
-(function() {
-    // 1. Inject Notification CSS and Sound
+(function () {
+    function esc(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/"/g, '&quot;');
+    }
+
     const style = document.createElement('style');
     style.innerHTML = `
         .notif-dropdown {
@@ -28,10 +34,7 @@
             background: rgba(0,0,0,0.3);
             color: white;
         }
-        .notif-list {
-            max-height: 400px;
-            overflow-y: auto;
-        }
+        .notif-list { max-height: 400px; overflow-y: auto; }
         .notif-item {
             padding: 16px 20px;
             border-bottom: 1px solid rgba(255,255,255,0.03);
@@ -43,7 +46,7 @@
         .notif-item:hover { background: rgba(255,255,255,0.08); }
         .notif-icon {
             font-size: 24px;
-            color: #ef4444; 
+            color: #ef4444;
             background: rgba(239, 68, 68, 0.1);
             padding: 10px;
             border-radius: 10px;
@@ -56,8 +59,6 @@
         .notif-content p { margin: 0; font-size: 13px; color: #cbd5e1; line-height: 1.4; }
         .notif-time { font-size: 11px; color: #64748b; margin-top: 5px; display: block; }
         .notif-unread { border-right: 4px solid var(--accent-blue) !important; background: rgba(59, 130, 246, 0.05); }
-
-        /* Toast Popup CSS */
         #toast-container {
             position: fixed;
             bottom: 40px;
@@ -82,13 +83,13 @@
             backdrop-filter: blur(10px);
             min-width: 320px;
         }
-        @keyframes slideInRight { 
-            0% { transform: translateX(120%); opacity: 0; } 
-            100% { transform: translateX(0); opacity: 1; } 
+        @keyframes slideInRight {
+            0% { transform: translateX(120%); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
         }
-        @keyframes slideOutRight { 
-            0% { transform: translateX(0); opacity: 1; } 
-            100% { transform: translateX(120%); opacity: 0; } 
+        @keyframes slideOutRight {
+            0% { transform: translateX(0); opacity: 1; }
+            100% { transform: translateX(120%); opacity: 0; }
         }
     `;
     document.head.appendChild(style);
@@ -97,7 +98,6 @@
     toastContainer.id = 'toast-container';
     document.body.appendChild(toastContainer);
 
-    // Dynamic high-pitch beep using AudioContext (Always works, no files required)
     const playBeep = () => {
         try {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -105,71 +105,152 @@
             const gain = ctx.createGain();
             osc.connect(gain);
             gain.connect(ctx.destination);
-            osc.type = "sine";
-            // Urgent high double beep
+            osc.type = 'sine';
             osc.frequency.setValueAtTime(900, ctx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(1000, ctx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.3, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+            gain.gain.setValueAtTime(0.25, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.28);
             osc.start(ctx.currentTime);
-            osc.stop(ctx.currentTime + 0.3);
-        } catch(e) {}
+            osc.stop(ctx.currentTime + 0.28);
+            setTimeout(() => {
+                try {
+                    ctx.close();
+                } catch (e2) {}
+            }, 400);
+        } catch (e) {}
     };
 
     function showToast(title, body) {
         playBeep();
         const t = document.createElement('div');
         t.className = 'toast-msg';
-        t.innerHTML = `
-            <i class="ph-fill ph-warning" style="font-size:35px; color:#ef4444;"></i>
-            <div>
-                <h4 style="margin:0 0 5px; font-size:17px; font-weight:800;">${title}</h4>
-                <p style="margin:0; font-size:14px; color:#cbd5e1; font-weight:600;">${body}</p>
-            </div>
-        `;
+        t.innerHTML =
+            '<i class="ph-fill ph-warning" style="font-size:35px; color:#ef4444;"></i><div><h4 style="margin:0 0 5px; font-size:17px; font-weight:800;">' +
+            esc(title) +
+            '</h4><p style="margin:0; font-size:14px; color:#cbd5e1; font-weight:600;">' +
+            esc(body) +
+            '</p></div>';
         toastContainer.appendChild(t);
-        
-        // Auto remove alert after 6 seconds
-        setTimeout(() => { 
+        setTimeout(() => {
             t.style.animation = 'slideOutRight 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards';
-            setTimeout(() => t.remove(), 500); 
-        }, 6000);
+            setTimeout(() => t.remove(), 500);
+        }, 7000);
     }
 
-    // --- Dropdown Management ---
-    let notifications = JSON.parse(localStorage.getItem('sys_notifications') || '[]');
-    let unreadCount = notifications.filter(n => !n.read).length;
+    let notifications = [];
+    let unreadCount = 0;
 
     const dropdown = document.createElement('div');
     dropdown.className = 'notif-dropdown';
     document.body.appendChild(dropdown);
 
-    function renderDropdown() {
-        if(notifications.length === 0) {
-            dropdown.innerHTML = `<div class="notif-header">مركز الإشعارات</div><div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-bell-slash" style="font-size:40px; margin-bottom:10px;"></i><br>لا توجد تنبيهات حالياً</div>`;
+    function hasDb() {
+        return typeof window.dbRead === 'function' && typeof window.dbWrite === 'function';
+    }
+
+    async function persistNotifsToDb() {
+        try {
+            localStorage.setItem('sys_notifications', JSON.stringify(notifications));
+        } catch (e) {}
+        if (!hasDb()) return;
+        try {
+            const db = await window.dbRead();
+            if (!db.systemNotifications) db.systemNotifications = [];
+            db.systemNotifications = notifications.slice(-50);
+            await window.dbWrite(db);
+        } catch (e) {}
+    }
+
+    async function hydrateNotifications() {
+        let fromDb = null;
+        if (hasDb()) {
+            try {
+                const db = await window.dbRead();
+                if (Array.isArray(db.systemNotifications)) {
+                    fromDb = db.systemNotifications;
+                }
+            } catch (e) {}
+        }
+        if (fromDb && fromDb.length > 0) {
+            notifications = fromDb.slice(-50);
         } else {
-            let html = `<div class="notif-header"><span>مركز الإشعارات (${unreadCount})</span> <button id="mark-all-read" style="background:rgba(59, 130, 246, 0.1); padding:5px 10px; border-radius:6px; border:none; color:var(--accent-blue); cursor:pointer; font-size:12px; font-weight:700;">تحديد كمقروء</button></div><div class="notif-list">`;
-            [...notifications].reverse().slice(0, 30).forEach(n => {
-                let icon = n.type === 'inventory' ? '<i class="ph-fill ph-warning"></i>' : '<i class="ph-fill ph-bell-ringing"></i>';
-                html += `
-                    <div class="notif-item ${!n.read ? 'notif-unread' : ''}">
-                        <div class="notif-icon">${icon}</div>
-                        <div class="notif-content">
-                            <h4>${n.title}</h4>
-                            <p>${n.body}</p>
-                            <span class="notif-time">${n.time}</span>
-                        </div>
-                    </div>`;
+            try {
+                notifications = JSON.parse(localStorage.getItem('sys_notifications') || '[]');
+            } catch (e) {
+                notifications = [];
+            }
+            if (notifications.length > 0 && hasDb()) {
+                await persistNotifsToDb();
+            }
+        }
+        unreadCount = notifications.filter((n) => !n.read).length;
+        updateBadge();
+    }
+
+    async function loadAlertState() {
+        if (hasDb()) {
+            try {
+                const db = await window.dbRead();
+                if (db.inventoryAlertState && typeof db.inventoryAlertState === 'object') {
+                    return { ...db.inventoryAlertState };
+                }
+            } catch (e) {}
+        }
+        try {
+            return JSON.parse(localStorage.getItem('alerted_inv_items') || '{}');
+        } catch (e) {
+            return {};
+        }
+    }
+
+    async function saveAlertState(obj) {
+        try {
+            localStorage.setItem('alerted_inv_items', JSON.stringify(obj));
+        } catch (e) {}
+        if (!hasDb()) return;
+        try {
+            const db = await window.dbRead();
+            db.inventoryAlertState = obj;
+            await window.dbWrite(db);
+        } catch (e) {}
+    }
+
+    function renderDropdown() {
+        if (notifications.length === 0) {
+            dropdown.innerHTML =
+                '<div class="notif-header">مركز الإشعارات</div><div style="padding:40px; text-align:center; color:var(--text-muted);"><i class="ph ph-bell-slash" style="font-size:40px; margin-bottom:10px;"></i><br>لا توجد تنبيهات حالياً</div>';
+        } else {
+            let html =
+                '<div class="notif-header"><span>مركز الإشعارات (' +
+                unreadCount +
+                ')</span> <button type="button" id="mark-all-read" style="background:rgba(59, 130, 246, 0.1); padding:5px 10px; border-radius:6px; border:none; color:var(--accent-blue); cursor:pointer; font-size:12px; font-weight:700;">تحديد كمقروء</button></div><div class="notif-list">';
+            [...notifications].reverse().slice(0, 30).forEach((n) => {
+                const icon =
+                    n.type === 'inventory'
+                        ? '<i class="ph-fill ph-warning"></i>'
+                        : '<i class="ph-fill ph-bell-ringing"></i>';
+                html +=
+                    '<div class="notif-item ' +
+                    (!n.read ? 'notif-unread' : '') +
+                    '"><div class="notif-icon">' +
+                    icon +
+                    '</div><div class="notif-content"><h4>' +
+                    esc(n.title) +
+                    '</h4><p>' +
+                    esc(n.body) +
+                    '</p><span class="notif-time">' +
+                    esc(n.time) +
+                    '</span></div></div>';
             });
-            html += `</div>`;
+            html += '</div>';
             dropdown.innerHTML = html;
 
             const btnMarkRead = document.getElementById('mark-all-read');
-            if(btnMarkRead) {
+            if (btnMarkRead) {
                 btnMarkRead.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    notifications.forEach(n => n.read = true);
-                    saveNotifs();
+                    notifications.forEach((n) => (n.read = true));
+                    void persistNotifsToDb();
                     renderDropdown();
                     updateBadge();
                 });
@@ -177,40 +258,145 @@
         }
     }
 
-    function saveNotifs() {
-        localStorage.setItem('sys_notifications', JSON.stringify(notifications));
-    }
-
     function updateBadge() {
-        unreadCount = notifications.filter(n => !n.read).length;
-        document.querySelectorAll('.notification-btn .badge').forEach(b => {
+        unreadCount = notifications.filter((n) => !n.read).length;
+        document.querySelectorAll('.notification-btn .badge').forEach((b) => {
+            if (b.id === 'inv-notif-badge') return;
             b.innerText = unreadCount;
             b.style.display = unreadCount > 0 ? 'flex' : 'none';
         });
     }
 
-    window.addSystemNotification = function(type, title, body) {
-        notifications.push({ id: Date.now(), type, title, body, time: new Date().toLocaleString('ar-SA'), read: false });
-        if(notifications.length > 50) notifications.shift(); // keep last 50 only
-        saveNotifs();
+    window.addSystemNotification = function (type, title, body) {
+        notifications.push({
+            id: Date.now(),
+            type,
+            title,
+            body,
+            time: new Date().toLocaleString('ar-SA'),
+            read: false
+        });
+        if (notifications.length > 50) notifications.shift();
+        void persistNotifsToDb();
         updateBadge();
-        if(dropdown.classList.contains('show')) renderDropdown();
+        if (dropdown.classList.contains('show')) renderDropdown();
     };
 
-    // Attach to specific bell icons dynamically across all pages
+    let inventoryCheckRunning = false;
+    async function runInventoryCheck() {
+        if (document.visibilityState === 'hidden' || !window.dbRead) return;
+        if (inventoryCheckRunning) return;
+        inventoryCheckRunning = true;
+        try {
+            const db = await window.dbRead();
+            const inventory = db.inventory || [];
+            let alertedItems = await loadAlertState();
+            let hasChanges = false;
+            const newToastLines = [];
+            const newAlerts = [];
+
+            inventory.forEach((item) => {
+                const minLimit = Number(
+                    item.minQty != null ? item.minQty : item.minStock != null ? item.minStock : 5
+                );
+                const currentStock = Number(
+                    item.qty != null ? item.qty : item.stock != null ? item.stock : 0
+                );
+                const wh = item.warehouseId || 'main';
+                const alertKey = (item.sku ? String(item.sku) : String(item.name || '')) + '@' + wh;
+
+                if (currentStock <= minLimit) {
+                    if (!alertedItems[alertKey]) {
+                        const whLabel =
+                            wh === 'main'
+                                ? 'رئيسي'
+                                : wh === 'restaurant'
+                                  ? 'مطعم'
+                                  : wh === 'beverages'
+                                    ? 'مشروبات'
+                                    : wh;
+                        newToastLines.push(
+                            '• ' +
+                                (item.name || item.sku || 'صنف') +
+                                ' (' +
+                                whLabel +
+                                '): ' +
+                                currentStock +
+                                ' ' +
+                                (item.unit || '')
+                        );
+                        newAlerts.push({ item, whLabel, currentStock });
+                        alertedItems[alertKey] = true;
+                        hasChanges = true;
+                    }
+                } else {
+                    if (alertedItems[alertKey]) {
+                        delete alertedItems[alertKey];
+                        hasChanges = true;
+                    }
+                }
+            });
+
+            if (newAlerts.length === 1) {
+                const a = newAlerts[0];
+                window.addSystemNotification(
+                    'inventory',
+                    'تنبيه مخزون: ' + (a.item.name || a.item.sku),
+                    'المستودع: ' + a.whLabel + ' — المتبقي: ' + a.currentStock + ' ' + (a.item.unit || '')
+                );
+            } else if (newAlerts.length > 1) {
+                const body = newAlerts
+                    .map(
+                        (a) =>
+                            '• ' +
+                            (a.item.name || a.item.sku) +
+                            ' (' +
+                            a.whLabel +
+                            '): ' +
+                            a.currentStock +
+                            ' ' +
+                            (a.item.unit || '')
+                    )
+                    .join('\n')
+                    .slice(0, 900);
+                window.addSystemNotification(
+                    'inventory',
+                    'تنبيه مخزون: ' + newAlerts.length + ' أصناف',
+                    body
+                );
+            }
+
+            if (newToastLines.length === 1) {
+                const line = newToastLines[0].replace(/^• /, '');
+                showToast('نقص في المخزون', line);
+            } else if (newToastLines.length > 1) {
+                showToast(
+                    'نقص في المخزون',
+                    newToastLines.length +
+                        ' أصناف وصلت للحد — التفاصيل في مركز الإشعارات (الجرس).'
+                );
+            }
+
+            if (hasChanges) {
+                await saveAlertState(alertedItems);
+            }
+        } catch (err) {
+        } finally {
+            inventoryCheckRunning = false;
+        }
+    }
+
     setInterval(() => {
         const bells = document.querySelectorAll('.notification-btn');
-        bells.forEach(bell => {
-            if(!bell.dataset.bound) {
+        bells.forEach((bell) => {
+            if (bell.id === 'inv-notif-btn') return;
+            if (!bell.dataset.bound) {
                 bell.dataset.bound = 'true';
                 bell.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const rect = bell.getBoundingClientRect();
-                    // Position dropdown dynamically relative to the bell button
-                    dropdown.style.top = (rect.bottom + 10) + 'px';
-                    // Since it's RTL and on the left, orient from the left edge of bell
-                    dropdown.style.left = Math.max(10, rect.left - 100) + 'px'; 
-                    
+                    dropdown.style.top = rect.bottom + 10 + 'px';
+                    dropdown.style.left = Math.max(10, rect.left - 100) + 'px';
                     dropdown.classList.toggle('show');
                     renderDropdown();
                 });
@@ -219,52 +405,53 @@
     }, 1000);
 
     document.addEventListener('click', (e) => {
-        if(!dropdown.contains(e.target) && !e.target.closest('.notification-btn')) {
+        if (
+            !dropdown.contains(e.target) &&
+            !e.target.closest('.notification-btn') &&
+            !e.target.closest('#inv-notif-btn')
+        ) {
             dropdown.classList.remove('show');
         }
     });
 
-    // 2. Automated Inventory Alert System (Checking every 5 seconds)
-    setInterval(async () => {
-        try {
-            if(window.dbRead) {
-                const db = await window.dbRead();
-                const inventory = db.inventory || [];
-                
-                let alertedItems = JSON.parse(localStorage.getItem('alerted_inv_items') || '{}');
-                let hasChanges = false;
+    const CHECK_MS = 45000;
+    setInterval(runInventoryCheck, CHECK_MS);
 
-                inventory.forEach(item => {
-                    let minLimit = Number(item.minStock || 5);
-                    let currentStock = Number(item.stock || 0);
-
-                    // If stock drops below or equals minimum threshold
-                    if (currentStock <= minLimit) {
-                        if (!alertedItems[item.id]) {
-                            // Only alert ONCE until stock is replenished again
-                            showToast('🔴 نقص حاد في المخزون!', '"الصنف: ' + item.name + '" تجاوز الحد الأدنى. المتبقي (' + currentStock + ') ' + (item.unit || ''));
-                            
-                            window.addSystemNotification('inventory', 'تنبيه مخزون: ' + item.name, 'صنف "' + item.name + '" وصل إلى حد النفاذ. الكمية المتبقية: ' + currentStock + ' ' + (item.unit || ''));
-                            
-                            alertedItems[item.id] = true;
-                            hasChanges = true;
-                        }
-                    } else {
-                        // If stock goes back UP above minimum threshold, clear alert lock
-                        if (alertedItems[item.id]) {
-                            delete alertedItems[item.id];
-                            hasChanges = true;
-                        }
+    if (typeof window.registerPosDatabaseRefresh === 'function') {
+        window.registerPosDatabaseRefresh(async () => {
+            try {
+                if (hasDb()) {
+                    const db = await window.dbRead();
+                    if (Array.isArray(db.systemNotifications)) {
+                        notifications = db.systemNotifications.slice(-50);
+                        try {
+                            localStorage.setItem('sys_notifications', JSON.stringify(notifications));
+                        } catch (e) {}
+                        updateBadge();
+                        if (dropdown.classList.contains('show')) renderDropdown();
                     }
-                });
-
-                if(hasChanges) {
-                    localStorage.setItem('alerted_inv_items', JSON.stringify(alertedItems));
                 }
-            }
-        } catch(err) {} // ignore during loads
-    }, 5000); // Check every 5 seconds
+            } catch (e) {}
+            void runInventoryCheck();
+        });
+    }
 
-    // Initial load
-    setTimeout(updateBadge, 500);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') void runInventoryCheck();
+    });
+
+    function boot() {
+        void hydrateNotifications().then(() => {
+            updateBadge();
+            setTimeout(() => void runInventoryCheck(), 2000);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+    } else {
+        setTimeout(boot, 0);
+    }
+
+    setTimeout(updateBadge, 600);
 })();

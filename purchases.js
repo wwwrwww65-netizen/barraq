@@ -1,20 +1,13 @@
 const { ipcRenderer } = require('electron');
-const fs = require('fs');
-const path = require('path');
-const dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
 
-function loadDB() {
-    try { return JSON.parse(fs.readFileSync(dbPath, 'utf8')); } catch(e) { return { orders:[], products:[], inventory:[], purchases:[], suppliers:[], inventoryTx:[], returns:[] }; }
-}
-function saveDB(db) {
-    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+async function saveDB(db) {
+    await window.dbWrite(db);
     try { ipcRenderer.send('notify-db-changed'); } catch(e) {}
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
 
-    // Databases from JSON DB
-    let db = loadDB();
+    let db = await window.dbRead();
     if(!db.purchases) db.purchases = [];
     if(!db.suppliers) db.suppliers = [];
     if(!db.inventory) db.inventory = [];
@@ -25,10 +18,18 @@ document.addEventListener('DOMContentLoaded', () => {
     let inventory = db.inventory;
     let inventoryTx = db.inventoryTx;
 
+    function isThisMonth(dateStr) {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return false;
+        const now = new Date();
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    }
+
     // --- KPIs ---
     function renderKPIs() {
-        document.getElementById('kpi-count').innerText = purchases.length + ' فاتورة';
-        
+        const thisMonth = purchases.filter(p => isThisMonth(p.date));
+        document.getElementById('kpi-count').innerText = thisMonth.length + ' فاتورة';
+
         const paid = purchases.filter(p => ['cash', 'bank'].includes(p.payMethod)).reduce((s, p) => s + p.total, 0);
         document.getElementById('kpi-paid').innerText = paid.toLocaleString() + ' ر.س';
 
@@ -53,7 +54,11 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.innerHTML = '';
         const search = document.getElementById('search-inv')?.value.toLowerCase() || '';
 
-        const filtered = purchases.filter(p => p.id.toLowerCase().includes(search) || p.supName.toLowerCase().includes(search) || p.ref.toLowerCase().includes(search));
+        const filtered = purchases.filter(p =>
+            String(p.id || '').toLowerCase().includes(search) ||
+            String(p.supName || '').toLowerCase().includes(search) ||
+            String(p.ref || '').toLowerCase().includes(search)
+        );
         
         // Sort descending
         filtered.sort((a,b) => new Date(b.date) - new Date(a.date));
@@ -99,17 +104,18 @@ document.addEventListener('DOMContentLoaded', () => {
     renderKPIs();
     renderTable();
 
-    // ── Network Sync: reload when pos_database.json updated by a peer ─────────
-    window.addEventListener('pos-db-updated', () => {
-        db = loadDB();
-        purchases = db.purchases || [];
-        suppliers = db.suppliers || [];
-        inventory = db.inventory || [];
-        inventoryTx = db.inventoryTx || [];
-        renderKPIs();
-        renderTable();
-        console.log('[Sync] 🔄 Purchases reloaded from network update.');
-    });
+    if (typeof window.registerPosDatabaseRefresh === 'function') {
+        window.registerPosDatabaseRefresh(async () => {
+            db = await window.dbRead();
+            purchases = db.purchases || [];
+            suppliers = db.suppliers || [];
+            inventory = db.inventory || [];
+            inventoryTx = db.inventoryTx || [];
+            renderKPIs();
+            renderTable();
+            console.log('[Sync] 🔄 Purchases reloaded from network update.');
+        });
+    }
 
     // --- Modal Logic ---
     const modal = document.getElementById('invoiceModal');
@@ -119,17 +125,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Setup Modals
     document.getElementById('btn-new-invoice').addEventListener('click', () => {
-        // Populate Suppliers
         const supSel = document.getElementById('inv-supplier');
-        supSel.innerHTML = suppliers.filter(s=>s.active).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-        
-        // Default Date
+        supSel.innerHTML = suppliers.filter(s => s.active).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        if (!supSel.options.length) {
+            alert('لا يوجد مورد نشط. أضف مورداً من صفحة «دليل الموردين» أو فعّل مورداً موقوفاً.');
+            return;
+        }
+
         document.getElementById('inv-date').valueAsDate = new Date();
-        
-        // Reset rows
+
         itemsContainer.innerHTML = '';
-        addRow(); // Add first mandatory row
-        
+        addRow();
+
         calculateTotals();
         modal.classList.add('active');
     });
@@ -157,8 +164,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Add "New Item" logic ? For now just pick existing
-        skuSel.innerHTML = uniqueSkus.map(i => `<option value="${i.sku}" data-name="${i.name}">${i.name} (${i.unit})</option>`).join('');
-        // Also add an option to create new? The user should probably create items in inventory section first to keep logic clean.
+        if (!uniqueSkus.length) {
+            skuSel.innerHTML = '<option value="">— لا توجد أصناف في المخزون —</option>';
+        } else {
+            skuSel.innerHTML = uniqueSkus.map(i => `<option value="${i.sku}" data-name="${i.name}">${i.name} (${i.unit})</option>`).join('');
+        }
         
         // Events
         row.querySelector('.btn-remove-row').addEventListener('click', () => {
@@ -208,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Save Logic (The Core ERP Integration) ---
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         // 1. Gather Items
@@ -216,19 +226,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const rows = document.querySelectorAll('.item-row');
         if(rows.length === 0) { alert('يجب إضافة صنف واحد على الأقل للفاتورة!'); return; }
 
+        let badLine = false;
         let isQtyMissing = false;
         rows.forEach(r => {
             const skuSelect = r.querySelector('.item-sku');
             const sku = skuSelect.value;
-            const name = skuSelect.options[skuSelect.selectedIndex].dataset.name;
+            const opt = skuSelect.options[skuSelect.selectedIndex];
+            const name = opt && opt.dataset ? opt.dataset.name : '';
+            if (!sku || !name) {
+                badLine = true;
+                return;
+            }
             const qty = Number(r.querySelector('.item-qty').value);
             const price = Number(r.querySelector('.item-price').value);
-            if(qty<=0) isQtyMissing = true;
+            if (qty <= 0) isQtyMissing = true;
 
             purItems.push({ sku, name, qty, price });
         });
 
-        if(isQtyMissing) { alert('يرجى التحقق من صحة الكميات!'); return; }
+        if (badLine) {
+            alert('يرجى اختيار صنف صالح في كل السطور. عرّف الأصناف أولاً من صفحة المخازن إن لم تكن موجودة.');
+            return;
+        }
+        if (isQtyMissing) {
+            alert('يرجى التحقق من صحة الكميات والأسعار!');
+            return;
+        }
 
         // 2. Build Purchase Record
         const supId = document.getElementById('inv-supplier').value;
@@ -296,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
         db.suppliers = suppliers;
         db.inventory = inventory;
         db.inventoryTx = inventoryTx;
-        saveDB(db);
+        await saveDB(db);
 
         // 5. Cleanup
         modal.classList.remove('active');
@@ -332,6 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
         w.document.write(`
             <html dir="rtl" lang="ar">
             <head>
+                <meta charset="UTF-8">
                 <title>فاتورة مشتريات وتوريد بضاعة</title>
                 <style>
                     body { font-family: 'Segoe UI', Tahoma, Verdana, sans-serif; padding: 20px; color: #333; }

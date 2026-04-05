@@ -1,18 +1,8 @@
 (function() {
-const { ipcRenderer } = require('electron');
-const fs = require('fs');
-const path = require('path');
-const dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
-
-function loadDB() {
-    try { return JSON.parse(fs.readFileSync(dbPath, 'utf8')); }
-    catch(e) { return { orders:[], products:[], inventory:[], purchases:[], suppliers:[], inventoryTx:[], returns:[], expenses:[], bankTransfers:[] }; }
-}
-function saveDB(db) { fs.writeFileSync(dbPath, JSON.stringify(db, null, 2)); }
-
 document.addEventListener('DOMContentLoaded', async () => {
 
     let accChart = null;
+    let currentAccPeriod = 'this_month';
 
     async function loadAccountingData(period = 'this_month') {
         const db = await window.dbRead();
@@ -20,55 +10,153 @@ document.addEventListener('DOMContentLoaded', async () => {
         let erpPurchases = db.purchases || [];
         let erpExpenses = db.expenses || [];
         let bankTransfers = db.bankTransfers || [];
-
-    // Seed initial expenses if empty
-    if(erpExpenses.length === 0) {
-        erpExpenses = [
-            { id: 'EXP-101', date: new Date().toISOString().split('T')[0], cat: 'إيجارات', desc: 'إيجار شهر المطعم الرئيسي', amount: 5000, pMethod: 'bank' },
-            { id: 'EXP-102', date: new Date().toISOString().split('T')[0], cat: 'تغليف ومستهلكات', desc: 'أكياس وعلب بلاستيكية', amount: 450, pMethod: 'cash' },
-            { id: 'EXP-103', date: new Date().toISOString().split('T')[0], cat: 'رواتب وأجور', desc: 'سلفة حساب راتب الطباخ', amount: 1500, pMethod: 'cash' }
-        ];
-        db.expenses = erpExpenses;
-        saveDB(db);
-    }
+        let returnsRows = db.returns || [];
+        let hrExpenses = db.hrExpenses || [];
+        let otherIncomeRows = db.otherIncome || [];
 
     if(window.isDateInPeriod) {
         posOrders = posOrders.filter(o => window.isDateInPeriod(o.timestamp || o.dateStr || o.date, period));
         erpPurchases = erpPurchases.filter(p => window.isDateInPeriod(p.date, period));
         erpExpenses = erpExpenses.filter(e => window.isDateInPeriod(e.date, period));
         bankTransfers = bankTransfers.filter(t => window.isDateInPeriod(t.date, period));
+        returnsRows = returnsRows.filter(r => window.isDateInPeriod(r.timestamp || r.date, period));
+        hrExpenses = hrExpenses.filter((h) => window.isDateInPeriod(h.timestamp || h.date, period));
+        otherIncomeRows = otherIncomeRows.filter((row) =>
+            window.isDateInPeriod(row.date || row.timestamp, period),
+        );
     }
 
-    // 2. ✅ Financial Aggregation Engine
+    function hrAffectsLiquidity(h) {
+        const t = String(h.type || '');
+        return !t.includes('خصم') && !t.includes('جزاء');
+    }
+
+    let totalReturns = 0;
+    returnsRows.forEach((r) => { totalReturns += Number(r.amount) || 0; });
+    let totalOtherIncome = 0;
+    otherIncomeRows.forEach((row) => { totalOtherIncome += Number(row.amount) || 0; });
+
+    /** تجميع حسب يوم الأسبوع — ترتيب المخطط: السبت … الجمعة */
+    function jsDayToChartBucket(d) {
+        if (!d || isNaN(d.getTime())) return null;
+        const g = d.getDay();
+        return g === 6 ? 0 : g + 1;
+    }
+    function sumByWeekday(rows, getDateFn, getValueFn) {
+        const b = [0, 0, 0, 0, 0, 0, 0];
+        rows.forEach((row) => {
+            const d = getDateFn(row);
+            if (!d || isNaN(d.getTime())) return;
+            const di = jsDayToChartBucket(d);
+            if (di === null) return;
+            b[di] += Number(getValueFn(row)) || 0;
+        });
+        return b;
+    }
+
+    const revByDayGross = sumByWeekday(
+        posOrders,
+        (o) => new Date(o.timestamp || o.date || Date.now()),
+        (o) => o.total,
+    );
+    const retByDay = sumByWeekday(
+        returnsRows,
+        (r) => new Date(r.timestamp || r.date || Date.now()),
+        (r) => Number(r.amount) || 0,
+    );
+    const otherIncByDay = sumByWeekday(
+        otherIncomeRows,
+        (row) => new Date(row.timestamp || row.date || Date.now()),
+        (row) => Number(row.amount) || 0,
+    );
+    const revByDay = revByDayGross.map((v, i) =>
+        Math.max(0, v - (retByDay[i] || 0)) + (otherIncByDay[i] || 0),
+    );
+    const purByDay = sumByWeekday(
+        erpPurchases,
+        (p) => new Date(p.date || Date.now()),
+        (p) => p.total,
+    );
+    const expByDay = sumByWeekday(
+        erpExpenses,
+        (e) => new Date(e.date || Date.now()),
+        (e) => e.amount,
+    );
+    const hrByDay = sumByWeekday(
+        hrExpenses.filter(hrAffectsLiquidity),
+        (h) => new Date(h.timestamp || h.date || Date.now()),
+        (h) => Number(h.amount) || 0,
+    );
+    const outByDay = revByDay.map((_, i) => purByDay[i] + expByDay[i] + hrByDay[i]);
+
+    // 2. ✅ Financial Aggregation Engine (مواءمة مع profit-loss.js)
     let totalRev = 0, cashRev = 0, bankRev = 0;
-    posOrders.forEach(o => {
-        totalRev += o.total;
-        if(o.paymentMethod === 'cash' || o.paymentMethod === 'كاش') {
-            cashRev += o.total;
-        } else if(['card','bank','شبكة / بطاقة','شبكة'].includes(o.paymentMethod)) {
-            bankRev += o.total;
-        } else if(o.paymentMethod === 'مجزأ') {
-            cashRev += (o.splitCash || 0);
-            bankRev += (o.splitNetwork || 0);
+    posOrders.forEach((o) => {
+        const t = Number(o.total) || 0;
+        totalRev += t;
+        const pm = o.paymentMethod || '';
+        if (pm === 'cash' || pm === 'كاش') cashRev += t;
+        else if (['card', 'bank', 'شبكة / بطاقة', 'شبكة'].includes(pm)) bankRev += t;
+        else if (pm === 'مجزأ') {
+            cashRev += Number(o.splitCash) || 0;
+            bankRev += Number(o.splitNetwork) || 0;
+        } else {
+            bankRev += t;
         }
     });
+    otherIncomeRows.forEach((row) => {
+        const a = Number(row.amount) || 0;
+        if (row.pMethod === 'bank') bankRev += a;
+        else cashRev += a;
+    });
+    const totalRevNet = Math.max(0, totalRev - totalReturns) + totalOtherIncome;
 
     let totalPur = 0, cashPur = 0, bankPur = 0;
-    erpPurchases.forEach(p => {
-        totalPur += p.total;
-        if(p.payMethod === 'cash') cashPur += p.total;
-        if(p.payMethod === 'bank') bankPur += p.total;
+    erpPurchases.forEach((p) => {
+        const pt = Number(p.total) || 0;
+        totalPur += pt;
+        if (p.payMethod === 'cash') cashPur += pt;
+        if (p.payMethod === 'bank') bankPur += pt;
     });
 
     let totalExp = 0, cashExp = 0, bankExp = 0;
     let salaries = 0, rent = 0, others = 0;
-    erpExpenses.forEach(e => {
-        totalExp += e.amount;
-        if(e.pMethod === 'cash') cashExp += e.amount;
-        if(e.pMethod === 'bank') bankExp += e.amount;
-        if(e.cat && e.cat.includes('رواتب')) salaries += e.amount;
-        else if(e.cat && e.cat.includes('إيجار')) rent += e.amount;
-        else others += e.amount;
+    erpExpenses.forEach((e) => {
+        const a = Number(e.amount) || 0;
+        totalExp += a;
+        if (e.pMethod === 'cash') cashExp += a;
+        if (e.pMethod === 'bank') bankExp += a;
+        if (e.cat && e.cat.includes('رواتب')) salaries += a;
+        else if (e.cat && e.cat.includes('إيجار')) rent += a;
+        else others += a;
+    });
+    /* سندات HR: الصرف النقدي/البنكي فقط (خصم/جزاء = ذمّة موظف دون خروج نقد آني) */
+    hrExpenses.forEach((h) => {
+        if (!hrAffectsLiquidity(h)) return;
+        const a = Number(h.amount) || 0;
+        totalExp += a;
+        salaries += a;
+        if (h.pMethod === 'bank') bankExp += a;
+        else cashExp += a;
+    });
+
+    function returnRefundCashBank(r) {
+        const amt = Number(r.amount) || 0;
+        const pm = String(r.method || '').trim();
+        if (pm === 'cash' || pm === 'كاش' || pm === 'نقد') return { c: amt, b: 0 };
+        if (['card', 'bank', 'شبكة / بطاقة', 'شبكة', 'مدى', 'فيزا'].includes(pm)) return { c: 0, b: amt };
+        if (pm === 'مجزأ') {
+            const c = Number(r.splitCash) || 0;
+            const b = Number(r.splitNetwork) || 0;
+            return c || b ? { c, b } : { c: 0, b: amt };
+        }
+        return { c: 0, b: amt };
+    }
+    let cashRetOut = 0, bankRetOut = 0;
+    returnsRows.forEach((r) => {
+        const x = returnRefundCashBank(r);
+        cashRetOut += x.c;
+        bankRetOut += x.b;
     });
 
     // Manual Transfers
@@ -80,9 +168,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(t.type === 'transfer_to_cash') { manualBankOut += t.amount; manualCashIn += t.amount; }
     });
 
-    const netProfit = totalRev - totalPur - totalExp;
-    const cashBal = cashRev - cashPur - cashExp + manualCashIn - manualCashOut;
-    const bankBal = bankRev - bankPur - bankExp + manualBankIn - manualBankOut;
+    const netProfit = totalRevNet - totalPur - totalExp;
+    const cashBal = cashRev - cashPur - cashExp - cashRetOut + manualCashIn - manualCashOut;
+    const bankBal = bankRev - bankPur - bankExp - bankRetOut + manualBankIn - manualBankOut;
 
     // Render Bank Transactions Table
     const bankTrxBody = document.getElementById('bank-trx-body');
@@ -114,19 +202,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(document.getElementById('kpi-revenue')) {
         const fmt = (n) => n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
 
-        document.getElementById('kpi-revenue').innerText = fmt(totalRev) + ' ر.س';
+        document.getElementById('kpi-revenue').innerText = fmt(totalRevNet) + ' ر.س';
         document.getElementById('kpi-expenses').innerText = fmt(totalPur + totalExp) + ' ر.س';
         document.getElementById('kpi-profit').innerText = fmt(netProfit) + ' ر.س';
 
+        const kpiProfitEl = document.getElementById('kpi-profit');
         const pt = document.getElementById('kpi-profit-trend');
-        if(pt) {
-            if(netProfit >= 0) {
+        if (pt && kpiProfitEl) {
+            if (netProfit >= 0) {
                 pt.className = 'kpi-trend positive';
                 pt.innerHTML = '<i class="ph-bold ph-trend-up"></i> أرباح إيجابية';
+                kpiProfitEl.style.color = '';
             } else {
                 pt.className = 'kpi-trend negative';
                 pt.innerHTML = '<i class="ph-bold ph-trend-down"></i> خسارة تشغيلية';
-                document.getElementById('kpi-profit').style.color = 'var(--accent-red)';
+                kpiProfitEl.style.color = 'var(--accent-red)';
             }
         }
 
@@ -145,8 +235,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 data: {
                     labels: ['السبت','الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'],
                     datasets: [
-                        { label: 'الإيرادات المستلمة', data: [totalRev*0.10,totalRev*0.12,totalRev*0.15,totalRev*0.18,totalRev*0.20,totalRev*0.22,totalRev*0.03], borderColor:'#10b981', backgroundColor:'rgba(16,185,129,0.1)', fill:true, tension:0.4 },
-                        { label: 'المصروفات والتوريد', data: [totalPur*0.12,totalPur*0.08,totalPur*0.14,totalPur*0.10,totalPur*0.18,totalPur*0.15,totalPur*0.05], borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.1)', fill:true, tension:0.4 }
+                        { label: 'الإيراد بعد المرتجعات (حسب يوم الأسبوع)', data: revByDay, borderColor:'#10b981', backgroundColor:'rgba(16,185,129,0.1)', fill:true, tension:0.4 },
+                        { label: 'توريد + مصروفات + سندات موظفين', data: outByDay, borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.1)', fill:true, tension:0.4 }
                     ]
                 },
                 options: { responsive:true, color:'#fff', scales: { x:{ticks:{color:'#94a3b8'}}, y:{ticks:{color:'#94a3b8'}} } }
@@ -157,8 +247,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(rentries) {
             let combined = [
                 ...posOrders.map(o => ({ date: new Date(o.timestamp||o.date||Date.now()), id: o.orderId, desc: 'مبيعات الكاشير', amt: o.total, type: 'in', acc:'صندوق الإيرادات' })),
+                ...returnsRows.map((r) => ({
+                    date: new Date(r.timestamp || r.date || Date.now()),
+                    id: r.id || r.returnId || 'RET',
+                    desc: r.reason ? `مرتجع: ${r.reason}` : 'مرتجع مبيعات',
+                    amt: Number(r.amount) || 0,
+                    type: 'out',
+                    acc: 'مرتجعات',
+                })),
                 ...erpPurchases.map(p => ({ date: new Date(p.date||Date.now()), id: p.id, desc: 'شراء فاتورة مورد: '+(p.supName||'عام'), amt: p.total, type: 'out', acc:'المشتريات' })),
-                ...erpExpenses.map(e => ({ date: new Date(e.date||Date.now()), id: e.id, desc: e.desc, amt: e.amount, type: 'out', acc: e.cat }))
+                ...erpExpenses.map(e => ({ date: new Date(e.date||Date.now()), id: e.id, desc: e.desc, amt: e.amount, type: 'out', acc: e.cat })),
+                ...hrExpenses.filter(hrAffectsLiquidity).map((h) => ({
+                    date: new Date(h.timestamp || h.date || Date.now()),
+                    id: h.id || 'HR-' + (h.timestamp || ''),
+                    desc: (h.type || 'سند') + (h.employee ? ` — ${h.employee}` : '') + (h.reason ? `: ${h.reason}` : ''),
+                    amt: Number(h.amount) || 0,
+                    type: 'out',
+                    acc: 'موارد بشرية',
+                })),
+                ...otherIncomeRows.map((row) => ({
+                    date: new Date(row.timestamp || row.date || Date.now()),
+                    id: row.id || 'OI-' + (row.timestamp || ''),
+                    desc: row.desc || row.note || 'إيراد آخر',
+                    amt: Number(row.amount) || 0,
+                    type: 'in',
+                    acc: 'إيرادات أخرى',
+                })),
             ];
             
             // Clean invalid dates
@@ -227,8 +341,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         const modal = document.getElementById('expenseModal');
-        document.getElementById('btn-add-expense')?.addEventListener('click', () => modal.classList.add('active'));
-        document.querySelectorAll('.btn-close-modal').forEach(b => b.addEventListener('click', () => modal.classList.remove('active')));
+        function closeExpenseModal() {
+            if (!modal) return;
+            modal.classList.remove('active');
+            modal.setAttribute('inert', '');
+            const ae = document.activeElement;
+            if (ae && modal.contains(ae)) {
+                try {
+                    ae.blur();
+                } catch (_) { /* ignore */ }
+            }
+            try {
+                document.body.setAttribute('tabindex', '-1');
+                document.body.focus({ preventScroll: true });
+                document.body.removeAttribute('tabindex');
+            } catch (_) { /* ignore */ }
+        }
+        document.getElementById('btn-add-expense')?.addEventListener('click', () => {
+            modal.removeAttribute('inert');
+            modal.classList.add('active');
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const el = document.getElementById('exp-category');
+                    try {
+                        el?.focus({ preventScroll: true });
+                    } catch (_) {
+                        el?.focus();
+                    }
+                });
+            });
+        });
+        document.querySelectorAll('.btn-close-modal').forEach(b => b.addEventListener('click', () => closeExpenseModal()));
         if(document.getElementById('exp-date')) {
             const tzDate = new Date();
             const localYMD = tzDate.getFullYear() + '-' + String(tzDate.getMonth()+1).padStart(2, '0') + '-' + String(tzDate.getDate()).padStart(2, '0');
@@ -245,28 +388,35 @@ document.addEventListener('DOMContentLoaded', async () => {
                 date: document.getElementById('exp-date').value,
                 pMethod: document.getElementById('exp-payment').value
             };
-            // ✅ Save to JSON DB
-            const dbNow = loadDB();
+            const dbNow = await window.dbRead();
             if(!dbNow.expenses) dbNow.expenses = [];
             dbNow.expenses.push(newExp);
-            saveDB(dbNow);
+            await window.dbWrite(dbNow);
 
             erpExpenses.push(newExp);
             totalExp += newExp.amount;
             if(kpiExp) kpiExp.innerText = totalExp.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ر.س';
 
-            modal.classList.remove('active');
+            closeExpenseModal();
+            const formExp = document.getElementById('form-expense');
+            if (formExp) formExp.reset();
+            const expDateInput = document.getElementById('exp-date');
+            if (expDateInput) {
+                const tzD = new Date();
+                expDateInput.value = tzD.getFullYear() + '-' + String(tzD.getMonth() + 1).padStart(2, '0') + '-' + String(tzD.getDate()).padStart(2, '0');
+            }
             renderExp();
 
-            // send WhatsApp image voucher to admin for expenses
-            try {
-                const waRaw = localStorage.getItem('wa_settings');
-                if (waRaw) {
-                    const waSettings = JSON.parse(waRaw);
-                    if (waSettings.expenses && waSettings.admin) {
+            // تأجيل التقاط الصورة والواتساب إلى إطار لاحق حتى تُغلق الواجهة ولا يتداخل html2canvas مع التركيز
+            setTimeout(() => {
+                (async () => {
+                    try {
+                        const waRaw = localStorage.getItem('wa_settings');
+                        if (!waRaw) return;
+                        const waSettings = JSON.parse(waRaw);
+                        if (!waSettings.expenses || !waSettings.admin) return;
                         const adminPhone = String(waSettings.admin);
 
-                        // Populate voucher template
                         const sysRaw = localStorage.getItem('restaurant_settings');
                         const sysSet = sysRaw ? JSON.parse(sysRaw) : {};
                         const todayStr = newExp.date || new Date().toISOString().split('T')[0];
@@ -284,38 +434,53 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const logoEl = document.getElementById('ev-logo');
                         if(logoEl && sysSet.logo && sysSet.logo !== '1111.png') logoEl.src = sysSet.logo;
 
-                        // Capture voucher as image
                         const voucherEl = document.getElementById('exp-voucher-template');
                         const container = document.getElementById('exp-voucher-container');
-                        container.style.position = 'fixed';
-                        container.style.top = '-9999px';
-                        container.style.left = '0';
-                        container.style.width = '840px';
-                        voucherEl.style.width = '800px';
-                        await new Promise(r => setTimeout(r, 150));
+                        if (!voucherEl || !container) return;
+                        try {
+                            container.style.position = 'fixed';
+                            container.style.top = '-9999px';
+                            container.style.left = '0';
+                            container.style.width = '840px';
+                            voucherEl.style.width = '800px';
+                            await new Promise(r => setTimeout(r, 150));
 
-                        const canvas = await html2canvas(voucherEl, { scale:2, useCORS:true, backgroundColor:'#fff', width:800, windowWidth:1200, logging:false });
+                            const canvas = await html2canvas(voucherEl, { scale:2, useCORS:true, backgroundColor:'#fff', width:800, windowWidth:1200, logging:false });
 
-                        // Resize to 1600×1132
-                        const fc = document.createElement('canvas'); fc.width=1600; fc.height=1132;
-                        const ctx2 = fc.getContext('2d');
-                        ctx2.fillStyle='#fff'; ctx2.fillRect(0,0,1600,1132);
-                        ctx2.drawImage(canvas, 0, 0, 1600, 1132);
-                        const imgData = fc.toDataURL('image/jpeg', 0.95);
+                            const fc = document.createElement('canvas'); fc.width=1600; fc.height=1132;
+                            const ctx2 = fc.getContext('2d');
+                            ctx2.fillStyle='#fff'; ctx2.fillRect(0,0,1600,1132);
+                            ctx2.drawImage(canvas, 0, 0, 1600, 1132);
+                            const imgData = fc.toDataURL('image/jpeg', 0.95);
 
-                        container.style.position = 'absolute';
-                        container.style.top = '-9999px';
-                        container.style.left = '-9999px';
-                        container.style.width = '';
-                        voucherEl.style.width = '800px';
-
-                        const captionMsg = `سند مصروف — ${newExp.cat}\nالمبلغ: ${newExp.amount.toLocaleString('en-US')} ر.س\n${newExp.desc}`;
-                        const { ipcRenderer } = require('electron');
-                        ipcRenderer.send('wa-send-message', { number: adminPhone, text: captionMsg, image: imgData });
-                        console.log('Sent expense voucher image to admin:', adminPhone);
-                    }
-                }
-            } catch(sqError) { console.error('Error sending expense WA voucher', sqError); }
+                            const captionMsg = `سند مصروف — ${newExp.cat}\nالمبلغ: ${newExp.amount.toLocaleString('en-US')} ر.س\n${newExp.desc}`;
+                            const { ipcRenderer } = require('electron');
+                            const hubIp =
+                                typeof window.resolveWaHubIp === 'function'
+                                    ? window.resolveWaHubIp(waSettings)
+                                    : (waSettings.hubIp && String(waSettings.hubIp).trim()) || '';
+                            ipcRenderer.send('wa-send-message', {
+                                number: adminPhone,
+                                text: captionMsg,
+                                image: imgData,
+                                waHubIp: hubIp,
+                            });
+                            console.log('Sent expense voucher image to admin:', adminPhone);
+                        } finally {
+                            container.style.position = 'absolute';
+                            container.style.top = '-9999px';
+                            container.style.left = '-9999px';
+                            container.style.width = '';
+                            voucherEl.style.width = '';
+                            document.querySelectorAll('iframe.html2canvas-container').forEach((f) => {
+                                try {
+                                    f.remove();
+                                } catch (_) { /* ignore */ }
+                            });
+                        }
+                    } catch (sqError) { console.error('Error sending expense WA voucher', sqError); }
+                })();
+            }, 0);
         });
 
         document.getElementById('search-exp')?.addEventListener('input', renderExp);
@@ -327,9 +492,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const fmt3 = (n) => n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
 
         document.getElementById('pl-rev-sales').innerText = fmt3(totalRev);
-        document.getElementById('pl-total-rev').innerText = fmt3(totalRev);
+        const plRet = document.getElementById('pl-returns-row');
+        if (plRet) plRet.innerText = totalReturns > 0 ? `(${fmt3(totalReturns)})` : '0.00';
+        document.getElementById('pl-total-rev').innerText = fmt3(totalRevNet);
         document.getElementById('pl-cogs-pur').innerText = `(${fmt3(totalPur)})`;
-        const gross = totalRev - totalPur;
+        const gross = totalRevNet - totalPur;
         document.getElementById('pl-gross-profit').innerText = fmt3(gross);
         document.getElementById('pl-exp-salaries').innerText = `(${fmt3(salaries)})`;
         document.getElementById('pl-exp-rent').innerText = `(${fmt3(rent)})`;
@@ -344,7 +511,8 @@ document.addEventListener('DOMContentLoaded', async () => {
            if(sysRaw.taxRate !== undefined) dynamicTaxRate = Number(sysRaw.taxRate)/100;
         } catch(e) {}
 
-        const taxCollected = totalRev - (totalRev / (1 + dynamicTaxRate));
+        const taxBase = totalRevNet > 0 ? totalRevNet : 0;
+        const taxCollected = taxBase - (taxBase / (1 + dynamicTaxRate));
         const extZakatAmount = netProfit > 0 ? (netProfit * 0.025) : 0;
         const netTaxStatement = taxCollected; // Usually minus tax paid on purchases, but keeping simple
 
@@ -359,8 +527,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(lTbody) {
             let combinedLedger = [
                 ...posOrders.map(o => ({ date: new Date(o.timestamp||Date.now()), id: o.orderId, type:'إيراد', desc:'مبيعات الكاشير', inAmt:o.total, outAmt:0 })),
+                ...returnsRows.map((r) => ({
+                    date: new Date(r.timestamp || r.date || Date.now()),
+                    id: r.id || r.returnId || 'RET',
+                    type: 'مرتجع',
+                    desc: r.reason || 'مرتجع مبيعات',
+                    inAmt: 0,
+                    outAmt: Number(r.amount) || 0,
+                })),
                 ...erpPurchases.map(p => ({ date: new Date(p.date), id: p.id, type:'مشتريات/بضاعة', desc:`فاتورة من ${p.supName}`, inAmt:0, outAmt:p.total })),
-                ...erpExpenses.map(e => ({ date: new Date(e.date), id: e.id, type:`مصروف - ${e.cat}`, desc:e.desc, inAmt:0, outAmt:e.amount }))
+                ...erpExpenses.map(e => ({ date: new Date(e.date), id: e.id, type:`مصروف - ${e.cat}`, desc:e.desc, inAmt:0, outAmt:e.amount })),
+                ...hrExpenses.filter(hrAffectsLiquidity).map((h) => ({
+                    date: new Date(h.timestamp || h.date || Date.now()),
+                    id: h.id || 'HR-' + (h.timestamp || ''),
+                    type: 'موارد بشرية',
+                    desc: `${h.type || 'سند'}${h.employee ? ` — ${h.employee}` : ''}`,
+                    inAmt: 0,
+                    outAmt: Number(h.amount) || 0,
+                })),
+                ...otherIncomeRows.map((row) => ({
+                    date: new Date(row.timestamp || row.date || Date.now()),
+                    id: row.id || 'OI-' + (row.timestamp || ''),
+                    type: 'إيراد آخر',
+                    desc: row.desc || row.note || '—',
+                    inAmt: Number(row.amount) || 0,
+                    outAmt: 0,
+                })),
             ];
             combinedLedger.sort((a,b) => b.date - a.date);
             lTbody.innerHTML = '';
@@ -401,6 +593,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if(txt.includes('اليوم')) p = 'today';
                 else if(txt.includes('ربع')) p = 'quarter';
                 else if(txt.includes('سنة') || txt.includes('سنوي')) p = 'year';
+                currentAccPeriod = p;
                 loadAccountingData(p);
             });
         });
@@ -413,9 +606,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             else if(txt.includes('ربع')) initialPeriod = 'quarter';
             else if(txt.includes('سنة')) initialPeriod = 'year';
         }
+        currentAccPeriod = initialPeriod;
         await loadAccountingData(initialPeriod);
     } else {
+        currentAccPeriod = 'all';
         await loadAccountingData('all');
+    }
+
+    if (typeof window.registerPosDatabaseRefresh === 'function') {
+        window.registerPosDatabaseRefresh(() => loadAccountingData(currentAccPeriod));
     }
 });
 })();

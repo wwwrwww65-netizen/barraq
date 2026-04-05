@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <script src="demo-mock.js"></script>
@@ -143,26 +143,7 @@
     
     <script src="script.js"></script>
     <script src="db-helper.js"></script>
-    <script src="acc.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Fill Bank logic safely
-            if(document.getElementById('cash-balance-box')) {
-                const balCash = document.getElementById('bal-cash') ? parseFloat(document.getElementById('bal-cash').innerText.replace(/,/g,'')) : 0;
-                const balBank = document.getElementById('bal-bank') ? parseFloat(document.getElementById('bal-bank').innerText.replace(/,/g,'')) : 0;
-                document.getElementById('cash-balance-box').innerText = (balCash || 8240).toLocaleString() + ' ر.س';
-                document.getElementById('bank-balance-box').innerText = (balBank || 14300).toLocaleString() + ' ر.س';
-                document.getElementById('total-liquidity').innerText = ((balCash||8240) + (balBank||14300)).toLocaleString() + ' ر.س';
-            }
-            // Fill Tree logic safely
-            if(document.getElementById('tree-cash')) {
-                const balCash = document.getElementById('bal-cash') ? parseFloat(document.getElementById('bal-cash').innerText.replace(/,/g,'')) : 0;
-                document.getElementById('tree-cash').innerText = (balCash || 8240).toLocaleString() + ' ر.س';
-                const balBank = document.getElementById('bal-bank') ? parseFloat(document.getElementById('bal-bank').innerText.replace(/,/g,'')) : 0;
-                document.getElementById('tree-bank').innerText = (balBank || 14300).toLocaleString() + ' ر.س';
-            }
-        });
-    </script>
+    <script src="acc-tree.js"></script>
 </body>
 </html>
 

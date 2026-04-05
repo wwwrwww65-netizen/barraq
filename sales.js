@@ -3,6 +3,10 @@ const { ipcRenderer } = require('electron');
 document.addEventListener('DOMContentLoaded', async () => {
     await loadSales();
 
+    if (typeof window.registerPosDatabaseRefresh === 'function') {
+        window.registerPosDatabaseRefresh(() => loadSales());
+    }
+
     const searchInput = document.getElementById('sales-search');
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
@@ -68,7 +72,8 @@ async function loadSales() {
                 <td>${itemsCount} أصناف</td>
                 <td style="color:var(--accent-green); font-weight:800;">${Number(order.total).toFixed(2)} ر.س</td>
                 <td style="text-align:center;">
-                    <button class="sales-action-btn" title="طباعة الفاتورة مرة أخرى"><i class="ph ph-printer"></i></button>
+                    <button class="sales-action-btn" title="طباعة الفاتورة مرة أخرى" onclick="reprintOrder('${order.orderId}')"><i class="ph ph-printer"></i></button>
+                    <button class="sales-action-btn" title="عرض الفاتورة HTML" style="color:#8b5cf6" onclick="viewInvoiceHTML('${order.orderId}')"><i class="ph ph-file-html"></i></button>
                     <button class="sales-action-btn" title="تفاصيل الطلب" style="color:var(--accent-blue)"><i class="ph ph-eye"></i></button>
                 </td>
             </tr>
@@ -102,16 +107,85 @@ function updateKPIs(orders) {
 
 async function clearSales() {
     if(confirm('هل أنت متأكد من مسح جميع سجلات المبيعات الحالية؟ لا يمكن التراجع!')) {
-        // Clear orders from JSON DB
-        const fs = require('fs');
-        const path = require('path');
-        const dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
         try {
-            const raw = fs.readFileSync(dbPath, 'utf8');
-            const db = JSON.parse(raw);
+            const db = await window.dbRead();
             db.orders = [];
-            fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+            await window.dbWrite(db);
         } catch(e) { console.error(e); }
         await loadSales();
+    }
+}
+
+// Open invoices folder
+function openInvoicesFolder() {
+    const { ipcRenderer } = require('electron');
+    const path = require('path');
+    const invoicesDir = path.join(__dirname, 'invoices');
+    
+    // Check if directory exists
+    const fs = require('fs');
+    if (!fs.existsSync(invoicesDir)) {
+        alert('لا توجد فواتير محفوظة بعد. قم بإتمام عملية بيع أولاً.');
+        return;
+    }
+    
+    // Open folder in file explorer
+    ipcRenderer.invoke('open-folder', invoicesDir).catch(err => {
+        console.error('Failed to open folder:', err);
+        // Fallback: show message with folder path
+        alert(`مجلد الفواتير موجود في:\n${invoicesDir}`);
+    });
+}
+
+// View specific invoice HTML file
+async function viewInvoiceHTML(orderId) {
+    const fs = require('fs');
+    const path = require('path');
+    const { ipcRenderer } = require('electron');
+    
+    const invoicesDir = path.join(__dirname, 'invoices');
+    
+    if (!fs.existsSync(invoicesDir)) {
+        alert('لا توجد فواتير محفوظة بعد.');
+        return;
+    }
+    
+    // Find invoice file for this order ID
+    const files = fs.readdirSync(invoicesDir);
+    const invoiceFile = files.find(f => f.includes(orderId.replace('#', '')) && f.endsWith('.html'));
+    
+    if (!invoiceFile) {
+        alert(`لم يتم العثور على فاتورة HTML للطلب ${orderId}`);
+        return;
+    }
+    
+    const filePath = path.join(invoicesDir, invoiceFile);
+    
+    // Open the HTML file in default browser
+    try {
+        await ipcRenderer.invoke('open-folder', filePath);
+    } catch(e) {
+        console.error('Failed to open invoice:', e);
+        alert(`مسار الفاتورة:\n${filePath}`);
+    }
+}
+
+// Reprint order
+async function reprintOrder(orderId) {
+    const { ipcRenderer } = require('electron');
+    
+    // Get orders from database
+    const orders = await ipcRenderer.invoke('db-get-orders');
+    const order = orders.find(o => o.orderId === orderId);
+    
+    if (!order) {
+        alert('لم يتم العثور على الطلب!');
+        return;
+    }
+    
+    if (confirm(`هل تريد إعادة طباعة فاتورة ${orderId}؟`)) {
+        // Trigger print via IPC - you can implement this based on your printing logic
+        alert('جاري إرسال أمر الطباعة...');
+        // You can call the same print logic used in pos.js here
     }
 }

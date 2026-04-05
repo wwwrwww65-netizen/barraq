@@ -9,8 +9,10 @@
     const _empty = {
         orders:[], products:[], categories:[], inventory:[],
         purchases:[], suppliers:[], inventoryTx:[], returns:[],
-        expenses:[], bankTransfers:[], hrExpenses:[],
-        employees:[], attendance:[], penaltyRules:[]
+        expenses:[], bankTransfers:[], hrExpenses:[], otherIncome:[],
+        employees:[], attendance:[], penaltyRules:[],
+        chartOfAccounts:[], journalEntries:[],
+        systemNotifications:[], inventoryAlertState:{}
     };
 
     /**

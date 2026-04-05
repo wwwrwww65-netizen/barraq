@@ -25,11 +25,11 @@
             <nav class="pos-menu">
                 <a href="index.html" class="pos-nav-item" title="لوحة القيادة"><i class="ph ph-squares-four"></i></a>
                 <a href="pos.html" class="pos-nav-item active" title="الكاشير"><i class="ph ph-calculator"></i></a>
-                <a href="#" class="pos-nav-item" title="الطلبات السابقة"><i class="ph ph-receipt"></i></a>
-                <a href="#" class="pos-nav-item" title="العملاء"><i class="ph ph-users"></i></a>
+                <a href="orders.html" class="pos-nav-item" title="الطلبات السابقة"><i class="ph ph-receipt"></i></a>
+                <a href="customers.html" class="pos-nav-item" title="العملاء"><i class="ph ph-users"></i></a>
             </nav>
             <div class="pos-menu-bottom">
-                <a href="#" class="pos-nav-item pos-logout" title="تسجيل خروج"><i class="ph ph-sign-out"></i></a>
+                <a href="login.html" class="pos-nav-item pos-logout" title="تسجيل خروج"><i class="ph ph-sign-out"></i></a>
             </div>
         </aside>
 
@@ -313,8 +313,12 @@
 
             <div style="border-bottom: 2px dashed #000; margin: 15px 0;"></div>
             
+            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;">
+                <span>مجموع الأصناف:</span>
+                <strong id="r-subtotal">0.00 ر.س</strong>
+            </div>
             <div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:5px;">
-                <span>الإجمالي (شامل الضريبة):</span>
+                <span>الإجمالي النهائي (شامل الضريبة):</span>
                 <strong id="r-total">0.00</strong>
             </div>
             <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:5px;">
@@ -333,7 +337,7 @@
             <br>
             <img id="r-qr-code" style="width: 140px; height: 140px; margin: 10px auto; display: block;" alt="ZATCA QR Code">
             <p id="r-store-footer" style="text-align: center; font-weight: bold; font-size:14px; margin-top:20px;">شكراً لزيارتكم! بالهناء والشفاء</p>
-            <p style="text-align: center; font-size:10px; color:#666;">Powered By POS System</p>
+            <p style="text-align: center; font-size:9px; color:#999;">معاينة — التذييل يُطبع من الإعدادات أو اسم البرنامج</p>
         </div>
 
 
@@ -363,6 +367,7 @@
 
 
     <script src="node_modules/html2canvas/dist/html2canvas.min.js"></script>
+    <script src="db-helper.js"></script>
     <script src="script.js"></script>
     <script src="pos.js"></script>
 </body>

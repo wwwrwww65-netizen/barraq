@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <script src="demo-mock.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>هـــش HASH — القيود المحاسبية (دفتر اليومية)</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="acc.css">
+    <link rel="stylesheet" href="staff.css">
+    <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
+    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
+    <style>
+        .journal-print-only { display: none !important; }
+        @media print {
+            .journal-print-only {
+                display: block !important;
+                color: #000 !important;
+                text-align: center;
+                margin: 0 0 16px;
+                font-size: 20px;
+                font-weight: 800;
+            }
+        }
+    </style>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <img src="1111.png" alt="" class="restaurant-logo" onerror="this.src='placeholder.svg'">
+                <span>المالية <span class="highlight">والمحاسبة</span></span>
+            </div>
+            <nav class="nav-menu">
+                <div class="nav-group">
+                    <p class="nav-label">اللوحة المالية</p>
+                    <a href="accounting.html" class="nav-item"><i class="ph ph-presentation-chart"></i><span>نظرة عامة</span></a>
+                    <a href="journal.html" class="nav-item active"><i class="ph ph-rows"></i><span>القيود المحاسبية</span></a>
+                    <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>العودة للكاشير</span></a>
+                </div>
+                <div class="nav-group">
+                    <p class="nav-label">الحسابات العامة</p>
+                    <a href="acc-tree.html" class="nav-item"><i class="ph ph-book-bookmark"></i><span>شجرة الحسابات</span></a>
+                    <a href="acc-expenses.html" class="nav-item"><i class="ph ph-receipt"></i><span>سجل المصروفات</span></a>
+                    <a href="acc-banks.html" class="nav-item"><i class="ph ph-bank"></i><span>الخزينة والبنوك</span></a>
+                </div>
+                <div class="nav-group">
+                    <p class="nav-label">التقارير</p>
+                    <a href="acc-reports.html" class="nav-item"><i class="ph ph-file-pdf"></i><span>التقارير والميزانية</span></a>
+                    <a href="profit-loss.html" class="nav-item"><i class="ph ph-scales"></i><span>الأرباح والخسائر</span></a>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content acc-main">
+            <h1 class="journal-print-only">دفتر اليومية — القيود المحاسبية</h1>
+            <header class="top-header acc-header">
+                <div>
+                    <h2>دفتر اليومية — القيود المزدوجة</h2>
+                    <p style="color:var(--text-secondary); font-size:14px; margin-top:6px;">
+                        قيود تلقائية من الطلبات والمرتجعات والمشتريات والمصروفات، مع إمكانية إضافة قيود يدوية متوازنة.
+                    </p>
+                </div>
+                <div class="header-actions" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                    <button type="button" class="btn btn-primary" id="btn-rebuild-journal"><i class="ph ph-arrows-clockwise"></i> إعادة بناء القيود</button>
+                    <button type="button" class="btn btn-outline" id="btn-open-manual-je"><i class="ph ph-plus"></i> قيد يدوي</button>
+                    <button type="button" class="btn btn-primary" id="btn-journal-export-csv"><i class="ph ph-export"></i> تصدير Excel</button>
+                    <button type="button" class="btn btn-outline" style="font-size:13px;border-color:#e11d48;color:#e11d48" id="btn-journal-export-pdf"><i class="ph ph-file-pdf"></i> تصدير PDF</button>
+                    <button type="button" class="btn btn-outline" id="btn-journal-print"><i class="ph ph-printer"></i> طباعة</button>
+                </div>
+            </header>
+
+            <div style="padding:24px 30px;">
+                <div style="display:flex;gap:24px;margin-bottom:20px;flex-wrap:wrap;">
+                    <div class="card" style="padding:16px 20px;min-width:200px;">
+                        <div style="font-size:13px;color:var(--text-muted);">عدد القيود</div>
+                        <div id="stat-je-count" style="font-size:28px;font-weight:800;">0</div>
+                    </div>
+                    <div class="card" style="padding:16px 20px;min-width:200px;">
+                        <div style="font-size:13px;color:var(--text-muted);">جميع القيود متوازنة</div>
+                        <div id="stat-je-balanced" style="font-size:28px;font-weight:800;">—</div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom:24px;">
+                    <div class="card-header" style="padding:16px 20px;">
+                        <h2 class="card-title">دليل الحسابات (المستخدم في القيود)</h2>
+                    </div>
+                    <div style="overflow:auto;padding:0 20px 20px;">
+                        <table id="journal-coa-table" style="width:100%;border-collapse:collapse;font-size:14px;">
+                            <thead>
+                                <tr style="background:rgba(255,255,255,0.05);">
+                                    <th style="padding:10px;text-align:right;">الرمز</th>
+                                    <th style="padding:10px;text-align:right;">الاسم</th>
+                                    <th style="padding:10px;text-align:right;">النوع</th>
+                                </tr>
+                            </thead>
+                            <tbody id="coa-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header" style="padding:16px 20px;">
+                        <h2 class="card-title">سجل القيود</h2>
+                    </div>
+                    <div style="overflow:auto;padding:0 20px 24px;">
+                        <table id="journal-entries-table" style="width:100%;border-collapse:collapse;font-size:14px;">
+                            <thead>
+                                <tr style="background:rgba(255,255,255,0.05);">
+                                    <th style="padding:10px;text-align:right;">التاريخ</th>
+                                    <th style="padding:10px;text-align:right;">المبلغ (مدين)</th>
+                                    <th style="padding:10px;text-align:right;">المصدر</th>
+                                    <th style="padding:10px;text-align:right;">البيان</th>
+                                    <th style="padding:10px;text-align:right;">المرجع</th>
+                                    <th style="padding:10px;text-align:right;">—</th>
+                                </tr>
+                            </thead>
+                            <tbody id="journal-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="manual-je-modal">
+        <div class="modal-content" style="max-width:560px;">
+            <div class="modal-header">
+                <h3><i class="ph ph-pencil-line"></i> قيد يدوي</h3>
+                <button type="button" class="close-modal close-manual-je"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <label class="meta-label">البيان</label>
+                <input type="text" id="manual-je-memo" class="input-modern" placeholder="مثال: تسوية رصيد">
+                <div style="margin-top:16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <span class="meta-label">الأسطر (مدين = دائن)</span>
+                        <button type="button" class="btn btn-outline btn-sm" id="btn-add-je-line">+ سطر</button>
+                    </div>
+                    <div id="manual-lines"></div>
+                </div>
+            </div>
+            <div class="modal-actions" style="padding:16px 20px;border-top:1px solid var(--border-color);">
+                <button type="button" class="btn btn-primary" id="btn-save-manual-je">حفظ القيد</button>
+                <button type="button" class="btn btn-outline close-manual-je">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script src="db-helper.js"></script>
+    <script src="journal-core.js"></script>
+    <script src="journal.js"></script>
+</body>
+</html>

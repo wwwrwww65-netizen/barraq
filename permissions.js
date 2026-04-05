@@ -12,7 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
             desc: "صلاحيات مطلقة غير مقيدة",
             perms: { 
                 pos_access: true, pos_discount: true, pos_return: true, sales_access: true,
-                menu_manage: true, inv_manage: true, hr_manage: true, stats_access: true, sys_admin: true 
+                menu_manage: true, inv_manage: true, hr_manage: true, stats_access: true, sys_admin: true,
+                fatora_access: true
             }
         },
         {
@@ -21,7 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
             desc: "إنطباع واستقبال طلبات الزبائن",
             perms: { 
                 pos_access: true, pos_discount: false, pos_return: false, sales_access: false,
-                menu_manage: false, inv_manage: false, hr_manage: false, stats_access: false, sys_admin: false 
+                menu_manage: false, inv_manage: false, hr_manage: false, stats_access: false, sys_admin: false,
+                fatora_access: false
             }
         },
         {
@@ -30,7 +32,18 @@ document.addEventListener('DOMContentLoaded', () => {
             desc: "توريد الأغذية ومراقبة الاستهلاك",
             perms: { 
                 pos_access: false, pos_discount: false, pos_return: false, sales_access: false,
-                menu_manage: true, inv_manage: true, hr_manage: false, stats_access: false, sys_admin: false 
+                menu_manage: true, inv_manage: true, hr_manage: false, stats_access: false, sys_admin: false,
+                fatora_access: false
+            }
+        },
+        {
+            name: "مسؤول الفوترة والزكاة",
+            icon: "ph-link",
+            desc: "منصة فوترة / ZATCA دون صلاحيات محاسبة كاملة",
+            perms: {
+                pos_access: false, pos_discount: false, pos_return: false, sales_access: false,
+                menu_manage: false, inv_manage: false, hr_manage: false, stats_access: false, sys_admin: false,
+                fatora_access: true
             }
         }
     ];
@@ -43,6 +56,13 @@ document.addEventListener('DOMContentLoaded', () => {
             saveRoles();
         } else {
             roles = JSON.parse(stored);
+            roles.forEach((r) => {
+                if (!r.perms) r.perms = {};
+                if (r.perms.fatora_access === undefined) {
+                    r.perms.fatora_access = r.perms.hr_manage === true;
+                }
+            });
+            saveRoles();
         }
         renderRolesList();
     }
@@ -74,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const permKeys = [
         'pos_access', 'pos_discount', 'pos_return', 'sales_access',
-        'menu_manage', 'inv_manage', 'hr_manage', 'stats_access', 'sys_admin'
+        'menu_manage', 'inv_manage', 'hr_manage', 'stats_access', 'sys_admin', 'fatora_access'
     ];
 
     function selectRole(idx) {
@@ -154,7 +174,8 @@ document.addEventListener('DOMContentLoaded', () => {
             desc: "دور وظيفي مخصص",
             perms: { 
                 pos_access: false, pos_discount: false, pos_return: false, sales_access: false,
-                menu_manage: false, inv_manage: false, hr_manage: false, stats_access: false, sys_admin: false 
+                menu_manage: false, inv_manage: false, hr_manage: false, stats_access: false, sys_admin: false,
+                fatora_access: false
             }
         });
 

@@ -32,8 +32,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             // Ensure Database Auth for Staff
             try {
-                const res = { json: async () => JSON.parse(require('fs').readFileSync(require('electron').ipcRenderer.sendSync('get-db-path'),'utf8')) };
-                const db = await res.json();
+                const { ipcRenderer } = require('electron');
+                const db = await ipcRenderer.invoke('db-read-full') || {};
                 const emp = db.employees?.find(emp => emp.username === uVal && emp.password === pVal && emp.status !== 'end');
                 
                 if (emp) {

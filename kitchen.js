@@ -1,14 +1,7 @@
 const { ipcRenderer } = require('electron');
-const fs = require('fs');
-const path = require('path');
-const dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
 
-function loadDB() {
-    try { return JSON.parse(fs.readFileSync(dbPath, 'utf8')); }
-    catch(e) { return { orders:[], products:[], inventory:[], purchases:[], suppliers:[], inventoryTx:[], returns:[], expenses:[] }; }
-}
-function saveDB(db) {
-    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+async function saveDB(db) {
+    await window.dbWrite(db);
     try { ipcRenderer.send('notify-db-changed'); } catch(e) {}
 }
 
@@ -46,7 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Assign kitchenStatus to new orders that don't have it + persist back to DB
         let modified = false;
-        const db = loadDB();
+        const db = await window.dbRead();
         orders.forEach(o => {
             // Find matching order in db.orders
             const dbOrder = (db.orders || []).find(x => x.orderId === o.orderId);
@@ -65,50 +58,59 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        if(modified) saveDB(db);
+        if(modified) await saveDB(db);
 
         renderBoard();
     }
 
     // Handle Button Clicks - Update Kitchen Status in DB
-    window.updateKDSStatus = function(orderId, nextStatus) {
-        const db = loadDB();
+    window.updateKDSStatus = async function(orderId, nextStatus) {
+        const db = await window.dbRead();
         const dbOrder = (db.orders || []).find(o => o.orderId === orderId);
         
         if(dbOrder) {
             dbOrder.kitchenStatus = nextStatus;
             
-            // Automatic Handover when completed
+            // عند تفعيل «خصم تلقائي من المخزن عند البيع» في إعدادات المطبخ: تم خصم المستودع من نقطة البيع — لا نكرر التسليم التلقائي على مخزون المطبخ الداخلي
+            let skipAutoHandover = false;
+            try {
+                const kp = JSON.parse(localStorage.getItem('kitchen_prefs') || '{}');
+                skipAutoHandover = kp.autoDeductOnSale === true;
+            } catch (e) {}
+
             if (nextStatus === 'done' && !dbOrder.kitchenTxHandoverCreated) {
-                if (!db.kitchenTx) db.kitchenTx = [];
-                if (!db.kitchenStock) db.kitchenStock = [];
-                
-                (dbOrder.items || []).forEach(item => {
-                    const itemName = item.name || item.nameAr || "صنف غير معروف";
-                    const qty = Number(item.qty) || 1;
-                    
-                    const newTx = {
-                        id: 'OUT-' + Math.floor(Math.random() * 100000),
-                        type: 'handover',
-                        itemName: itemName,
-                        qty: qty,
-                        notes: "تسليم تلقائي - فاتورة مبيعات #" + dbOrder.orderId,
-                        date: new Date().toISOString(),
-                        user: "KDS (آلي)"
-                    };
-                    db.kitchenTx.push(newTx);
-                    
-                    // Deduct from internal kitchen stock tracker
-                    const kIdx = db.kitchenStock.findIndex(k => k.name === itemName);
-                    if (kIdx !== -1) {
-                        db.kitchenStock[kIdx].qty -= qty;
-                    }
-                });
-                
-                dbOrder.kitchenTxHandoverCreated = true;
+                if (skipAutoHandover) {
+                    dbOrder.kitchenTxHandoverCreated = true;
+                } else {
+                    if (!db.kitchenTx) db.kitchenTx = [];
+                    if (!db.kitchenStock) db.kitchenStock = [];
+
+                    (dbOrder.items || []).forEach((item) => {
+                        const itemName = item.name || item.nameAr || 'صنف غير معروف';
+                        const qty = Number(item.qty) || 1;
+
+                        const newTx = {
+                            id: 'OUT-' + Math.floor(Math.random() * 100000),
+                            type: 'handover',
+                            itemName: itemName,
+                            qty: qty,
+                            notes: 'تسليم تلقائي - فاتورة مبيعات #' + dbOrder.orderId,
+                            date: new Date().toISOString(),
+                            user: 'KDS (آلي)'
+                        };
+                        db.kitchenTx.push(newTx);
+
+                        const kIdx = db.kitchenStock.findIndex((k) => k.name === itemName);
+                        if (kIdx !== -1) {
+                            db.kitchenStock[kIdx].qty -= qty;
+                        }
+                    });
+
+                    dbOrder.kitchenTxHandoverCreated = true;
+                }
             }
             
-            saveDB(db);
+            await saveDB(db);
         }
         
         // Update local reference too
@@ -191,11 +193,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(countReady === 0) colReady.innerHTML = `<div class="kds-empty"><i class="ph-light ph-bell-ringing"></i><p>لا توجد طلبات جاهزة</p></div>`;
     }
 
-    // ✅ Immediate refresh when a peer broadcasts a new order
-    window.addEventListener('pos-db-updated', () => {
-        fetchOrders();
-        console.log('[KDS] ⚡ New order received from network — refreshing...');
-    });
+    if (typeof window.registerPosDatabaseRefresh === 'function') {
+        window.registerPosDatabaseRefresh(() => {
+            fetchOrders();
+            console.log('[KDS] ⚡ New order received from network — refreshing...');
+        });
+    }
 
     // ✅ Auto Refresh KDS every 10 seconds as backup
     await fetchOrders();

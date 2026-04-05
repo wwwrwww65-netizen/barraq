@@ -45,6 +45,7 @@
 
                 <div class="nav-group">
                     <p class="nav-label">التقارير المالية</p>
+                    <a href="journal.html" class="nav-item"><i class="ph ph-rows"></i><span>القيود المحاسبية</span></a>
                     <a href="profit-loss.html" class="nav-item"><i class="ph ph-chart-line-up"></i><span>قائمة الدخل</span></a>
                     <a href="acc-reports.html" class="nav-item"><i class="ph ph-file-pdf"></i><span>الميزانية العمومية وكشوفات</span></a>
                 </div>
@@ -113,9 +114,9 @@
                             <i class="ph-fill ph-chart-line-up"></i>
                         </div>
                         <div class="kpi-details">
-                            <p class="kpi-title">إجمالي المبيعات (الإيرادات)</p>
+                            <p class="kpi-title">صافي إيرادات المبيعات (بعد المرتجعات)</p>
                             <h3 class="kpi-value acc-glow-green" id="kpi-revenue">0.00 <span class="currency">ر.س</span></h3>
-                            <p class="kpi-trend positive"><i class="ph ph-trend-up"></i> إيرادات من نقاط البيع</p>
+                            <p class="kpi-trend positive"><i class="ph ph-trend-up"></i> يطابق قائمة الأرباح والخسائر</p>
                         </div>
                     </div>
                     <!-- Total Purchases & Expenses -->
@@ -165,6 +166,7 @@
                             <a href="purchases.html" class="btn btn-outline" style="justify-content:center;"><i class="ph ph-shopping-cart"></i> فواتير المشتريات</a>
                             <a href="acc-banks.html" class="btn btn-outline" style="justify-content:center;"><i class="ph ph-bank"></i> الخزينة والبنوك</a>
                             <a href="staff.html" class="btn btn-outline" style="justify-content:center;"><i class="ph ph-users-three"></i> الموظفين والرواتب</a>
+                            <a href="journal.html" class="btn btn-outline" style="justify-content:center;"><i class="ph ph-rows"></i> القيود المحاسبية</a>
                             <a href="acc-reports.html" class="btn btn-primary" style="justify-content:center;"><i class="ph ph-chart-line-up"></i> التقارير الختامية</a>
                         </div>
                     </div>
@@ -190,13 +192,14 @@
     </div>
 
     <!-- Advance / Salary Modal -->
-    <div class="modal-overlay" id="advance-modal">
+    <div class="modal-overlay" id="advance-modal" inert>
         <div class="modal-content">
             <div class="modal-header">
                 <h3><i class="ph ph-hand-coins"></i> إصدار سلفة أو صرف راتب</h3>
                 <button class="close-modal" id="btn-close-advance-modal"><i class="ph ph-x"></i></button>
             </div>
             <div class="modal-body">
+                <div id="advance-voucher-inline-error" role="alert" aria-live="polite" style="display:none;margin-bottom:14px;padding:12px 14px;border-radius:10px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);color:#fecaca;font-size:13px;font-weight:600;white-space:pre-line;line-height:1.5;"></div>
                 <div class="form-group mb-3">
                     <label>تحديد المستفيد <span class="required">*</span></label>
                     <select class="input-modern" id="voucher-employee">
@@ -214,7 +217,7 @@
                     <label>المبلغ (ر.س) <span class="required">*</span></label>
                     <div class="input-with-icon">
                         <i class="ph ph-money"></i>
-                        <input type="number" id="voucher-amount" class="input-modern" placeholder="0.00" step="10">
+                        <input type="number" id="voucher-amount" class="input-modern" placeholder="0.00" step="any" dir="ltr" style="text-align: right;">
                     </div>
                 </div>
 

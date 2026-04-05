@@ -2,13 +2,16 @@ const { ipcRenderer } = require('electron');
 
 document.addEventListener('DOMContentLoaded', async () => {
 
+    let currentStatsRange = 'today';
+
     // --- Date Filter Buttons Toggle ---
     const dateBtns = document.querySelectorAll('.date-btn');
     dateBtns.forEach(btn => {
         btn.addEventListener('click', async (e) => {
             dateBtns.forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
-            await fetchRealDataAndUpdateCharts(e.target.dataset.range);
+            currentStatsRange = e.target.dataset.range || 'month';
+            await fetchRealDataAndUpdateCharts(currentStatsRange);
         });
     });
 
@@ -76,14 +79,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     initCharts();
 
     async function fetchRealDataAndUpdateCharts(range = 'month') {
-        // ✅ قراءة كل البيانات من قاعدة البيانات JSON
-        const _fs = require('fs');
-        const _path = require('path');
-        const _dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
-        let _db = {};
-        try { _db = JSON.parse(_fs.readFileSync(_dbPath, 'utf8')); } catch(e) {}
+        const _db = (await window.dbRead()) || {};
 
-        // الطلبات من IPC (مُحسّن للتزامن)
         let orders = await ipcRenderer.invoke('db-get-orders') || [];
 
         // بقية البيانات من ملف JSON مباشرة
@@ -122,7 +119,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let totalPurchases = 0;
         purchases.forEach(pur => totalPurchases += (pur.total || pur.amount || 0));
-        if(totalPurchases === 0 && netRevenue > 0) totalPurchases = netRevenue * 0.45;
 
         const exactExpenses = totalHRExpenses + totalPurchases;
         const netProfit = netRevenue - exactExpenses;
@@ -160,5 +156,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         mainTrendChart.update();
     }
 
-    await fetchRealDataAndUpdateCharts();
+    const firstRange = document.querySelector('.date-btn.active')?.dataset?.range || 'month';
+    currentStatsRange = firstRange;
+    await fetchRealDataAndUpdateCharts(currentStatsRange);
+
+    if (typeof window.registerPosDatabaseRefresh === 'function') {
+        window.registerPosDatabaseRefresh(() => fetchRealDataAndUpdateCharts(currentStatsRange));
+    }
 });

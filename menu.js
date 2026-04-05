@@ -1,21 +1,13 @@
-const fs = require('fs');
-const path = require('path');
-const dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
-
-function loadDB() {
-    try { return JSON.parse(fs.readFileSync(dbPath, 'utf8')); }
-    catch(e) { return { orders:[], products:[], categories:[], inventory:[] }; }
-}
 const { ipcRenderer } = require('electron');
-function saveDB(db) { 
-    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2)); 
+
+async function saveDB(db) {
+    await window.dbWrite(db);
     try { ipcRenderer.send('notify-db-changed'); } catch(e) {}
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
 
-    // ✅ Load from JSON DB
-    let db = loadDB();
+    let db = await window.dbRead();
     if(!db.categories) db.categories = [];
     if(!db.products) db.products = [];
 
@@ -133,24 +125,23 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = `add-item.html?edit=${id}`;
     }
 
-    function toggleProductStatus(id) {
+    async function toggleProductStatus(id) {
         const prod = products.find(p => p.id === id);
         if(prod) {
             prod.isActive = !prod.isActive;
-            // ✅ Save to JSON DB
             db.products = products;
-            saveDB(db);
+            await saveDB(db);
             localStorage.setItem('pos_products', JSON.stringify(products));
             renderProducts(searchProdInput?.value || '');
             showNotice(prod.isActive ? 'تم تفعيل الصنف ✅' : 'تم إخفاء الصنف');
         }
     }
 
-    function deleteProduct(id) {
+    async function deleteProduct(id) {
         if(confirm('هل أنت متأكد من الحذف النهائي لهذا الصنف؟')) {
             products = products.filter(p => p.id !== id);
             db.products = products;
-            saveDB(db);
+            await saveDB(db);
             localStorage.setItem('pos_products', JSON.stringify(products));
             renderProducts(searchProdInput?.value || '');
             showNotice('تم حذف الصنف بنجاح');
@@ -162,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = `add-category.html?edit=${id}`;
     }
 
-    function deleteCategory(id) {
+    async function deleteCategory(id) {
         const inUse = products.some(p => p.categoryId === id);
         if(inUse) { 
             alert('لا يمكن حذف القسم! يوجد أصناف مسجلة بداخله. الرجاء مسح هذه الأصناف أولاً لتتمكن من حذفه.'); 
@@ -171,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(confirm('هل أنت متأكد من حذف هذا القسم نهائياً؟')) {
             categories = categories.filter(c => c.id !== id);
             db.categories = categories;
-            saveDB(db);
+            await saveDB(db);
             localStorage.setItem('pos_categories', JSON.stringify(categories));
             renderCategories(searchCatInput?.value || '');
             showNotice('تم الحذف بنجاح');
@@ -193,6 +184,24 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => { notif.style.opacity = '0'; setTimeout(()=>notif.remove(), 500); }, 3000);
     }
 
+    async function reloadMenuFromDb() {
+        db = await window.dbRead();
+        if (!db.categories) db.categories = [];
+        if (!db.products) db.products = [];
+        categories = db.categories;
+        products = db.products;
+        try {
+            localStorage.setItem('pos_categories', JSON.stringify(categories));
+            localStorage.setItem('pos_products', JSON.stringify(products));
+        } catch (e) {}
+        renderProducts(searchProdInput?.value || '');
+        renderCategories(searchCatInput?.value || '');
+    }
+
     renderProducts();
     renderCategories();
+
+    if (typeof window.registerPosDatabaseRefresh === 'function') {
+        window.registerPosDatabaseRefresh(() => reloadMenuFromDb());
+    }
 });

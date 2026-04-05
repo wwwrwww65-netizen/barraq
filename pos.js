@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
 
     /* ===============================
        POS State Management
@@ -39,18 +39,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const crypto = require('crypto');
     let zatcaMeta = { icv: 1, uuid: crypto.randomUUID(), pih: 'NWZlY2ViNjZmZmM4NmYzOGQ5NTI3ODZjNmQ2OTZjNzljMmRiYzIzOWRkNGU5MWI0NjcyOWQ3M2EyN2ZiNTdlOQ==' };
 
-    function generateOrderId() {
+    async function generateOrderId() {
         try {
-            const fs = require('fs');
-            const dbPath = ipcRenderer.sendSync('get-db-path');
-            const dbData = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-            zatcaMeta.icv = (dbData.orders && dbData.orders.length > 0) ? dbData.orders.length + 1 : 1;
-            
-            if (dbData.orders && dbData.orders.length > 0) {
-                const prev = dbData.orders[dbData.orders.length - 1];
-                if(prev.invoiceHash) zatcaMeta.pih = prev.invoiceHash;
+            const dbData = await window.dbRead();
+            const ord = dbData.orders || [];
+            zatcaMeta.icv = ord.length > 0 ? ord.length + 1 : 1;
+
+            if (ord.length > 0) {
+                const prev = ord[ord.length - 1];
+                if (prev.invoiceHash) zatcaMeta.pih = prev.invoiceHash;
             }
-            
+
             zatcaMeta.uuid = crypto.randomUUID();
             return '#INV-' + String(zatcaMeta.icv).padStart(5, '0');
         } catch(e) {
@@ -60,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    let orderId = generateOrderId();
+    let orderId = await generateOrderId();
     document.getElementById('display-order-id').innerText = orderId;
 
     // Elements
@@ -68,6 +67,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const categoriesScroll = document.querySelector('.pos-categories'); // Correct Target
     const searchInput = document.getElementById('product-search');
     const cartContainer = document.getElementById('cart-items-container');
+
+    const barcodeScanBtn = document.querySelector('.pos-header .pos-action-btn:not(.primary)');
+    const newCustomerHeaderBtn = document.querySelector('.pos-header .pos-action-btn.primary');
+    if (barcodeScanBtn && searchInput) {
+        barcodeScanBtn.addEventListener('click', () => {
+            const code = prompt('أدخل رمز الباركود أو جزءاً من اسم الصنف:', (searchInput.value || '').trim());
+            if (code == null) return;
+            searchInput.value = code.trim();
+            searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    }
+    if (newCustomerHeaderBtn) {
+        newCustomerHeaderBtn.addEventListener('click', () => {
+            window.location.href = 'customers.html';
+        });
+    }
     
     // UI Formatters
     const formatCurrency = (amount) => Number(amount).toFixed(2) + ' ر.س';
@@ -75,15 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ===============================
        Dynamic Data Loading from JSON DB
     =============================== */
-    const _fs = require('fs');
-    const _path = require('path');
-    const _dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
-    function _loadDB() {
-        try { return JSON.parse(_fs.readFileSync(_dbPath, 'utf8')); }
-        catch(e) { return { categories:[], products:[] }; }
-    }
-
-    const _db = _loadDB();
+    const _db = await window.dbRead();
 
     let catData = _db.categories || JSON.parse(localStorage.getItem('pos_categories') || '[]');
     let prodData = _db.products || JSON.parse(localStorage.getItem('pos_products') || '[]');
@@ -134,22 +141,6 @@ document.addEventListener('DOMContentLoaded', () => {
     =============================== */
     let categoryBtns = document.querySelectorAll('.category-btn');
 
-    categoryBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            categoryBtns.forEach(b => b.classList.remove('active'));
-            const targetBtn = e.target.closest('.category-btn');
-            targetBtn.classList.add('active');
-            
-            const category = targetBtn.dataset.category;
-            filterProducts(category, searchInput.value.toLowerCase());
-        });
-    });
-
-    searchInput.addEventListener('input', (e) => {
-        const activeCategory = document.querySelector('.category-btn.active').dataset.category;
-        filterProducts(activeCategory, e.target.value.toLowerCase());
-    });
-
     function filterProducts(category, searchQuery) {
         const products = document.querySelectorAll('.product-card');
         products.forEach(product => {
@@ -167,25 +158,46 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function bindPosCatalogInteraction() {
+        categoryBtns = document.querySelectorAll('.category-btn');
+        categoryBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                categoryBtns.forEach(b => b.classList.remove('active'));
+                const targetBtn = e.target.closest('.category-btn');
+                targetBtn.classList.add('active');
+
+                const category = targetBtn.dataset.category;
+                filterProducts(category, searchInput.value.toLowerCase());
+            });
+        });
+
+        const productCardsClickable = document.querySelectorAll('.product-card');
+        productCardsClickable.forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('.add-btn')) return;
+                addProductToCart(card);
+            });
+        });
+
+        document.querySelectorAll('.product-card .add-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const card = e.target.closest('.product-card');
+                addProductToCart(card);
+            });
+        });
+    }
+
+    searchInput.addEventListener('input', (e) => {
+        const activeBtn = document.querySelector('.category-btn.active');
+        const category = activeBtn ? activeBtn.dataset.category : 'الكل';
+        filterProducts(category, e.target.value.toLowerCase());
+    });
+
+    bindPosCatalogInteraction();
+
     /* ===============================
        Cart Functionality
     =============================== */
-    const addToCartBtns = document.querySelectorAll('.product-card .add-btn');
-    const productCardsClickable = document.querySelectorAll('.product-card');
-
-    productCardsClickable.forEach(card => {
-        card.addEventListener('click', (e) => {
-            if(e.target.closest('.add-btn')) return; 
-            addProductToCart(card);
-        });
-    });
-
-    addToCartBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const card = e.target.closest('.product-card');
-            addProductToCart(card);
-        });
-    });
 
     function addProductToCart(productCard) {
         const id = productCard.dataset.id;
@@ -437,7 +449,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const currentUserConf = localStorage.getItem('currentUser');
             let cashierName = 'كاشير';
-            try { cashierName = (JSON.parse(currentUserConf || '{}')).name || 'كاشير'; } catch(e){}
+            try {
+                const u = JSON.parse(currentUserConf || '{}');
+                cashierName = u.username || u.name || 'كاشير';
+            } catch(e){}
 
             const orderData = {
                 orderId: orderId,
@@ -456,16 +471,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 itemsCount: cart.length,
                 items: [...cart]
             };
-            
+
+            try {
+                const kp = JSON.parse(localStorage.getItem('kitchen_prefs') || '{}');
+                if (kp.autoDeductOnSale === true) {
+                    const wh = kp.sourceWarehouse;
+                    if (wh === 'main' || wh === 'restaurant' || wh === 'beverages') {
+                        orderData.inventoryDeductWarehouse = wh;
+                    }
+                }
+            } catch (e) {}
+
             // Securely save via IPC to backend SQLite (Atomic Transaction)
             const { ipcRenderer } = require('electron');
             await ipcRenderer.invoke('db-save-order', orderData);
             
             // Fatora Integration Hook
             try {
-                const fs = require('fs');
-                const dbPath = ipcRenderer.sendSync('get-db-path');
-                const dbData = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+                const dbData = await window.dbRead();
                 if (dbData.fatora_settings && dbData.fatora_settings.autoSync && dbData.fatora_settings.apiKey) {
                     console.log(`[Fatora ZATCA API] Sending invoice ${orderId} to ZATCA...`);
                     // Create notification
@@ -494,6 +517,23 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch(e) {
                 console.error('Fatora Sync Error:', e);
             }
+
+            const thermalReceiptSnap = {
+                orderType: document.getElementById('r-type').innerText,
+                orderId: document.getElementById('r-order-id').innerText,
+                date: document.getElementById('r-date').innerText,
+                itemsHtml: document.getElementById('r-items').innerHTML,
+                subtotalText: (document.getElementById('r-subtotal') && document.getElementById('r-subtotal').innerText) || document.getElementById('cart-subtotal').innerText,
+                totalText: document.getElementById('r-total').innerText,
+                discountText: document.getElementById('r-discount').innerText,
+                taxLabel: document.getElementById('r-tax-rate-label').innerText,
+                taxText: document.getElementById('r-tax').innerText,
+                paymentText: document.getElementById('r-payment-method').innerText,
+                qrSrc: (() => {
+                    const q = document.getElementById('r-qr-code');
+                    return q && q.src ? q.src : '';
+                })(),
+            };
             
             // Reset cart UI before printing dialog block
             cart = [];
@@ -503,7 +543,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderCart();
             modalCheckout.classList.remove('active');
 
-            orderId = generateOrderId();
+            orderId = await generateOrderId();
             document.getElementById('display-order-id').innerText = orderId;
 
             alert('تمت العملية بنجاح! تم حفظ المبيعات وتحديث المخزون. ستتم الآن طباعة الفواتير.');
@@ -514,7 +554,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch(e) { console.error('Category printing failed', e); }
 
             openCashDrawer();
-            await printCustomerReceipt();
+            await printCustomerReceipt(thermalReceiptSnap);
 
         } catch(e) {
             console.error("Save or Print Failed", e);
@@ -531,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('btn-print-receipt').innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
         await preparePrintTemplates();
         openCashDrawer();
-        await downloadReceipt('all', 'مسودة_الفاتورة');
+        await printCustomerReceipt();
         document.getElementById('btn-print-receipt').innerHTML = '<i class="ph ph-printer"></i> طباعة للحفظ';
     });
 
@@ -564,9 +604,9 @@ document.addEventListener('DOMContentLoaded', () => {
         cart.forEach(item => {
             rItems.innerHTML += `
                 <tr style="border-bottom: 1px dashed #ccc;">
-                    <td style="padding: 5px 0;">${item.name}</td>
-                    <td style="text-align: center;">${item.qty}x</td>
-                    <td>${formatCurrency(item.price * item.qty)}</td>
+                    <td class="item-name" style="padding: 5px 0;">${item.name}</td>
+                    <td class="item-qty" style="text-align: center;">${item.qty}</td>
+                    <td class="item-price" style="text-align: left;">${formatCurrency(item.price * item.qty)}</td>
                 </tr>
             `;
 
@@ -578,7 +618,9 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         });
 
-        // Totals for customer
+        // Totals for customer (مجموع الأصناف ≠ الإجمالي النهائي عند وجود خصم)
+        const rSub = document.getElementById('r-subtotal');
+        if (rSub) rSub.innerText = document.getElementById('cart-subtotal').innerText;
         document.getElementById('r-total').innerText = document.getElementById('cart-total').innerText;
         document.getElementById('r-discount').innerText = discountAmount > 0 ? formatCurrency(discountAmount) : '0.00 ر.س';
         document.getElementById('r-tax').innerText = document.getElementById('cart-tax').innerText;
@@ -613,66 +655,43 @@ document.addEventListener('DOMContentLoaded', () => {
         const rawStoreTaxEl = document.getElementById('r-store-tax');
         const storeTax = rawStoreTaxEl ? rawStoreTaxEl.innerText.replace(/[^\d]/g, '') : '310000000000003';
         
+        console.log('   📋 Receipt element tax:', rawStoreTaxEl ? rawStoreTaxEl.innerText : 'N/A');
+        console.log('   📊 Extracted tax number:', storeTax);
+        
         const timestampIso = now.toISOString();
         const totalStr = document.getElementById('cart-total').innerText.replace(/[^\d.]/g, '');
         const taxStr = document.getElementById('cart-tax').innerText.replace(/[^\d.]/g, '');
 
         const base64TLV = getQRBase64(storeName, storeTax || '310000000000003', timestampIso, totalStr, taxStr);
 
+        console.log('🔲 Generating QR Code...');
+        console.log('   Store Name:', storeName);
+        console.log('   Tax Number:', storeTax || '310000000000003');
+        console.log('   Total:', totalStr);
+        console.log('   Tax:', taxStr);
+        console.log('   TLV Length:', base64TLV.length);
+
         try {
             const QRCode = require('qrcode');
             const url = await QRCode.toDataURL(base64TLV, { errorCorrectionLevel: 'M', margin: 1, width: 140 });
             const qrImg = document.getElementById('r-qr-code');
-            if(qrImg) qrImg.src = url;
+            if(qrImg) {
+                qrImg.src = url;
+                console.log('✅ QR Code generated successfully');
+                console.log('   Image src length:', url.length);
+            } else {
+                console.error('❌ QR image element not found (#r-qr-code)');
+            }
         } catch(e) {
-            console.error('Failed to generate ZATCA QR Code', e);
+            console.error('❌ Failed to generate ZATCA QR Code:', e.message);
+            console.error('   Stack:', e.stack);
         }
         // --- End ZATCA QR ---
     }
 
-    async function printCustomerReceipt() {
-        const { ipcRenderer } = require('electron');
-        const path = require('path');
-        const receiptCustomer = document.getElementById('receipt-customer');
-        if(!receiptCustomer) return;
-
-        // Clone the element to safely modify logo path for print
-        const printClone = receiptCustomer.cloneNode(true);
-        const logo = printClone.querySelector('img#r-store-logo');
-        if (logo) {
-            // Must use absolute path because print webContents loads from data: URI
-            logo.src = 'file://' + path.join(__dirname, '1111.png').replace(/\\/g, '/');
-        }
-
-        // Add styling for 80mm thermal printers
-        const html = `
-            <style>
-                @import url('node_modules/@fontsource/cairo/index.css');
-                @page { margin: 0; }
-                body { 
-                    font-family: 'Cairo', sans-serif; 
-                    margin: 0; padding: 0; 
-                    display: flex; justify-content: center;
-                }
-                #receipt-container { 
-                    width: 72mm; /* ~80mm printer safe width */
-                    color: #000;
-                    margin: 0;
-                    padding: 5mm; 
-                }
-            </style>
-            <div id="receipt-container">
-                ${printClone.innerHTML}
-            </div>
-        `;
-
-        try {
-            const cashierPrinter = localStorage.getItem('cashier_printer') || '';
-            await ipcRenderer.invoke('print-to-device', { html: html, printerName: cashierPrinter });
-        } catch(e) { 
-            console.error('Customer receipt print failed', e); 
-        }
-    }
+    // Load updated thermal receipt printer (80mm international standard)
+    const thermalReceipt = require('./thermal-receipt-updated.js');
+    const printCustomerReceipt = thermalReceipt.printCustomerReceipt;
 
     function openCashDrawer() {
         // Simulate opening the cash drawer
@@ -696,9 +715,19 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Play notification sound if available
         try {
-            const audio = new Audio('cash-register.mp3');
-            audio.play().catch(e => console.log('Audio disabled by browser policy', e));
-        } catch (e) {}
+            const path = require('path');
+            const audioPath = path.join(__dirname, 'cash-register.mp3');
+            const fs = require('fs');
+            
+            if (fs.existsSync(audioPath)) {
+                const audio = new Audio('file://' + audioPath);
+                audio.play().catch(e => console.log('Audio play skipped:', e.message));
+            } else {
+                console.log('🔕 Sound file not found (optional)');
+            }
+        } catch (e) {
+            console.log('🔕 Audio disabled (optional feature)');
+        }
 
         setTimeout(() => {
             notif.remove();
@@ -707,6 +736,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function printToCategoryPrinters(order) {
         const { ipcRenderer } = require('electron');
+        const path = require('path');
+        const fs = require('fs');
         let printerMap = {}; 
         
         order.items.forEach(itm => {
@@ -724,30 +755,290 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
+        // ── Get restaurant name and logo for kitchen tickets ──
+        let kitchenRestName = 'هش HASH';
+        let kitchenLogoBase64 = '';
+        try {
+            const ss = JSON.parse(localStorage.getItem('restaurant_settings') || '{}');
+            if (ss.name) kitchenRestName = ss.name;
+            
+            // Convert kitchen logo to base64
+            if (ss.logo && ss.logo.startsWith('data:')) {
+                kitchenLogoBase64 = ss.logo;
+            } else if (ss.logo) {
+                try {
+                    const logoPath = path.join(__dirname, ss.logo);
+                    if (fs.existsSync(logoPath)) {
+                        const logoBuffer = fs.readFileSync(logoPath);
+                        const ext = path.extname(ss.logo).toLowerCase();
+                        const mimeType = ext === '.png' ? 'image/png' : 
+                                       ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'image/png';
+                        kitchenLogoBase64 = `data:${mimeType};base64,${logoBuffer.toString('base64')}`;
+                    }
+                } catch(e) {
+                    console.error('Kitchen logo conversion error:', e);
+                }
+            }
+        } catch(e){}
+
         for (const [pName, items] of Object.entries(printerMap)) {
             let itemsHtml = items.map(i => `
-                <div class="item-row" style="display:flex; justify-content:space-between; border-bottom:1px solid #ccc; padding:5px 0; font-size:16px; font-weight:bold;">
-                    <span>[ ] ${i.name}</span>
-                    <span style="font-size:22px;">${i.qty}</span>
-                </div>
+                <tr class="kitchen-item">
+                    <td class="item-name-cell">● ${i.name}</td>
+                    <td class="item-qty-cell">${i.qty}</td>
+                </tr>
             `).join('');
 
-            let html = `
-                <div class="ticket-header" style="text-align:center; border-bottom:2px dashed #000; margin-bottom:10px; padding-bottom:10px; font-weight:bold; font-size:18px;">
-                    <h2 style="margin:0; font-size:22px;">طلب تجهيز (KDS)</h2>
-                    <div>الطلب: ${order.orderId}</div>
-                    <div>طريقة التقديم: ${order.type}</div>
-                    <div>الوقت: ${order.date}</div>
-                </div>
-                <div>
-                    ${itemsHtml}
-                </div>
-            `;
+            let html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        
+        @page {
+            size: 80mm auto;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Cairo', 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            width: 80mm;
+            max-width: 80mm;
+            min-width: 72mm;
+            background: #ffffff;
+            color: #000000;
+            direction: rtl;
+            text-align: center;
+            line-height: 1.35;
+            font-size: 12px;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .kitchen-ticket {
+            width: 80mm;
+            max-width: 80mm;
+            padding: 3mm 2mm;
+            margin: 0 auto;
+        }
+        
+        .kitchen-logo {
+            width: 15mm;
+            height: 15mm;
+            max-width: 15mm;
+            max-height: 15mm;
+            object-fit: contain;
+            margin: 0 auto 2mm auto;
+            display: block;
+            filter: grayscale(100%) contrast(150%);
+        }
+        
+        .kitchen-header {
+            text-align: center;
+            border-bottom: 2px solid #000000;
+            margin-bottom: 3mm;
+            padding-bottom: 3mm;
+        }
+        
+        .kitchen-rest-name {
+            font-size: 11px;
+            font-weight: 700;
+            color: #555555;
+            margin-bottom: 1mm;
+        }
+        
+        .kitchen-title {
+            font-size: 20px;
+            font-weight: 900;
+            margin: 2mm 0;
+            background: #000000;
+            color: #ffffff;
+            padding: 2mm;
+            display: inline-block;
+            min-width: 50mm;
+        }
+        
+        .order-id {
+            font-size: 16px;
+            font-weight: 800;
+            margin: 2mm 0;
+        }
+        
+        .order-type {
+            font-size: 13px;
+            font-weight: 700;
+            margin: 1.5mm 0;
+        }
+        
+        .order-date {
+            font-size: 10px;
+            color: #555555;
+            margin-top: 1mm;
+        }
+        
+        .items-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            margin: 3mm 0;
+        }
+        
+        .items-table thead th {
+            padding: 2mm 1mm;
+            background: #f0f0f0;
+            font-weight: 800;
+            font-size: 11px;
+            border-bottom: 1.5px solid #000000;
+        }
+        
+        .items-table thead th:first-child {
+            text-align: right;
+        }
+        
+        .items-table thead th:last-child {
+            text-align: center;
+            width: 15mm;
+        }
+        
+        .kitchen-item {
+            border-bottom: 1.5px dashed #000000;
+        }
+        
+        .item-name-cell {
+            padding: 3mm 2mm;
+            font-size: 14px;
+            font-weight: 800;
+            text-align: right;
+            direction: rtl;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        
+        .item-qty-cell {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 900;
+            padding: 2mm;
+            min-width: 15mm;
+        }
+        
+        .divider {
+            border-top: 2px dashed #000000;
+            margin: 3mm 0;
+        }
+        
+        .footer-message {
+            text-align: center;
+            font-size: 10px;
+            color: #777777;
+            margin-top: 3mm;
+        }
+    </style>
+</head>
+<body>
+    <div class="kitchen-ticket">
+        <!-- Kitchen Header -->
+        <div class="kitchen-header">
+            ${kitchenLogoBase64 ? `<img src="${kitchenLogoBase64}" alt="Logo" class="kitchen-logo">` : ''}
+            <div class="kitchen-rest-name">${kitchenRestName}</div>
+            <div class="kitchen-title">طلب تجهيز (KDS)</div>
+            <div class="order-id">رقم الطلب: ${order.orderId}</div>
+            <div class="order-type">طريقة التقديم: <strong>${order.type}</strong></div>
+            <div class="order-date">${order.date}</div>
+        </div>
+        
+        <!-- Items Table -->
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>الصنف</th>
+                    <th>كمية</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${itemsHtml}
+            </tbody>
+        </table>
+        
+        <!-- Footer -->
+        <div class="divider"></div>
+        <div class="footer-message">بالتوفيق</div>
+    </div>
+</body>
+</html>`;
             
             try {
+                console.log(`🍳 Printing kitchen ticket to: ${pName} (${items.length} items)`);
                 await ipcRenderer.invoke('print-to-device', { html, printerName: pName });
-            } catch(e) { console.error('Silent print failed for', pName, e); }
+            } catch(e) { 
+                console.error('❌ Silent print failed for', pName, e); 
+            }
         }
+    }
+
+    async function reloadPosCatalogFromNetwork() {
+        if (cart.length > 0) return;
+        const d = await window.dbRead();
+        catData = d.categories || JSON.parse(localStorage.getItem('pos_categories') || '[]');
+        prodData = d.products || JSON.parse(localStorage.getItem('pos_products') || '[]');
+        try {
+            localStorage.setItem('pos_categories', JSON.stringify(catData));
+            localStorage.setItem('pos_products', JSON.stringify(prodData));
+        } catch (e) {}
+        if (categoriesScroll) {
+            categoriesScroll.innerHTML = `
+            <button class="category-btn active" data-category="الكل">
+                <div class="cat-icon"><i class="ph ph-squares-four"></i></div>
+                <span>الكل</span>
+            </button>
+        `;
+            catData.sort((a, b) => (a.order || 0) - (b.order || 0)).forEach((c) => {
+                const html = `
+                <button class="category-btn" data-category="${c.id}">
+                    <div class="cat-icon" style="color: var(--accent-${c.color || 'blue'});"><i class="ph ${c.icon || 'ph-folder'}"></i></div>
+                    <span>${c.nameAr}</span>
+                </button>
+            `;
+                categoriesScroll.insertAdjacentHTML('beforeend', html);
+            });
+        }
+        if (productsGrid) {
+            productsGrid.innerHTML = '';
+            prodData.filter((p) => p.isActive).forEach((p) => {
+                const html = `
+                <div class="product-card" data-category="${p.categoryId}" data-name="${p.nameAr}" data-price="${p.price}" data-id="${p.id}">
+                    <div class="product-img-wrapper">
+                        <img src="${p.image}" alt="${p.nameAr}">
+                    </div>
+                    <div class="product-details">
+                        <h4>${p.nameAr}</h4>
+                        <div class="price-row">
+                            <span class="product-price">${Number(p.price).toFixed(2)} ر.س</span>
+                            <button class="add-btn"><i class="ph ph-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `;
+                productsGrid.insertAdjacentHTML('beforeend', html);
+            });
+        }
+        bindPosCatalogInteraction();
+        const activeCatBtn = document.querySelector('.category-btn.active');
+        if (activeCatBtn) filterProducts(activeCatBtn.dataset.category, searchInput.value.toLowerCase());
+    }
+
+    if (typeof window.registerPosDatabaseRefresh === 'function') {
+        window.registerPosDatabaseRefresh(() => reloadPosCatalogFromNetwork());
     }
 
 });

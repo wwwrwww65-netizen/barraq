@@ -223,19 +223,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ── Load data ────────────────────────────────────────────────────
-    const db = await window.dbRead();
-    let allOrders = db.orders || [];
-    let allReturns = db.returns || [];
-
-    // Populate cashier filter (admin only)
-    const cashierNames = [...new Set(allOrders.map(o => o.cashier || 'غير معروف'))];
+    let allOrders = [];
+    let allReturns = [];
     const cashierSelect = document.getElementById('filter-cashier');
-    cashierNames.forEach(name => {
-        const opt = document.createElement('option');
-        opt.value = name;
-        opt.textContent = name;
-        cashierSelect.appendChild(opt);
-    });
+
+    async function pullCashierReportDb() {
+        const db = await window.dbRead();
+        allOrders = db.orders || [];
+        allReturns = db.returns || [];
+        if (isAdmin && cashierSelect) {
+            cashierSelect.innerHTML = '<option value="all">الكل</option>';
+            const cashierNames = [...new Set(allOrders.map(o => o.cashier || 'غير معروف'))];
+            cashierNames.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                cashierSelect.appendChild(opt);
+            });
+        }
+    }
+
+    await pullCashierReportDb();
 
     window.applyFilters = function() {
         const period = document.getElementById('filter-period').value;
@@ -358,6 +366,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Period change handler
     document.getElementById('filter-period').addEventListener('change', applyFilters);
     document.getElementById('filter-cashier').addEventListener('change', applyFilters);
+
+    if (typeof window.registerPosDatabaseRefresh === 'function') {
+        window.registerPosDatabaseRefresh(async () => {
+            await pullCashierReportDb();
+            applyFilters();
+        });
+    }
 });
 </script>
 </body>

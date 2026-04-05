@@ -119,4 +119,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         statusTitle.textContent = 'غير متصل';
         statusDesc.textContent = 'يرجى إدخال بيانات الربط أدناه والتحقق من الاتصال';
     }
+
+    if (typeof window.registerPosDatabaseRefresh === 'function') {
+        window.registerPosDatabaseRefresh(async () => {
+            const db = await window.dbRead();
+            if (db.fatora_settings) {
+                const envRadio = document.querySelector(`input[name="fatora_env"][value="${db.fatora_settings.env || 'sandbox'}"]`);
+                if (envRadio) envRadio.checked = true;
+                document.getElementById('fatora_api_key').value = db.fatora_settings.apiKey || '';
+                document.getElementById('fatora_merchant_id').value = db.fatora_settings.merchantId || '';
+                document.getElementById('fatora_auto_sync').checked = db.fatora_settings.autoSync !== false;
+                if (db.fatora_settings.apiKey && db.fatora_settings.merchantId) setConnectedStatus();
+                else setDisconnectedStatus();
+            } else {
+                setDisconnectedStatus();
+            }
+        });
+    }
 });

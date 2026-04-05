@@ -1,17 +1,15 @@
-const { ipcRenderer } = require('electron');
-const fs = require('fs');
-const dbPath = ipcRenderer.sendSync('get-db-path');
-
 document.addEventListener('DOMContentLoaded', async () => {
     
+    let currentPlPeriod = 'month';
+
     // Period Filters
     const filterBtns = document.querySelectorAll('.filter-btn');
     filterBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
             filterBtns.forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
-            // Mock refreshing data based on period
-            loadProfitLossData(e.target.dataset.period);
+            currentPlPeriod = e.target.dataset.period || 'month';
+            loadProfitLossData(currentPlPeriod);
         });
     });
 
@@ -37,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 labels: ['الأسبوع 1', 'الأسبوع 2', 'الأسبوع 3', 'الأسبوع 4'],
                 datasets: [
                     {
-                        label: 'الإيرادات المحصلة',
+                        label: 'صافي الإيرادات (بعد المرتجعات)',
                         data: [0, 0, 0, 0],
                         backgroundColor: gradRev,
                         borderColor: '#10b981',
@@ -71,30 +69,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     initChart();
 
     async function loadProfitLossData(period = 'month') {
-        let db = {};
-        try { db = JSON.parse(fs.readFileSync(dbPath, 'utf8')); } catch(e) {}
-        
-        let orders = await ipcRenderer.invoke('db-get-orders') || [];
+        const db = (await window.dbRead()) || {};
+        /** نفس مصدر `acc.js` — الطلبات كاملة من القاعدة (لا حد 500 كما في db-get-orders) */
+        let orders = db.orders || [];
         let returns = db.returns || [];
-        let hrExpenses = db.hrExpenses || [];      // Real HR expenses when implemented
-        let purchases = db.purchases || [];        // Real Purchases
+        let hrExpenses = db.hrExpenses || [];
+        let purchases = db.purchases || [];
+        let erpExpenses = db.expenses || [];
+        let otherIncomeRows = db.otherIncome || [];
 
         if(window.isDateInPeriod) {
             orders = orders.filter(o => window.isDateInPeriod(o.timestamp || o.dateStr || o.date, period));
             returns = returns.filter(r => window.isDateInPeriod(r.timestamp || r.date, period));
             hrExpenses = hrExpenses.filter(h => window.isDateInPeriod(h.timestamp || h.date, period));
             purchases = purchases.filter(p => window.isDateInPeriod(p.date, period));
+            erpExpenses = erpExpenses.filter(e => window.isDateInPeriod(e.date, period));
+            otherIncomeRows = otherIncomeRows.filter((row) =>
+                window.isDateInPeriod(row.date || row.timestamp, period),
+            );
         }
         
-        // 1. Calculate Income
+        // 1. Calculate Income (مواءمة تصنيف الدفع مع لوحة المحاسبة)
         let cashSales = 0;
         let networkSales = 0;
         let totalRevenue = 0;
 
-        orders.forEach(o => {
-            totalRevenue += o.total;
-            if((o.paymentMethod||'').includes('كاش')) cashSales += o.total;
-            else networkSales += o.total;
+        orders.forEach((o) => {
+            const t = Number(o.total) || 0;
+            totalRevenue += t;
+            const pm = o.paymentMethod || '';
+            if (pm === 'cash' || pm === 'كاش') cashSales += t;
+            else if (['card', 'bank', 'شبكة / بطاقة', 'شبكة'].includes(pm)) networkSales += t;
+            else if (pm === 'مجزأ') {
+                cashSales += Number(o.splitCash) || 0;
+                networkSales += Number(o.splitNetwork) || 0;
+            } else {
+                networkSales += t;
+            }
         });
 
         // 2. Calculate Returns 
@@ -103,21 +114,41 @@ document.addEventListener('DOMContentLoaded', async () => {
             totalReturns += (r.amount || 0);
         });
         
-        // 3. Calculate Expenses (Mock algorithm if no real data yet)
+        // 3. مصروفات فعلية من القاعدة (بدون أرقام وهمية)
+        function hrCountsAsSalaryExpense(hr) {
+            const t = String(hr.type || '');
+            return !t.includes('خصم') && !t.includes('جزاء');
+        }
         let totalSalaries = 0;
-        hrExpenses.forEach(hr => totalSalaries += (hr.amount || 0));
-        
-        let totalPurchases = 0;
-        purchases.forEach(p => totalPurchases += (p.total || p.amount || 0));
-        
-        // If DB is empty of expenses, we mock a 45% purchase cost and 15% operating cost for realism
+        hrExpenses.forEach((hr) => {
+            if (!hrCountsAsSalaryExpense(hr)) return;
+            totalSalaries += Number(hr.amount) || 0;
+        });
+        let salariesFromErp = 0;
         let opExpenses = 0;
-        if(totalPurchases === 0 && totalRevenue > 0) totalPurchases = totalRevenue * 0.45;
-        if(totalSalaries === 0 && totalRevenue > 0) totalSalaries = totalRevenue * 0.15;
-        if(opExpenses === 0 && totalRevenue > 0) opExpenses = totalRevenue * 0.05; // Electricity, etc.
+        erpExpenses.forEach(e => {
+            const a = Number(e.amount) || 0;
+            if (e.cat && String(e.cat).includes('رواتب')) salariesFromErp += a;
+            else opExpenses += a;
+        });
+        totalSalaries += salariesFromErp;
+
+        let totalPurchases = 0;
+        purchases.forEach(p => { totalPurchases += (p.total || p.amount || 0); });
 
         const totalExpenses = totalPurchases + totalSalaries + opExpenses;
-        const netRevenue = totalRevenue - totalReturns;
+        let otherIncome = 0;
+        otherIncomeRows.forEach((row) => {
+            otherIncome += Number(row.amount) || 0;
+        });
+        const netRevenue = totalRevenue - totalReturns + otherIncome;
+        /* تفريق إيرادات أخرى حسب الوسيلة (للعرض فقط) */
+        let otherIncCash = 0, otherIncBank = 0;
+        otherIncomeRows.forEach((row) => {
+            const a = Number(row.amount) || 0;
+            if (row.pMethod === 'bank') otherIncBank += a;
+            else otherIncCash += a;
+        });
         const netProfit = netRevenue - totalExpenses;
 
         // UI Updates KPIs
@@ -132,6 +163,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         // UI Breakdown Table
         document.getElementById('bd-sales-cash').innerText = cashSales.toFixed(2);
         document.getElementById('bd-sales-network').innerText = networkSales.toFixed(2);
+        const oiEl = document.getElementById('bd-other-income');
+        if (oiEl) oiEl.innerText = (otherIncCash + otherIncBank).toFixed(2);
         
         document.getElementById('bd-purchases').innerText = '- ' + totalPurchases.toFixed(2);
         document.getElementById('bd-salaries').innerText = '- ' + totalSalaries.toFixed(2);
@@ -146,15 +179,49 @@ document.addEventListener('DOMContentLoaded', async () => {
             grandEl.classList.remove('loss');
         }
 
-        // Chart Updates (distributing across 4 weeks roughly for visualization)
-        plChart.data.datasets[0].data = [
-            netRevenue * 0.20, netRevenue * 0.25, netRevenue * 0.15, netRevenue * 0.40
-        ];
-        plChart.data.datasets[1].data = [
-            totalExpenses * 0.22, totalExpenses * 0.20, totalExpenses * 0.28, totalExpenses * 0.30
-        ];
+        // مخطط: تجميع حسب أسبوع الشهر (1–7، 8–14، …) من بيانات حقيقية
+        function weekBucket(ts) {
+            const d = new Date(ts || Date.now());
+            if (isNaN(d.getTime())) return 0;
+            const day = d.getDate();
+            if (day <= 7) return 0;
+            if (day <= 14) return 1;
+            if (day <= 21) return 2;
+            return 3;
+        }
+        const revW = [0, 0, 0, 0];
+        orders.forEach((o) => {
+            revW[weekBucket(o.timestamp || o.date)] += Number(o.total) || 0;
+        });
+        returns.forEach((r) => {
+            const b = weekBucket(r.timestamp || r.date);
+            revW[b] -= Number(r.amount) || 0;
+        });
+        otherIncomeRows.forEach((row) => {
+            revW[weekBucket(row.timestamp || row.date)] += Number(row.amount) || 0;
+        });
+        for (let i = 0; i < revW.length; i++) revW[i] = Math.max(0, revW[i]);
+        const expW = [0, 0, 0, 0];
+        purchases.forEach(p => {
+            expW[weekBucket(p.date)] += Number(p.total || p.amount) || 0;
+        });
+        erpExpenses.forEach(e => {
+            expW[weekBucket(e.date)] += Number(e.amount) || 0;
+        });
+        hrExpenses.forEach((h) => {
+            if (!hrCountsAsSalaryExpense(h)) return;
+            expW[weekBucket(h.timestamp || h.date)] += Number(h.amount) || 0;
+        });
+        plChart.data.datasets[0].data = revW;
+        plChart.data.datasets[1].data = expW;
         plChart.update();
     }
 
-    loadProfitLossData();
+    const activePl = document.querySelector('.filter-btn.active');
+    currentPlPeriod = (activePl && activePl.dataset.period) || 'month';
+    loadProfitLossData(currentPlPeriod);
+
+    if (typeof window.registerPosDatabaseRefresh === 'function') {
+        window.registerPosDatabaseRefresh(() => loadProfitLossData(currentPlPeriod));
+    }
 });

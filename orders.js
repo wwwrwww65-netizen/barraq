@@ -1,12 +1,4 @@
 const { ipcRenderer } = require('electron');
-const fs = require('fs');
-const path = require('path');
-const dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
-
-function loadDB() {
-    try { return JSON.parse(fs.readFileSync(dbPath, 'utf8')); }
-    catch(e) { return { orders:[], returns:[] }; }
-}
 
 document.addEventListener('DOMContentLoaded', async () => {
     
@@ -23,8 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Load Data
     async function loadData() {
-        // Fetch original DB
-        const db = loadDB();
+        const db = await window.dbRead();
         
         // Orders: combine db.orders and anything else
         allOrders = db.orders || [];
@@ -205,4 +196,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initial
     loadData();
+
+    if (typeof window.registerPosDatabaseRefresh === 'function') {
+        window.registerPosDatabaseRefresh(() => loadData());
+    }
 });

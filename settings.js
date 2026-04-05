@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Google Drive Logic ---
+    // --- Google Drive (OAuth حقيقي + رفع/استعادة) ---
     const btnGoogleLogin = document.getElementById('btn-google-login');
     const gdStatusBox = document.getElementById('google-drive-status');
     const gdIcon = document.getElementById('gd-icon');
@@ -155,19 +155,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnGdBackup = document.getElementById('btn-gd-backup');
     const btnGdRestore = document.getElementById('btn-gd-restore');
 
-    // Check if previously logged in
-    const isDriveLinkedStr = localStorage.getItem('google_drive_linked');
-    let isDriveLinked = isDriveLinkedStr ? JSON.parse(isDriveLinkedStr) : null;
+    let isDriveLinked = null;
 
     function updateDriveUI() {
-        if(isDriveLinked) {
+        if (isDriveLinked) {
             gdStatusBox.style.background = 'rgba(66, 133, 244, 0.1)';
             gdStatusBox.style.borderColor = '#4285F4';
             gdIcon.className = 'ph-fill ph-cloud-check';
             gdIcon.style.color = '#4285F4';
             gdTitle.innerText = 'متصل بنجاح';
-            gdSubtitle.innerText = 'الحساب: ' + isDriveLinked.email;
-            
+            gdSubtitle.innerText = 'الحساب: ' + (isDriveLinked.email || '—');
+
             btnGoogleLogin.innerHTML = '<i class="ph-fill ph-sign-out"></i> إلغاء الربط بالحساب';
             btnGoogleLogin.style.background = 'var(--bg-card)';
             btnGoogleLogin.style.border = '1px solid var(--border-light)';
@@ -193,65 +191,203 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    updateDriveUI();
+    (async function refreshGoogleDriveStatus() {
+        try {
+            const { ipcRenderer } = require('electron');
+            const st = await ipcRenderer.invoke('google-drive-status');
+            if (!st.configOk) {
+                isDriveLinked = null;
+                gdSubtitle.innerText =
+                    'أضف ملف google-oauth.json بجانب التطبيق (أو متغيرات البيئة) — راجع google-oauth.example.json';
+                updateDriveUI();
+                return;
+            }
+            if (st.linked) {
+                isDriveLinked = { email: st.email || '', linkedAt: new Date().toISOString() };
+                localStorage.setItem('google_drive_linked', JSON.stringify(isDriveLinked));
+            } else {
+                isDriveLinked = null;
+                localStorage.removeItem('google_drive_linked');
+            }
+            updateDriveUI();
+            if (typeof loadDriveAutoUi === 'function') loadDriveAutoUi();
+        } catch (e) {
+            gdSubtitle.innerText = 'يتطلب تشغيل التطبيق عبر Electron (.exe)';
+        }
+    })();
 
-    btnGoogleLogin.addEventListener('click', () => {
-        if(isDriveLinked) {
-            if(confirm('هل أنت متأكد من رغبتك في إلغاء ربط حساب جوجل درايف؟ سيؤدي ذلك لإيقاف المزامنة السحابية.')) {
+    btnGoogleLogin.addEventListener('click', async () => {
+        try {
+            const { ipcRenderer } = require('electron');
+            if (isDriveLinked) {
+                if (
+                    !confirm(
+                        'هل أنت متأكد من إلغاء ربط حساب Google Drive؟ لن يُحذف الملف من Drive، لكن هذا الجهاز لن يصل إليه حتى تعيد الربط.'
+                    )
+                ) {
+                    return;
+                }
+                await ipcRenderer.invoke('google-drive-disconnect');
                 localStorage.removeItem('google_drive_linked');
                 isDriveLinked = null;
                 updateDriveUI();
+                return;
             }
-        } else {
-            // Simulate Google OAuth Popup
-            btnGoogleLogin.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin"></i> جاري الاتصال بخوادم Google...';
-            
-            setTimeout(() => {
-                const fakeEmail = 'restaurant@gmail.com'; // prompt() is not supported in Electron without polyfills
-                if(fakeEmail) {
-                    isDriveLinked = { email: fakeEmail, linkedAt: new Date().toISOString() };
-                    localStorage.setItem('google_drive_linked', JSON.stringify(isDriveLinked));
-                    alert('تم الربط بنجاح مع حساب جوجل درايف!');
-                    updateDriveUI();
-                }
-            }, 1000);
+
+            btnGoogleLogin.disabled = true;
+            btnGoogleLogin.innerHTML =
+                '<i class="ph-fill ph-spinner-gap ph-spin"></i> انتظر نافذة المتصفح وأكمل تسجيل الدخول...';
+            const res = await ipcRenderer.invoke('google-drive-auth-start');
+            btnGoogleLogin.disabled = false;
+
+            if (res.success) {
+                isDriveLinked = { email: res.email || '', linkedAt: new Date().toISOString() };
+                localStorage.setItem('google_drive_linked', JSON.stringify(isDriveLinked));
+                alert('تم الربط بنجاح مع Google Drive.');
+                updateDriveUI();
+            } else {
+                alert(
+                    res.message ||
+                        res.error ||
+                        'فشل الربط. تأكد من إضافة عنوان إعادة التوجيه في Google Cloud:\nhttp://127.0.0.1:45231/oauth2callback'
+                );
+                updateDriveUI();
+            }
+        } catch (e) {
+            alert('خطأ: ' + (e && e.message));
+            btnGoogleLogin.disabled = false;
+            updateDriveUI();
         }
     });
 
-    btnGdBackup.addEventListener('click', () => {
+    btnGdBackup.addEventListener('click', async () => {
         const originalText = btnGdBackup.innerHTML;
         btnGdBackup.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin"></i> جاري الرفع...';
         btnGdBackup.style.pointerEvents = 'none';
-
-        // Collect all localStorage data
-        const backupData = {};
-        for(let i=0; i<localStorage.length; i++) {
-            const key = localStorage.key(i);
-            backupData[key] = localStorage.getItem(key);
+        try {
+            const { ipcRenderer } = require('electron');
+            const backupData = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                backupData[key] = localStorage.getItem(key);
+            }
+            const res = await ipcRenderer.invoke('google-drive-backup', backupData);
+            if (res.success) {
+                alert(
+                    'تم رفع النسخة إلى Google Drive بنجاح.\nالحجم تقريباً: ' +
+                        res.sizeKB +
+                        ' KB\n(' +
+                        (res.mode === 'update' ? 'تحديث نفس الملف' : 'ملف جديد') +
+                        ')'
+                );
+            } else {
+                alert('فشل الرفع: ' + (res.error || res.message || 'غير معروف'));
+            }
+        } catch (e) {
+            alert('خطأ: ' + (e && e.message));
         }
-
-        setTimeout(() => {
-            alert('تم رفع النسخة الاحتياطية بنجاح إلى جوجل درايف!\nالحجم: ' + (JSON.stringify(backupData).length / 1024).toFixed(2) + ' KB');
-            btnGdBackup.innerHTML = originalText;
-            btnGdBackup.style.pointerEvents = 'auto';
-            
-            // Also save locally as a file just in case they want a real backup
-            try {
-                const { ipcRenderer } = require('electron');
-                const fs = require('fs');
-                const path = require('path');
-                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                fs.writeFileSync('database_backup_' + timestamp + '.json', JSON.stringify(backupData));
-            } catch(e) {}
-
-        }, 1500);
+        btnGdBackup.innerHTML = originalText;
+        btnGdBackup.style.pointerEvents = 'auto';
     });
+
+    btnGdRestore.addEventListener('click', async () => {
+        if (
+            !confirm(
+                'تحذير: سيتم استبدال قاعدة البيانات على هذا الجهاز وإعدادات localStorage من آخر نسخة على Drive.\n\nأنصح بأخذ نسخة يدوية أولاً.\n\nهل تريد المتابعة؟'
+            )
+        ) {
+            return;
+        }
+        const originalText = btnGdRestore.innerHTML;
+        btnGdRestore.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin"></i> جاري التحميل...';
+        btnGdRestore.style.pointerEvents = 'none';
+        try {
+            const { ipcRenderer } = require('electron');
+            const res = await ipcRenderer.invoke('google-drive-restore');
+            if (res.success) {
+                const ls = res.localStorage || {};
+                Object.keys(ls).forEach((k) => {
+                    try {
+                        localStorage.setItem(k, ls[k]);
+                    } catch (e) {}
+                });
+                ipcRenderer.send('notify-db-changed');
+                alert('تمت الاستعادة. سيتم إعادة تحميل الصفحة.');
+                location.reload();
+            } else {
+                alert('فشل الاستعادة: ' + (res.message || res.error || 'غير معروف'));
+            }
+        } catch (e) {
+            alert('خطأ: ' + (e && e.message));
+        }
+        btnGdRestore.innerHTML = originalText;
+        btnGdRestore.style.pointerEvents = 'auto';
+    });
+
+    const gdAutoEnabled = document.getElementById('gd-auto-enabled');
+    const gdAutoInterval = document.getElementById('gd-auto-interval');
+    const gdAutoLast = document.getElementById('gd-auto-last');
+    let prevAutoEnabled = false;
+
+    async function loadDriveAutoUi() {
+        try {
+            const { ipcRenderer } = require('electron');
+            const s = await ipcRenderer.invoke('google-drive-get-auto');
+            if (gdAutoEnabled) gdAutoEnabled.checked = !!s.enabled;
+            if (gdAutoInterval) gdAutoInterval.value = String(s.intervalMinutes || 360);
+            prevAutoEnabled = !!s.enabled;
+            if (gdAutoLast) {
+                let t = s.lastAutoRunAt
+                    ? 'آخر نسخ تلقائي ناجح: ' + new Date(s.lastAutoRunAt).toLocaleString('ar-SA')
+                    : 'لم يُسجَّل نسخ تلقائي ناجح بعد';
+                if (s.lastAutoError) t += ' — آخر خطأ: ' + s.lastAutoError;
+                gdAutoLast.textContent = t;
+            }
+        } catch (e) {}
+    }
+
+    async function saveDriveAuto(resetSchedule) {
+        try {
+            const { ipcRenderer } = require('electron');
+            const enabled = gdAutoEnabled ? gdAutoEnabled.checked : false;
+            const intervalMinutes = gdAutoInterval ? parseInt(gdAutoInterval.value, 10) || 360 : 360;
+            await ipcRenderer.invoke('google-drive-save-auto', {
+                enabled,
+                intervalMinutes,
+                resetSchedule: !!resetSchedule,
+            });
+            prevAutoEnabled = enabled;
+            await loadDriveAutoUi();
+        } catch (e) {
+            alert('فشل حفظ إعداد النسخ التلقائي');
+        }
+    }
+
+    if (gdAutoEnabled) {
+        gdAutoEnabled.addEventListener('change', async () => {
+            const nowOn = gdAutoEnabled.checked;
+            await saveDriveAuto(nowOn && !prevAutoEnabled);
+        });
+    }
+    if (gdAutoInterval) {
+        gdAutoInterval.addEventListener('change', () => saveDriveAuto(false));
+    }
+
+    try {
+        const { ipcRenderer } = require('electron');
+        ipcRenderer.on('google-drive-auto-backup', () => {
+            loadDriveAutoUi();
+        });
+    } catch (e) {}
+
+    loadDriveAutoUi();
 
     // --- WhatsApp Bot Logic ---
     const btnWaLink = document.getElementById('btn-wa-link');
     const waStatusText = document.getElementById('wa-status-text');
     const waQrContainer = document.getElementById('wa-qr-container');
     const inputWaAdmin = document.getElementById('set-wa-admin');
+    const inputWaHubIp = document.getElementById('set-wa-hub-ip');
     const inputWaLoans = document.getElementById('set-wa-loans');
     const inputWaReports = document.getElementById('set-wa-reports');
 
@@ -260,6 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if(waSettingsRaw) {
         const waOpts = JSON.parse(waSettingsRaw);
         if(waOpts.admin) inputWaAdmin.value = waOpts.admin;
+        if (inputWaHubIp && waOpts.hubIp) inputWaHubIp.value = waOpts.hubIp;
         if(waOpts.loans !== undefined) inputWaLoans.checked = waOpts.loans;
         if(waOpts.reports !== undefined) inputWaReports.checked = waOpts.reports;
         const setExpenses = document.getElementById('set-wa-expenses');
@@ -415,6 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', () => {
         const waData = {
             admin: inputWaAdmin.value,
+            hubIp: inputWaHubIp ? inputWaHubIp.value.trim() : '',
             loans: inputWaLoans.checked,
             expenses: document.getElementById('set-wa-expenses') ? document.getElementById('set-wa-expenses').checked : true,
             reports: inputWaReports.checked

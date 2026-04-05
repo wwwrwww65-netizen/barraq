@@ -5,14 +5,36 @@ if (!window.location.pathname.includes('login.html')) {
         window.location.href = 'login.html';
     } else {
         try {
+            (function migrateFatoraPerm() {
+                try {
+                    const raw = localStorage.getItem('system_roles');
+                    if (!raw) return;
+                    const roles = JSON.parse(raw);
+                    let changed = false;
+                    roles.forEach((r) => {
+                        if (!r.perms) r.perms = {};
+                        if (r.perms.fatora_access === undefined) {
+                            r.perms.fatora_access = r.perms.hr_manage === true;
+                            changed = true;
+                        }
+                    });
+                    if (changed) localStorage.setItem('system_roles', JSON.stringify(roles));
+                } catch (_) { /* ignore */ }
+            })();
+
             // Map each page to the exact permission key defined in permissions.js
             const pageMap = {
+                'index.html':         'pos_access',
+                'profile.html':       'pos_access',
+
                 // نقطة البيع والمبيعات
                 'pos.html':           'pos_access',
                 'kitchen.html':       'pos_access',
                 'sales.html':         'sales_access',
                 'returns.html':       'pos_return',
                 'customers.html':     'sales_access',
+                'orders.html':        'sales_access',
+                'cashier-report.html': 'sales_access',
 
                 // الأصناف والمنيو
                 'menu.html':          'menu_manage',
@@ -24,6 +46,7 @@ if (!window.location.pathname.includes('login.html')) {
                 'purchases.html':     'inv_manage',
                 'inv-documents.html': 'inv_manage',
                 'suppliers.html':     'inv_manage',
+                'kitchen-production.html': 'inv_manage',
 
                 // الموظفين والمحاسبة
                 'staff.html':         'hr_manage',
@@ -31,7 +54,10 @@ if (!window.location.pathname.includes('login.html')) {
                 'acc-banks.html':     'hr_manage',
                 'acc-tree.html':      'hr_manage',
                 'acc-reports.html':   'hr_manage',
+                'journal.html':       'hr_manage',
                 'acc-expenses.html':  'hr_manage',
+                'profit-loss.html':   'hr_manage',
+                'fatora.html':        'fatora_access',
 
                 // الإحصائيات
                 'statistics.html':    'stats_access',
@@ -62,6 +88,33 @@ if (!window.location.pathname.includes('login.html')) {
     }
 }
 
+// --- إعادة تحميل الواجهات عند تحديث pos_database (محلي أو مزامنة شبكة) ---
+(function initPosDatabaseLiveRefresh() {
+    const handlers = new Set();
+    let debounceTimer = null;
+    window.registerPosDatabaseRefresh = function (fn) {
+        if (typeof fn !== 'function') return function () {};
+        handlers.add(fn);
+        return function unsub() {
+            handlers.delete(fn);
+        };
+    };
+    window.addEventListener('pos-db-updated', () => {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            debounceTimer = null;
+            handlers.forEach((fn) => {
+                try {
+                    const r = fn();
+                    if (r && typeof r.then === 'function') r.catch((e) => console.warn('[pos-db-refresh]', e && e.message));
+                } catch (e) {
+                    console.warn('[pos-db-refresh]', e);
+                }
+            });
+        }, 100);
+    });
+})();
+
 // --- Local Network Synchronization ---
 window._networkSyncing = false; // global flag to avoid re-broadcasting synced data
 
@@ -71,6 +124,43 @@ const MAX_UDP_PAYLOAD = 48000; // safe limit well below UDP max ~65535
 
 try {
     const { ipcRenderer } = require('electron');
+
+    /** IP آخر جهاز على الشبكة يملك واتساب جاهزاً — يُستخدم تلقائياً كمركز واتساب عند ترك حقل Hub فارغاً */
+    function recordLanSyncHubIp(ip, opts) {
+        if (!ip || typeof ip !== 'string') return;
+        const clean = ip.replace(/^::ffff:/, '').trim();
+        if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(clean) || clean === '127.0.0.1') return;
+        try {
+            Object.getPrototypeOf(localStorage).setItem.call(localStorage, 'last_lan_sync_hub_ip', clean);
+            if (opts && opts.mergeIntoWaSettings) {
+                const raw = localStorage.getItem('wa_settings');
+                if (raw) {
+                    const w = JSON.parse(raw);
+                    if (!(w.hubIp && String(w.hubIp).trim())) {
+                        w.hubIp = clean;
+                        Object.getPrototypeOf(localStorage).setItem.call(localStorage, 'wa_settings', JSON.stringify(w));
+                    }
+                }
+            }
+            console.log('[Sync] مركز واتساب تلقائي (LAN):', clean);
+        } catch (e) {
+            console.warn('[Sync] recordLanSyncHubIp:', e);
+        }
+    }
+
+    ipcRenderer.on('lan-sync-hub-ip', (event, ip) => {
+        recordLanSyncHubIp(ip, { mergeIntoWaSettings: true });
+    });
+
+    window.resolveWaHubIp = function (waSettings) {
+        try {
+            const manual = waSettings && waSettings.hubIp && String(waSettings.hubIp).trim();
+            if (manual) return manual;
+            return (localStorage.getItem('last_lan_sync_hub_ip') || '').trim();
+        } catch (_) {
+            return '';
+        }
+    };
 
     // Listen for incoming sync updates (including chunked large data)
     ipcRenderer.on('network-sync-update', (event, data) => {
@@ -146,6 +236,9 @@ try {
             // Use prototype to bypass our send-to-network override
             Object.getPrototypeOf(localStorage).setItem.call(localStorage, key, data.payload[key]);
         });
+        if (data._lanSourceIp && data._waHubCapable) {
+            recordLanSyncHubIp(data._lanSourceIp, { mergeIntoWaSettings: true });
+        }
         window._networkSyncing = false;
 
         console.log('[Sync] Full data applied! Reloading...');
@@ -230,6 +323,8 @@ try {
 //  Network Sync Status Badge (shows on all pages)
 // ═══════════════════════════════════════════════════════════
 (function setupSyncBadge() {
+    const PEER_TTL_MS = 70000;
+
     const style = document.createElement('style');
     style.textContent = `
         #net-sync-badge {
@@ -238,11 +333,11 @@ try {
             left: 18px;
             display: flex;
             align-items: center;
-            gap: 7px;
-            padding: 6px 13px 6px 10px;
+            gap: 6px;
+            padding: 5px 6px 5px 11px;
             background: rgba(15, 23, 42, 0.92);
             border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 20px;
+            border-radius: 22px;
             font-size: 12px;
             font-weight: 600;
             color: #94a3b8;
@@ -251,6 +346,18 @@ try {
             transition: all 0.3s ease;
             cursor: default;
             user-select: none;
+            max-width: min(96vw, 420px);
+        }
+        #net-sync-badge .sync-badge-text {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            min-width: 0;
+        }
+        #net-sync-badge #sync-label {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         #net-sync-badge .dot {
             width: 8px; height: 8px;
@@ -266,47 +373,148 @@ try {
         #net-sync-badge.connected .dot { background: #10b981; }
         #net-sync-badge.connected { border-color: rgba(16,185,129,0.25); color: #10b981; }
         #net-sync-badge.error .dot { background: #ef4444; }
+        #net-sync-refresh-btn {
+            flex-shrink: 0;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.05);
+            color: #94a3b8;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            transition: color .2s, background .2s, border-color .2s;
+        }
+        #net-sync-refresh-btn:hover {
+            color: #10b981;
+            border-color: rgba(16,185,129,0.35);
+            background: rgba(16,185,129,0.12);
+        }
+        #net-sync-refresh-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        #net-sync-refresh-btn.sync-spin i {
+            display: inline-block;
+            animation: net-sync-spin 0.65s linear infinite;
+        }
         @keyframes pulse-amber {
             0%,100% { opacity:1; transform:scale(1); }
             50% { opacity:0.5; transform:scale(1.4); }
         }
+        @keyframes net-sync-spin {
+            to { transform: rotate(360deg); }
+        }
     `;
     document.head.appendChild(style);
 
+    const peerLastSeen = new Map();
+
+    function prunePeers() {
+        const now = Date.now();
+        for (const [id, t] of peerLastSeen) {
+            if (now - t > PEER_TTL_MS) peerLastSeen.delete(id);
+        }
+    }
+
+    function lanDeviceCount() {
+        prunePeers();
+        return 1 + peerLastSeen.size;
+    }
+
+    function connectedLabelText() {
+        const n = lanDeviceCount();
+        if (n <= 1) return 'شبكة · جهاز واحد (هذا الجهاز)';
+        return 'شبكة · ' + n + ' أجهزة متصلة';
+    }
+
     const badge = document.createElement('div');
     badge.id = 'net-sync-badge';
-    badge.innerHTML = '<div class="dot"></div><span id="sync-label">الشبكة: انتظار...</span>';
+    badge.innerHTML =
+        '<div class="sync-badge-text"><div class="dot"></div><span id="sync-label">الشبكة: جاري الاستكشاف...</span></div>' +
+        '<button type="button" id="net-sync-refresh-btn" title="تحديث: جلب قاعدة البيانات من الشبكة وتحديث عدد الأجهزة">' +
+        '<i class="ph-bold ph-arrows-clockwise" style="font-size:15px"></i></button>';
     document.body.appendChild(badge);
+
+    const refreshBtn = document.getElementById('net-sync-refresh-btn');
 
     function setSyncState(state, label) {
         badge.className = '';
         badge.classList.add(state);
-        document.getElementById('sync-label').textContent = label;
+        const lab = document.getElementById('sync-label');
+        if (!lab) return;
+        if (label != null && label !== '') {
+            lab.textContent = label;
+        } else if (state === 'connected') {
+            lab.textContent = connectedLabelText();
+        } else {
+            lab.textContent = 'الشبكة';
+        }
     }
 
-    // Flash "syncing" then restore
+    function refreshConnectedLabel() {
+        if (badge.classList.contains('connected')) {
+            setSyncState('connected', connectedLabelText());
+            badge.title =
+                'المزامنة المحلية: قاعدة البيانات (pos_database) وتغييرات الإعدادات بين الأجهزة. ' +
+                'زر التحديث يعيد جلب نسخة القاعدة من الشبكة. ' +
+                'لا يشمل جلسة واتساب أو ربط Google Drive.';
+        }
+    }
+
     window.addEventListener('pos-db-updated', () => {
-        setSyncState('syncing', 'جاري تحديث البيانات...');
-        setTimeout(() => setSyncState('connected', 'شبكة: مُزامَن ✓'), 2000);
+        setSyncState('syncing', 'تم تحديث قاعدة البيانات من الشبكة');
+        setTimeout(() => setSyncState('connected'), 2200);
     });
 
-    // Also flash when localStorage sync fires
-    const _origNSS = window._networkSyncing;
     let _syncFlashTimer = null;
     try {
         const { ipcRenderer } = require('electron');
-        ipcRenderer.on('network-sync-update', () => {
-            setSyncState('syncing', 'مزامنة البيانات...');
-            clearTimeout(_syncFlashTimer);
-            _syncFlashTimer = setTimeout(() => setSyncState('connected', 'شبكة: مُزامَن ✓'), 1500);
+
+        ipcRenderer.on('lan-peer-seen', (e, d) => {
+            if (!d || !d.instanceId) return;
+            peerLastSeen.set(d.instanceId, Date.now());
+            refreshConnectedLabel();
         });
+
+        ipcRenderer.on('network-sync-update', () => {
+            setSyncState('syncing', 'مزامنة إعدادات بين الأجهزة...');
+            clearTimeout(_syncFlashTimer);
+            _syncFlashTimer = setTimeout(() => setSyncState('connected'), 1600);
+        });
+
         ipcRenderer.on('db-file-updated', () => {
             setSyncState('syncing', 'تحديث قاعدة البيانات...');
         });
-        // Initial state after a short delay
-        setTimeout(() => setSyncState('connected', 'شبكة محلية: نشطة'), 4000);
-    } catch(e) {
-        setSyncState('error', 'الشبكة: غير متصل');
+
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                refreshBtn.classList.add('sync-spin');
+                refreshBtn.disabled = true;
+                setSyncState('syncing', 'جلب قاعدة البيانات وتحديث الأجهزة...');
+                try {
+                    ipcRenderer.send('lan-broadcast-presence');
+                    ipcRenderer.send('network-sync-send', { type: 'db_sync_request' });
+                    setTimeout(() => ipcRenderer.send('lan-broadcast-presence'), 500);
+                } catch (e) {}
+                setTimeout(() => {
+                    refreshBtn.classList.remove('sync-spin');
+                    refreshBtn.disabled = false;
+                    setSyncState('connected');
+                }, 3200);
+            });
+        }
+
+        setTimeout(() => setSyncState('connected'), 3500);
+        setInterval(refreshConnectedLabel, 10000);
+    } catch (e) {
+        if (refreshBtn) refreshBtn.style.display = 'none';
+        setSyncState('error', 'الشبكة: التطبيق الكامل فقط (.exe)');
     }
 })();
 

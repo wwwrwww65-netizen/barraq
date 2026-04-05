@@ -1,10 +1,13 @@
 document.addEventListener('DOMContentLoaded', async () => {
 
+    const { getReceiptFooterLine, escapeHtmlPrint } = require('./thermal-receipt-updated.js');
+
     const kpiValues = document.querySelectorAll('.kpi-card .kpi-value');
     if(!kpiValues || kpiValues.length < 5) return; // Not on index page
 
     let dashboardChart = null;
-
+    /** الفترة المعروضة حالياً — تُحدَّث عند تغيير أزرار اليوم/الأسبوع ليعاد التحميل بعد المزامنة */
+    let currentDashboardPeriod = 'today';
     async function loadDashboardData(period = 'today') {
         let db = await window.dbRead();
         let orders = db.orders || [];
@@ -100,13 +103,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Apply to UI
     kpiValues[0].innerHTML = `${dailySales.toFixed(2)}<span class="currency">ر.س</span>`;
     kpiValues[1].innerHTML = `${orders.length} <span class="text-sm">طلب</span>`;
-    let lowStockCount = 0;
-    const invStr = localStorage.getItem('erp_inventory_items');
-    if(invStr) {
-        const invItems = JSON.parse(invStr);
-        lowStockCount = invItems.filter(it => it.qty <= it.minQty).length;
-    }
-    
+    const invList = db.inventory || [];
+    const lowStockCount = invList.filter(
+        (it) => (Number(it.qty) || 0) <= (Number(it.minQty) || 0)
+    ).length;
+
     kpiValues[2].innerHTML = `${lowStockCount} <span class="text-sm">صنف</span>`; 
     if(lowStockCount > 0) {
         kpiValues[2].style.color = 'var(--accent-orange)';
@@ -150,7 +151,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <td style="color:var(--text-secondary)">${tStr}</td>
                         <td style="font-weight:bold">${o.total.toFixed(2)} ر.س</td>
                         <td><span class="status completed">مكتمل</span></td>
-                        <td><button class="action-btn" title="عرض"><i class="ph ph-eye"></i></button></td>
+                        <td><a href="orders.html" class="action-btn" title="عرض في سجل الطلبات" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:inherit;"><i class="ph ph-eye"></i></a></td>
                     </tr>
                 `;
                 tbody.insertAdjacentHTML('beforeend', tr);
@@ -250,7 +251,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 else if(txt.includes('7 أيام')) p = 'week';
                 else if(txt.includes('شهر')) p = 'month';
             }
-            loadDashboardData(p || 'today');
+            currentDashboardPeriod = p || 'today';
+            loadDashboardData(currentDashboardPeriod);
         });
     });
 
@@ -260,7 +262,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(activeBtn) {
         initPeriod = activeBtn.dataset.period || (activeBtn.innerText.includes('اليوم') ? 'today' : (activeBtn.innerText.includes('الأمس') ? 'yesterday' : 'week'));
     }
+    currentDashboardPeriod = initPeriod;
     await loadDashboardData(initPeriod);
+
+    if (typeof window.registerPosDatabaseRefresh === 'function') {
+        window.registerPosDatabaseRefresh(() => loadDashboardData(currentDashboardPeriod));
+    }
 
     // --- 5. SHIFT REPORT MODAL LOGIC ---
     window.openShiftFloatModal = function() {
@@ -309,10 +316,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(currentUserConf) {
             try {
                 const p = JSON.parse(currentUserConf);
-                if(p.name) cashierName = p.name;
+                if(p.username || p.name) cashierName = p.username || p.name;
             } catch(e){}
         }
         document.getElementById('shift-cashier-name').innerText = "الموظف (إغلاق الوردية): " + cashierName;
+
+        // ── تحميل الشعار واسم المطعم من الإعدادات ──
+        const sysSet = localStorage.getItem('restaurant_settings');
+        if (sysSet) {
+            try {
+                const s = JSON.parse(sysSet);
+                const displayName = (s.name && s.name !== 'هش HASH' && s.name !== 'هـــش HASH') ? s.name : 'هش HASH';
+                const shiftNameEl = document.getElementById('shift-res-name');
+                if (shiftNameEl) shiftNameEl.innerText = displayName;
+                const shiftLogoEl = document.getElementById('shift-logo');
+                if (shiftLogoEl && s.logo) {
+                    shiftLogoEl.src = s.logo;
+                } else if (shiftLogoEl) {
+                    shiftLogoEl.src = '1111.png';
+                }
+            } catch(e){}
+        } else {
+            const shiftLogoEl = document.getElementById('shift-logo');
+            if (shiftLogoEl) shiftLogoEl.src = '1111.png';
+        }
         
         const d = window.__dashboardData || { dailySales:0, cashSales:0, networkSales:0, totalTax:0, totalReturnsAmt:0, totalExp:0, shiftCashFloat:0, drawerBalance:0 };
 
@@ -350,7 +377,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // اجمع بيانات الكاشير
         const currentUserConf = localStorage.getItem('currentUser');
         let cashierName = 'موظف';
-        if (currentUserConf) { try { const p = JSON.parse(currentUserConf); if (p.name) cashierName = p.name; } catch(e){} }
+        if (currentUserConf) { try { const p = JSON.parse(currentUserConf); if (p.username || p.name) cashierName = p.username || p.name; } catch(e){} }
 
         zTimestamps.push({ startTime: lastZTime || closeTime - 3600000, endTime: closeTime, cashierName });
         localStorage.setItem('z_report_timestamps', JSON.stringify(zTimestamps));
@@ -382,7 +409,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const currentUserConf = localStorage.getItem('currentUser');
         let managerName = 'المدير';
         if (currentUserConf) {
-            try { const p = JSON.parse(currentUserConf); if (p.name) managerName = p.name; } catch(e){}
+            try { const p = JSON.parse(currentUserConf); if (p.username || p.name) managerName = p.username || p.name; } catch(e){}
         }
         document.getElementById('day-cashier-name').innerText = 'المسؤول: ' + managerName;
 
@@ -590,48 +617,305 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.printDayReport = async function() {
+        const { ipcRenderer } = require('electron');
         const path = require('path');
-        const printClone = document.getElementById('day-print-area').cloneNode(true);
-
-        // Fix logo path
-        const logo = printClone.querySelector('img#day-logo');
-        if (logo) {
-            logo.src = 'file://' + path.join(__dirname, '1111.png').replace(/\\/g, '/');
+        const fs = require('fs');
+        
+        // Get restaurant settings
+        const sysSet = localStorage.getItem('restaurant_settings');
+        let restName = 'هش HASH';
+        let logoBase64 = '';
+        
+        if (sysSet) {
+            try {
+                const s = JSON.parse(sysSet);
+                if (s.name) restName = s.name;
+                
+                // Convert logo to base64
+                if (s.logo && s.logo.startsWith('data:')) {
+                    logoBase64 = s.logo;
+                } else if (s.logo) {
+                    try {
+                        const logoPath = path.join(__dirname, s.logo);
+                        if (fs.existsSync(logoPath)) {
+                            const logoBuffer = fs.readFileSync(logoPath);
+                            const ext = path.extname(s.logo).toLowerCase();
+                            const mimeType = ext === '.png' ? 'image/png' : 
+                                           ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'image/png';
+                            logoBase64 = `data:${mimeType};base64,${logoBuffer.toString('base64')}`;
+                        }
+                    } catch(e) {
+                        console.error('Day report logo error:', e);
+                    }
+                }
+            } catch(e){}
+        }
+        
+        // If no logo, use default
+        if (!logoBase64) {
+            try {
+                const defaultLogo = path.join(__dirname, '1111.png');
+                if (fs.existsSync(defaultLogo)) {
+                    const logoBuffer = fs.readFileSync(defaultLogo);
+                    logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+                }
+            } catch(e) {}
         }
 
-        const html = `
-            <style>
-                @import url('node_modules/@fontsource/cairo/index.css');
-                @page { margin: 0; }
-                body { font-family: 'Cairo', sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; direction: rtl; }
-                #receipt-container { width: 72mm; color: #000; margin: 0; padding: 5mm; }
-                .shift-receipt { width:100%; background: #fff; color: #000; font-size: 13px; }
-                .receipt-header { text-align: center; margin-bottom: 15px; }
-                .receipt-header img { width: 60px; height: 60px; object-fit: contain; filter: grayscale(100%); margin-bottom: 5px; }
-                .receipt-header h3 { margin: 0; font-size: 18px; font-weight: 800; }
-                .receipt-header p { margin: 2px 0; font-size: 13px; color: #444; font-weight: 700;}
-                .receipt-datetime { margin-top: 5px; font-size: 12px; color: #666; border-top: 1px dashed #ccc; padding-top: 5px; }
-                .receipt-divider { border-top: 1px dashed #000; margin: 10px 0; }
-                .receipt-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-weight: 600; font-size: 12px;}
-                .receipt-row.bold { font-weight: 800; font-size: 14px; }
-                .receipt-row.highlight { background: #f0f0f0; padding: 5px; border-radius: 4px; margin-top: 6px; }
-                .receipt-row.grand-total { background: #000; color: #fff; padding: 8px; border-radius: 4px; font-size: 14px; margin-top: 12px; }
-                .receipt-footer { text-align: center; font-size: 11px; font-weight:700; margin-top: 15px;}
-                .day-shift-block { border: 1px dashed #bbb; border-radius: 4px; margin-bottom: 10px; padding: 8px; background: #fafafa; }
-                .shift-block-header { font-weight: 800; font-size: 12px; background: #e8e8e8; padding: 4px 6px; border-radius: 3px; margin-bottom: 6px; display: flex; justify-content: space-between; }
-                .day-shift-block .receipt-row { font-size: 11px; margin-bottom: 4px; }
-            </style>
-            <div id="receipt-container">
-                ${printClone.innerHTML}
-            </div>
-        `;
+        // Get data from the modal
+        const managerName = document.getElementById('day-cashier-name').innerText;
+        const datetime = document.getElementById('day-datetime').innerText;
+        const date = document.getElementById('day-date').innerText;
+        
+        // Collect all rows from day report
+        const totalOrders = document.getElementById('day-total-orders')?.innerText || '0';
+        const totalCash = document.getElementById('day-total-cash')?.innerText || '0.00 ر.س';
+        const totalNetwork = document.getElementById('day-total-network')?.innerText || '0.00 ر.س';
+        const totalIncome = document.getElementById('day-total-income')?.innerText || '0.00 ر.س';
+        const totalTax = document.getElementById('day-total-tax')?.innerText || '0.00 ر.س';
+        const totalReturns = document.getElementById('day-total-returns')?.innerText || '0.00 ر.س';
+        const totalExpenses = document.getElementById('day-total-expenses')?.innerText || '0.00 ر.س';
+        const netTotal = document.getElementById('day-net-total')?.innerText || '0.00 ر.س';
+
+        console.log('🖨️  Printing day closure report...');
+        console.log('   Logo:', logoBase64 ? '✓ Base64 (' + logoBase64.length + ' bytes)' : '✗ No logo');
+        console.log('   Restaurant:', restName);
+
+        const dayPrintFooter = escapeHtmlPrint(getReceiptFooterLine(sysSet, restName, 'تقرير إقفال يوم'));
+
+        // Build HTML with same standards as customer receipt (80mm)
+        const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        
+        @page {
+            size: 80mm auto;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Cairo', 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            width: 80mm;
+            max-width: 80mm;
+            min-width: 72mm;
+            background: #ffffff;
+            color: #000000;
+            direction: rtl;
+            text-align: center;
+            line-height: 1.35;
+            font-size: 12px;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .receipt-wrapper {
+            width: 80mm;
+            max-width: 80mm;
+            padding: 3mm 2mm;
+            margin: 0 auto;
+        }
+        
+        .store-logo {
+            width: 15mm;
+            height: 15mm;
+            max-width: 15mm;
+            max-height: 15mm;
+            object-fit: contain;
+            margin: 0 auto 2mm auto;
+            display: block;
+            filter: grayscale(100%) contrast(120%);
+        }
+        
+        .report-title {
+            font-size: 16px;
+            font-weight: 900;
+            margin: 2mm 0 1mm 0;
+        }
+        
+        .report-subtitle {
+            font-size: 12px;
+            font-weight: 700;
+            margin: 1mm 0;
+        }
+        
+        .manager-info {
+            font-size: 11px;
+            font-weight: 700;
+            margin: 1.5mm 0;
+        }
+        
+        .datetime {
+            font-size: 10px;
+            color: #555555;
+            margin: 1mm 0;
+        }
+        
+        .divider {
+            border-top: 1.5px dashed #000000;
+            margin: 3mm 0;
+            width: 100%;
+        }
+        
+        .divider-thick {
+            border-top: 2px solid #000000;
+            margin: 3mm 0;
+            width: 100%;
+        }
+        
+        .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5mm 0;
+            gap: 2mm;
+            font-size: 11px;
+        }
+        
+        .row-label {
+            text-align: right;
+            flex: 1;
+            font-weight: 600;
+        }
+        
+        .row-value {
+            text-align: left;
+            font-weight: 600;
+            min-width: 0;
+            max-width: 48%;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        
+        .row.bold {
+            font-size: 13px;
+            font-weight: 800;
+        }
+        
+        .row.highlight {
+            background: #f0f0f0;
+            padding: 2mm;
+            margin: 2mm 0;
+            border-radius: 1mm;
+        }
+        
+        .row.grand-total {
+            font-size: 14px;
+            font-weight: 900;
+            background: #000000;
+            color: #ffffff;
+            padding: 2.5mm;
+            margin-top: 3mm;
+            border-radius: 1mm;
+        }
+        
+        .footer-message {
+            font-size: 11px;
+            font-weight: 700;
+            margin: 3mm 0 1mm 0;
+            text-align: center;
+        }
+        
+        .powered-by {
+            font-size: 8px;
+            color: #666666;
+            margin-top: 2mm;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt-wrapper">
+        <!-- Logo -->
+        ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" class="store-logo">` : ''}
+        
+        <!-- Title -->
+        <div class="report-title">${restName}</div>
+        <div class="report-subtitle">تقرير إقفال اليوم الكامل (X-Report)</div>
+        
+        <!-- Manager & Date -->
+        <div class="manager-info">${managerName}</div>
+        <div class="datetime">${date} - ${datetime}</div>
+        
+        <div class="divider"></div>
+        
+        <!-- Summary -->
+        <div style="text-align:center; background:#f0f0f0; padding:2mm; border-radius:1mm; font-weight:800; font-size:11px; margin-bottom:3mm;">
+            ▌ ملخص اليوم الكامل
+        </div>
+        
+        <!-- Financial Details -->
+        <div class="row">
+            <span class="row-label">عدد الطلبات:</span>
+            <span class="row-value">${totalOrders}</span>
+        </div>
+        <div class="row">
+            <span class="row-label">إجمالي الكاش:</span>
+            <span class="row-value">${totalCash}</span>
+        </div>
+        <div class="row">
+            <span class="row-label">إجمالي الشبكة:</span>
+            <span class="row-value">${totalNetwork}</span>
+        </div>
+        <div class="row bold highlight">
+            <span class="row-label">إجمالي الدخل:</span>
+            <span class="row-value">${totalIncome}</span>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="row">
+            <span class="row-label">الضريبة:</span>
+            <span class="row-value">${totalTax}</span>
+        </div>
+        <div class="row">
+            <span class="row-label">المرتجعات:</span>
+            <span class="row-value" style="color:#c00;">${totalReturns}</span>
+        </div>
+        <div class="row">
+            <span class="row-label">المصروفات:</span>
+            <span class="row-value" style="color:#c00;">${totalExpenses}</span>
+        </div>
+        
+        <div class="divider-thick"></div>
+        
+        <!-- Grand Total -->
+        <div class="row grand-total">
+            <span class="row-label">صافي اليوم:</span>
+            <span class="row-value">${netTotal}</span>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer-message">
+            تم إقفال اليوم بالكامل<br>
+            شكراً لجهود فريق العمل!
+        </div>
+        <div class="powered-by">${dayPrintFooter}</div>
+    </div>
+</body>
+</html>`;
 
         try {
-            const { ipcRenderer } = require('electron');
             const cashierPrinter = localStorage.getItem('cashier_printer') || '';
+            console.log('📤 Sending to printer:', cashierPrinter || 'Default');
+            
             await ipcRenderer.invoke('print-to-device', { html: html, printerName: cashierPrinter });
-        } catch(e) {
-            console.error('Day Report print failed', e);
+            
+            console.log('✅ Day report printed successfully');
+        } catch(e) { 
+            console.error('❌ Day Report print failed:', e); 
+            alert('حدث خطأ في طباعة التقرير: ' + e.message);
         }
     };
 
@@ -640,46 +924,305 @@ document.addEventListener('DOMContentLoaded', async () => {
     // لا نحتاج لأي override إضافي هنا
 
     window.printShiftReport = async function() {
+        const { ipcRenderer } = require('electron');
         const path = require('path');
-        const printClone = document.getElementById('shift-print-area').cloneNode(true);
+        const fs = require('fs');
         
-        // Fix logo path
-        const logo = printClone.querySelector('img#shift-logo');
-        if (logo) {
-            logo.src = 'file://' + path.join(__dirname, '1111.png').replace(/\\/g, '/');
+        // Get restaurant settings
+        const sysSet = localStorage.getItem('restaurant_settings');
+        let restName = 'هش HASH';
+        let logoBase64 = '';
+        
+        if (sysSet) {
+            try {
+                const s = JSON.parse(sysSet);
+                if (s.name) restName = s.name;
+                
+                // Convert logo to base64
+                if (s.logo && s.logo.startsWith('data:')) {
+                    logoBase64 = s.logo;
+                } else if (s.logo) {
+                    try {
+                        const logoPath = path.join(__dirname, s.logo);
+                        if (fs.existsSync(logoPath)) {
+                            const logoBuffer = fs.readFileSync(logoPath);
+                            const ext = path.extname(s.logo).toLowerCase();
+                            const mimeType = ext === '.png' ? 'image/png' : 
+                                           ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'image/png';
+                            logoBase64 = `data:${mimeType};base64,${logoBuffer.toString('base64')}`;
+                        }
+                    } catch(e) {
+                        console.error('Shift report logo error:', e);
+                    }
+                }
+            } catch(e){}
+        }
+        
+        // If no logo, use default
+        if (!logoBase64) {
+            try {
+                const defaultLogo = path.join(__dirname, '1111.png');
+                if (fs.existsSync(defaultLogo)) {
+                    const logoBuffer = fs.readFileSync(defaultLogo);
+                    logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+                }
+            } catch(e) {}
         }
 
-        const html = `
-            <style>
-                @import url('node_modules/@fontsource/cairo/index.css');
-                @page { margin: 0; }
-                body { font-family: 'Cairo', sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; }
-                #receipt-container { width: 72mm; color: #000; margin: 0; padding: 5mm; }
-                .shift-receipt { width:100%; background: #fff; color: #000; font-size: 14px; }
-                .receipt-header { text-align: center; margin-bottom: 15px; }
-                .receipt-header img { width: 60px; height: 60px; object-fit: contain; filter: grayscale(100%); margin-bottom: 5px; }
-                .receipt-header h3 { margin: 0; font-size: 18px; font-weight: 800; }
-                .receipt-header p { margin: 2px 0; font-size: 13px; color: #444; font-weight: 700;}
-                .receipt-datetime { margin-top: 5px; font-size: 12px; color: #666; border-top: 1px dashed #ccc; padding-top: 5px; }
-                .receipt-divider { border-top: 1px dashed #000; margin: 12px 0; }
-                .receipt-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600; font-size: 13px;}
-                .receipt-row.bold { font-weight: 800; font-size: 15px; }
-                .receipt-row.highlight { background: #f0f0f0; padding: 6px; border-radius: 4px; margin-top: 8px; }
-                .receipt-row.highlight-drawer { background: #e0eee0; padding: 8px; border: 1px dashed #000; margin-top: 8px; border-radius: 4px;}
-                .receipt-row.grand-total { background: #000; color: #fff; padding: 10px; border-radius: 4px; font-size: 16px; margin-top: 15px; }
-                .receipt-footer { text-align: center; font-size: 12px; font-weight:700; margin-top: 20px;}
-            </style>
-            <div id="receipt-container">
-                ${printClone.innerHTML}
-            </div>
-        `;
+        // Get data from the modal
+        const cashierName = document.getElementById('shift-cashier-name').innerText;
+        const datetime = document.getElementById('shift-datetime').innerText;
+        const floatCash = document.getElementById('shift-float-cash').innerText;
+        const cashSales = document.getElementById('shift-cash').innerText;
+        const networkSales = document.getElementById('shift-network').innerText;
+        const totalIncome = document.getElementById('shift-total-income').innerText;
+        const tax = document.getElementById('shift-tax').innerText;
+        const returns = document.getElementById('shift-returns').innerText;
+        const expenses = document.getElementById('shift-expenses').innerText;
+        const drawer = document.getElementById('shift-drawer').innerText;
+        const grandTotal = document.getElementById('shift-grand-total').innerText;
+
+        console.log('🖨️  Printing shift closure report...');
+        console.log('   Logo:', logoBase64 ? '✓ Base64 (' + logoBase64.length + ' bytes)' : '✗ No logo');
+        console.log('   Restaurant:', restName);
+
+        const shiftPrintFooter = escapeHtmlPrint(getReceiptFooterLine(sysSet, restName, 'تقرير وردية'));
+
+        // Build HTML with same standards as customer receipt (80mm)
+        const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        
+        @page {
+            size: 80mm auto;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Cairo', 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            width: 80mm;
+            max-width: 80mm;
+            min-width: 72mm;
+            background: #ffffff;
+            color: #000000;
+            direction: rtl;
+            text-align: center;
+            line-height: 1.35;
+            font-size: 12px;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .receipt-wrapper {
+            width: 80mm;
+            max-width: 80mm;
+            padding: 3mm 2mm;
+            margin: 0 auto;
+        }
+        
+        .store-logo {
+            width: 15mm;
+            height: 15mm;
+            max-width: 15mm;
+            max-height: 15mm;
+            object-fit: contain;
+            margin: 0 auto 2mm auto;
+            display: block;
+            filter: grayscale(100%) contrast(120%);
+        }
+        
+        .report-title {
+            font-size: 16px;
+            font-weight: 900;
+            margin: 2mm 0 1mm 0;
+        }
+        
+        .report-subtitle {
+            font-size: 12px;
+            font-weight: 700;
+            margin: 1mm 0;
+        }
+        
+        .cashier-info {
+            font-size: 11px;
+            font-weight: 700;
+            margin: 1.5mm 0;
+        }
+        
+        .datetime {
+            font-size: 10px;
+            color: #555555;
+            margin: 1mm 0;
+        }
+        
+        .divider {
+            border-top: 1.5px dashed #000000;
+            margin: 3mm 0;
+            width: 100%;
+        }
+        
+        .divider-thick {
+            border-top: 2px solid #000000;
+            margin: 3mm 0;
+            width: 100%;
+        }
+        
+        .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5mm 0;
+            gap: 2mm;
+            font-size: 11px;
+        }
+        
+        .row-label {
+            text-align: right;
+            flex: 1;
+            font-weight: 600;
+        }
+        
+        .row-value {
+            text-align: left;
+            font-weight: 600;
+            min-width: 0;
+            max-width: 48%;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        
+        .row.bold {
+            font-size: 13px;
+            font-weight: 800;
+        }
+        
+        .row.highlight {
+            background: #f0f0f0;
+            padding: 2mm;
+            margin: 2mm 0;
+            border-radius: 1mm;
+        }
+        
+        .row.grand-total {
+            font-size: 14px;
+            font-weight: 900;
+            background: #000000;
+            color: #ffffff;
+            padding: 2.5mm;
+            margin-top: 3mm;
+            border-radius: 1mm;
+        }
+        
+        .footer-message {
+            font-size: 11px;
+            font-weight: 700;
+            margin: 3mm 0 1mm 0;
+            text-align: center;
+        }
+        
+        .powered-by {
+            font-size: 8px;
+            color: #666666;
+            margin-top: 2mm;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt-wrapper">
+        <!-- Logo -->
+        ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" class="store-logo">` : ''}
+        
+        <!-- Title -->
+        <div class="report-title">${restName}</div>
+        <div class="report-subtitle">تقرير إغلاق الوردية (Z-Report)</div>
+        
+        <!-- Cashier & Date -->
+        <div class="cashier-info">${cashierName}</div>
+        <div class="datetime">${datetime}</div>
+        
+        <div class="divider"></div>
+        
+        <!-- Financial Details -->
+        <div class="row">
+            <span class="row-label">الرصيد الافتتاحي:</span>
+            <span class="row-value">${floatCash}</span>
+        </div>
+        <div class="row">
+            <span class="row-label">إجمالي الكاش:</span>
+            <span class="row-value">${cashSales}</span>
+        </div>
+        <div class="row">
+            <span class="row-label">إجمالي الشبكة:</span>
+            <span class="row-value">${networkSales}</span>
+        </div>
+        <div class="row bold highlight">
+            <span class="row-label">إجمالي الدخل:</span>
+            <span class="row-value">${totalIncome}</span>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="row">
+            <span class="row-label">الضريبة:</span>
+            <span class="row-value">${tax}</span>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="row">
+            <span class="row-label">المرتجعات:</span>
+            <span class="row-value" style="color:#c00;">${returns}</span>
+        </div>
+        <div class="row">
+            <span class="row-label">المصروفات:</span>
+            <span class="row-value" style="color:#c00;">${expenses}</span>
+        </div>
+        <div class="row bold highlight">
+            <span class="row-label">رصيد الدرج:</span>
+            <span class="row-value">${drawer}</span>
+        </div>
+        
+        <div class="divider-thick"></div>
+        
+        <!-- Grand Total -->
+        <div class="row grand-total">
+            <span class="row-label">إجمالي المبيعات:</span>
+            <span class="row-value">${grandTotal}</span>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer-message">
+            تم إغلاق الوردية<br>
+            شكراً لجهودكم!
+        </div>
+        <div class="powered-by">${shiftPrintFooter}</div>
+    </div>
+</body>
+</html>`;
 
         try {
-            const { ipcRenderer } = require('electron');
             const cashierPrinter = localStorage.getItem('cashier_printer') || '';
+            console.log('📤 Sending to printer:', cashierPrinter || 'Default');
+            
             await ipcRenderer.invoke('print-to-device', { html: html, printerName: cashierPrinter });
+            
+            console.log('✅ Shift report printed successfully');
         } catch(e) { 
-            console.error('Z-Report print failed', e); 
+            console.error('❌ Z-Report print failed:', e); 
+            alert('حدث خطأ في طباعة التقرير: ' + e.message);
         }
     };
 

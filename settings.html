@@ -212,6 +212,14 @@
                                         <input type="text" id="set-wa-admin" class="input-modern" placeholder="+966xxxxxxxxx" value="+966539774699" dir="ltr" style="font-size:16px;">
                                     </div>
                                 </div>
+                                <div class="form-group mt-3" style="background:rgba(16,185,129,0.06); padding:15px; border-radius:8px; border:1px solid rgba(16,185,129,0.2);">
+                                    <label>عنوان IP لجهاز واتساب المركزي (اختياري — للأجهزة الفرعية على الشبكة)</label>
+                                    <p style="font-size:12px; color:var(--text-muted); margin:6px 0 10px;">اتركه فارغاً على الجهاز الذي يُرسل منه واتساب مباشرة. على الأجهزة الفرعية يُفضَّل تركه فارغاً أيضاً: يُكتشف تلقائياً من مزامنة الشبكة عندما يكون الجهاز الرئيسي متصلاً بواتساب. يمكنك التعبئة يدوياً (مثل 192.168.1.10) إذا لم يُكتشف العنوان.</p>
+                                    <div class="input-icon-wrapper">
+                                        <i class="ph-fill ph-wifi-high" style="color:#10b981"></i>
+                                        <input type="text" id="set-wa-hub-ip" class="input-modern" placeholder="مثال: 192.168.1.10" dir="ltr" style="font-size:15px;">
+                                    </div>
+                                </div>
                                 <div class="form-group mt-3" style="background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); margin-bottom:15px;">
                                     <div style="display:flex; justify-content:space-between; align-items:center;">
                                         <div>
@@ -282,6 +290,24 @@
                                     <button type="button" class="btn btn-primary" id="btn-gd-restore" style="flex: 1; background: var(--bg-card); display: none; color: white; border: 1px solid var(--border-light);">
                                         <i class="ph-fill ph-cloud-arrow-down"></i> استعادة النسخة
                                     </button>
+                                </div>
+                                <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);">
+                                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color: var(--text-secondary); font-size: 14px;">
+                                        <input type="checkbox" id="gd-auto-enabled" style="width:18px; height:18px;">
+                                        <span>نسخ احتياطي تلقائي إلى Google Drive</span>
+                                    </label>
+                                    <p style="color: var(--text-muted); font-size: 0.82rem; margin: 10px 0 8px 28px;">يُرفع تلقائياً (قاعدة البيانات + إعدادات المتصفح) حسب الفاصل أدناه. يتطلب حساب Google مربوطاً.</p>
+                                    <div style="display:flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-right: 28px;">
+                                        <label for="gd-auto-interval" style="color: var(--text-secondary); font-size: 13px;">كل:</label>
+                                        <select id="gd-auto-interval" class="input-modern" style="max-width: 220px; padding: 8px 12px;">
+                                            <option value="60">ساعة واحدة</option>
+                                            <option value="360" selected>6 ساعات</option>
+                                            <option value="720">12 ساعة</option>
+                                            <option value="1440">24 ساعة (يومياً)</option>
+                                            <option value="10080">أسبوعياً</option>
+                                        </select>
+                                    </div>
+                                    <p id="gd-auto-last" style="color: var(--text-muted); font-size: 0.78rem; margin: 10px 28px 0 0;"></p>
                                 </div>
                             </div>
                             

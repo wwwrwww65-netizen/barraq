@@ -4,15 +4,13 @@
     <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Â‹‹‹‘ HASH - «·”‰œ«  Ê«·›Ê« Ì— «·„Œ“‰Ì…</title>
+    <title>????? HASH ? ??????? ????????? ????????</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="inventory.css">
-    <!-- Google Fonts -->
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
-    <!-- Phosphor Icons -->
     <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
     <style>
-        .filter-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .filter-tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
         .filter-tab { background: rgba(255,255,255,0.05); padding: 8px 16px; border-radius:8px; border: 1px solid var(--border-color); color: var(--text-secondary); cursor: pointer; transition: 0.3s; }
         .filter-tab.active, .filter-tab:hover { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
         .type-label { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; }
@@ -23,41 +21,38 @@
 </head>
 <body class="dark-theme">
     <div class="app-container">
-        <!-- Sidebar Navigation -->
         <aside class="sidebar inv-sidebar">
             <div class="logo">
-                <img src="1111.png" alt="‘⁄«— «·„Õ«“‰" class="restaurant-logo" onerror="this.src='placeholder.svg'">
-                <span>≈œ«—… <span class="highlight">«·„Œ«“‰</span></span>
+                <img src="1111.png" alt="????" class="restaurant-logo" onerror="this.src='placeholder.svg'">
+                <span>????? <span class="highlight">???????</span></span>
             </div>
-            
+
             <nav class="nav-menu">
                 <div class="nav-group">
-                    <p class="nav-label">‰ÿ«ﬁ «·⁄„· «·—∆Ì”Ì</p>
-                    <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>«·⁄Êœ… ··ÊÕ… «·ﬁÌ«œ…</span></a>
+                    <p class="nav-label">???? ????? ???????</p>
+                    <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>?????? ????? ???????</span></a>
                 </div>
 
                 <div class="nav-group">
-                    <p class="nav-label">·ÊÕ…  Õﬂ„ «·„Œ“Ê‰</p>
-                    <a href="inventory.html" class="nav-item"><i class="ph ph-packages"></i><span>‰Ÿ—… ⁄«„… Ê«·Ã—œ</span></a>
-                    <a href="inv-documents.html?tab=in" class="nav-item"><i class="ph ph-arrow-down-left"></i><span>Õ—ﬂ«  «·œŒÊ· («” ·«„)</span></a>
-                    <a href="inv-documents.html?tab=out" class="nav-item"><i class="ph ph-arrow-up-right"></i><span>Õ—ﬂ«  «·Œ—ÊÃ (√„— ’—›)</span></a>
+                    <p class="nav-label">???? ???? ???????</p>
+                    <a href="inventory.html" class="nav-item"><i class="ph ph-packages"></i><span>???? ???? ??????</span></a>
+                    <a href="inv-documents.html?tab=in" class="nav-item"><i class="ph ph-arrow-down-left"></i><span>????? ?????? (??????)</span></a>
+                    <a href="inv-documents.html?tab=out" class="nav-item"><i class="ph ph-arrow-up-right"></i><span>????? ?????? (??? ???)</span></a>
                 </div>
 
                 <div class="nav-group">
-                    <p class="nav-label">«·„Ê—œÌ‰ Ê«·„” ‰œ« </p>
-                    <a href="suppliers.html" class="nav-item"><i class="ph ph-truck"></i><span>œ·Ì· «·„Ê—œÌ‰</span></a>
-                    <a href="inv-documents.html?tab=all" class="nav-item active"><i class="ph ph-file-text"></i><span>«·”‰œ«  Ê«·›Ê« Ì—</span></a>
+                    <p class="nav-label">???????? ??????????</p>
+                    <a href="suppliers.html" class="nav-item"><i class="ph ph-truck"></i><span>???? ????????</span></a>
+                    <a href="inv-documents.html?tab=all" class="nav-item active"><i class="ph ph-file-text"></i><span>??????? ?????????</span></a>
                 </div>
             </nav>
         </aside>
 
-        <!-- Main Content -->
         <main class="main-content inv-main">
-            <!-- Top Header -->
             <header class="top-header inv-header">
                 <div class="header-left-title">
-                    <h2>«·”‰œ«  Ê«·›Ê« Ì— «·„Œ“‰Ì…</h2>
-                    <p>√—‘Ì› Ê «—ÌŒ Ã„Ì⁄ «·Õ—ﬂ«  («” ·«„° ’—›°  ÕÊÌ·).</p>
+                    <h2>??????? ????????? ????????</h2>
+                    <p>????? ????? ????? ??????? (??????? ???? ?????) ?? ????? ???????? ???????.</p>
                 </div>
             </header>
 
@@ -65,34 +60,32 @@
                 <div class="card inv-main-table-card">
                     <div class="card-header inv-table-header">
                         <div class="filter-tabs" id="tx-tabs">
-                            <button class="filter-tab active" data-filter="all">Ã„Ì⁄ «·Õ—ﬂ« </button>
-                            <button class="filter-tab" data-filter="in">≈œŒ«· («” ·«„)</button>
-                            <button class="filter-tab" data-filter="out">≈Œ—«Ã (’—›)</button>
-                            <button class="filter-tab" data-filter="transfer"> ÕÊÌ·</button>
+                            <button type="button" class="filter-tab active" data-filter="all">???? ???????</button>
+                            <button type="button" class="filter-tab" data-filter="in">????? (??????)</button>
+                            <button type="button" class="filter-tab" data-filter="out">????? (???)</button>
+                            <button type="button" class="filter-tab" data-filter="transfer">?????</button>
                         </div>
                         <div class="inv-toolbar">
                             <div class="search-box">
                                 <i class="ph ph-magnifying-glass"></i>
-                                <input type="text" id="search-tx" placeholder="»ÕÀ »—ﬁ„ «·”‰œ...">
+                                <input type="text" id="search-tx" placeholder="??? ???? ????? ?? ???????? ?? ?????...">
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="table-responsive">
                         <table class="data-table inv-table">
                             <thead>
                                 <tr>
-                                    <th>—ﬁ„ «·”‰œ</th>
-                                    <th>‰Ê⁄ «·Õ—ﬂ…</th>
-                                    <th>«· «—ÌŒ Ê«·Êﬁ </th>
-                                    <th>≈Ã„«·Ì «· ﬂ·›… / «·ﬁÌ„…</th>
-                                    <th>„·«ÕŸ« </th>
-                                    <th>≈Ã—«¡« </th>
+                                    <th>??? ?????</th>
+                                    <th>??? ??????</th>
+                                    <th>??????? ??????</th>
+                                    <th>?????? ??????? / ??????</th>
+                                    <th>???????</th>
+                                    <th>???????</th>
                                 </tr>
                             </thead>
-                            <tbody id="tx-tbody">
-                                <!-- Filled by JS -->
-                            </tbody>
+                            <tbody id="tx-tbody"></tbody>
                         </table>
                     </div>
                 </div>
@@ -100,90 +93,8 @@
         </main>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const txBody = document.getElementById('tx-tbody');
-            const searchInput = document.getElementById('search-tx');
-            const tabs = document.querySelectorAll('.filter-tab');
-            let currentFilter = 'all';
-
-            // Check URL query string for default tab
-            const urlParams = new URLSearchParams(window.location.search);
-            if(urlParams.has('tab')) {
-                currentFilter = urlParams.get('tab');
-                tabs.forEach(t => {
-                    t.classList.remove('active');
-                    if(t.dataset.filter === currentFilter) t.classList.add('active');
-                });
-            }
-
-            let erpTx = JSON.parse(localStorage.getItem('erp_inventory_tx') || '[]');
-
-            function render() {
-                txBody.innerHTML = '';
-                const q = searchInput.value.toLowerCase();
-
-                let filtered = erpTx;
-                if(currentFilter !== 'all') {
-                    filtered = filtered.filter(t => t.type === currentFilter);
-                }
-                if(q) {
-                    filtered = filtered.filter(t => t.id.toLowerCase().includes(q));
-                }
-
-                // Sort newest first
-                filtered.sort((a,b) => b.date - a.date);
-
-                if(filtered.length === 0) {
-                    txBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#666">·«  ÊÃœ ”Ã·«  „ÿ«»ﬁ….</td></tr>';
-                    return;
-                }
-
-                filtered.forEach(tx => {
-                    let lblClass = ''; let lblName = ''; let note = '-';
-                    if(tx.type === 'in') { lblClass = 'lbl-in'; lblName = '«” ·«„ (œŒÊ·)'; }
-                    else if(tx.type === 'out') { lblClass = 'lbl-out'; lblName = '’—› (Œ—ÊÃ)'; }
-                    else if(tx.type === 'transfer') { 
-                        lblClass = 'lbl-transfer'; lblName = ' ÕÊÌ· œ«Œ·Ì'; 
-                        note = '„‰ ' + (tx.fromWh==='main'?'«·—∆Ì”Ì':tx.fromWh) + ' ≈·Ï ' + (tx.toWh==='main'?'«·—∆Ì”Ì':tx.toWh);
-                    }
-
-                    const dateStr = new Date(tx.date).toLocaleString('ar-SA');
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td><strong>${tx.id}</strong></td>
-                        <td><span class="type-label ${lblClass}">${lblName}</span></td>
-                        <td>${dateStr}</td>
-                        <td style="font-weight:700;">${tx.total.toFixed(2)} —.”</td>
-                        <td>${note}</td>
-                        <td>
-                            <button class="action-btn text-blue print-rx" data-id="${tx.id}" title="ÿ»«⁄… ‰”Œ…"><i class="ph ph-printer"></i></button>
-                        </td>
-                    `;
-                    txBody.appendChild(tr);
-                });
-
-                document.querySelectorAll('.print-rx').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const tId = e.currentTarget.dataset.id;
-                        alert('›Ì ‰Ÿ«„ ›⁄·Ì° ”Ì „ «” œ⁄«¡ ‰›” œ«·… «·ÿ»«⁄… «·Œ«’… »«·”‰œ: ' + tId + ' ·ÿ»«⁄ Â« „‰ «·√—‘Ì›.');
-                    });
-                });
-            }
-
-            tabs.forEach(tab => {
-                tab.addEventListener('click', () => {
-                    tabs.forEach(t => t.classList.remove('active'));
-                    tab.classList.add('active');
-                    currentFilter = tab.dataset.filter;
-                    render();
-                });
-            });
-
-            searchInput.addEventListener('input', render);
-            render();
-        });
-    </script>
-<script src="script.js"></script>
+    <script src="db-helper.js"></script>
+    <script src="inv-documents.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

@@ -1,46 +1,165 @@
 // kitchen-production.js
 
 let currentDb = null;
+/** تبويب المطبخ النشط — لإعادة الرسم بعد مزامنة القاعدة */
+let kpActiveTab = 'dashboard';
+
+const KITCHEN_PREFS_KEY = 'kitchen_prefs';
+
+const KITCHEN_PREFS_DEFAULT = {
+    sourceWarehouse: 'restaurant',
+    autoDeductOnSale: false,
+    soundAlertLowStock: true,
+    autoPrintReceive: true
+};
+
+function getKitchenPrefs() {
+    try {
+        return { ...KITCHEN_PREFS_DEFAULT, ...JSON.parse(localStorage.getItem(KITCHEN_PREFS_KEY) || '{}') };
+    } catch (e) {
+        return { ...KITCHEN_PREFS_DEFAULT };
+    }
+}
+
+function getKitchenSourceWh() {
+    const w = getKitchenPrefs().sourceWarehouse;
+    if (['main', 'restaurant', 'beverages'].includes(w)) return w;
+    return 'restaurant';
+}
+
+function kitchenWhLabel(wh) {
+    if (wh === 'main') return 'المستودع الرئيسي';
+    if (wh === 'restaurant') return 'مخزن المطعم الداخلي';
+    if (wh === 'beverages') return 'مخزن المشروبات';
+    return wh;
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Check and init DB
     currentDb = await window.dbRead();
     if (!currentDb.kitchenTx) {
-        await window.dbUpdate(db => {
+        await window.dbUpdate((db) => {
             if (!db.kitchenTx) db.kitchenTx = [];
         });
         currentDb.kitchenTx = [];
     }
 
-    // Navigation handling
     const navItems = document.querySelectorAll('#kp-nav-menu .nav-item[data-tab]');
-    
-    // Default Tab
-    switchTab('dashboard');
 
-    navItems.forEach(item => {
-        item.addEventListener('click', (e) => {
+    await switchTab('dashboard');
+
+    navItems.forEach((item) => {
+        item.addEventListener('click', async (e) => {
             e.preventDefault();
-            navItems.forEach(nav => nav.classList.remove('active'));
+            navItems.forEach((nav) => nav.classList.remove('active'));
             item.classList.add('active');
-            
+
             const tab = item.getAttribute('data-tab');
-            switchTab(tab);
+            await switchTab(tab);
         });
     });
+
+    if (typeof window.registerPosDatabaseRefresh === 'function') {
+        window.registerPosDatabaseRefresh(async () => {
+            currentDb = await window.dbRead();
+            await switchTab(kpActiveTab);
+            navItems.forEach((nav) => {
+                nav.classList.toggle('active', nav.getAttribute('data-tab') === kpActiveTab);
+            });
+        });
+    }
 });
 
-function switchTab(tab) {
+function playKitchenLowStockBeep() {
+    try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        const ctx = new Ctx();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.frequency.value = 880;
+        o.type = 'sine';
+        g.gain.setValueAtTime(0.12, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+        o.start(ctx.currentTime);
+        o.stop(ctx.currentTime + 0.22);
+        setTimeout(() => {
+            try {
+                ctx.close();
+            } catch (e2) {}
+        }, 400);
+    } catch (e) {}
+}
+
+function maybeRunKitchenStockSoundCheck(db) {
+    const p = getKitchenPrefs();
+    if (!p.soundAlertLowStock) return;
+    const list = db.kitchenStock || [];
+    for (const k of list) {
+        const min = k.minQty != null ? Number(k.minQty) : 3;
+        if ((Number(k.qty) || 0) <= min) {
+            playKitchenLowStockBeep();
+            setTimeout(() => playKitchenLowStockBeep(), 350);
+            break;
+        }
+    }
+}
+
+function printKitchenReceiveReceipt(tx, copyLabel) {
+    const wh = kitchenWhLabel(tx.sourceWarehouse || getKitchenSourceWh());
+    const win = window.open('', '_blank', 'width=450,height=620');
+    const label = copyLabel ? ` — نسخة ${copyLabel}` : '';
+    win.document.write(`
+        <html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>سند استلام${label}</title>
+        <style>
+            body { font-family:'Segoe UI',Tahoma,sans-serif; padding:22px; color:#333; text-align:center; }
+            .logo { font-size:22px; font-weight:900; margin-bottom:4px; }
+            .badge { display:inline-block; border:2px solid #333; padding:6px 18px; border-radius:6px; font-weight:700; margin:12px 0; }
+            .details { text-align:right; background:#f9f9f9; border-radius:8px; padding:14px; margin-bottom:16px; font-size:14px; }
+            .details p { margin:7px 0; border-bottom:1px solid #eee; padding-bottom:4px; }
+            .label { font-weight:700; display:inline-block; width:125px; }
+            @media print { button { display:none; } }
+        </style></head><body>
+            <div class="logo">🍽 هـش HASH</div>
+            <div style="color:#888;font-size:12px;margin-bottom:8px;">المطبخ — استلام من المخزن${label}</div>
+            <div class="badge">سند استلام #${tx.id}</div>
+            <div class="details">
+                <p><span class="label">المستودع المصدر:</span> ${wh}</p>
+                <p><span class="label">التاريخ:</span> ${new Date(tx.date).toLocaleString('ar-SA')}</p>
+                <p><span class="label">الصنف:</span> ${tx.itemName}</p>
+                <p><span class="label">الكمية:</span> ${tx.qty} ${tx.unit || ''}</p>
+                <p><span class="label">رصيد المخزن بعد:</span> ${tx.warehouseQtyAfter}</p>
+                <p><span class="label">ملاحظات:</span> ${tx.notes || '-'}</p>
+                <p><span class="label">المستلم:</span> ${tx.user || '-'}</p>
+            </div>
+            <button onclick="window.print()" style="padding:8px 18px;background:#ff4757;color:white;border:none;border-radius:6px;cursor:pointer;">طباعة</button>
+        </body></html>`);
+    win.document.close();
+}
+
+async function switchTab(tab) {
+    kpActiveTab = tab || 'dashboard';
     const contentArea = document.getElementById('main-content-area');
     const pageTitle = document.getElementById('page-title');
-    
-    contentArea.innerHTML = ''; // clear
+
+    contentArea.innerHTML = '';
+
+    if (tab === 'receive') {
+        currentDb = await window.dbRead();
+    }
 
     if (tab === 'dashboard') {
-        pageTitle.innerText = "لوحة رئيسية الإنتاج";
+        pageTitle.innerText = 'لوحة رئيسية الإنتاج';
         contentArea.innerHTML = renderDashboard();
+        setTimeout(async () => {
+            try {
+                const db = await window.dbRead();
+                maybeRunKitchenStockSoundCheck(db);
+            } catch (e) {}
+        }, 400);
     } else if (tab === 'receive') {
-        pageTitle.innerText = "استلام مواد من المخزن";
+        pageTitle.innerText = 'استلام مواد من المخزن';
         contentArea.innerHTML = renderReceive();
     } else if (tab === 'handover') {
         pageTitle.innerText = "تسليم للمبيعات";
@@ -64,23 +183,29 @@ window.saveKitchenReceive = async function() {
     const itemName = document.getElementById('kp-rcv-item').value;
     const qty = Number(document.getElementById('kp-rcv-qty').value);
     const notes = document.getElementById('kp-rcv-notes').value;
+    const sourceWh = getKitchenSourceWh();
 
-    if(!itemName || !qty || qty <= 0) {
-        alert("يرجى اختيار الصنف وتحديد الكمية بشكل صحيح");
+    if (!itemName || !qty || qty <= 0) {
+        alert('يرجى اختيار الصنف وتحديد الكمية بشكل صحيح');
         return;
     }
 
-    // Validate stock availability in warehouse first
     const db = await window.dbRead();
-    const invItem = (db.inventory || []).find(i => i.name === itemName);
+    const invItem = (db.inventory || []).find(
+        (i) => i.name === itemName && (i.warehouseId || 'main') === sourceWh
+    );
 
     if (!invItem) {
-        alert("⚠️ هذا الصنف غير موجود في المخزن! يرجى إضافته أولاً من صفحة المخازن.");
+        alert(
+            `⚠️ هذا الصنف غير موجود في ${kitchenWhLabel(sourceWh)}.\nغيّر «مستودع الاستلام» من إعدادات المطبخ أو انقل الرصيد من صفحة المخازن.`
+        );
         return;
     }
 
     if (invItem.qty < qty) {
-        alert(`⚠️ الكمية المطلوبة (${qty}) تتجاوز الرصيد المتوفر في المخزن (${invItem.qty} ${invItem.unit || ''})!\nيرجى المراجعة أو طلب تعبئة المخزن.`);
+        alert(
+            `⚠️ الكمية المطلوبة (${qty}) تتجاوز الرصيد في ${kitchenWhLabel(sourceWh)} (${invItem.qty} ${invItem.unit || ''})!`
+        );
         return;
     }
 
@@ -95,16 +220,17 @@ window.saveKitchenReceive = async function() {
         date: new Date().toISOString(),
         user: "الشيف أحمد",
         warehouseQtyBefore: invItem.qty,
-        warehouseQtyAfter: invItem.qty - qty
+        warehouseQtyAfter: invItem.qty - qty,
+        sourceWarehouse: sourceWh
     };
 
-    await window.dbUpdate(db => {
-        // 1. Save the transaction
+    await window.dbUpdate((db) => {
         if (!db.kitchenTx) db.kitchenTx = [];
         db.kitchenTx.push(newTx);
 
-        // 2. Deduct from warehouse inventory
-        const idx = (db.inventory || []).findIndex(i => i.name === itemName);
+        const idx = (db.inventory || []).findIndex(
+            (i) => i.name === itemName && (i.warehouseId || 'main') === sourceWh
+        );
         if (idx !== -1) {
             db.inventory[idx].qty -= qty;
         }
@@ -114,15 +240,31 @@ window.saveKitchenReceive = async function() {
         const kIdx = db.kitchenStock.findIndex(k => k.name === itemName);
         if (kIdx !== -1) {
             db.kitchenStock[kIdx].qty += qty;
+            if (db.kitchenStock[kIdx].minQty == null && invItem.minQty != null) {
+                db.kitchenStock[kIdx].minQty = Number(invItem.minQty);
+            }
         } else {
-            db.kitchenStock.push({ name: itemName, sku: invItem.sku, unit: invItem.unit || '', qty: qty });
+            db.kitchenStock.push({
+                name: itemName,
+                sku: invItem.sku,
+                unit: invItem.unit || '',
+                qty: qty,
+                minQty: invItem.minQty != null ? Number(invItem.minQty) : 3
+            });
         }
     });
 
     currentDb = await window.dbRead();
 
+    const prefs = getKitchenPrefs();
+    if (prefs.autoPrintReceive) {
+        printKitchenReceiveReceipt(newTx, 1);
+        setTimeout(() => printKitchenReceiveReceipt(newTx, 2), 650);
+    }
+    maybeRunKitchenStockSoundCheck(currentDb);
+
     alert(`✅ تم حفظ سند الاستلام #${newTx.id} بنجاح!\n\n📦 ${itemName}\nالكمية المستلمة: ${qty}\nرصيد المخزن الجديد: ${newTx.warehouseQtyAfter}`);
-    switchTab('dashboard');
+    await switchTab('dashboard');
 };
 
 window.saveKitchenHandover = async function() {
@@ -249,13 +391,17 @@ function renderDashboard() {
 }
 
 function renderReceive() {
-    let inventoryItems = (currentDb && currentDb.inventory) ? currentDb.inventory : [];
-    let optionsJSON = inventoryItems.map(i => `<option value="${i.name}">${i.name} (متوفر: ${i.qty})</option>`).join('');
+    const wh = getKitchenSourceWh();
+    let inventoryItems = currentDb && currentDb.inventory ? currentDb.inventory : [];
+    inventoryItems = inventoryItems.filter((i) => (i.warehouseId || 'main') === wh);
+    const optionsJSON = inventoryItems
+        .map((i) => `<option value="${i.name.replace(/"/g, '&quot;')}">${i.name} (متوفر: ${i.qty})</option>`)
+        .join('');
 
     return `
         <div class="kp-card">
             <h3><i class="ph ph-download-simple"></i> سند استلام من المخزن للمطبخ</h3>
-            <p style="color:var(--text-muted); margin-bottom:20px;">قم بتسجيل الكميات والمواد الخام المستلمة من مستودع المطعم الرئيسي لبدء عملية الإنتاج.</p>
+            <p style="color:var(--text-muted); margin-bottom:20px;">المصدر الحالي: <strong style="color:var(--accent-orange)">${kitchenWhLabel(wh)}</strong> — يمكن تغييره من تبويب «خيارات إعدادات المطبخ».</p>
             
             <div class="kp-form-grid">
                 <div class="kp-form-group">
@@ -478,7 +624,7 @@ window.printKitchenReport = function() {
         </tr>`).join('');
     const win = window.open('', '_blank', 'width=900,height=700');
     win.document.write(`
-        <html dir="rtl" lang="ar"><head><title>تقرير المطبخ والإنتاج</title>
+        <html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير المطبخ والإنتاج</title>
         <style>
             body { font-family: 'Segoe UI', Tahoma, sans-serif; padding:30px; color:#333; }
             h1 { text-align:center; font-size:22px; margin-bottom:5px; }
@@ -512,7 +658,7 @@ window.printSingleTx = function(txId) {
     const typeName = t.type === 'receive' ? 'سند استلام من المخزن' : 'سند تسليم للمبيعات';
     const win = window.open('', '_blank', 'width=450,height=650');
     win.document.write(`
-        <html dir="rtl" lang="ar"><head><title>${typeName}</title>
+        <html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>${typeName}</title>
         <style>
             body { font-family:'Segoe UI',Tahoma,sans-serif; padding:25px; color:#333; text-align:center; }
             .logo { font-size:24px; font-weight:900; margin-bottom:5px; }
@@ -549,18 +695,29 @@ window.printSingleTx = function(txId) {
 
 
 function renderOptions() {
+    const p = getKitchenPrefs();
+    const wh = getKitchenSourceWh();
     return `
         <div class="kp-card">
             <h3><i class="ph ph-gear"></i> الإعدادات المتقدمة للمطبخ والانتاج</h3>
+
+            <div class="kp-form-group" style="margin-top:20px; max-width:480px;">
+                <label>مستودع الاستلام الافتراضي (يُخصم منه الرصيد عند سند الاستلام وعند البيع إن فُعّل الخصم التلقائي)</label>
+                <select class="kp-select" id="kp-pref-wh">
+                    <option value="main" ${wh === 'main' ? 'selected' : ''}>المستودع الرئيسي</option>
+                    <option value="restaurant" ${wh === 'restaurant' ? 'selected' : ''}>مخزن المطعم الداخلي</option>
+                    <option value="beverages" ${wh === 'beverages' ? 'selected' : ''}>مخزن المشروبات</option>
+                </select>
+            </div>
             
             <div style="display:flex; flex-direction:column; gap:15px; margin-top:20px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid var(--border-color);">
                     <div>
                         <h4 style="margin:0;">خصم تلقائي من المخزن بمجرد البيع (بدون تسليم مسبق)</h4>
-                        <span style="font-size:12px; color:var(--text-muted);">إذا كان مفعلاً، يتم تجاهل شاشة "التسليم والمبيعات" للموازنة وتطبيق الوصفات مباشرة.</span>
+                        <span style="font-size:12px; color:var(--text-muted);">يُخصم من المستودع أعلاه عند تأكيد الدفع في نقطة البيع (باسم الصنف أو عبر حقل rawMaterials في المنتج). شاشة KDS لن تُنشئ تسليماً تلقائياً لمخزون المطبخ.</span>
                     </div>
                     <label class="switch">
-                        <input type="checkbox">
+                        <input type="checkbox" id="kp-pref-auto-deduct" ${p.autoDeductOnSale ? 'checked' : ''}>
                         <span class="slider round"></span>
                     </label>
                 </div>
@@ -568,29 +725,46 @@ function renderOptions() {
                 <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid var(--border-color);">
                     <div>
                         <h4 style="margin:0;">تنبيه صوتي باقتراب نفاذ مواد المطبخ</h4>
-                        <span style="font-size:12px; color:var(--text-muted);">يقوم بإطلاق جرس إنذار عند بلوغ المخزون الداخلي أدنى حد.</span>
+                        <span style="font-size:12px; color:var(--text-muted);">صفّارة قصيرة عند دخول لوحة المطبخ إذا كان رصيد مادة في مخزون المطبخ الداخلي ≤ الحد الأدنى (من المخزن أو 3 افتراضياً).</span>
                     </div>
                     <label class="switch">
-                        <input type="checkbox" checked>
+                        <input type="checkbox" id="kp-pref-sound" ${p.soundAlertLowStock ? 'checked' : ''}>
                         <span class="slider round"></span>
                     </label>
                 </div>
                 
                 <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid var(--border-color);">
                     <div>
-                        <h4 style="margin:0;">طباعة سند التحويل تلقائياً</h4>
-                        <span style="font-size:12px; color:var(--text-muted);">بمجرد الاستلام من المخزن يطبع سند استلام مباشر (نسختين).</span>
+                        <h4 style="margin:0;">طباعة سند الاستلام تلقائياً</h4>
+                        <span style="font-size:12px; color:var(--text-muted);">بعد حفظ سند الاستلام من المخزن يُفتحان نافذتان للطباعة (نسختان).</span>
                     </div>
                     <label class="switch">
-                        <input type="checkbox" checked>
+                        <input type="checkbox" id="kp-pref-autoprint" ${p.autoPrintReceive ? 'checked' : ''}>
                         <span class="slider round"></span>
                     </label>
                 </div>
             </div>
             
             <div style="margin-top:30px;">
-                <button class="kp-action-btn"><i class="ph ph-floppy-disk"></i> حفظ الإعدادات</button>
+                <button type="button" class="kp-action-btn" onclick="window.saveKitchenPrefs()"><i class="ph ph-floppy-disk"></i> حفظ الإعدادات</button>
             </div>
         </div>
     `;
 }
+
+window.saveKitchenPrefs = function () {
+    const sel = document.getElementById('kp-pref-wh');
+    const autoD = document.getElementById('kp-pref-auto-deduct');
+    const sound = document.getElementById('kp-pref-sound');
+    const autop = document.getElementById('kp-pref-autoprint');
+    const prev = getKitchenPrefs();
+    const sw = sel && sel.value;
+    const next = {
+        sourceWarehouse: ['main', 'restaurant', 'beverages'].includes(sw) ? sw : prev.sourceWarehouse,
+        autoDeductOnSale: !!(autoD && autoD.checked),
+        soundAlertLowStock: !!(sound && sound.checked),
+        autoPrintReceive: !!(autop && autop.checked)
+    };
+    localStorage.setItem(KITCHEN_PREFS_KEY, JSON.stringify(next));
+    alert('تم حفظ إعدادات المطبخ (المستودع، الخصم عند البيع، التنبيه الصوتي، الطباعة التلقائية).');
+};

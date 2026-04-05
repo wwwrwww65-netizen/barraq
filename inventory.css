@@ -248,11 +248,13 @@
     opacity: 0;
     visibility: hidden;
     transition: var(--transition);
+    pointer-events: none;
 }
 
 .modal-overlay.active {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
 }
 
 .modal-box {
@@ -323,4 +325,8 @@
     color: var(--text-muted);
 }
 
+.nav-item.nav-filter-active {
+    border-right: 3px solid var(--accent-orange);
+    background: rgba(245, 158, 11, 0.1);
+}
 

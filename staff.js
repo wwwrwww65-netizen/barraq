@@ -1,27 +1,61 @@
 // ✅ staff.js — HR Module fully connected to pos_database.json (Premium Full-Page Design)
-const fs = require('fs');
 const nodePath = require('path');
-const dbPath = require('electron').ipcRenderer.sendSync('get-db-path');
-
-function loadDB() {
-    try { return JSON.parse(fs.readFileSync(dbPath, 'utf8')); }
-    catch(e) { return {}; }
-}
-function saveDB(db) { fs.writeFileSync(dbPath, JSON.stringify(db, null, 2)); }
 const fmt = (n) => Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-// ── DB State ──────────────────────────────────────────────────
-let db = loadDB();
-if (!db.employees)  db.employees  = [];
-if (!db.hrExpenses) db.hrExpenses = [];
-if (!db.attendance) db.attendance = [];
+let db = {};
 
-if (db.employees.length === 0) {
-    db.employees = [
-        { id:'EMP-001', name:'أحمد الكاشير', role:'كاشير', nationality:'يمني', phone:'0551234567', iqama:'2100001111', expiry:'2026-08-14', salary:4500, loans:200, status:'active', startDate:'2024-01-15', notes:'', avatar:'' },
-        { id:'EMP-002', name:'محمد علي صالح', role:'مطبخ', nationality:'مصري', phone:'0501112223', iqama:'2200002222', expiry:'2027-01-02', salary:5200, loans:0, status:'active', startDate:'2023-06-10', notes:'شيف رئيسي' }
-    ];
-    saveDB(db);
+async function persistDb() {
+    await window.dbWrite(db);
+}
+
+/** يمنع بقاء التركيز داخل حقل مخفي بعد إغلاق المودال (يسبب عدم استقبال الكتابة عند إعادة الفتح). */
+function hideAdvanceVoucherError() {
+    const el = document.getElementById('advance-voucher-inline-error');
+    if (el) {
+        el.style.display = 'none';
+        el.textContent = '';
+    }
+}
+
+/** رسالة تحقق داخل المودال — بدون window.alert (في Electron يكسر التركيز والكتابة). */
+function showAdvanceVoucherError(message) {
+    const modal = document.getElementById('advance-modal');
+    if (modal) {
+        modal.removeAttribute('inert');
+        modal.classList.add('active');
+    }
+    const el = document.getElementById('advance-voucher-inline-error');
+    if (el) {
+        el.textContent = message;
+        el.style.display = 'block';
+    }
+}
+
+function closeHrModal(modalOrId) {
+    const modal = typeof modalOrId === 'string' ? document.getElementById(modalOrId) : modalOrId;
+    if (!modal) return;
+    if (modal.id === 'advance-modal') hideAdvanceVoucherError();
+    modal.classList.remove('active');
+    modal.setAttribute('inert', '');
+    const ae = document.activeElement;
+    if (ae && modal.contains(ae)) {
+        try {
+            ae.blur();
+        } catch (_) { /* ignore */ }
+    }
+    try {
+        document.body.setAttribute('tabindex', '-1');
+        document.body.focus({ preventScroll: true });
+        document.body.removeAttribute('tabindex');
+    } catch (_) { /* ignore */ }
+}
+
+function openHrModal(modalId) {
+    const m = document.getElementById(modalId);
+    if (!m) return;
+    if (modalId === 'advance-modal') hideAdvanceVoucherError();
+    m.removeAttribute('inert');
+    m.classList.add('active');
 }
 
 // ── Role Config ───────────────────────────────────────────────
@@ -49,7 +83,7 @@ window.showView = function(viewId, navId) {
     if(viewId === 'view-employees') renderEmployees();
     if(viewId === 'view-payroll') renderPayroll();
     if(viewId === 'view-vouchers') renderVouchers();
-    if(viewId === 'view-deductions') renderDeductions();
+    if(viewId === 'view-deductions') void renderDeductions();
     if(viewId === 'view-add-employee') {
         if(navId === 'nav-new-emp') {
             document.getElementById('form-new-emp').reset();
@@ -320,7 +354,7 @@ window.openFullProfile = function(id) {
     document.getElementById('pro-btn-print').onclick = () => window.print();
 
     // ── Delete Button ─────────────────────────────────────────────────
-    document.getElementById('pro-btn-delete').onclick = () => {
+    document.getElementById('pro-btn-delete').onclick = async () => {
         const confirmed = confirm(
             `⚠️ حذف الموظف: ${emp.name}\n\n` +
             `• سيُحذف ملف الموظف من قائمة الموظفين.\n` +
@@ -341,7 +375,7 @@ window.openFullProfile = function(id) {
         } catch(e) {}
 
         // Save and navigate
-        saveDB(db);
+        await persistDb();
         showView('view-employees', 'nav-employees');
         renderStaff();
         updateKPIs();
@@ -416,7 +450,7 @@ function renderProfileAttendance(empId) {
         </tr>`).join('');
 }
 
-window.markAttendanceQuick = function(empId, status) {
+window.markAttendanceQuick = async function(empId, status) {
     if(!empId) return;
     const now = new Date();
     const dateStr = now.toLocaleDateString('ar-SA');
@@ -432,7 +466,7 @@ window.markAttendanceQuick = function(empId, status) {
     }
     
     // Save attendance immediately
-    saveDB(db);
+    await persistDb();
     renderEmployees();
     
     if(currentProfileId === empId) {
@@ -446,7 +480,7 @@ window.markAttendanceQuick = function(empId, status) {
         if(emp && db.penaltyRules) {
             const absenceRule = db.penaltyRules.find(r => r.type === 'absence');
             if(absenceRule) {
-                setTimeout(() => {
+                setTimeout(async () => {
                     if(confirm(`هل تريد تطبيق خصم آلي (جزاء غياب) بقيمة ${absenceRule.amount} ر.س على الموظف؟`)) {
                         emp.loans = (emp.loans || 0) + absenceRule.amount;
                         if(!db.hrExpenses) db.hrExpenses = [];
@@ -458,10 +492,10 @@ window.markAttendanceQuick = function(empId, status) {
                             date: dateStr,
                             timestamp: Date.now()
                         });
-                        saveDB(db);
+                        await persistDb();
                         updateKPIs();
                         renderEmployees();
-                        if(document.getElementById('view-deductions').style.display==='block') renderDeductions();
+                        if(document.getElementById('view-deductions').style.display==='block') await renderDeductions();
                         alert('تم خصم الجزاء على الموظف بنجاح!');
                     }
                 }, 300);
@@ -481,12 +515,22 @@ window.openAdvanceModalForCurrent = function() {
         populateEmpSelect();
         document.getElementById('voucher-employee').value = emp.name;
         document.getElementById('voucher-employee').disabled = true;
-        document.getElementById('advance-modal').classList.add('active');
+        openHrModal('advance-modal');
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const a = document.getElementById('voucher-amount');
+                try {
+                    a?.focus({ preventScroll: true });
+                } catch (_) {
+                    a?.focus();
+                }
+            });
+        });
     }
 };
 
 // ── Save New / Edit Employee ──────────────────────────────────
-document.getElementById('form-new-emp')?.addEventListener('submit', (e) => {
+document.getElementById('form-new-emp')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const editId = e.target.dataset.editId;
     const empData = {
@@ -516,7 +560,7 @@ document.getElementById('form-new-emp')?.addEventListener('submit', (e) => {
         db.employees.push(empData);
     }
 
-    saveDB(db);
+    await persistDb();
     e.target.reset();
     currentAvatarBase64 = '';
     delete e.target.dataset.editId;
@@ -539,11 +583,21 @@ function populateEmpSelect() {
 
 document.getElementById('btn-open-advance-modal')?.addEventListener('click', () => {
     populateEmpSelect();
-    document.getElementById('advance-modal').classList.add('active');
+    openHrModal('advance-modal');
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            const el = document.getElementById('voucher-employee');
+            try {
+                el?.focus({ preventScroll: true });
+            } catch (_) {
+                el?.focus();
+            }
+        });
+    });
 });
 
 document.getElementById('btn-close-advance-modal')?.addEventListener('click', () => {
-    document.getElementById('advance-modal').classList.remove('active');
+    closeHrModal('advance-modal');
 });
 
 
@@ -591,7 +645,7 @@ function renderVouchers() {
 }
 
 // ── Deductions View & Rules ────────────────────────────────
-function renderDeductions() {
+async function renderDeductions() {
     // 1. Render Rules
     const rulesTbody = document.getElementById('rules-tbody');
     if (rulesTbody) {
@@ -601,7 +655,7 @@ function renderDeductions() {
                 { id: 'rule_delay', name: 'تأخير عن الدوام', amount: 50, type: 'delay', isSystem: true },
                 { id: 'rule_misc', name: 'إهمال متعمد أو تلف أدوات', amount: 200, type: 'misc', isSystem: false }
             ];
-            saveDB(db);
+            await persistDb();
         }
         if(db.penaltyRules.length === 0) {
             rulesTbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:15px;color:var(--text-muted);">لا توجد قواعد مسجلة.</td></tr>';
@@ -639,11 +693,11 @@ function renderDeductions() {
     tbody.innerHTML = html;
 }
 
-window.deletePenaltyRule = function(index) {
+window.deletePenaltyRule = async function(index) {
     if(!confirm('هل أنت متأكد من حذف هذه القاعدة؟')) return;
     db.penaltyRules.splice(index, 1);
-    saveDB(db);
-    renderDeductions();
+    await persistDb();
+    await renderDeductions();
 };
 
 // ── Penalty Modal Generic ────────────────────────────────────
@@ -663,7 +717,17 @@ document.getElementById('btn-open-penalty-modal')?.addEventListener('click', () 
 
     document.getElementById('penalty-amount').value = '';
     document.getElementById('penalty-reason').value = '';
-    document.getElementById('penalty-modal').classList.add('active');
+    openHrModal('penalty-modal');
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            const el = document.getElementById('penalty-employee');
+            try {
+                el?.focus({ preventScroll: true });
+            } catch (_) {
+                el?.focus();
+            }
+        });
+    });
 });
 
 // Auto-fill penalty amount when a configured reason is picked
@@ -677,10 +741,10 @@ document.getElementById('penalty-reason')?.addEventListener('input', (e) => {
 });
 
 document.getElementById('btn-close-penalty-modal')?.addEventListener('click', () => {
-    document.getElementById('penalty-modal').classList.remove('active');
+    closeHrModal('penalty-modal');
 });
 
-document.getElementById('form-penalty-trx')?.addEventListener('submit', (e) => {
+document.getElementById('form-penalty-trx')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const employee = document.getElementById('penalty-employee').value;
     const amount   = Number(document.getElementById('penalty-amount').value);
@@ -703,32 +767,61 @@ document.getElementById('form-penalty-trx')?.addEventListener('submit', (e) => {
         timestamp: Date.now()
     });
 
-    saveDB(db);
-    document.getElementById('penalty-modal').classList.remove('active');
+    await persistDb();
+    closeHrModal('penalty-modal');
     e.target.reset();
     
     updateKPIs();
     renderEmployees();
-    if(document.getElementById('view-deductions').style.display==='block') renderDeductions();
+    if(document.getElementById('view-deductions').style.display==='block') await renderDeductions();
     
     alert('تم تطبيق الخصم على الموظف وتسجيله في حسابه بنجاح!');
 });
 
 // ── Rule Modal Submit ────────────────────────────────────────
+window.openRuleModalForCreate = function() {
+    const form = document.getElementById('form-rule-create');
+    if (form) delete form.dataset.editIndex;
+    const n = document.getElementById('rule-name');
+    const a = document.getElementById('rule-amount');
+    if (n) n.value = '';
+    if (a) a.value = '';
+    openHrModal('rule-modal');
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            try {
+                n?.focus({ preventScroll: true });
+            } catch (_) {
+                n?.focus();
+            }
+        });
+    });
+};
+
 window.editPenaltyRule = function(index) {
     const r = db.penaltyRules[index];
     document.getElementById('rule-name').value = r.name;
     document.getElementById('rule-amount').value = r.amount;
     document.getElementById('form-rule-create').dataset.editIndex = index;
-    document.getElementById('rule-modal').classList.add('active');
+    openHrModal('rule-modal');
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            const el = document.getElementById('rule-name');
+            try {
+                el?.focus({ preventScroll: true });
+            } catch (_) {
+                el?.focus();
+            }
+        });
+    });
 };
 
 document.getElementById('btn-close-rule-modal')?.addEventListener('click', () => {
-    document.getElementById('rule-modal').classList.remove('active');
+    closeHrModal('rule-modal');
     delete document.getElementById('form-rule-create').dataset.editIndex;
 });
 
-document.getElementById('form-rule-create')?.addEventListener('submit', (e) => {
+document.getElementById('form-rule-create')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if(!db.penaltyRules) db.penaltyRules = [];
     const rxName = document.getElementById('rule-name').value;
@@ -745,24 +838,42 @@ document.getElementById('form-rule-create')?.addEventListener('submit', (e) => {
         db.penaltyRules.push({ id: Date.now().toString(), name: rxName, amount: rxAmt, type: 'custom', isSystem: false });
     }
     
-    saveDB(db);
+    await persistDb();
     
-    document.getElementById('rule-modal').classList.remove('active');
+    closeHrModal('rule-modal');
     e.target.reset();
-    renderDeductions();
+    await renderDeductions();
 });
 
 
 // ── Generate Voucher ─────────────────────────────────────────
 window.generateVoucher = async function(typeStr) {
-    const employee = document.getElementById('voucher-employee').value;
-    const amount   = document.getElementById('voucher-amount').value;
-    const reason   = document.getElementById('voucher-reason').value;
+    const employee = (document.getElementById('voucher-employee')?.value || '').trim();
+    const amount   = String(document.getElementById('voucher-amount')?.value || '').trim();
+    const reason   = (document.getElementById('voucher-reason')?.value || '').trim();
 
     if (!employee || !amount || !reason) {
-        alert('يرجى تعبئة جميع الحقول أولاً.');
+        const lines = ['يرجى إكمال البيانات التالية:'];
+        if (!employee) lines.push('• اختر الموظف المستفيد');
+        if (!amount) lines.push('• أدخل المبلغ');
+        if (!reason) lines.push('• اكتب البيان / السبب');
+        showAdvanceVoucherError(lines.join('\n'));
+        const target = !employee
+            ? document.getElementById('voucher-employee')
+            : !amount
+              ? document.getElementById('voucher-amount')
+              : document.getElementById('voucher-reason');
+        requestAnimationFrame(() => {
+            try {
+                target?.focus({ preventScroll: true });
+            } catch (_) {
+                target?.focus();
+            }
+        });
         return;
     }
+
+    hideAdvanceVoucherError();
 
     const todayStr = new Date().toISOString().split('T')[0].replace(/-/g, '/');
     if (document.getElementById('v-date')) document.getElementById('v-date').innerText = todayStr;
@@ -774,7 +885,11 @@ window.generateVoucher = async function(typeStr) {
     if (document.getElementById('v-reason-text')) document.getElementById('v-reason-text').innerText = reason;
     if (document.getElementById('v-balance-text')) document.getElementById('v-balance-text').innerText = typeStr.includes('له') ? 'له ' + amount : 'عليه ' + amount;
 
+    const paySel = document.getElementById('voucher-pay-method');
+    const pMethod = paySel && paySel.value === 'bank' ? 'bank' : 'cash';
+
     const printContainer = document.getElementById('voucher-print-container');
+    let voucherEl = null;
     printContainer.style.top     = '0';
     printContainer.style.left    = '0';
     printContainer.style.opacity = '1';
@@ -802,8 +917,15 @@ window.generateVoucher = async function(typeStr) {
             }
         } catch(e) {}
 
+        closeHrModal('advance-modal');
+        const vAmt = document.getElementById('voucher-amount');
+        const vRsn = document.getElementById('voucher-reason');
+        if (vAmt) vAmt.value = '';
+        if (vRsn) vRsn.value = '';
+        await new Promise((r) => setTimeout(r, 0));
+
         // Position container at start of page with correct size BEFORE capturing
-        const voucherEl = document.getElementById('voucher-template');
+        voucherEl = document.getElementById('voucher-template');
         printContainer.style.position = 'fixed';
         printContainer.style.top = '-9999px';
         printContainer.style.left = '0';
@@ -825,15 +947,6 @@ window.generateVoucher = async function(typeStr) {
             logging: false
         });
 
-        // Cleanup
-        voucherEl.style.width = '';
-        voucherEl.style.minWidth = '';
-        printContainer.style.position = 'absolute';
-        printContainer.style.top  = '-9999px';
-        printContainer.style.left = '-9999px';
-        printContainer.style.width = '';
-        printContainer.style.opacity = '0';
-
         // Resize to exact target: 1132 × 1600 px
         const TARGET_W = 1600;
         const TARGET_H = 1132;
@@ -849,11 +962,15 @@ window.generateVoucher = async function(typeStr) {
 
         const imgData = finalCanvas.toDataURL('image/jpeg', 0.95);
 
-        document.getElementById('advance-modal').classList.remove('active');
-        document.getElementById('voucher-amount').value = '';
-        document.getElementById('voucher-reason').value = '';
-
-        const newEntry = { employee, amount: Number(amount), type: typeStr, reason, date: new Date().toLocaleDateString('ar-SA'), timestamp: Date.now() };
+        const newEntry = {
+            employee,
+            amount: Number(amount),
+            type: typeStr,
+            reason,
+            date: new Date().toLocaleDateString('ar-SA'),
+            timestamp: Date.now(),
+            pMethod,
+        };
         if (!db.hrExpenses) db.hrExpenses = [];
         db.hrExpenses.push(newEntry);
 
@@ -862,7 +979,7 @@ window.generateVoucher = async function(typeStr) {
             if (emp) emp.loans = (emp.loans || 0) + Number(amount);
         }
 
-        saveDB(db);
+        await persistDb();
         updateKPIs();
         renderEmployees();
         
@@ -887,10 +1004,15 @@ window.generateVoucher = async function(typeStr) {
                         let phoneNum = String(empObj.phone).replace(/^0/, '+966');
                         const captionMsg = `مرحباً ${empObj.name}،\nتم إصدار سند لعملية ( ${typeStr} ) بقيمة ${amount} ر.س.\nالبيان: ${reason}`;
                         const { ipcRenderer } = require('electron');
+                        const hubIp =
+                            typeof window.resolveWaHubIp === 'function'
+                                ? window.resolveWaHubIp(waSettings)
+                                : (waSettings.hubIp && String(waSettings.hubIp).trim()) || '';
                         ipcRenderer.send('wa-send-message', {
                             number: phoneNum,
                             text: captionMsg,
-                            image: imgData
+                            image: imgData,
+                            waHubIp: hubIp,
                         });
                         console.log('Sending WA directly to employee:', phoneNum);
                     }
@@ -900,11 +1022,40 @@ window.generateVoucher = async function(typeStr) {
     } catch(err) {
         console.error('Voucher Error', err);
         alert('حدث خطأ أثناء التوليد.');
+    } finally {
+        if (voucherEl) {
+            voucherEl.style.width = '';
+            voucherEl.style.minWidth = '';
+        }
+        printContainer.style.position = 'absolute';
+        printContainer.style.top = '-9999px';
+        printContainer.style.left = '-9999px';
+        printContainer.style.width = '';
+        printContainer.style.opacity = '0';
+        printContainer.style.zIndex = '';
+        document.querySelectorAll('iframe.html2canvas-container').forEach((f) => {
+            try {
+                f.remove();
+            } catch (_) { /* ignore */ }
+        });
     }
 };
 
 // ── DOM Init ──────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    db = await window.dbRead();
+    if (!db.employees) db.employees = [];
+    if (!db.hrExpenses) db.hrExpenses = [];
+    if (!db.attendance) db.attendance = [];
+
+    if (db.employees.length === 0) {
+        db.employees = [
+            { id:'EMP-001', name:'أحمد الكاشير', role:'كاشير', nationality:'يمني', phone:'0551234567', iqama:'2100001111', expiry:'2026-08-14', salary:4500, loans:200, status:'active', startDate:'2024-01-15', notes:'', avatar:'' },
+            { id:'EMP-002', name:'محمد علي صالح', role:'مطبخ', nationality:'مصري', phone:'0501112223', iqama:'2200002222', expiry:'2027-01-02', salary:5200, loans:0, status:'active', startDate:'2023-06-10', notes:'شيف رئيسي' }
+        ];
+        await persistDb();
+    }
+
     // Nav Click Event Listeners
     document.getElementById('nav-employees')?.addEventListener('click', (e) => { e.preventDefault(); showView('view-employees', 'nav-employees'); });
     document.getElementById('nav-new-emp')?.addEventListener('click', (e) => { e.preventDefault(); showView('view-add-employee', 'nav-new-emp'); });
@@ -929,4 +1080,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     renderEmployees();
+
+    if (typeof window.registerPosDatabaseRefresh === 'function') {
+        window.registerPosDatabaseRefresh(async () => {
+            db = await window.dbRead();
+            if (!db.employees) db.employees = [];
+            if (!db.hrExpenses) db.hrExpenses = [];
+            if (!db.attendance) db.attendance = [];
+            updateKPIs();
+            renderEmployees();
+            renderPayroll();
+            renderVouchers();
+            await renderDeductions();
+            populateEmpSelect();
+        });
+    }
 });
