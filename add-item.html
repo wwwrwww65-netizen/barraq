@@ -106,14 +106,38 @@
 
                         <div class="form-card">
                             <h3 class="card-title-small"><i class="ph ph-plus-circle"></i> الإضافات والتعديلات (Modifiers)</h3>
-                            <div class="modifier-list">
-                                <div class="modifier-item">
-                                    <input type="text" class="input-modern mod-name" value="إضافة جبن" readonly>
-                                    <input type="text" class="input-modern mod-price" value="+2.00 ر.س" readonly>
-                                    <button type="button" class="btn-icon remove"><i class="ph ph-trash"></i></button>
+                            <div class="modifier-list" id="modifiers-list">
+                                <!-- سيتم إضافة التعديلات هنا عبر الـ JS -->
+                            </div>
+                            <button type="button" class="btn-text-add" id="btn-add-modifier"><i class="ph ph-plus"></i> إنشاء إضافة جديدة</button>
+                        </div>
+                        
+                        <div class="form-card">
+                            <h3 class="card-title-small"><i class="ph ph-cooking-pot"></i> مكونات الصنف (المقادير للخصم التلقائي)</h3>
+                            <p style="color:var(--text-muted); font-size:12px; margin-bottom:15px;">
+                                حدد المواد الخام المخزنية التي يتكون منها هذا الصنف. لخصمها تلقائياً عند بيع الوجبة.
+                            </p>
+                            
+                            <div class="modifier-list" id="recipe-list">
+                                <!-- سيتم إضافة المكونات المحددة هنا عبر الـ JS -->
+                            </div>
+                            
+                            <div class="recipe-selector-container" style="position:relative; margin-top:10px;">
+                                <button type="button" class="btn-text-add" id="btn-add-recipe-ingredient">
+                                    <i class="ph ph-link"></i> ربط مادة خام من المخزن
+                                </button>
+                                
+                                <!-- نافذة المكونات المنبثقة -->
+                                <div id="recipe-dropdown" class="recipe-dropdown">
+                                    <div class="recipe-search-box">
+                                        <i class="ph ph-magnifying-glass"></i>
+                                        <input type="text" id="recipe-search-input" placeholder="ابحث في مستودع المواد الخام..." class="input-modern" autocomplete="off">
+                                    </div>
+                                    <ul id="recipe-inv-list" class="recipe-inv-list">
+                                        <!-- Items will be injected here by JS -->
+                                    </ul>
                                 </div>
                             </div>
-                            <button type="button" class="btn-text-add"><i class="ph ph-plus"></i> إنشاء إضافة جديدة</button>
                         </div>
                     </div>
 
@@ -151,7 +175,7 @@
                                     <p>ربط الصنف بالمخزون للخصم التلقائي عند البيع.</p>
                                 </div>
                                 <label class="switch">
-                                    <input type="checkbox">
+                                    <input type="checkbox" id="track-inventory-toggle" checked>
                                     <span class="slider round"></span>
                                 </label>
                             </div>

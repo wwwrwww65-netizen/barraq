@@ -4,7 +4,7 @@
     <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>????? HASH ? ??????? ????????? ????????</title>
+    <title>سمر هش POS | المستندات والحركات المخزنية</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="inventory.css">
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
@@ -23,27 +23,27 @@
     <div class="app-container">
         <aside class="sidebar inv-sidebar">
             <div class="logo">
-                <img src="1111.png" alt="????" class="restaurant-logo" onerror="this.src='placeholder.svg'">
-                <span>????? <span class="highlight">???????</span></span>
+                <img src="1111.png" alt="شعار" class="restaurant-logo" onerror="this.src='placeholder.svg'">
+                <span>سمر هش <span class="highlight">POS</span></span>
             </div>
 
             <nav class="nav-menu">
                 <div class="nav-group">
-                    <p class="nav-label">???? ????? ???????</p>
-                    <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>?????? ????? ???????</span></a>
+                    <p class="nav-label">نطاق العمل الرئيسي</p>
+                    <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>العودة للوحة القيادة</span></a>
                 </div>
 
                 <div class="nav-group">
-                    <p class="nav-label">???? ???? ???????</p>
-                    <a href="inventory.html" class="nav-item"><i class="ph ph-packages"></i><span>???? ???? ??????</span></a>
-                    <a href="inv-documents.html?tab=in" class="nav-item"><i class="ph ph-arrow-down-left"></i><span>????? ?????? (??????)</span></a>
-                    <a href="inv-documents.html?tab=out" class="nav-item"><i class="ph ph-arrow-up-right"></i><span>????? ?????? (??? ???)</span></a>
+                    <p class="nav-label">لوحة تحكم المخزون</p>
+                    <a href="inventory.html" class="nav-item"><i class="ph ph-packages"></i><span>نظرة عامة والجرد</span></a>
+                    <a href="inv-documents.html?tab=in" class="nav-item"><i class="ph ph-arrow-down-left"></i><span>سندات الدخول (استلام)</span></a>
+                    <a href="inv-documents.html?tab=out" class="nav-item"><i class="ph ph-arrow-up-right"></i><span>سندات الخروج (منصرف)</span></a>
                 </div>
 
                 <div class="nav-group">
-                    <p class="nav-label">???????? ??????????</p>
-                    <a href="suppliers.html" class="nav-item"><i class="ph ph-truck"></i><span>???? ????????</span></a>
-                    <a href="inv-documents.html?tab=all" class="nav-item active"><i class="ph ph-file-text"></i><span>??????? ?????????</span></a>
+                    <p class="nav-label">الموردين والمستندات</p>
+                    <a href="suppliers.html" class="nav-item"><i class="ph ph-truck"></i><span>دليل الموردين</span></a>
+                    <a href="inv-documents.html?tab=all" class="nav-item active"><i class="ph ph-file-text"></i><span>السندات والفواتير</span></a>
                 </div>
             </nav>
         </aside>
@@ -51,8 +51,8 @@
         <main class="main-content inv-main">
             <header class="top-header inv-header">
                 <div class="header-left-title">
-                    <h2>??????? ????????? ????????</h2>
-                    <p>????? ????? ????? ??????? (??????? ???? ?????) ?? ????? ???????? ???????.</p>
+                    <h2>المستندات والحركات المخزنية</h2>
+                    <p>المتابعة الدقيقة لسجل العمليات (استلام، انصراف، وتحويل) في نظام المستودعات.</p>
                 </div>
             </header>
 
@@ -60,15 +60,15 @@
                 <div class="card inv-main-table-card">
                     <div class="card-header inv-table-header">
                         <div class="filter-tabs" id="tx-tabs">
-                            <button type="button" class="filter-tab active" data-filter="all">???? ???????</button>
-                            <button type="button" class="filter-tab" data-filter="in">????? (??????)</button>
-                            <button type="button" class="filter-tab" data-filter="out">????? (???)</button>
-                            <button type="button" class="filter-tab" data-filter="transfer">?????</button>
+                            <button type="button" class="filter-tab active" data-filter="all">تتبع الكل</button>
+                            <button type="button" class="filter-tab" data-filter="in">الوارد (استلام)</button>
+                            <button type="button" class="filter-tab" data-filter="out">المنصرف (خروج)</button>
+                            <button type="button" class="filter-tab" data-filter="transfer">التحويلات</button>
                         </div>
                         <div class="inv-toolbar">
                             <div class="search-box">
                                 <i class="ph ph-magnifying-glass"></i>
-                                <input type="text" id="search-tx" placeholder="??? ???? ????? ?? ???????? ?? ?????...">
+                                <input type="text" id="search-tx" placeholder="ابحث برقم السند، رقم الفاتورة أو الصنف...">
                             </div>
                         </div>
                     </div>
@@ -77,12 +77,12 @@
                         <table class="data-table inv-table">
                             <thead>
                                 <tr>
-                                    <th>??? ?????</th>
-                                    <th>??? ??????</th>
-                                    <th>??????? ??????</th>
-                                    <th>?????? ??????? / ??????</th>
-                                    <th>???????</th>
-                                    <th>???????</th>
+                                    <th>رقم الحركة</th>
+                                    <th>نوع العملية</th>
+                                    <th>التاريخ والوقت</th>
+                                    <th>إجمالي التكلفة / القيمة</th>
+                                    <th>ملاحظات</th>
+                                    <th>إجراءات</th>
                                 </tr>
                             </thead>
                             <tbody id="tx-tbody"></tbody>

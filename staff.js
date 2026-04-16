@@ -1013,21 +1013,24 @@ window.generateVoucher = async function(typeStr) {
 
         alert('✅ تم قيد الحركة المالية بنجاح في النظام المحاسبي.');
 
-        // send WhatsApp message automatically to employee if enabled
+        // send WhatsApp message automatically to employee and admin if enabled
         try {
             const waRaw = localStorage.getItem('wa_settings');
             if (waRaw) {
                 const waSettings = JSON.parse(waRaw);
                 if (waSettings.loans) {
+                    const { ipcRenderer } = require('electron');
+                    const hubIp =
+                        typeof window.resolveWaHubIp === 'function'
+                            ? window.resolveWaHubIp(waSettings)
+                            : (waSettings.hubIp && String(waSettings.hubIp).trim()) || '';
+
+                    // 1- Send to Employee
                     const empObj = db.employees?.find(e => e.name === employee);
                     if (empObj && empObj.phone) {
                         let phoneNum = String(empObj.phone).replace(/^0/, '+966');
                         const captionMsg = `مرحباً ${empObj.name}،\nتم إصدار سند لعملية ( ${typeStr} ) بقيمة ${xf(amount)}.\nالبيان: ${reason}`;
-                        const { ipcRenderer } = require('electron');
-                        const hubIp =
-                            typeof window.resolveWaHubIp === 'function'
-                                ? window.resolveWaHubIp(waSettings)
-                                : (waSettings.hubIp && String(waSettings.hubIp).trim()) || '';
+                        
                         ipcRenderer.send('wa-send-message', {
                             number: phoneNum,
                             text: captionMsg,
@@ -1035,6 +1038,20 @@ window.generateVoucher = async function(typeStr) {
                             waHubIp: hubIp,
                         });
                         console.log('Sending WA directly to employee:', phoneNum);
+                    }
+
+                    // 2- Send to Admin/Accountant
+                    if (waSettings.admin) {
+                        let adminPhone = String(waSettings.admin).replace(/^0/, '+966');
+                        const adminCaptionMsg = `إشعار إداري:\nتم إصدار سند ( ${typeStr} )\nللموظف: ${employee}\nالقيمة: ${xf(amount)}\nالبيان: ${reason}`;
+                        
+                        ipcRenderer.send('wa-send-message', {
+                            number: adminPhone,
+                            text: adminCaptionMsg,
+                            image: imgData,
+                            waHubIp: hubIp,
+                        });
+                        console.log('Sending WA to Admin:', adminPhone);
                     }
                 }
             }

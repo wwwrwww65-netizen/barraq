@@ -74,6 +74,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const toggles = document.querySelectorAll('.switch input[type="checkbox"]');
         if(toggles[0]) toggles[0].checked = editingProduct.isActive !== false;
+        
+        const trackToggle = document.getElementById('track-inventory-toggle');
+        if(trackToggle) {
+            trackToggle.checked = editingProduct.trackInventory !== false; // Default true if undefined
+        }
 
         if(editingProduct.image && uploadPlaceholder) {
             uploadPlaceholder.innerHTML = `<img src="${localItemImg}" style="width:100%; height:150px; object-fit:cover; border-radius:8px;">`;
@@ -111,6 +116,122 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
 
+    // --- Recipe / Raw Materials Logic ---
+    let inventoryItems = [];
+    try {
+        inventoryItems = await ipcRenderer.invoke('db-get-inventory') || [];
+    } catch(e){}
+
+    const recipeList = document.getElementById('recipe-list');
+    const btnAddRecipe = document.getElementById('btn-add-recipe-ingredient');
+    const recipeDropdown = document.getElementById('recipe-dropdown');
+    const recipeSearch = document.getElementById('recipe-search-input');
+    const recipeInvList = document.getElementById('recipe-inv-list');
+
+    function renderRecipeItem(name, qtyPerUnit) {
+        const div = document.createElement('div');
+        div.className = 'modifier-item';
+        div.innerHTML = `
+            <input type="text" class="input-modern mod-name recipe-raw-name" value="${name}" readonly style="flex:2;">
+            <input type="number" class="recipe-qty-input" value="${qtyPerUnit}" step="0.0001" min="0" required placeholder="الكمية">
+            <span style="color:var(--text-muted); font-size:12px; margin:0 10px;">وحدة استهلاك</span>
+            <button type="button" class="btn-icon remove" title="إزالة"><i class="ph ph-trash"></i></button>
+        `;
+        div.querySelector('.remove').addEventListener('click', () => div.remove());
+        recipeList.appendChild(div);
+    }
+
+    if (editingProduct && editingProduct.rawMaterials && Array.isArray(editingProduct.rawMaterials)) {
+        editingProduct.rawMaterials.forEach(rm => renderRecipeItem(rm.name, rm.qtyPerUnit));
+    }
+
+    // --- Dynamic Modifiers (الاضافات) ---
+    const modifiersList = document.getElementById('modifiers-list');
+    const btnAddModifier = document.getElementById('btn-add-modifier');
+
+    function renderModifierRow(name = '', price = 0) {
+        const div = document.createElement('div');
+        div.className = 'modifier-item';
+        div.innerHTML = `
+            <input type="text" class="input-modern custom-mod-name" value="${name}" placeholder="اسم الإضافة (مثال: شريحة جبن)" style="flex:2;">
+            <input type="number" class="input-modern custom-mod-price" value="${price}" step="0.01" min="0" placeholder="السعر" style="flex:1;">
+            <span style="color:var(--text-muted); font-size:12px; margin:0 10px;">ر.س</span>
+            <button type="button" class="btn-icon remove" title="إزالة"><i class="ph ph-trash"></i></button>
+        `;
+        div.querySelector('.remove').addEventListener('click', () => div.remove());
+        modifiersList.appendChild(div);
+    }
+
+    if (btnAddModifier) {
+        btnAddModifier.addEventListener('click', () => renderModifierRow('', 0));
+    }
+
+    if (editingProduct && editingProduct.modifiers && Array.isArray(editingProduct.modifiers)) {
+        editingProduct.modifiers.forEach(mod => renderModifierRow(mod.name, mod.price));
+    }
+
+    function filterRecipeInv() {
+        if(!recipeInvList) return;
+        recipeInvList.innerHTML = '';
+        const query = (recipeSearch.value || '').toLowerCase();
+        const filtered = inventoryItems.filter(i => i.name.toLowerCase().includes(query));
+        
+        if (filtered.length === 0) {
+            recipeInvList.innerHTML = '<li style="padding:10px;text-align:center;color:var(--text-muted);font-size:12px;">لا يوجد صنف مطابق بالمخزن</li>';
+            return;
+        }
+
+        filtered.forEach(item => {
+            const whMap = {
+                'main': 'المستودع الرئيسي',
+                'restaurant': 'مخزن المطعم',
+                'beverages': 'مخزن المشروبات'
+            };
+            const whBadge = whMap[item.warehouseId] || 'المستودع الرئيسي';
+            
+            const li = document.createElement('li');
+            li.className = 'recipe-item-li';
+            li.innerHTML = `
+                <span class="inv-name">${item.name}</span>
+                <span class="inv-badge">${whBadge} | ${item.unit || 'وحدة'}</span>
+            `;
+            li.addEventListener('click', () => {
+                // Check duplicate
+                const existing = Array.from(recipeList.querySelectorAll('.recipe-raw-name')).find(inp => inp.value === item.name);
+                if (existing) {
+                    alert('هذا المكون مضاف مسبقاً للوصفة!');
+                } else {
+                    renderRecipeItem(item.name, 1);
+                }
+                recipeDropdown.classList.remove('active');
+                recipeSearch.value = '';
+            });
+            recipeInvList.appendChild(li);
+        });
+    }
+
+    if(btnAddRecipe && recipeDropdown) {
+        btnAddRecipe.addEventListener('click', (e) => {
+            e.stopPropagation();
+            recipeDropdown.classList.toggle('active');
+            if (recipeDropdown.classList.contains('active')) {
+                filterRecipeInv();
+                recipeSearch.focus();
+                // Scroll down slightly so the dropdown is nicely visible
+                setTimeout(() => {
+                    recipeDropdown.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 50);
+            }
+        });
+        recipeSearch.addEventListener('input', filterRecipeInv);
+        document.addEventListener('click', (e) => {
+            if (!recipeDropdown.contains(e.target) && e.target !== btnAddRecipe) {
+                recipeDropdown.classList.remove('active');
+            }
+        });
+        recipeDropdown.addEventListener('click', (e) => e.stopPropagation());
+    }
+
     // --- 3. Handle Form Submission ---
     const form = document.querySelector('.add-item-form');
     if(!form) return;
@@ -144,6 +265,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         const toggles = document.querySelectorAll('.switch input[type="checkbox"]');
         const isActive = toggles[0] ? toggles[0].checked : true;
         
+        const rawMaterials = [];
+        if (recipeList) {
+            recipeList.querySelectorAll('.modifier-item').forEach(row => {
+                const name = row.querySelector('.recipe-raw-name').value;
+                const qtyPerUnit = parseFloat(row.querySelector('.recipe-qty-input').value) || 0;
+                if (name && qtyPerUnit > 0) {
+                    rawMaterials.push({ name, qtyPerUnit });
+                }
+            });
+        }
+
+        const modifiers = [];
+        if (modifiersList) {
+            modifiersList.querySelectorAll('.modifier-item').forEach(row => {
+                const name = row.querySelector('.custom-mod-name').value.trim();
+                const price = parseFloat(row.querySelector('.custom-mod-price').value) || 0;
+                if (name) {
+                    modifiers.push({ name, price });
+                }
+            });
+        }
+
+        const trackToggle = document.getElementById('track-inventory-toggle');
+        const trackInventory = trackToggle ? trackToggle.checked : true;
+
         const newItem = {
             id: editingProduct ? editingProduct.id : ('ITM_' + Date.now()),
             categoryId: catId,
@@ -153,7 +299,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             price: price,
             cost: cost,
             isActive: isActive,
+            trackInventory: trackInventory,
             image: localItemImg,
+            rawMaterials: rawMaterials,
+            modifiers: modifiers,
             createdAt: editingProduct ? editingProduct.createdAt : Date.now()
         };
 

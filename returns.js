@@ -19,53 +19,137 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Search Logic (from JSON DB via IPC) ---
     btnSearch.addEventListener('click', async () => {
-        const query = searchInput.value.trim();
-        if(!query) return alert('الرجاء إدخال رقم الطلب أولاً');
+        try {
+            let query = searchInput.value.trim();
+            if(!query) return alert('الرجاء إدخال رقم الطلب أولاً');
 
-        const db = await window.dbRead();
-        const orders = db.orders || [];
-        const found = orders.find((o) => String(o.orderId).toLowerCase() === query.toLowerCase());
+            // Normalize the search text to handle 'ORD-' or '#' if user typed it
+            query = query.replace(/^#/, '').replace(/^ord-?/i, '').trim();
 
-        if(found) {
-            currentFoundOrder = found;
-            resId.innerText = 'رقم الطلب: ' + found.orderId;
-            resDate.innerText = found.date || found.dateStr || '';
-            resTotal.innerText = xf(found.total);
-            resMethod.innerText = found.paymentMethod || '';
-            resType.innerText = found.type || '';
-            resultCard.classList.add('active');
-        } else {
-            resultCard.classList.remove('active');
-            currentFoundOrder = null;
-            alert('لم يتم العثور على أي فاتورة مبيعات مسجلة بهذا الرقم. تأكد من الرقم واعد المحاولة.');
+            const db = await window.dbRead();
+            const orders = (db.orders || []);
+            
+            const found = orders.find((o) => {
+                const oid = String(o.orderId || o.id || '').replace(/^#/, '').replace(/^ord-?/i, '').trim();
+                return oid.toLowerCase() === query.toLowerCase();
+            });
+
+            if(found) {
+                currentFoundOrder = found;
+                resId.innerText = 'رقم الطلب: ' + (found.orderId || found.id || 'غير معروف');
+                resDate.innerText = found.date || found.dateStr || new Date().toLocaleDateString('ar-SA');
+                resTotal.innerText = xf(found.total || found.grandTotal || 0);
+                resMethod.innerText = found.paymentMethod || 'نقدي';
+                resType.innerText = found.type || found.orderType || 'محلي';
+                
+                resultCard.style.display = 'flex';
+                resultCard.style.flexDirection = 'column';
+                resultCard.style.width = '100%';
+                resultCard.classList.add('active');
+
+                // Clean up any old buttons or messages
+                const oldMsg = document.getElementById('already-returned-msg');
+                if (oldMsg) oldMsg.remove();
+                
+                // Force destruction of older button to avoid duplicates
+                let oldBtn = document.getElementById('btn-process-return');
+                if(oldBtn) oldBtn.remove();
+
+                if (found.isReturned) {
+                    const msg = document.createElement('div');
+                    msg.id = 'already-returned-msg';
+                    msg.innerHTML = '<i class="ph-fill ph-warning-circle"></i> هذه الفاتورة تم استرجاعها وإلغاؤها مسبقاً!';
+                    msg.style.padding = '15px';
+                    msg.style.background = 'rgba(245, 158, 11, 0.1)';
+                    msg.style.color = 'var(--accent-orange)';
+                    msg.style.borderRadius = 'var(--border-radius-md)';
+                    msg.style.textAlign = 'center';
+                    msg.style.fontWeight = 'bold';
+                    msg.style.marginTop = '15px';
+                    resultCard.appendChild(msg);
+                } else {
+                    // Forcefully create a new button with heavy inline styles to bypass ANY css conflicts
+                    const newBtn = document.createElement('button');
+                    newBtn.id = 'btn-process-return';
+                    newBtn.innerHTML = '<i class="ph-fill ph-warning-circle"></i> إرجاع الأموال وإلغاء الطلب نهائياً';
+                    newBtn.style.cssText = `
+                        width: 100%;
+                        padding: 15px;
+                        background: #dc2626; /* bright red */
+                        color: white;
+                        border: 2px solid #b91c1c;
+                        border-radius: 8px;
+                        font-family: inherit;
+                        font-size: 18px;
+                        font-weight: 800;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 10px;
+                        margin-top: 20px;
+                        box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+                        transition: all 0.2s;
+                    `;
+                    
+                    newBtn.onmouseover = () => { newBtn.style.transform = 'translateY(-2px)'; };
+                    newBtn.onmouseout = () => { newBtn.style.transform = 'translateY(0)'; };
+                    
+                    // Attach the event
+                    newBtn.addEventListener('click', processReturnAction);
+                    
+                    // Directly append it to the result card!
+                    resultCard.appendChild(newBtn);
+                }
+
+            } else {
+                resultCard.style.display = 'none';
+                resultCard.classList.remove('active');
+                currentFoundOrder = null;
+                alert('لم يتم العثور على أي فاتورة مبيعات مسجلة بهذا الرقم. يرجى التأكد من الرقم والمحاولة مرة أخرى.');
+            }
+        } catch(e) {
+            console.error("Search Error:", e);
+            alert("حدث خطأ أثناء البحث عن الفاتورة.");
+        }
+    });
+
+    // Support 'Enter' key press down on input
+    searchInput.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter') {
+            btnSearch.click();
         }
     });
 
     // --- Process Return Logic ---
-    btnProcess.addEventListener('click', async () => {
+    async function processReturnAction() {
+        const currentBtn = document.getElementById('btn-process-return');
         if(!currentFoundOrder) return;
 
         if(!confirm('تأكيد عملية الاسترجاع؟ سيتم خصم المبلغ من المبيعات الأصلية، وإرجاع الأصناف لسجل المطبخ.')) return;
 
-        const originalText = btnProcess.innerHTML;
-        btnProcess.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin"></i> جاري إرجاع المبلغ...';
-        btnProcess.style.pointerEvents = 'none';
+        const originalText = currentBtn.innerHTML;
+        currentBtn.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin"></i> جاري إرجاع المبلغ...';
+        currentBtn.style.pointerEvents = 'none';
 
         try {
             await window.dbUpdate(db => {
-                // 1. Remove from orders
-                db.orders = (db.orders || []).filter(o => o.orderId !== currentFoundOrder.orderId);
+                // 1. Flag as returned instead of deleting
+                const ord = (db.orders || []).find(o => (o.orderId === currentFoundOrder.orderId) || (o.id === currentFoundOrder.id));
+                if (ord) {
+                    ord.isReturned = true;
+                }
 
-                // 2. Add to returns
+                // 2. Add to returns ledger
                 if(!db.returns) db.returns = [];
                 const now = new Date();
                 db.returns.push({
                     id: 'RET-' + now.getTime(),
-                    origId: currentFoundOrder.orderId,
+                    origId: currentFoundOrder.orderId || currentFoundOrder.id,
                     returnTime: now.toLocaleDateString('ar-SA') + ' ' + now.toLocaleTimeString('ar-SA'),
                     timestamp: now.getTime(),
                     date: now.toISOString().split('T')[0],
-                    amount: currentFoundOrder.total,
+                    amount: currentFoundOrder.total || currentFoundOrder.grandTotal || 0,
                     method: currentFoundOrder.paymentMethod,
                     splitCash: currentFoundOrder.splitCash,
                     splitNetwork: currentFoundOrder.splitNetwork,
@@ -81,18 +165,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const itemName = item.name || item.nameAr || "صنف مسترجع";
                         const qty = Number(item.qty) || 1;
                         
-                        // Add an incoming return to kitchen log
                         db.kitchenTx.push({
                             id: 'RET-' + Math.floor(Math.random() * 100000),
                             type: 'receive', 
                             itemName: itemName,
                             qty: qty,
-                            notes: "مرتجع من المبيعات - فاتورة #" + currentFoundOrder.orderId,
+                            notes: "مرتجع من المبيعات - فاتورة #" + (currentFoundOrder.orderId || currentFoundOrder.id),
                             date: new Date().toISOString(),
                             user: "الكاشير (آلي)"
                         });
 
-                        // Add back to kitchen stock
                         const kIdx = db.kitchenStock.findIndex(k => k.name === itemName);
                         if (kIdx !== -1) {
                             db.kitchenStock[kIdx].qty += qty;
@@ -105,21 +187,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             alert('✅ تم استرداد المبلغ وإلغاء عملية الكاشير بنجاح! تم تنبيه المطبخ بالمرتجعات.');
             
+            resultCard.style.display = 'none';
             resultCard.classList.remove('active');
             currentFoundOrder = null;
             searchInput.value = '';
-            btnProcess.innerHTML = originalText;
-            btnProcess.style.pointerEvents = 'auto';
 
             await loadReturns();
 
         } catch(e) {
             console.error('Return process error', e);
             alert('حدث خطأ أثناء معالجة الاسترجاع.');
-            btnProcess.innerHTML = originalText;
-            btnProcess.style.pointerEvents = 'auto';
+            currentBtn.innerHTML = originalText;
+            currentBtn.style.pointerEvents = 'auto';
         }
-    });
+    }
+
+    if (btnProcess) {
+        btnProcess.addEventListener('click', processReturnAction);
+    }
 
     // --- Load Returns Historical Data ---
     async function loadReturns() {

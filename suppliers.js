@@ -23,28 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let suppliers = db.suppliers;
 
     if (suppliers.length === 0) {
-        suppliers = [
-            {
-                id: 'SUP-01',
-                name: 'شركة المراعي',
-                cat: 'ألبان ومنتجات',
-                phone: '0551234567',
-                balance: 4500,
-                active: true,
-                createdAt: new Date().toISOString()
-            },
-            {
-                id: 'SUP-02',
-                name: 'مؤسسة الثقة للحوم',
-                cat: 'لحوم طازجة',
-                phone: '0501112223',
-                balance: 12400,
-                active: true,
-                createdAt: new Date().toISOString()
-            }
-        ];
-        db.suppliers = suppliers;
-        await saveDB(db);
+        // Start with an empty suppliers list
     }
 
     function renderKPIs() {

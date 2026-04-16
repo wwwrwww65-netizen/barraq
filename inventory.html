@@ -32,6 +32,7 @@
                 <div class="nav-group">
                     <p class="nav-label">لوحة تحكم المخزون</p>
                     <a href="inventory.html" class="nav-item active"><i class="ph ph-packages"></i><span>نظرة عامة والجرد</span></a>
+                    <a href="#pending-receipts-section" class="nav-item" id="nav-pending-link" style="display:none;"><i class="ph ph-clock" style="color:var(--accent-orange)"></i><span>بانتظار الاستلام <span id="nav-pending-count" style="background:var(--accent-orange);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-right:4px;">0</span></span></a>
                     <a href="inv-documents.html?tab=in" class="nav-item"><i class="ph ph-arrow-down-left"></i><span>حركات الدخول (استلام)</span></a>
                     <a href="inv-documents.html?tab=out" class="nav-item"><i class="ph ph-arrow-up-right"></i><span>حركات الخروج (أمر صرف)</span></a>
                     <a href="#" class="nav-item" id="btn-open-transfer"><i class="ph ph-swap"></i><span>تحويل بين المخازن</span></a>
@@ -80,7 +81,26 @@
             </header>
 
             <div class="inv-dashboard-grid">
-                
+
+                <!-- Pending Receipts Banner (from Purchasing Dept) -->
+                <div id="pending-receipts-section" style="display:none; margin-bottom: 0;">
+                    <div style="background: linear-gradient(135deg, rgba(234,179,8,0.12), rgba(234,179,8,0.04)); border: 1.5px solid rgba(234,179,8,0.4); border-radius: 14px; padding: 20px 24px; margin-bottom: 24px;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <div style="background:rgba(234,179,8,0.2); border-radius:10px; padding:10px; font-size:22px;">📦</div>
+                                <div>
+                                    <h3 style="margin:0; color:#fbbf24; font-size:16px;">فواتير بانتظار الاستلام من المشتريات</h3>
+                                    <p style="margin:3px 0 0; color:var(--text-muted); font-size:13px;">كمدير مخازن — راجع الفواتير وأكّد الاستلام الفعلي للبضاعة</p>
+                                </div>
+                            </div>
+                            <span id="pending-count-badge" style="background:rgba(234,179,8,0.25); color:#fbbf24; border:1px solid rgba(234,179,8,0.4); border-radius:20px; padding:5px 14px; font-size:13px; font-weight:700;">0 فاتورة معلقة</span>
+                        </div>
+                        <div id="pending-receipts-list" style="display:flex; flex-direction:column; gap:10px;">
+                            <!-- Filled by inventory.js -->
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Warehouses Tabs -->
                 <div class="warehouses-tabs">
                     <button class="warehouse-tab active" data-wh="main">
@@ -281,7 +301,7 @@
     <div id="txModal" class="modal-overlay">
         <div class="modal-box">
             <div class="modal-header">
-                <h3>حركة مخزنية</h3>
+                <h3 id="tx-modal-title">حركة مخزنية</h3>
                 <button type="button" class="btn-cancel-modal" title="إغلاق"><i class="ph ph-x"></i></button>
             </div>
             <form id="form-tx" class="modal-body">
@@ -300,9 +320,32 @@
                     <label>الكمية (بالوحدة المعيارية)</label>
                     <input type="number" id="tx-qty" min="1" class="input-modern" required>
                 </div>
+
+                <!-- Destination — shown only for "out" orders -->
+                <div class="form-group" id="tx-dest-group" style="display:none; border:1px solid rgba(234,179,8,0.3); border-radius:10px; padding:14px; background:rgba(234,179,8,0.05);">
+                    <label style="color:#fbbf24; font-weight:700;"><i class="ph ph-navigation-arrow"></i> الجهة المستلِمة (وجهة أمر الصرف)</label>
+                    <select id="tx-dest" class="input-modern" style="margin-top:8px;">
+                        <option value="kitchen_main">المطبخ الرئيسي</option>
+                        <option value="kitchen_cold">قسم التحضير البارد</option>
+                        <option value="kitchen_grills">قسم المشويات</option>
+                        <option value="kitchen_pastry">قسم الحلويات والمخبوزات</option>
+                        <option value="production">قسم الإنتاج والتجهيز</option>
+                        <option value="bar">البار والمشروبات</option>
+                        <option value="other">أخرى</option>
+                    </select>
+                    <p style="margin-top:8px; font-size:12px; color:var(--text-muted);">
+                        <i class="ph ph-info"></i> سيُخصم من المخزون فوراً وينتظر تأكيد الاستلام من الجهة المختارة
+                    </p>
+                </div>
+
+                <div class="form-group" id="tx-notes-group" style="display:none;">
+                    <label>ملاحظات أمر الصرف</label>
+                    <input type="text" id="tx-notes" class="input-modern" placeholder="مثال: للتحضير اليومي، طلب عاجل...">
+                </div>
+
                 <div class="modal-actions mt-3">
                     <button type="button" class="btn-cancel btn-cancel-modal">إلغاء</button>
-                    <button type="submit" class="btn-save-role bg-green">تأكيد الحركة المخزنية</button>
+                    <button type="submit" class="btn-save-role bg-green" id="tx-submit-btn">تأكيد الحركة المخزنية</button>
                 </div>
             </form>
         </div>

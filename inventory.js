@@ -17,18 +17,198 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let erpItems = db.inventory;
     let erpTx = db.inventoryTx;
+    if (!db.purchases) db.purchases = [];
 
-    if (erpItems.length === 0) {
-        erpItems = [
-            { sku: 'SKU-2001', name: 'أرز بسمتي هندي', category: 'المواد التموينية', unit: 'كيس 40كج', cost: 320, qty: 14, minQty: 15, warehouseId: 'main' },
-            { sku: 'SKU-2002', name: 'لحم حري طازج', category: 'اللحوم', unit: 'ذبيحة', cost: 1200, qty: 35, minQty: 10, warehouseId: 'main' },
-            { sku: 'SKU-2005', name: 'دجاج مبرد', category: 'الدواجن', unit: 'كرتون', cost: 145, qty: 80, minQty: 30, warehouseId: 'restaurant' },
-            { sku: 'SKU-2012', name: 'زيت قلي نباتي', category: 'الزيوت', unit: 'تنكة', cost: 160, qty: 0, minQty: 10, warehouseId: 'restaurant' },
-            { sku: 'SKU-2015', name: 'مياه لتر ونصف', category: 'المرطبات', unit: 'كرتون', cost: 12, qty: 50, minQty: 20, warehouseId: 'beverages' }
-        ];
-        db.inventory = erpItems;
-        await saveDB(db);
+    // ── Pending Receipts Panel (Warehouse Manager view) ──────────────────────
+    const whNames = { main: 'المستودع الرئيسي', restaurant: 'مخزن المطعم', beverages: 'مخزن المشروبات' };
+
+    function getSystemTaxRate() {
+        try {
+            const s = JSON.parse(localStorage.getItem('restaurant_settings') || '{}');
+            const rate = parseFloat(s.taxRate);
+            return isNaN(rate) ? 15 : rate;
+        } catch(e) { return 15; }
     }
+
+    function renderPendingReceipts() {
+        const pending = (db.purchases || []).filter(p => p.status === 'قيد الاستلام');
+        const section = document.getElementById('pending-receipts-section');
+        const list    = document.getElementById('pending-receipts-list');
+        const badge   = document.getElementById('pending-count-badge');
+        const navLink = document.getElementById('nav-pending-link');
+        const navCnt  = document.getElementById('nav-pending-count');
+
+        if (!section || !list) return;
+
+        if (pending.length === 0) {
+            section.style.display = 'none';
+            if (navLink) navLink.style.display = 'none';
+            return;
+        }
+
+        section.style.display = 'block';
+        if (badge) badge.textContent = pending.length + ' فاتورة معلقة';
+        if (navLink) navLink.style.display = '';
+        if (navCnt)  navCnt.textContent = pending.length;
+
+        list.innerHTML = '';
+        pending.forEach(pur => {
+            const destWhName = whNames[pur.destWh || 'main'] || pur.destWh;
+            const itemsSummary = (pur.items || []).map(i => `${i.name} (${i.qty})`).join(' ، ');
+            const card = document.createElement('div');
+            card.style.cssText = 'background:rgba(0,0,0,0.25); border:1px solid rgba(234,179,8,0.25); border-radius:10px; padding:14px 18px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;';
+            card.innerHTML = `
+                <div style="flex:1; min-width:220px;">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+                        <strong style="color:#fbbf24; font-size:15px;">${pur.id}</strong>
+                        <span style="color:var(--text-muted); font-size:12px;">مرجع: ${pur.ref || '-'}</span>
+                    </div>
+                    <div style="font-size:12px; color:var(--text-secondary); margin-bottom:4px;">
+                        <i class="ph ph-truck"></i> المورد: <strong>${pur.supName}</strong>
+                        &nbsp;|&nbsp;
+                        <i class="ph ph-warehouse"></i> الوجهة: <strong>${destWhName}</strong>
+                        &nbsp;|&nbsp;
+                        <i class="ph ph-calendar"></i> تاريخ الفاتورة: ${pur.date}
+                    </div>
+                    <div style="font-size:12px; color:var(--text-muted);">
+                        الأصناف: ${itemsSummary}
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <span style="color:white; font-weight:700; font-size:14px;">${xf(pur.total)}</span>
+                    <button class="wh-receive-btn" data-id="${pur.id}"
+                        style="background:linear-gradient(135deg,#10b981,#059669); color:#fff; border:none; border-radius:8px; padding:9px 18px; cursor:pointer; font-size:13px; font-weight:700; display:flex; align-items:center; gap:6px;">
+                        <i class="ph ph-check-circle"></i> تأكيد الاستلام
+                    </button>
+                </div>
+            `;
+            list.appendChild(card);
+        });
+
+        // Attach receive handlers
+        list.querySelectorAll('.wh-receive-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const purId = e.currentTarget.dataset.id;
+                const pur = (db.purchases || []).find(p => p.id === purId);
+                if (!pur) return;
+                if (!confirm(`تأكيد استلام الفاتورة ${pur.id} من المورد "${pur.supName}" وإضافة الكميات للمخزون؟`)) return;
+                await whReceivePurchase(pur);
+            });
+        });
+    }
+
+    async function whReceivePurchase(pur) {
+        const taxPct = getSystemTaxRate();
+        const destWh = pur.destWh || 'main';
+
+        pur.items.forEach(buyItem => {
+            const unitCost = buyItem.price / (1 + taxPct / 100);
+            let invItem = erpItems.find(i => i.sku === buyItem.sku && (i.warehouseId || 'main') === destWh);
+
+            if (invItem) {
+                invItem.qty = (Number(invItem.qty) || 0) + buyItem.qty;
+                invItem.cost = unitCost;
+            } else {
+                let src = erpItems.find(i => i.sku === buyItem.sku);
+                if (src) {
+                    let clone = { ...src, warehouseId: destWh, qty: buyItem.qty, cost: unitCost };
+                    erpItems.push(clone);
+                } else {
+                    erpItems.push({ sku: buyItem.sku, name: buyItem.name, category: '', unit: '', cost: unitCost, qty: buyItem.qty, minQty: 0, warehouseId: destWh });
+                }
+            }
+
+            erpTx.push({
+                id: 'TX-' + Math.floor(Math.random() * 90000 + 10000),
+                type: 'in',
+                total: buyItem.qty * unitCost,
+                date: Date.now(),
+                fromWh: 'SUPPLIER',
+                toWh: destWh,
+                sku: buyItem.sku,
+                refInvoice: pur.id
+            });
+        });
+
+        pur.status = 'مستلمة بالمخزن';
+        db.inventory = erpItems;
+        db.inventoryTx = erpTx;
+        await window.dbWrite(db);
+        try { const { ipcRenderer } = require('electron'); ipcRenderer.send('notify-db-changed'); } catch(e) {}
+
+        renderPendingReceipts();
+        renderTable();
+        renderKPIs();
+
+        // Print receive note
+        whPrintReceiveNote(pur);
+        alert(`✅ تم استلام الفاتورة ${pur.id} وإضافة الكميات للمخزون!`);
+    }
+
+    function whPrintReceiveNote(pur) {
+        const taxPct = getSystemTaxRate();
+        const destWhName = whNames[pur.destWh || 'main'] || pur.destWh;
+        const dateStr = new Date().toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
+        let rows = ''; let sub = 0;
+        (pur.items || []).forEach((it, i) => {
+            const uc = it.price / (1 + taxPct / 100);
+            const lt = it.qty * uc;
+            sub += lt;
+            rows += `<tr><td style="text-align:center">${i+1}</td><td>${it.name}</td><td style="text-align:center">${it.qty}</td><td style="text-align:center">${uc.toFixed(2)}</td><td style="text-align:center">${lt.toFixed(2)}</td><td style="text-align:center;color:green">✓</td></tr>`;
+        });
+        const w = window.open('','_blank','width=820,height=700');
+        w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>أمر استلام - ${pur.id}</title>
+        <style>body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;padding:28px;color:#111;font-size:13px}
+        h1{margin:0 0 4px;font-size:20px;color:#0f172a}.sub{color:#10b981;font-weight:600;font-size:14px}
+        .meta{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px 16px;text-align:right;min-width:230px}
+        .meta p{margin:3px 0;font-size:13px}.hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1e293b;padding-bottom:16px;margin-bottom:18px}
+        .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+        .box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px}
+        .box label{font-size:11px;color:#64748b;display:block;margin-bottom:2px}.box span{font-weight:700;color:#0f172a;font-size:14px}
+        table{width:100%;border-collapse:collapse;margin-top:14px}
+        th{background:#1e293b;color:#fff;padding:10px 8px;text-align:center;font-size:12px}
+        td{padding:9px 8px;border-bottom:1px solid #e2e8f0;font-size:12px}tr:nth-child(even) td{background:#f8fafc}
+        .sumbox{background:#1e293b;color:#fff;border-radius:10px;padding:14px 22px;min-width:250px;margin-top:16px;margin-right:auto}
+        .sl{display:flex;justify-content:space-between;margin-bottom:7px;font-size:13px}
+        .sl.tot{font-size:16px;font-weight:700;border-top:1px solid rgba(255,255,255,.2);padding-top:9px;margin-top:5px}
+        .sigs{display:flex;justify-content:space-around;margin-top:48px;text-align:center}
+        .sig{border-top:1.5px solid #1e293b;padding-top:7px;width:155px;font-size:12px;color:#334155}
+        .notice{background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:9px 14px;font-size:12px;color:#92400e;margin-top:14px}
+        </style></head><body>
+        <div class="hdr">
+          <div><h1>أمر استلام بضاعة</h1><p class="sub">Goods Received Note (GRN)</p><p style="margin-top:7px;font-size:12px;color:#64748b">إدارة المخازن والمستودعات</p></div>
+          <div class="meta">
+            <p><strong>رقم الأمر:</strong> GRN-${pur.id}</p>
+            <p><strong>مرجع فاتورة المورد:</strong> ${pur.ref || '-'}</p>
+            <p><strong>تاريخ الاستلام الفعلي:</strong> ${dateStr}</p>
+            <p><strong>تاريخ الفاتورة:</strong> ${pur.date}</p>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="box"><label>المورد</label><span>${pur.supName}</span></div>
+          <div class="box"><label>المستودع المستلِم</label><span>${destWhName}</span></div>
+          <div class="box"><label>طريقة الدفع</label><span>${pur.payMethod==='cash'?'نقداً':pur.payMethod==='bank'?'حوالة بنكية':'آجل (ذمة)'}</span></div>
+          <div class="box"><label>حالة الاستلام</label><span style="color:#10b981">✓ تم الاستلام وإدخال المخزون</span></div>
+        </div>
+        <table><thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>سعر الوحدة (ق.ض)</th><th>الإجمالي</th><th>تم الإدخال</th></tr></thead>
+        <tbody>${rows}</tbody></table>
+        <div style="display:flex;justify-content:flex-end"><div class="sumbox">
+          <div class="sl"><span>إجمالي قبل الضريبة:</span><span>${sub.toFixed(2)} ر.س</span></div>
+          <div class="sl"><span>ضريبة ${taxPct}%:</span><span>${(sub*taxPct/100).toFixed(2)} ر.س</span></div>
+          <div class="sl tot"><span>الإجمالي النهائي:</span><span>${xf(pur.total)}</span></div>
+        </div></div>
+        <div class="notice">⚠️ هذا السند يُثبت استلام البضاعة وإدخالها في المخزون الإلكتروني. يُعتمد بتوقيع أمين المستودع والمستلم.</div>
+        <div class="sigs">
+          <div class="sig">أمين المستودع<br><br>.........................</div>
+          <div class="sig">مسؤول المشتريات<br><br>.........................</div>
+          <div class="sig">مدير العمليات<br><br>.........................</div>
+        </div></body></html>`);
+        w.document.close(); w.focus();
+        setTimeout(() => { w.print(); }, 600);
+    }
+
+    renderPendingReceipts();
+    // ─────────────────────────────────────────────────────────────────────────
 
     let currentWH = 'main';
     const viewFilters = { lowOnly: false, category: '' };
@@ -541,64 +721,258 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const formTx = document.getElementById('form-tx');
+
+    const destLabels = {
+        kitchen_main: 'المطبخ الرئيسي',
+        kitchen_cold: 'قسم التحضير البارد',
+        kitchen_grills: 'قسم المشويات',
+        kitchen_pastry: 'قسم الحلويات والمخبوزات',
+        production: 'قسم الإنتاج والتجهيز',
+        bar: 'البار والمشروبات',
+        other: 'أخرى'
+    };
+
     function updateTxDropdown() {
         const skuSelect = document.getElementById('tx-sku');
         if (skuSelect) {
             const currentItems = erpItems.filter((i) => whNorm(i.warehouseId) === currentWH);
-            skuSelect.innerHTML = currentItems.map((it) => `<option value="${it.sku}">${it.name} (${it.sku})</option>`).join('');
+            skuSelect.innerHTML = currentItems.map((it) => `<option value="${it.sku}">${it.name} — متوفر: ${it.qty} ${it.unit || ''} (${it.sku})</option>`).join('');
         }
     }
 
-    btnReceive?.addEventListener('click', updateTxDropdown);
-    btnIssue?.addEventListener('click', updateTxDropdown);
+    function updateTxModalUI() {
+        const bType = document.getElementById('tx-type').value;
+        const isOut = bType === 'out';
+        const destGrp  = document.getElementById('tx-dest-group');
+        const notesGrp = document.getElementById('tx-notes-group');
+        const title    = document.getElementById('tx-modal-title');
+        const submitBtn= document.getElementById('tx-submit-btn');
+        if (destGrp)  destGrp.style.display  = isOut ? '' : 'none';
+        if (notesGrp) notesGrp.style.display = isOut ? '' : 'none';
+        if (title)    title.textContent = isOut ? 'إصدار أمر صرف (خروج للتشغيل)' : 'سند استلام (دخول مستودع)';
+        if (submitBtn) submitBtn.textContent = isOut ? 'إصدار أمر الصرف' : 'تأكيد الاستلام';
+        if (submitBtn) submitBtn.style.background = isOut ? 'linear-gradient(135deg,#f59e0b,#d97706)' : '';
+    }
+
+    document.getElementById('tx-type')?.addEventListener('change', updateTxModalUI);
+
+    btnReceive?.addEventListener('click', () => { updateTxDropdown(); updateTxModalUI(); });
+    btnIssue?.addEventListener('click',   () => { updateTxDropdown(); updateTxModalUI(); });
 
     if (formTx) {
         formTx.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const bSku = document.getElementById('tx-sku').value;
+            const bSku  = document.getElementById('tx-sku').value;
             const bType = document.getElementById('tx-type').value;
-            const bQty = Number(document.getElementById('tx-qty').value);
+            const bQty  = Number(document.getElementById('tx-qty').value);
 
             const idx = erpItems.findIndex((it) => it.sku === bSku && whNorm(it.warehouseId) === currentWH);
             if (idx === -1) {
-                alert('الصنف غير موجود في المخزن الحالي. انتقل إلى تبويب المخزن الصحيح أو أضف الصنف هناك.');
+                alert('الصنف غير موجود في المخزن الحالي.');
                 return;
             }
 
             if (bType === 'in') {
+                // ── Simple IN: add to stock directly ──
                 erpItems[idx].qty += bQty;
+
+                const newTxId = 'TX-' + Math.floor(Math.random() * 90000 + 10000);
+                const totalCost = bQty * erpItems[idx].cost;
+                const newTx = { id: newTxId, type: 'in', total: totalCost, date: Date.now(), wh: currentWH, sku: bSku, toWh: currentWH };
+                erpTx.push(newTx);
+
+                db.inventory = erpItems;
+                db.inventoryTx = erpTx;
+                await saveDB(db);
+
+                closeModal('txModal');
+                renderTable(); renderKPIs(); formTx.reset(); updateTxModalUI();
+                printInventoryReceipt(newTx, erpItems[idx], bQty, 'in');
+
             } else {
+                // ── OUT: issue order flow ──
                 if (erpItems[idx].qty < bQty) {
-                    alert('الكمية المتوفرة لا تكفي للصرف!');
+                    alert(`الكمية المتوفرة (${erpItems[idx].qty}) لا تكفي للصرف (مطلوب: ${bQty})!`);
                     return;
                 }
+
+                const destKey  = document.getElementById('tx-dest').value;
+                const destName = destLabels[destKey] || destKey;
+                const notes    = document.getElementById('tx-notes').value;
+                const item     = erpItems[idx];
+
+                // Deduct from warehouse immediately
                 erpItems[idx].qty -= bQty;
+
+                const issueId   = 'ISS-' + Math.floor(Math.random() * 90000 + 10000);
+                const totalCost = bQty * item.cost;
+
+                // Log in inventoryTx (out)
+                erpTx.push({
+                    id: issueId,
+                    type: 'out',
+                    total: totalCost,
+                    date: Date.now(),
+                    fromWh: currentWH,
+                    sku: bSku,
+                    destKey,
+                    destName
+                });
+
+                // Create issue order record (to be confirmed by kitchen)
+                if (!db.issueOrders) db.issueOrders = [];
+                const issueOrder = {
+                    id: issueId,
+                    status: 'قيد الاستلام',
+                    date: new Date().toISOString().split('T')[0],
+                    dateTs: Date.now(),
+                    fromWh: currentWH,
+                    fromWhName: whNames[currentWH] || currentWH,
+                    destKey,
+                    destName,
+                    sku: bSku,
+                    itemName: item.name,
+                    unit: item.unit || '',
+                    qty: bQty,
+                    cost: item.cost,
+                    total: totalCost,
+                    notes
+                };
+                db.issueOrders.push(issueOrder);
+
+                db.inventory   = erpItems;
+                db.inventoryTx = erpTx;
+                await saveDB(db);
+
+                closeModal('txModal');
+                renderTable(); renderKPIs(); renderPendingReceipts(); formTx.reset(); updateTxModalUI();
+
+                // Auto-print the issue order document
+                printIssueOrder(issueOrder);
+                alert(`✅ تم إصدار أمر الصرف ${issueId}\nالصنف: ${item.name} — ${bQty} ${item.unit||''}\nالوجهة: ${destName}\n\nتم خصم الكمية من المخزون فوراً. ينتظر تأكيد الاستلام من ${destName}.`);
             }
-
-            const newTxId = 'TX-' + Math.floor(Math.random() * 10000);
-            const totalCost = bQty * erpItems[idx].cost;
-            const newTx = {
-                id: newTxId,
-                type: bType,
-                total: totalCost,
-                date: Date.now(),
-                wh: currentWH,
-                sku: bSku,
-                ...(bType === 'in' ? { toWh: currentWH } : { fromWh: currentWH })
-            };
-            erpTx.push(newTx);
-
-            db.inventory = erpItems;
-            db.inventoryTx = erpTx;
-            await saveDB(db);
-
-            closeModal('txModal');
-            renderTable();
-            renderKPIs();
-            formTx.reset();
-
-            printInventoryReceipt(newTx, erpItems[idx], bQty, bType);
         });
+    }
+
+    // ── Print Issue Order Document (Thermal 80mm) ───────────────────────────
+    function printIssueOrder(order) {
+        const dateStr = new Date(order.dateTs || Date.now()).toLocaleString('ar-SA');
+        
+        const settings = db.settings || {};
+        const storeName = settings.storeName || 'إدارة النظام';
+        const logoBase64 = settings.logoBase64 || '';
+        
+        let logoHtml = '';
+        if (logoBase64) {
+            logoHtml = `<img src="${logoBase64}" class="store-logo" alt="شعار المتجر">`;
+        }
+
+        const w = window.open('', '_blank', 'width=400,height=600');
+        w.document.write(`<!DOCTYPE html>
+            <html dir="rtl" lang="ar">
+            <head>
+                <meta charset="UTF-8">
+                <title>أمر صرف - ${order.id}</title>
+                <style>
+                    *, *::before, *::after {
+                        box-sizing: border-box;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    html, body {
+                        margin: 0;
+                        padding: 0;
+                        width: 80mm;
+                        font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+                        color: #000;
+                        background: #fff;
+                        overflow: visible !important;
+                        -webkit-text-size-adjust: none;
+                    }
+                    @page {
+                        size: 80mm auto;
+                        margin: 0;
+                    }
+                    .receipt-wrapper {
+                        width: 70mm;
+                        margin: 0;
+                        padding-top: 3mm;
+                        padding-bottom: 3mm;
+                        padding-left: 0;
+                        padding-right: 0;
+                        unicode-bidi: embed;
+                        font-variant-numeric: tabular-nums;
+                    }
+                    .store-logo {
+                        width: 25mm;
+                        height: 25mm;
+                        object-fit: contain;
+                        margin-left: auto;
+                        margin-right: auto;
+                        display: block;
+                        margin-bottom: 2mm;
+                        filter: grayscale(100%) contrast(130%) brightness(0.95);
+                        image-rendering: -webkit-optimize-contrast;
+                        image-rendering: crisp-edges;
+                        image-rendering: pixelated;
+                    }
+                    .header { text-align: center; border-bottom: 1.5px dashed #000; padding-bottom: 3mm; margin-bottom: 3mm; }
+                    .header h2 { margin: 0 0 2mm 0; font-size: 14pt; font-weight: bold; }
+                    .header p { margin: 0; font-size: 10pt; color: #000; }
+                    .header h3 { margin: 1mm 0 0 0; border:1px solid #000; display:inline-block; padding:1.5mm 3mm; border-radius:1mm; font-size:11pt; font-weight: bold; }
+                    .details { text-align: start; margin-bottom: 3mm; padding: 0; }
+                    .details p { margin: 1.5mm 0; font-size: 9.5pt; border-bottom: 1px dotted #666; padding-bottom: 1mm; display: flex; justify-content: space-between; align-items: start; gap: 2mm;}
+                    .details span.label { font-weight: bold; text-align: start; flex-shrink: 0; }
+                    .details span.val { text-align: end; word-break: break-word; }
+                    .main-item { border: 2px solid #000; border-radius: 2mm; padding: 2mm; margin: 3mm 0; text-align: center; }
+                    .main-item h4 { margin: 0 0 1mm 0; font-size: 12pt; }
+                    .main-item .qty { font-size: 14pt; font-weight: 900; }
+                    .notice { border: 1px dotted #000; padding: 2mm; font-size: 9pt; text-align: center; margin-top: 3mm; }
+                    .footer { text-align: start; margin-top: 5mm; font-size: 9pt; border-top: 1.5px dashed #000; padding-top: 3mm;}
+                    .footer p { margin: 3mm 0; display: flex; justify-content: space-between; gap: 2mm;}
+                </style>
+            </head>
+            <body>
+                <div class="receipt-wrapper">
+                    <div class="header">
+                        ${logoHtml}
+                        <h2>${storeName}</h2>
+                        <p>إدارة المخازن والمستودعات</p>
+                        <h3>أمر صرف مواد</h3>
+                    </div>
+                    <div class="details">
+                        <p><span class="label">رقم أمر الصرف:</span> <span class="val">${order.id}</span></p>
+                        <p><span class="label">تاريخ الإصدار:</span> <span class="val">${dateStr}</span></p>
+                        <p><span class="label">مستودع المصدر:</span> <span class="val">${order.fromWhName}</span></p>
+                        <p><span class="label">الجهة المستلِمة:</span> <span class="val">${order.destName}</span></p>
+                        <p><span class="label">تكلفة الوحدة:</span> <span class="val">${xf(order.cost)}</span></p>
+                    </div>
+
+                    <div class="main-item">
+                        <h4>${order.itemName} / ${order.sku}</h4>
+                        <div class="qty">${order.qty} ${order.unit}</div>
+                        ${order.notes ? `<div style="margin-top: 1mm; font-size: 9pt;">ملاحظات: ${order.notes}</div>` : ''}
+                    </div>
+
+                    <div class="details">
+                        <p><span class="label">إجمالي التكلفة:</span> <span class="val">${xf(order.total)}</span></p>
+                        <p><span class="label">حالة الاستلام:</span> <span class="val">بانتظار التأكيد</span></p>
+                    </div>
+
+                    <div class="notice">هذا السند يُثبت خروج البضاعة من المخزون.<br>يرجى تأكيد الاستلام من طرف ${order.destName}.</div>
+
+                    <div class="footer">
+                        <p><span style="flex:1;">أمين المستودع</span> <span style="flex:1;text-align:end;">.................</span></p>
+                        <p><span style="flex:1;">مستلم البضاعة</span> <span style="flex:1;text-align:end;">.................</span></p>
+                        <p style="text-align: center; justify-content: center; margin-top: 4mm;">طبعت بواسطة نظام الإدارة الإلكتروني</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `);
+        w.document.close();
+        w.focus();
+        setTimeout(() => { w.print(); w.close(); }, 600);
     }
 
     function printInventoryReceipt(tx, item, qty, type) {

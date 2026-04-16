@@ -4,7 +4,7 @@
     <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>����� ������ ���� ��� - POS</title>
+    <title>إعداد وتهيئة النظام لأول مرة - POS</title>
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
     <style>
@@ -212,10 +212,10 @@
         <div class="setup-header">
             <div class="brand">
                 <img src="1111.png" alt="Logo" id="hdr-logo">
-                <span class="brand-name" id="hdr-name">����� ������</span>
+                <span class="brand-name" id="hdr-name">معلومات المطعم</span>
             </div>
-            <h1>������ �� �� ������! ??</h1>
-            <p>������� ��� ������� ��� ����� ������ �� �������</p>
+            <h1>مرحباً بك في نظامك الجديد! 👋</h1>
+            <p>لنقم بضبط إعداداتك الأساسية للبدء في استخدام النظام</p>
         </div>
 
         <!-- Steps indicator -->
@@ -232,48 +232,48 @@
 
             <!-- STEP 1: Restaurant Info -->
             <div class="step-content active" id="step-1">
-                <div class="step-title">?? ������� ������</div>
-                <div class="step-sub">��� ������ ������ ������� �� �� ���� �� ������</div>
+                <div class="step-title">🏢 بـيـانـات الـمـؤسـسـة</div>
+                <div class="step-sub">هذه البيانات ستظهر للعملاء في كل مكان على الفواتير</div>
 
                 <!-- Logo Upload -->
                 <div class="logo-upload-area" id="logo-drop" onclick="document.getElementById('logo-file').click()">
                     <img id="logo-preview" class="logo-preview-img" alt="Logo Preview">
                     <div id="logo-placeholder">
                         <div class="logo-upload-icon"><i class="ph ph-image"></i></div>
-                        <div class="logo-upload-label">���� ���� ���� ������</div>
-                        <div class="logo-upload-hint">PNG, JPG, SVG � ���� ������ 2MB</div>
+                        <div class="logo-upload-label">انقر لرفع شعار المطعم</div>
+                        <div class="logo-upload-hint">PNG, JPG, SVG بمساحة أقصاها 2MB</div>
                     </div>
                 </div>
                 <input type="file" id="logo-file" accept="image/*" style="display:none">
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>��� ������ <span class="req">*</span></label>
+                        <label>اسم المطعم <span class="req">*</span></label>
                         <div class="input-wrap">
                             <i class="ph ph-storefront"></i>
-                            <input type="text" class="form-input" id="inp-name" placeholder="����� HASH" required>
+                            <input type="text" class="form-input" id="inp-name" placeholder="مطعم HASH" required>
                         </div>
-                        <div class="field-error" id="err-name">���� ����� ��� ������</div>
+                        <div class="field-error" id="err-name">يرجى إدخال اسم المطعم</div>
                     </div>
                     <div class="form-group">
-                        <label>��� �����</label>
+                        <label>اسم الفرع</label>
                         <div class="input-wrap">
                             <i class="ph ph-map-pin"></i>
-                            <input type="text" class="form-input" id="inp-branch" placeholder="����� �������">
+                            <input type="text" class="form-input" id="inp-branch" placeholder="الفرع الرئيسي">
                         </div>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>��� ������</label>
+                        <label>رقم الهاتف</label>
                         <div class="input-wrap">
                             <i class="ph ph-phone"></i>
                             <input type="text" class="form-input" id="inp-phone" placeholder="+966 5x xxx xxxx">
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>����� �������</label>
+                        <label>الرقم الضريبي</label>
                         <div class="input-wrap">
                             <i class="ph ph-seal-percent"></i>
                             <input type="text" class="form-input" id="inp-tax" placeholder="300xxxxxxxxx0003">
@@ -282,138 +282,138 @@
                 </div>
 
                 <div class="form-group">
-                    <label>�� ������ (���� �� ���� ��������)</label>
+                    <label>تذييل الفاتورة (الجملة التي تظهر أسفلها)</label>
                     <div class="input-wrap">
                         <i class="ph ph-note-pencil"></i>
-                        <input type="text" class="form-input" id="inp-footer" placeholder="����� �������� - ����� ������� ������">
+                        <input type="text" class="form-input" id="inp-footer" placeholder="شكراً لزيارتكم - نتمنى لكم وجبة شهية">
                     </div>
                 </div>
 
                 <button class="btn-next" id="btn-next-1" onclick="goStep(2)">
-                    ������ &nbsp;<i class="ph-bold ph-arrow-left"></i>
+                    التالي &nbsp;<i class="ph-bold ph-arrow-left"></i>
                 </button>
             </div>
 
             <!-- STEP 2: Admin Account -->
             <div class="step-content" id="step-2">
-                <div class="step-title">?? ���� ������ �����</div>
-                <div class="step-sub">��� ������ ����� ������� ����� ��� ������. ����� �������� �����.</div>
+                <div class="step-title">👤 حساب المدير النظام</div>
+                <div class="step-sub">هذا الحساب يمتلك الصلاحية المطلقة في إدارة النظام بالكامل. احتفظ بمعلوماته جيداً.</div>
 
                 <div class="form-group">
-                    <label>��� �������� (Username) <span class="req">*</span></label>
+                    <label>اسم المستخدم (Username) <span class="req">*</span></label>
                     <div class="input-wrap">
                         <i class="ph ph-user-circle"></i>
                         <input type="text" class="form-input" id="inp-username" placeholder="admin" autocomplete="off">
                     </div>
-                    <div class="field-error" id="err-username">���� ����� ��� ��������</div>
+                    <div class="field-error" id="err-username">يرجى إدخال اسم المستخدم</div>
                 </div>
 
                 <div class="form-group">
-                    <label>����� ������ <span class="req">*</span></label>
+                    <label>الاسم الكامل <span class="req">*</span></label>
                     <div class="input-wrap">
                         <i class="ph ph-identification-badge"></i>
-                        <input type="text" class="form-input" id="inp-fullname" placeholder="���� ������">
+                        <input type="text" class="form-input" id="inp-fullname" placeholder="المدير العام">
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label>���� ������ <span class="req">*</span></label>
+                    <label>كلمة المرور <span class="req">*</span></label>
                     <div class="input-wrap">
                         <i class="ph ph-lock-key"></i>
-                        <input type="password" class="form-input" id="inp-pwd" placeholder="���� ���� ���� (6 ���� ��� �����)" autocomplete="new-password">
+                        <input type="password" class="form-input" id="inp-pwd" placeholder="أدخل كلمة مرور (6 أحرف على الأقل)" autocomplete="new-password">
                         <button class="pwd-toggle" type="button" onclick="togglePwd('inp-pwd', this)">
                             <i class="ph ph-eye"></i>
                         </button>
                     </div>
-                    <div class="field-error" id="err-pwd">��� �� ���� ���� ������ 6 ���� ��� �����</div>
+                    <div class="field-error" id="err-pwd">يجب أن تكون كلمة المرور 6 أحرف على الأقل</div>
                 </div>
 
                 <div class="form-group">
-                    <label>����� ���� ������ <span class="req">*</span></label>
+                    <label>تأكيد كلمة المرور <span class="req">*</span></label>
                     <div class="input-wrap">
                         <i class="ph ph-lock-key-open"></i>
-                        <input type="password" class="form-input" id="inp-pwd2" placeholder="��� ����� ���� ������" autocomplete="new-password">
+                        <input type="password" class="form-input" id="inp-pwd2" placeholder="أعد إدخال كلمة المرور" autocomplete="new-password">
                         <button class="pwd-toggle" type="button" onclick="togglePwd('inp-pwd2', this)">
                             <i class="ph ph-eye"></i>
                         </button>
                     </div>
-                    <div class="field-error" id="err-pwd2">����� ������ ��� ���������</div>
+                    <div class="field-error" id="err-pwd2">كلمتا المرور غير متطابقتين</div>
                 </div>
 
                 <button class="btn-next" id="btn-next-2" onclick="goStep(3)">
-                    ������ �������� &nbsp;<i class="ph-bold ph-arrow-left"></i>
+                    مراجعة البيانات &nbsp;<i class="ph-bold ph-arrow-left"></i>
                 </button>
                 <button class="btn-back" onclick="goStep(1)">
-                    <i class="ph-bold ph-arrow-right"></i>&nbsp; ����
+                    <i class="ph-bold ph-arrow-right"></i>&nbsp; الغاء
                 </button>
             </div>
 
             <!-- STEP 3: Review & Confirm -->
             <div class="step-content" id="step-3">
-                <div class="step-title">? ������ ������</div>
-                <div class="step-sub">���� �� �������� ��� ����� �������</div>
+                <div class="step-title">👀 مراجعة البيانات</div>
+                <div class="step-sub">تحقق من صحة المعلومات قبل إعتماد الإعدادات</div>
 
                 <div class="summary-row">
                     <i class="ph-fill ph-image-square"></i>
                     <div>
-                        <div class="summary-row-label">���� ������</div>
+                        <div class="summary-row-label">شعار المطعم</div>
                         <img id="sum-logo" src="1111.png" style="width:40px;height:40px;border-radius:8px;margin-top:4px;object-fit:cover;">
                     </div>
                 </div>
                 <div class="summary-row">
                     <i class="ph-fill ph-storefront"></i>
                     <div>
-                        <div class="summary-row-label">��� ������</div>
-                        <div class="summary-row-value" id="sum-name">�</div>
+                        <div class="summary-row-label">اسم المطعم</div>
+                        <div class="summary-row-value" id="sum-name">ـ</div>
                     </div>
                 </div>
                 <div class="summary-row">
                     <i class="ph-fill ph-phone"></i>
                     <div>
-                        <div class="summary-row-label">������</div>
-                        <div class="summary-row-value" id="sum-phone">�</div>
+                        <div class="summary-row-label">رقم الهاتف</div>
+                        <div class="summary-row-value" id="sum-phone">ـ</div>
                     </div>
                 </div>
                 <div class="summary-row">
                     <i class="ph-fill ph-user-circle"></i>
                     <div>
-                        <div class="summary-row-label">�������� ������</div>
-                        <div class="summary-row-value" id="sum-user">�</div>
+                        <div class="summary-row-label">حساب المدير</div>
+                        <div class="summary-row-value" id="sum-user">ـ</div>
                     </div>
                 </div>
                 <div class="summary-row">
                     <i class="ph-fill ph-shield-check"></i>
                     <div>
-                        <div class="summary-row-label">�����</div>
-                        <div class="summary-row-value" style="color:#10b981;">������ ����� ??</div>
+                        <div class="summary-row-label">صلاحيات</div>
+                        <div class="summary-row-value" style="color:#10b981;">مدير نظام بكامل الصلاحيات ✅</div>
                     </div>
                 </div>
 
                 <button class="btn-next" id="btn-finish" onclick="finishSetup()">
-                    <i class="ph-bold ph-rocket-launch"></i>&nbsp; ����� ������� ������
+                    <i class="ph-bold ph-rocket-launch"></i>&nbsp; إنهاء إعدادات تهيئة الحساب
                 </button>
                 <button class="btn-back" onclick="goStep(2)">
-                    <i class="ph-bold ph-arrow-right"></i>&nbsp; ���� �������
+                    <i class="ph-bold ph-arrow-right"></i>&nbsp; عودة للتعديل
                 </button>
             </div>
 
             <!-- STEP 4: Done -->
             <div class="step-content" id="step-4">
                 <div style="text-align:center; padding: 10px 0;">
-                    <div class="success-icon">?</div>
-                    <div class="step-title" style="font-size:22px; margin-bottom:8px;">�� ������� �����!</div>
+                    <div class="success-icon">🎉</div>
+                    <div class="step-title" style="font-size:22px; margin-bottom:8px;">تم الإعداد بنجاح!</div>
                     <div class="step-sub" style="margin-bottom:20px;line-height:1.8;">
-                        �� ��� ������ ������ ������ ���� ������ �����.<br>
-                        ���� ������ ����� ������ ����.
+                        لقد تمت تهيئة النظام وبناء قاعدة البيانات وربط حسابك.<br>
+                        يمكنك البدء في العمل مباشرة.
                     </div>
                     <div id="done-preview" style="display:flex;align-items:center;gap:12px;justify-content:center;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:14px;padding:14px 20px;margin-bottom:20px;">
                         <img id="done-logo" src="1111.png" style="width:50px;height:50px;border-radius:12px;object-fit:cover;">
                         <div style="text-align:right;">
-                            <div style="font-size:16px;font-weight:800;color:#10b981;" id="done-name">������</div>
-                            <div style="font-size:12px;color:#64748b;" id="done-user">������ �����</div>
+                            <div style="font-size:16px;font-weight:800;color:#10b981;" id="done-name">اسم المطعم</div>
+                            <div style="font-size:12px;color:#64748b;" id="done-user">اسم المدير</div>
                         </div>
                     </div>
-                    <div style="font-size:13px;color:#475569;" id="redirect-msg">���� ������� ���� <strong id="cnt">3</strong> �����...</div>
+                    <div style="font-size:13px;color:#475569;" id="redirect-msg">جاري توجيهك لشاشة الدخول في <strong id="cnt">3</strong> ثوان...</div>
                 </div>
             </div>
 
@@ -424,7 +424,7 @@
         </div>
 
         <div style="text-align:center;margin-top:16px;font-size:11px;color:#1e3a5f;">
-            ���� ����� ������� POS &nbsp;�&nbsp; ���� ������ ������ � 2026
+            نظام الدفع المحاسبي POS &nbsp;•&nbsp; جميع الحقوق محفوظة © 2026
         </div>
     </div>
 
@@ -466,7 +466,7 @@
 
         // Live name preview in header
         document.getElementById('inp-name').addEventListener('input', (e) => {
-            document.getElementById('hdr-name').textContent = e.target.value || '����� ������';
+            document.getElementById('hdr-name').textContent = e.target.value || 'معلومات المطعم';
         });
 
         function togglePwd(inputId, btn) {
@@ -538,8 +538,8 @@
             const user= document.getElementById('inp-username').value.trim();
             const full= document.getElementById('inp-fullname').value.trim() || user;
 
-            document.getElementById('sum-name').textContent  = name  || '�';
-            document.getElementById('sum-phone').textContent = phone || '��� ����';
+            document.getElementById('sum-name').textContent  = name  || 'ـ';
+            document.getElementById('sum-phone').textContent = phone || 'غير محدد';
             document.getElementById('sum-user').textContent  = full + ' (' + user + ')';
             if (base64Logo) document.getElementById('sum-logo').src = base64Logo;
         }
@@ -547,7 +547,7 @@
         function finishSetup() {
             const btn = document.getElementById('btn-finish');
             btn.disabled = true;
-            btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> ���� �����...';
+            btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري التهيئة...';
 
             const name    = document.getElementById('inp-name').value.trim();
             const branch  = document.getElementById('inp-branch').value.trim();
@@ -555,13 +555,13 @@
             const tax     = document.getElementById('inp-tax').value.trim();
             const footer  = document.getElementById('inp-footer').value.trim();
             const user    = document.getElementById('inp-username').value.trim();
-            const full    = document.getElementById('inp-fullname').value.trim() || '������ �����';
+            const full    = document.getElementById('inp-fullname').value.trim() || 'مدير النظام';
             const pwd     = document.getElementById('inp-pwd').value;
 
             // 1. Save restaurant_settings (same format as settings.js)
             const settings = {
                 name, branch, phone, tax,
-                footer: footer || '����� �������� - ����� ������� ������',
+                footer: footer || 'شكراً لزيارتكم - نتمنى لكم وجبة شهية',
                 logo: base64Logo || '1111.png',
                 whatsapp: phone
             };
@@ -571,9 +571,10 @@
             localStorage.setItem('admin_pwd', pwd);
             localStorage.setItem('admin_username', user);
 
-            // 3. Create system_roles (������ ����� role)
+            // 3. Create system_roles (مدير نظام role)
             const adminRole = {
-                name: '������ �����',
+                id: '1',
+                name: 'مدير نظام',
                 perms: {
                     pos_access: true, pos_discount: true, pos_return: true,
                     sales_access: true, menu_manage: true, inv_manage: true,
@@ -584,7 +585,19 @@
                 localStorage.setItem('system_roles', JSON.stringify([adminRole]));
             }
 
-            // 4. Log this setup completion
+            // 4. Create first employee to be able to login
+            const firstEmp = {
+                id: '1',
+                name: full,
+                role: '1', // Matches the admin role above
+                phone: phone,
+                pinCode: pwd // Make the password act as PIN code initially
+            };
+            if (!localStorage.getItem('employees_data')) {
+                localStorage.setItem('employees_data', JSON.stringify([firstEmp]));
+            }
+
+            // 5. Log this setup completion
             localStorage.setItem('setup_complete', '1');
             localStorage.setItem('setup_admin', user);
 
@@ -601,7 +614,7 @@
                 // Fill done preview
                 if (base64Logo) document.getElementById('done-logo').src = base64Logo;
                 document.getElementById('done-name').textContent = name;
-                document.getElementById('done-user').textContent = user + ' � ' + full;
+                document.getElementById('done-user').textContent = user + ' • ' + full;
 
                 // Countdown redirect
                 let c = 3;
@@ -617,7 +630,7 @@
             }, 1200);
         }
     </script>
-<script src="currency-helper.js"></script>
+    <script src="currency-helper.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

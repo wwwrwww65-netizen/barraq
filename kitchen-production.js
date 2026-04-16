@@ -166,25 +166,23 @@ async function switchTab(tab) {
     const pageTitle = document.getElementById('page-title');
 
     contentArea.innerHTML = '';
-
-    if (tab === 'receive') {
-        currentDb = await window.dbRead();
-    }
+    
+    // Always fetch latest DB before rendering any tab to ensure dropdowns and stats are strictly synced
+    currentDb = await window.dbRead();
 
     if (tab === 'dashboard') {
         pageTitle.innerText = 'لوحة رئيسية الإنتاج';
         contentArea.innerHTML = renderDashboard();
         setTimeout(async () => {
             try {
-                const db = await window.dbRead();
-                maybeRunKitchenStockSoundCheck(db);
+                maybeRunKitchenStockSoundCheck(currentDb);
             } catch (e) {}
         }, 400);
     } else if (tab === 'receive') {
-        pageTitle.innerText = 'استلام مواد من المخزن';
+        pageTitle.innerText = 'استلام مواد من المخزن (سحب يدوي)';
         contentArea.innerHTML = renderReceive();
     } else if (tab === 'handover') {
-        pageTitle.innerText = "تسليم للمبيعات";
+        pageTitle.innerText = "تسليم للمبيعات (تحويل جاهز)";
         contentArea.innerHTML = renderHandover();
     } else if (tab === 'reports') {
         pageTitle.innerText = "التقارير وسندات المطبخ";
@@ -201,11 +199,70 @@ function generateTxId(prefix) {
 }
 
 // UI Actions API bound to window so they work from generic HTML strings
+window.confirmKitchenReceiveOrder = async function(orderId) {
+    const db = await window.dbRead();
+    if (!db.issueOrders) return;
+    
+    const orderIdx = db.issueOrders.findIndex(o => o.id === orderId);
+    if (orderIdx === -1) return;
+    const order = db.issueOrders[orderIdx];
+    
+    if (!confirm(`هل أنت متأكد من استلام الصنف "${order.itemName}" (الكمية: ${order.qty}) من ${order.fromWhName}؟`)) return;
+
+    // 1. Mark order as received
+    db.issueOrders[orderIdx].status = 'مستلم بالمطبخ';
+
+    // 2. Create Kitchen TX (Receive)
+    const newTx = {
+        id: generateTxId('IN'),
+        type: 'receive',
+        itemName: order.itemName,
+        itemSku: order.sku,
+        qty: order.qty,
+        unit: order.unit || '',
+        notes: `استلام أوامر المخزن - ${order.id}`,
+        date: new Date().toISOString(),
+        user: "الشيف المناوب",
+        warehouseQtyBefore: 0, 
+        warehouseQtyAfter: 0, 
+        sourceWarehouse: order.fromWh
+    };
+
+    if (!db.kitchenTx) db.kitchenTx = [];
+    db.kitchenTx.push(newTx);
+
+    // 3. Add to kitchen internal stock tracker
+    if (!db.kitchenStock) db.kitchenStock = [];
+    const kIdx = db.kitchenStock.findIndex(k => k.sku === order.sku);
+    if (kIdx !== -1) {
+        db.kitchenStock[kIdx].qty += order.qty;
+    } else {
+        db.kitchenStock.push({
+            name: order.itemName,
+            sku: order.sku,
+            unit: order.unit || '',
+            qty: order.qty,
+            minQty: 3 // Default minimum
+        });
+    }
+
+    await window.dbWrite(db);
+    currentDb = db;
+
+    const prefs = getKitchenPrefs();
+    if (prefs.autoPrintReceive) {
+        printKitchenReceiveReceipt(newTx, 1);
+    }
+    
+    alert(`✅ تم استلام البضاعة (أمر صرف #${order.id}) وإضافتها لمخزون المطبخ بنجاح!`);
+    await switchTab('dashboard');
+};
+
 window.saveKitchenReceive = async function() {
     const itemName = document.getElementById('kp-rcv-item').value;
     const qty = Number(document.getElementById('kp-rcv-qty').value);
     const notes = document.getElementById('kp-rcv-notes').value;
-    const sourceWh = getKitchenSourceWh();
+    const sourceWh = document.getElementById('kp-rcv-wh').value;
 
     if (!itemName || !qty || qty <= 0) {
         alert('يرجى اختيار الصنف وتحديد الكمية بشكل صحيح');
@@ -326,6 +383,56 @@ window.saveKitchenHandover = async function() {
 function renderDashboard() {
     const txs = (currentDb && currentDb.kitchenTx) ? currentDb.kitchenTx : [];
     
+    // --- Pending Issue Orders from Warehouse ---
+    const pendingOrders = (currentDb && currentDb.issueOrders) ? currentDb.issueOrders.filter(o => o.status === 'قيد الاستلام') : [];
+    
+    // Update Sidebar Navigation Badge
+    const navLink = document.getElementById('kp-nav-pending');
+    const navCnt = document.getElementById('kp-pending-count');
+    if (navLink && navCnt) {
+        if (pendingOrders.length > 0) {
+            navLink.style.display = '';
+            navCnt.textContent = pendingOrders.length;
+        } else {
+            navLink.style.display = 'none';
+        }
+    }
+
+    let pendingHTML = '';
+    if (pendingOrders.length > 0) {
+        let cardsHTML = pendingOrders.map(order => `
+            <div style="background:rgba(0,0,0,0.25); border:1px solid rgba(234,179,8,0.3); border-radius:10px; padding:15px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px;">
+                        <span style="background:rgba(234,179,8,0.2); color:#fbbf24; padding:3px 8px; border-radius:6px; font-size:12px; font-weight:bold;">${order.id}</span>
+                        <strong style="color:white; font-size:16px;">${order.itemName}</strong>
+                    </div>
+                    <div style="color:var(--text-muted); font-size:13px;">
+                        <i class="ph ph-warehouse"></i> من: ${order.fromWhName} |
+                        <i class="ph ph-calendar"></i> التاريخ: ${order.date} 
+                        ${order.notes ? `| <i class="ph ph-info"></i> ${order.notes}` : ''}
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <span style="font-size:20px; font-weight:800; color:#10b981;">${order.qty} <span style="font-size:14px;">${order.unit}</span></span>
+                    <button class="kp-action-btn" style="background:linear-gradient(135deg, #10b981, #059669); padding:8px 16px; min-width:auto;" onclick="window.confirmKitchenReceiveOrder('${order.id}')">
+                        <i class="ph ph-check-circle"></i> تأكيد الاستلام
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+        pendingHTML = `
+            <div class="kp-card" style="border: 2px solid rgba(234,179,8,0.5); background: linear-gradient(135deg, rgba(234,179,8,0.05), rgba(234,179,8,0.01));">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h3 style="margin:0; color:#fbbf24;"><i class="ph ph-truck"></i> أوامر جاهزة بانتظار استلام المطبخ (${pendingOrders.length})</h3>
+                </div>
+                ${cardsHTML}
+            </div>
+        `;
+    }
+    // -----------------------------------------
+
     const receivedCount = txs.filter(t => t.type === 'receive').reduce((sum, t) => sum + t.qty, 0);
     const handoverCount = txs.filter(t => t.type === 'handover').reduce((sum, t) => sum + t.qty, 0);
 
@@ -351,6 +458,8 @@ function renderDashboard() {
     }
 
     return `
+        ${pendingHTML}
+        
         <div class="kp-stats-grid">
             <div class="kp-stat-card">
                 <div class="kp-icon-box orange">
@@ -412,52 +521,87 @@ function renderDashboard() {
     `;
 }
 
+window.updateRcvItemsList = function() {
+    const wh = document.getElementById('kp-rcv-wh')?.value || 'main';
+    let inventoryItems = currentDb && currentDb.inventory ? currentDb.inventory : [];
+    inventoryItems = inventoryItems.filter((i) => (i.warehouseId || 'main') === wh);
+    
+    const sel = document.getElementById('kp-rcv-item');
+    if (!sel) return;
+    
+    if(inventoryItems.length > 0) {
+        sel.innerHTML = '<option value="" disabled selected>-- اختر الصنف لسحبه وتفريغ المخزون --</option>' + 
+            inventoryItems.map((i) => `<option value="${i.name.replace(/"/g, '&quot;')}">${i.name} — متوفر: ${i.qty} ${i.unit || ''} (تكلفة: ${Number(i.cost||0).toFixed(2)})</option>`).join('');
+    } else {
+        sel.innerHTML = '<option value="" disabled selected>لا توجد أصناف في هذا المستودع</option>';
+    }
+};
+
 function renderReceive() {
     const wh = getKitchenSourceWh();
     let inventoryItems = currentDb && currentDb.inventory ? currentDb.inventory : [];
     inventoryItems = inventoryItems.filter((i) => (i.warehouseId || 'main') === wh);
-    const optionsJSON = inventoryItems
-        .map((i) => `<option value="${i.name.replace(/"/g, '&quot;')}">${i.name} (متوفر: ${i.qty})</option>`)
-        .join('');
+    
+    // Auto-update to current date/time
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    const localDatetime = now.toISOString().slice(0,16);
+
+    const optionsJSON = inventoryItems.length > 0 
+        ? inventoryItems.map((i) => `<option value="${i.name.replace(/"/g, '&quot;')}">${i.name} — متوفر: ${i.qty} ${i.unit || ''} (تكلفة: ${Number(i.cost||0).toFixed(2)})</option>`).join('')
+        : '<option value="" disabled>لا توجد أصناف في هذا المستودع</option>';
 
     return `
-        <div class="kp-card">
-            <h3><i class="ph ph-download-simple"></i> سند استلام من المخزن للمطبخ</h3>
-            <p style="color:var(--text-muted); margin-bottom:20px;">المصدر الحالي: <strong style="color:var(--accent-orange)">${kitchenWhLabel(wh)}</strong> — يمكن تغييره من تبويب «خيارات إعدادات المطبخ».</p>
+        <div class="kp-card" style="border-top: 4px solid var(--accent-orange);">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom:15px; margin-bottom:20px;">
+                <h3 style="margin:0;"><i class="ph ph-hand-grabbing text-orange"></i> سحب مواد من المخزن (طلب يدوي)</h3>
+                <span style="background:rgba(234,179,8,0.15); color:#fbbf24; padding:5px 12px; border-radius:20px; font-size:12px;">سحب فوري</span>
+            </div>
+            
+            <p style="color:var(--text-muted); margin-bottom:24px; font-size:13px;">استخدم هذه الشاشة إذا كان المطبخ يقوم <strong>بسحب</strong> المواد مباشرة دون انتظار أمر صرف من المخازن.</p>
             
             <div class="kp-form-grid">
                 <div class="kp-form-group">
-                    <label>تاريخ ووقت الاستلام</label>
-                    <input type="datetime-local" class="kp-input" value="2026-04-02T08:30">
+                    <label>تاريخ ووقت السحب</label>
+                    <input type="datetime-local" class="kp-input" value="${localDatetime}" readonly style="opacity:0.8; cursor:not-allowed;">
                 </div>
                 <div class="kp-form-group">
                     <label>المسؤول (المستلم)</label>
-                    <input type="text" class="kp-input" value="الشيف التنفيذي / أحمد" readonly>
+                    <input type="text" class="kp-input" value="مدير المطبخ (تلقائي)" readonly style="opacity:0.8; cursor:not-allowed;">
                 </div>
             </div>
 
-            <div class="kp-form-group" style="margin-top:20px;">
-                <label>اختيار الصنف / المادة الخام (قائمة المخازن)</label>
-                <select class="kp-select" id="kp-rcv-item">
-                    <option value="" disabled selected>اختر الصنف من المخزن...</option>
+            <div class="kp-form-group" style="margin-top:20px; background:rgba(0,0,0,0.15); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.03);">
+                <label style="color:#fbbf24;"><i class="ph ph-warehouse"></i> مصدر السحب (اختر المستودع)</label>
+                <select class="kp-select" id="kp-rcv-wh" onchange="window.updateRcvItemsList()" style="margin-bottom:15px; border-color:rgba(234,179,8,0.5);">
+                    <option value="main" ${wh === 'main' ? 'selected' : ''}>المستودع الرئيسي</option>
+                    <option value="restaurant" ${wh === 'restaurant' ? 'selected' : ''}>مخزن المطعم الداخلي</option>
+                    <option value="beverages" ${wh === 'beverages' ? 'selected' : ''}>مخزن المشروبات</option>
+                </select>
+
+                <label style="color:#fbbf24;"><i class="ph ph-package"></i> الصنف المراد سحبه</label>
+                <select class="kp-select" id="kp-rcv-item" style="font-weight:bold;">
+                    <option value="" disabled selected>-- اختر الصنف لسحبه وتفريغ المخزون --</option>
                     ${optionsJSON}
                 </select>
             </div>
 
             <div class="kp-form-grid" style="margin-top:20px;">
                 <div class="kp-form-group">
-                    <label>الكمية المستلمة</label>
-                    <input type="number" id="kp-rcv-qty" class="kp-input" placeholder="0" min="1">
+                    <label><i class="ph ph-scales"></i> الكمية المسحوبة المطلوبة</label>
+                    <input type="number" id="kp-rcv-qty" class="kp-input" placeholder="0" min="1" style="font-size:18px; font-weight:bold;">
                 </div>
                 <div class="kp-form-group">
-                    <label>ملاحظات الاستلام</label>
-                    <input type="text" id="kp-rcv-notes" class="kp-input" placeholder="مثال: بحالة ممتازة للاستخدام الفوري">
+                    <label><i class="ph ph-note"></i> سبب السحب / ملاحظات</label>
+                    <input type="text" id="kp-rcv-notes" class="kp-input" placeholder="مثال: تعويض نقص فترة المساء...">
                 </div>
             </div>
 
-            <div style="margin-top:30px; display:flex; gap:10px; justify-content:flex-end;">
-                <button class="kp-action-btn secondary"><i class="ph ph-x"></i> إلغاء تفريغ</button>
-                <button class="kp-action-btn" onclick="window.saveKitchenReceive()"><i class="ph ph-check"></i> حفظ سند الاستلام وإضافته للسجل</button>
+            <div style="margin-top:35px; display:flex; gap:12px; justify-content:flex-end; border-top: 1px solid rgba(255,255,255,0.05); padding-top:20px;">
+                <button class="kp-action-btn secondary" onclick="switchTab('dashboard')"><i class="ph ph-x"></i> إلغاء ورجوع</button>
+                <button class="kp-action-btn" style="background:linear-gradient(135deg, #f59e0b, #d97706); font-size:15px;" onclick="window.saveKitchenReceive()">
+                    <i class="ph ph-check-circle"></i> تأكيد السحب وخصم المخزون
+                </button>
             </div>
         </div>
     `;
@@ -466,49 +610,63 @@ function renderReceive() {
 function renderHandover() {
     const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
     let menuItems = (currentDb && currentDb.products) ? currentDb.products : [];
-    let optionsJSON = menuItems.map((i) => `<option value="${i.nameAr}">${i.nameAr} (${xf(i.price)})</option>`).join('');
+    
+    // Auto-update to current date/time
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    const localDatetime = now.toISOString().slice(0,16);
+
+    let optionsJSON = menuItems.length > 0
+        ? menuItems.map((i) => `<option value="${i.nameAr}">${i.nameAr} — منيو (${xf(i.price)})</option>`).join('')
+        : '<option value="" disabled>المنيو فارغ</option>';
 
     return `
-        <div class="kp-card">
-            <h3><i class="ph ph-upload-simple"></i> سند تسليم نقاط البيع (جاهز)</h3>
-            <p style="color:var(--text-muted); margin-bottom:20px;">قم بتسجيل الأصناف المنتجة الجاهزة التي تم تسليمها للكاشير أو الواجهة للبيع المباشر.</p>
+        <div class="kp-card" style="border-top: 4px solid var(--accent-blue);">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom:15px; margin-bottom:20px;">
+                <h3 style="margin:0;"><i class="ph ph-upload-simple text-blue"></i> تسليم جاهز (للمبيعات / نقاط البيع)</h3>
+                <span style="background:rgba(59,130,246,0.15); color:#60a5fa; padding:5px 12px; border-radius:20px; font-size:12px;">مرحلة الإنتاج النهائي</span>
+            </div>
+            
+            <p style="color:var(--text-muted); margin-bottom:24px; font-size:13px;">قم بتسجيل الأصناف الجاهزة (وجبات/منتجات تامة الصنع) التي تم إنتاجها وتسليمها للكاشير للبيع المباشر.</p>
             
             <div class="kp-form-grid">
                 <div class="kp-form-group">
                     <label>تاريخ ووقت التسليم</label>
-                    <input type="datetime-local" class="kp-input" value="2026-04-02T08:30">
+                    <input type="datetime-local" class="kp-input" value="${localDatetime}" readonly style="opacity:0.8; cursor:not-allowed;">
                 </div>
                 <div class="kp-form-group">
-                    <label>القسم المستلم</label>
+                    <label>القسم المستلم (الواجهة)</label>
                     <select class="kp-select">
-                        <option>الكاشير الرئيسي (واجهة المحل)</option>
-                        <option>قسم التجهيز الخارجي</option>
+                        <option>الكاشير الرئيسي (واجهة المطعم)</option>
+                        <option>قسم التجهيز الخارجي (طلبات محلية)</option>
                     </select>
                 </div>
             </div>
 
-            <div class="kp-form-group" style="margin-top:20px;">
-                <label>اختيار الصنف المنتج (المنيو)</label>
-                <select class="kp-select" id="kp-out-item">
-                    <option value="" disabled selected>اختر الصنف من المنيو...</option>
+            <div class="kp-form-group" style="margin-top:20px; background:rgba(0,0,0,0.15); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.03);">
+                <label style="color:#60a5fa;"><i class="ph ph-hamburger"></i> الصنف المنتج الجاهز (من المنيو)</label>
+                <select class="kp-select" id="kp-out-item" style="font-weight:bold;">
+                    <option value="" disabled selected>-- اختر الصنف الجاهز المُسلّم --</option>
                     ${optionsJSON}
                 </select>
             </div>
 
             <div class="kp-form-grid" style="margin-top:20px;">
                 <div class="kp-form-group">
-                    <label>الكمية المُسلّمة</label>
-                    <input type="number" id="kp-out-qty" class="kp-input" placeholder="0" min="1">
+                    <label><i class="ph ph-scales"></i> الكمية المُسلّمة (وحدة بيع)</label>
+                    <input type="number" id="kp-out-qty" class="kp-input" placeholder="0" min="1" style="font-size:18px; font-weight:bold;">
                 </div>
                 <div class="kp-form-group">
-                    <label>حالة التسليم</label>
-                    <input type="text" class="kp-input" value="مباشر للبيع" readonly style="color:var(--text-muted);">
+                    <label><i class="ph ph-check-circle"></i> حالة المنتج</label>
+                    <input type="text" class="kp-input" value="جاهز 100% للبيع المباشر" readonly style="color:#10b981; font-weight:bold; background:rgba(16,185,129,0.05); border-color:rgba(16,185,129,0.2);">
                 </div>
             </div>
 
-            <div style="margin-top:30px; display:flex; gap:10px; justify-content:flex-end;">
-                <button class="kp-action-btn secondary"><i class="ph ph-x"></i> إلغاء تفريغ</button>
-                <button class="kp-action-btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);" onclick="window.saveKitchenHandover()"><i class="ph ph-check"></i> حفظ واعتماد التسليم للبيع</button>
+            <div style="margin-top:35px; display:flex; gap:12px; justify-content:flex-end; border-top: 1px solid rgba(255,255,255,0.05); padding-top:20px;">
+                <button class="kp-action-btn secondary" onclick="switchTab('dashboard')"><i class="ph ph-x"></i> إلغاء ورجوع</button>
+                <button class="kp-action-btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); font-size:15px;" onclick="window.saveKitchenHandover()">
+                    <i class="ph ph-check"></i> حفظ واعتماد التسليم للبيع
+                </button>
             </div>
         </div>
     `;

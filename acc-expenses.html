@@ -71,11 +71,27 @@
                 </div>
 
                 <div class="acc-panel">
-                    <div class="acc-panel-title">
+                    <div class="acc-panel-title" style="display:flex; justify-content:space-between; align-items:center;">
                         <span>قائمة سندات الصرف الأخيرة</span>
-                        <div class="search-box no-print" style="width:300px;">
-                            <i class="ph ph-magnifying-glass"></i>
-                            <input type="text" id="search-exp" placeholder="بحث باسم المصروف...">
+                        <div style="display:flex; gap:10px;">
+                            <select id="exp-period-filter" class="input-acc no-print" style="width:160px; font-size:13px; padding:6px 10px;">
+                                <option value="all">كل الفترات</option>
+                                <option value="today" selected>اليوم</option>
+                                <option value="yesterday">أمس</option>
+                                <option value="week">هذا الأسبوع</option>
+                                <option value="month">هذا الشهر</option>
+                                <option value="year">هذه السنة</option>
+                                <option value="custom">تاريخ محدد...</option>
+                            </select>
+                            <div id="exp-custom-date-wrap" style="display:none; gap:5px; align-items:center;">
+                                <input type="date" id="exp-date-from" class="input-acc no-print" style="padding:5px; font-size:12px; width:110px;">
+                                <span style="color:var(--text-muted); font-size:12px;">إلى</span>
+                                <input type="date" id="exp-date-to" class="input-acc no-print" style="padding:5px; font-size:12px; width:110px;">
+                            </div>
+                            <div class="search-box no-print" style="width:250px;">
+                                <i class="ph ph-magnifying-glass"></i>
+                                <input type="text" id="search-exp" placeholder="بحث باسم المصروف...">
+                            </div>
                         </div>
                     </div>
                     
@@ -157,7 +173,71 @@
         </div>
     </div>
 
+    <!-- Modal: Edit Expense -->
+    <div class="modal-overlay" id="editExpenseModal" inert>
+        <div class="modal-box" style="max-width:500px">
+            <div style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);padding:18px 20px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;margin:-24px -24px 20px;">
+                <h3 style="color:white;margin:0;display:flex;align-items:center;gap:8px;font-size:16px;">
+                    <i class="ph-fill ph-pencil"></i> تعديل سند الصرف &nbsp;<span id="edit-exp-id-label" style="font-size:13px;opacity:0.75;"></span>
+                </h3>
+                <button class="btn-close-edit-exp-modal" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;"><i class="ph ph-x"></i></button>
+            </div>
+            <div style="background:#f97316;color:#fff;padding:7px 14px;font-size:12px;border-radius:6px;margin-bottom:16px;display:flex;align-items:center;gap:7px;">
+                <i class="ph ph-warning"></i>
+                سيتم تحديث الرصيد تلقائياً بعد الحفظ. لا يمكن التراجع عن التعديل لاحقاً.
+            </div>
+
+            <form id="form-edit-expense">
+                <div class="acc-form-group">
+                    <label>تصنيف المصروف / البند المحاسبي</label>
+                    <input type="text" id="edit-exp-category" class="input-acc" list="edit-exp-cat-list"
+                        placeholder="اختر أو اكتب التصنيف..." required autocomplete="off">
+                    <datalist id="edit-exp-cat-list">
+                        <option value="رواتب وأجور عاملين">
+                        <option value="إيجار مقر أو مستودع">
+                        <option value="فواتير (كهرباء، ماء، اتصالات)">
+                        <option value="مواد تغليف ونظافة">
+                        <option value="أعمال صيانة وإصلاح">
+                        <option value="مصروفات نثرية يومية / ضيافة">
+                        <option value="مشتريات عامة">
+                        <option value="مواد غذائية">
+                    </datalist>
+                </div>
+
+                <div class="acc-form-group">
+                    <label>البيان / الوصف</label>
+                    <input type="text" id="edit-exp-desc" class="input-acc" placeholder="سبب الصرف بدقة" required>
+                </div>
+
+                <div class="acc-form-group" style="display:flex; gap:16px;">
+                    <div style="flex:1;">
+                        <label>المبلغ (<span class="js-cur-sym">ر.س</span>)</label>
+                        <input type="number" step="0.01" min="1" id="edit-exp-amount" class="input-acc" placeholder="0.00" required>
+                    </div>
+                    <div style="flex:1;">
+                        <label>التاريخ</label>
+                        <input type="date" id="edit-exp-date" class="input-acc" required>
+                    </div>
+                </div>
+
+                <div class="acc-form-group">
+                    <label>من حساب (طريقة الدفع)</label>
+                    <select id="edit-exp-payment" class="input-acc" required>
+                        <option value="cash">الصندوق النقدي للفرع (كاش)</option>
+                        <option value="bank">البنك (حوالة بنكية)</option>
+                    </select>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;">
+                    <button type="button" class="btn btn-outline btn-close-edit-exp-modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary" style="background:#3b82f6;"><i class="ph ph-check-circle"></i> حفظ التعديلات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- سند مصروف واتساب -->
+
     <div id="exp-voucher-container" style="position:absolute;top:-9999px;left:-9999px;">
         <div id="exp-voucher-template" class="voucher-wrapper">
             <div class="v-header">

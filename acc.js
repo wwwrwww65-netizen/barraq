@@ -378,12 +378,132 @@ document.addEventListener('DOMContentLoaded', async () => {
             const tfoot = document.getElementById('exp-tfoot');
             tbody.innerHTML = '';
             const q = (document.getElementById('search-exp')?.value || '').toLowerCase();
-            const filt = erpExpenses.filter(e => e.desc.toLowerCase().includes(q) || (e.cat && e.cat.includes(q)));
+            const periodSelect = document.getElementById('exp-period-filter');
+            const selPeriod = periodSelect ? periodSelect.value : 'all';
+            
+            const fDateInput = document.getElementById('exp-date-from');
+            const tDateInput = document.getElementById('exp-date-to');
+            const fDate = fDateInput ? fDateInput.value : '';
+            const tDate = tDateInput ? tDateInput.value : '';
+
+            const customWrap = document.getElementById('exp-custom-date-wrap');
+            if(customWrap) {
+                customWrap.style.display = (selPeriod === 'custom') ? 'flex' : 'none';
+            }
+            
+            // Apply filtering for expenses report based on selection
+            let filt = db.expenses || [];
+            filt = filt.filter(e => {
+                let textMatch = e.desc.toLowerCase().includes(q) || (e.cat && e.cat.includes(q));
+                
+                let dateMatch = true;
+                if(selPeriod === 'custom') {
+                    if(!e.date) dateMatch = false;
+                    else {
+                        let ed = new Date(e.date);
+                        ed.setHours(0,0,0,0);
+                        if(fDate) {
+                            let fd = new Date(fDate);
+                            fd.setHours(0,0,0,0);
+                            if(ed < fd) dateMatch = false;
+                        }
+                        if(tDate && dateMatch) {
+                            let td = new Date(tDate);
+                            td.setHours(0,0,0,0);
+                            if(ed > td) dateMatch = false;
+                        }
+                    }
+                } else {
+                    dateMatch = window.isDateInPeriod(e.date, selPeriod);
+                }
+                
+                return textMatch && dateMatch;
+            });
             filt.sort((a,b) => new Date(a.date) - new Date(b.date)); // Sort ascending for running balance logic
             const sum = filt.reduce((s, e) => s + (Number(e.amount) || 0), 0);
             const sumStr = fmt2(sum);
             const wordsLine = sarAmountToArabicWords(sum);
             const sym = window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س';
+
+            // Helper to recursively calculate balance up to a date limit
+            function calculateBalancesUpTo(dateLimitExclusive=null) {
+                let cash = 0, bank = 0;
+                let bOrders = db.orders || [];
+                let bReturns = db.returns || [];
+                let bPurchases = db.purchases || [];
+                let bExpenses = db.expenses || [];
+                let bOtherInc = db.otherIncome || [];
+                let bBankTrans = db.bankTransfers || [];
+                let bHrExp = db.hrExpenses || [];
+                
+                const isBefore = (dStr) => {
+                    if(!dateLimitExclusive) return true;
+                    if(!dStr) return false;
+                    let targetD = new Date(dStr);
+                    return targetD < dateLimitExclusive;
+                };
+
+                bOrders.forEach(o => {
+                    if(!isBefore(o.timestamp||o.dateStr||o.date)) return;
+                    let t = Number(o.total)||0;
+                    let pm = o.paymentMethod||'';
+                    if(['cash','كاش','نقد'].includes(pm)) cash += t;
+                    else if(['card','bank','شبكة / بطاقة','شبكة','مدى','فيزا'].includes(pm)) bank += t;
+                    else if(pm==='مجزأ') { cash += Number(o.splitCash)||0; bank += Number(o.splitNetwork)||0; }
+                    else bank += t;
+                });
+
+                bReturns.forEach(r => {
+                    if(!isBefore(r.timestamp||r.date)) return;
+                    let x = returnRefundCashBank(r);
+                    cash -= x.c; bank -= x.b;
+                });
+
+                bPurchases.forEach(p => {
+                    if(!isBefore(p.date)) return;
+                    let pt = Number(p.total)||0;
+                    if(p.payMethod==='cash') cash -= pt;
+                    if(p.payMethod==='bank') bank -= pt;
+                });
+
+                bExpenses.forEach(e => {
+                    if(!isBefore(e.date)) return;
+                    let a = Number(e.amount)||0;
+                    if(e.pMethod==='cash') cash -= a;
+                    if(e.pMethod==='bank') bank -= a;
+                });
+                
+                bHrExp.forEach(h => {
+                    if(!hrAffectsLiquidity(h)) return;
+                    if(!isBefore(h.timestamp||h.date)) return;
+                    let a = Number(h.amount)||0;
+                    if(h.pMethod==='bank') bank -= a;
+                    else cash -= a;
+                });
+
+                bOtherInc.forEach(row => {
+                    if(!isBefore(row.timestamp||row.date)) return;
+                    let a = Number(row.amount)||0;
+                    if(row.pMethod==='bank') bank += a;
+                    else cash += a;
+                });
+
+                bBankTrans.forEach(t => {
+                    if(!isBefore(t.date)) return;
+                    if(t.type==='deposit_cash') cash += Number(t.amount)||0;
+                    if(t.type==='deposit_bank') bank += Number(t.amount)||0;
+                    if(t.type==='transfer_to_bank') { cash -= Number(t.amount)||0; bank += Number(t.amount)||0; }
+                    if(t.type==='transfer_to_cash') { bank -= Number(t.amount)||0; cash += Number(t.amount)||0; }
+                });
+
+                return { cash, bank };
+            }
+
+            let todayStart = new Date();
+            todayStart.setHours(0,0,0,0);
+            
+            let balancesYest = calculateBalancesUpTo(todayStart);
+            let balancesCurrent = calculateBalancesUpTo(null);
 
             if(filt.length===0) {
                 tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;">لا توجد مصروفات.</td></tr>';
@@ -405,9 +525,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         : '<span class="inv-tag tag-safe" style="background:rgba(59,130,246,0.1); color:var(--accent-blue)"><i class="ph-fill ph-bank"></i> حوالة بنكية</span>';
                     const amtStr = fmt2(e.amount);
                     const rbStr = fmt2(e._runningBal);
+                    const isCancelled = e.status === 'ملغاة';
                     tbody.innerHTML += `
-                        <tr>
-                            <td><strong>${e.id}</strong></td>
+                        <tr style="${isCancelled ? 'opacity:0.45;' : ''}">
+                            <td><strong>${e.id}</strong>${isCancelled ? ' <span style="font-size:10px;color:#ef4444;border:1px solid #ef4444;border-radius:4px;padding:1px 5px;">ملغى</span>' : ''}</td>
                             <td dir="ltr" style="text-align:right">${e.date}</td>
                             <td style="color:var(--accent-orange); font-weight:700;">${e.cat}</td>
                             <td>${e.desc}</td>
@@ -415,9 +536,33 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <td dir="ltr" style="text-align:right; font-weight:800;">${amtStr}</td>
                             <td>${m}</td>
                             <td dir="ltr" style="text-align:right; font-weight:800; color:var(--accent-amber);">${rbStr}</td>
-                            <td class="no-print"><button title="طباعة السند" style="background:none; border:none; color:var(--accent-blue); font-size:18px; cursor:pointer;"><i class="ph ph-printer"></i></button></td>
+                            <td class="no-print">
+                                <div style="display:flex;gap:5px;align-items:center;">
+                                    <button class="btn-print-exp" data-id="${e.id}" title="طباعة السند" style="background:none;border:none;color:var(--accent-blue);font-size:18px;cursor:pointer;"><i class="ph ph-printer"></i></button>
+                                    ${!isCancelled ? `<button class="btn-edit-exp" data-id="${e.id}" title="تعديل السند" style="background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:12px;"><i class="ph ph-pencil"></i> تعديل</button>` : ''}
+                                    ${!isCancelled ? `<button class="btn-delete-exp" data-id="${e.id}" title="حذف السند" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:12px;"><i class="ph ph-trash"></i> حذف</button>` : ''}
+                                </div>
+                            </td>
                         </tr>`;
                 });
+
+                // Attach edit/delete handlers after rendering
+                setTimeout(() => {
+                    document.querySelectorAll('.btn-edit-exp').forEach(btn => {
+                        btn.addEventListener('click', (ev) => {
+                            const expId = ev.currentTarget.dataset.id;
+                            const expRec = (db.expenses || []).find(x => x.id === expId);
+                            if (expRec) openEditExpModal(expRec);
+                        });
+                    });
+                    document.querySelectorAll('.btn-delete-exp').forEach(btn => {
+                        btn.addEventListener('click', async (ev) => {
+                            const expId = ev.currentTarget.dataset.id;
+                            const expRec = (db.expenses || []).find(x => x.id === expId);
+                            if (expRec) await deleteExpense(expRec);
+                        });
+                    });
+                }, 0);
             }
 
             if (tfoot) {
@@ -436,6 +581,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <div class="exp-balance-title" style="margin:0;">الرصيد الحالي دائن:</div>
                                 <div class="exp-balance-num" dir="ltr" style="margin:0;">${sumStr} ${sym}</div>
                                 <div class="exp-balance-words" style="margin:0;">(${wordsLine})</div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr class="exp-balances-summary no-border">
+                        <td colspan="9" style="padding:15px; text-align:center;">
+                            <div style="display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:20px; font-size:14px;">
+                                <div class="stat-box" style="padding:10px 20px; border-radius:8px; border:1px solid var(--border-color);">
+                                    <span style="color:var(--text-muted);display:block;margin-bottom:4px;font-size:12px">رصيد الدرج الحالي</span>
+                                    <strong style="color:var(--accent-green);font-size:16px;">${fmt2(balancesCurrent.cash)} <span>${sym}</span></strong>
+                                </div>
+                                <div class="stat-box" style="padding:10px 20px; border-radius:8px; border:1px solid var(--border-color);">
+                                    <span style="color:var(--text-muted);display:block;margin-bottom:4px;font-size:12px">رصيد الشبكة الحالي</span>
+                                    <strong style="color:var(--accent-blue);font-size:16px;">${fmt2(balancesCurrent.bank)} <span>${sym}</span></strong>
+                                </div>
+                                <div class="stat-box" style="padding:10px 20px; border-radius:8px; border:1px solid var(--border-color);">
+                                    <span style="color:var(--text-muted);display:block;margin-bottom:4px;font-size:12px">رصيد الدرج (أمس)</span>
+                                    <strong style="color:var(--text-primary);font-size:16px;">${fmt2(balancesYest.cash)} <span>${sym}</span></strong>
+                                </div>
+                                <div class="stat-box" style="padding:10px 20px; border-radius:8px; border:1px solid var(--border-color);">
+                                    <span style="color:var(--text-muted);display:block;margin-bottom:4px;font-size:12px">رصيد الشبكة (أمس)</span>
+                                    <strong style="color:var(--text-primary);font-size:16px;">${fmt2(balancesYest.bank)} <span>${sym}</span></strong>
+                                </div>
+                                <div class="stat-box" style="padding:10px 20px; border-radius:8px; border:1px solid var(--border-color);">
+                                    <span style="color:var(--text-muted);display:block;margin-bottom:4px;font-size:12px">الإجمالي الكلي بالدرج والشبكة</span>
+                                    <strong style="color:var(--accent-orange);font-size:16px;">${fmt2(balancesCurrent.cash + balancesCurrent.bank)} <span>${sym}</span></strong>
+                                </div>
                             </div>
                         </td>
                     </tr>`;
@@ -589,8 +760,111 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         document.getElementById('search-exp')?.addEventListener('input', renderExp);
+        document.getElementById('exp-period-filter')?.addEventListener('change', renderExp);
+        document.getElementById('exp-date-from')?.addEventListener('change', renderExp);
+        document.getElementById('exp-date-to')?.addEventListener('change', renderExp);
         renderExp();
+
+        // ═══════════════════════════════════════════════════
+        // ❌ DELETE EXPENSE - حذف سند المصروف
+        // ═══════════════════════════════════════════════════
+        async function deleteExpense(expRec) {
+            const confirmed = confirm(
+                `⚠️ تأكيد الحذف\n\nهل أنت متأكد من حذف سند الصرف؟\n\nرقم السند: ${expRec.id}\nالتصنيف: ${expRec.cat}\nالبيان: ${expRec.desc}\nالمبلغ: ${xf(expRec.amount)}\n\n✅ سيتم حذف السند وعكس تأثيره على الرصيد فوراً.\n\nهل تريد المتابعة؟`
+            );
+            if (!confirmed) return;
+
+            const dbNow = await window.dbRead();
+            if (!dbNow.expenses) dbNow.expenses = [];
+            const idx = dbNow.expenses.findIndex(x => x.id === expRec.id);
+            if (idx > -1) dbNow.expenses.splice(idx, 1);
+            await window.dbWrite(dbNow);
+            db.expenses = dbNow.expenses;
+
+            // Update local totals
+            totalExp -= (Number(expRec.amount) || 0);
+            if (kpiExp) kpiExp.innerText = xf(totalExp);
+
+            renderExp();
+            alert(`✅ تم حذف السند ${expRec.id} بنجاح.\nالمبلغ ${xf(expRec.amount)} تم عكسه من الرصيد.`);
+        }
+
+        // ═══════════════════════════════════════════════════
+        // ✏️ EDIT EXPENSE - تعديل سند المصروف
+        // ═══════════════════════════════════════════════════
+        let _editingExpense = null;
+
+        function openEditExpModal(expRec) {
+            _editingExpense = expRec;
+            const editExpModal = document.getElementById('editExpenseModal');
+            if (!editExpModal) return;
+
+            document.getElementById('edit-exp-id-label').innerText = expRec.id;
+            document.getElementById('edit-exp-category').value = expRec.cat || '';
+            document.getElementById('edit-exp-desc').value = expRec.desc || '';
+            document.getElementById('edit-exp-amount').value = expRec.amount || '';
+            document.getElementById('edit-exp-date').value = expRec.date || '';
+            document.getElementById('edit-exp-payment').value = expRec.pMethod || 'cash';
+
+            editExpModal.removeAttribute('inert');
+            editExpModal.classList.add('active');
+        }
+
+        // Close edit expense modal
+        document.querySelectorAll('.btn-close-edit-exp-modal').forEach(b => b.addEventListener('click', () => {
+            const m = document.getElementById('editExpenseModal');
+            if (m) { m.classList.remove('active'); m.setAttribute('inert', ''); }
+            _editingExpense = null;
+        }));
+
+        // Save edited expense
+        document.getElementById('form-edit-expense')?.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            if (!_editingExpense) return;
+
+            const newCat = document.getElementById('edit-exp-category').value.trim();
+            const newDesc = document.getElementById('edit-exp-desc').value.trim();
+            const newAmount = Number(document.getElementById('edit-exp-amount').value);
+            const newDate = document.getElementById('edit-exp-date').value;
+            const newPMethod = document.getElementById('edit-exp-payment').value;
+
+            if (!newCat || !newDesc || newAmount <= 0 || !newDate) {
+                alert('يرجى ملء جميع الحقول بشكل صحيح!');
+                return;
+            }
+
+            const dbNow = await window.dbRead();
+            if (!dbNow.expenses) dbNow.expenses = [];
+
+            const recInDb = dbNow.expenses.find(x => x.id === _editingExpense.id);
+            if (!recInDb) { alert('لم يُعثر على السند في قاعدة البيانات!'); return; }
+
+            // Update totals delta
+            const oldAmount = Number(recInDb.amount) || 0;
+            totalExp = totalExp - oldAmount + newAmount;
+            if (kpiExp) kpiExp.innerText = xf(totalExp);
+
+            // Apply changes in DB record
+            recInDb.cat = newCat;
+            recInDb.desc = newDesc;
+            recInDb.amount = newAmount;
+            recInDb.date = newDate;
+            recInDb.pMethod = newPMethod;
+            recInDb.lastModified = new Date().toISOString();
+
+            await window.dbWrite(dbNow);
+            db.expenses = dbNow.expenses;
+
+            // Close modal
+            const m = document.getElementById('editExpenseModal');
+            if (m) { m.classList.remove('active'); m.setAttribute('inert', ''); }
+            _editingExpense = null;
+
+            renderExp();
+            alert(`✅ تم تعديل السند ${recInDb.id} بنجاح وتحديث جميع البيانات المرتبطة.`);
+        });
     }
+
 
     // ----- C. acc-reports.html Final Reports -----
     if(document.getElementById('pl-total-rev')) {

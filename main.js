@@ -7,6 +7,31 @@ const {
   screen,
   globalShortcut,
 } = require('electron');
+
+app.disableHardwareAcceleration(); // تمنع الشاشة السوداء عند الانتقال بين الصفحات أو عند النقر
+
+app.on('web-contents-created', (e, webContents) => {
+  webContents.on('context-menu', (event, params) => {
+    const { Menu, MenuItem } = require('electron');
+    const menu = new Menu();
+    let hasItems = false;
+    if (params.isEditable) {
+      menu.append(new MenuItem({ label: 'قص', role: 'cut' }));
+      menu.append(new MenuItem({ label: 'نسخ', role: 'copy' }));
+      menu.append(new MenuItem({ label: 'لصق', role: 'paste' }));
+      menu.append(new MenuItem({ type: 'separator' }));
+      menu.append(new MenuItem({ label: 'تحديد الكل', role: 'selectAll' }));
+      hasItems = true;
+    } else if (params.selectionText && params.selectionText.trim() !== '') {
+      menu.append(new MenuItem({ label: 'نسخ', role: 'copy' }));
+      hasItems = true;
+    }
+    if (hasItems) {
+      menu.popup();
+    }
+  });
+});
+
 const {
   setupGoogleDriveIpc,
   startGoogleDriveAutoScheduler,
