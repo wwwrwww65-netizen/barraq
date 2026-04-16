@@ -604,6 +604,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     function printInventoryReceipt(tx, item, qty, type) {
         const typeName = type === 'in' ? 'سند إدخال (استلام)' : 'أمر صرف (خروج)';
         const dateStr = new Date(tx.date).toLocaleString('ar-SA');
+        
+        const settings = db.settings || {};
+        const storeName = settings.storeName || 'إدارة النظام';
+        const logoBase64 = settings.logoBase64 || '';
+        
+        let logoHtml = '';
+        if (logoBase64) {
+            logoHtml = `<img src="${logoBase64}" class="store-logo" alt="شعار المتجر">`;
+        }
 
         const receiptWindow = window.open('', '_blank', 'width=400,height=600');
         receiptWindow.document.write(`
@@ -612,43 +621,87 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <meta charset="UTF-8">
                 <title>طباعة ${typeName}</title>
                 <style>
-                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; text-align: center; color: #333; }
-                    .header { border-bottom: 2px dashed #ccc; padding-bottom: 15px; margin-bottom: 20px; }
-                    .header h2 { margin: 0 0 5px 0; font-size: 22px; }
-                    .header p { margin: 0; font-size: 14px; color: #666; }
-                    .details { text-align: right; margin-bottom: 20px; background: #f9f9f9; padding: 15px; border-radius: 8px;}
-                    .details p { margin: 8px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
-                    .details span.label { font-weight: bold; display: inline-block; width: 120px; }
-                    .footer { margin-top: 30px; font-size: 12px; color: #888; border-top: 1px solid #ccc; padding-top: 10px;}
-                    @media print {
-                        body { width: 80mm; margin: 0 auto; padding: 0; }
+                    *, *::before, *::after {
+                        box-sizing: border-box;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
                     }
+                    html, body {
+                        margin: 0;
+                        padding: 0;
+                        width: 80mm;
+                        font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+                        color: #000;
+                        background: #fff;
+                        overflow: visible !important;
+                        -webkit-text-size-adjust: none;
+                    }
+                    @page {
+                        size: 80mm auto;
+                        margin: 0;
+                    }
+                    .receipt-wrapper {
+                        width: 70mm;
+                        margin: 0;
+                        padding-top: 3mm;
+                        padding-bottom: 3mm;
+                        padding-left: 0;
+                        padding-right: 0;
+                        unicode-bidi: embed;
+                        font-variant-numeric: tabular-nums;
+                    }
+                    .store-logo {
+                        width: 25mm;
+                        height: 25mm;
+                        object-fit: contain;
+                        margin-left: auto;
+                        margin-right: auto;
+                        display: block;
+                        margin-bottom: 2mm;
+                        filter: grayscale(100%) contrast(130%) brightness(0.95);
+                        image-rendering: -webkit-optimize-contrast;
+                        image-rendering: crisp-edges;
+                        image-rendering: pixelated;
+                    }
+                    .header { text-align: center; border-bottom: 1.5px dashed #000; padding-bottom: 3mm; margin-bottom: 3mm; }
+                    .header h2 { margin: 0 0 2mm 0; font-size: 14pt; font-weight: bold; }
+                    .header p { margin: 0; font-size: 10pt; color: #000; }
+                    .header h3 { margin: 1mm 0 0 0; border:1px solid #000; display:inline-block; padding:1.5mm 3mm; border-radius:1mm; font-size:11pt; font-weight: bold; }
+                    .details { text-align: start; margin-bottom: 3mm; padding: 0; }
+                    .details p { margin: 1.5mm 0; font-size: 9.5pt; border-bottom: 1px dotted #666; padding-bottom: 1mm; display: flex; justify-content: space-between; align-items: start; gap: 2mm;}
+                    .details span.label { font-weight: bold; text-align: start; flex-shrink: 0; }
+                    .details span.val { text-align: end; word-break: break-word; }
+                    .footer { text-align: start; margin-top: 5mm; font-size: 9pt; border-top: 1.5px dashed #000; padding-top: 3mm;}
+                    .footer p { margin: 3mm 0; display: flex; justify-content: space-between; }
                 </style>
             </head>
             <body>
-                <div class="header">
-                    <h2>هـــش HASH للمطاعم</h2>
-                    <p>المخازن والمستودعات</p>
-                    <h3 style="margin-top:10px; border:1px solid #333; display:inline-block; padding:5px 15px; border-radius:5px;">${typeName}</h3>
-                </div>
+                <div class="receipt-wrapper">
+                    <div class="header">
+                        ${logoHtml}
+                        <h2>${storeName}</h2>
+                        <p>المخازن والمستودعات</p>
+                        <h3>${typeName}</h3>
+                    </div>
 
-                <div class="details">
-                    <p><span class="label">رقم السند:</span> ${tx.id}</p>
-                    <p><span class="label">التاريخ والوقت:</span> ${dateStr}</p>
-                    <p><span class="label">المستودع:</span> ${item.warehouseId === 'main' ? 'المستودع الرئيسي' : item.warehouseId === 'restaurant' ? 'مخزن المطعم' : 'مخزن المشروبات'}</p>
-                    <br>
-                    <p><span class="label">رمز الصنف:</span> ${item.sku}</p>
-                    <p><span class="label">اسم الصنف:</span> ${item.name}</p>
-                    <p><span class="label">الكمية:</span> ${qty} ${item.unit}</p>
-                    <p><span class="label">تكلفة الوحدة:</span> ${xf(item.cost)}</p>
-                    <p><span class="label">إجمالي التكلفة:</span> ${xf(tx.total)}</p>
-                    <p><span class="label">المشرف المسؤول:</span> سالم أحمد</p>
-                </div>
+                    <div class="details">
+                        <p><span class="label">رقم السند:</span> <span class="val">${tx.id}</span></p>
+                        <p><span class="label">تاريخ ووقت:</span> <span class="val">${dateStr}</span></p>
+                        <p><span class="label">المستودع:</span> <span class="val">${item.warehouseId === 'main' ? 'المستودع الرئيسي' : item.warehouseId === 'restaurant' ? 'مخزن المطعم' : 'مخزن المشروبات'}</span></p>
+                        <br>
+                        <p><span class="label">رقم الصنف:</span> <span class="val">${item.sku}</span></p>
+                        <p><span class="label">اسم الصنف:</span> <span class="val">${item.name}</span></p>
+                        <p><span class="label">الكمية:</span> <span class="val">${qty} ${item.unit || ''}</span></p>
+                        <p><span class="label">تكلفة الوحدة:</span> <span class="val">${xf(item.cost)}</span></p>
+                        <p><span class="label">الإجمالي:</span> <span class="val">${xf(tx.total)}</span></p>
+                        <p><span class="label">المشرف المسؤول:</span> <span class="val">سالم أحمد</span></p>
+                    </div>
 
-                <div class="footer">
-                    <p>توقيع أمين المستودع .........................</p>
-                    <p>توقيع المستلم .........................</p>
-                    <p>طبعت بواسطة نظام الإدارة الإلكتروني</p>
+                    <div class="footer">
+                        <p><span>توقيع أمين المستودع</span> <span>.........................</span></p>
+                        <p><span>توقيع المستلم</span> <span>.........................</span></p>
+                        <p style="text-align: center; justify-content: center; margin-top: 4mm;">طبعت بواسطة نظام الإدارة الإلكتروني</p>
+                    </div>
                 </div>
             </body>
             </html>

@@ -828,56 +828,71 @@ document.addEventListener('DOMContentLoaded', async () => {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        * {
+        /* === Kitchen Ticket CSS — Arabic RTL 80mm — Modern 2024 Standards ===
+           ESC/POS printable area: 72-76mm | Dead zone: ~4mm per side
+           Safe content zone: 70mm = 80mm - 5mm*2
+        */
+        *, *::before, *::after {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
         
         @page {
             size: 80mm auto;
             margin: 0;
-            padding: 0;
         }
         
-        html { overflow: visible; }
-        
+        html {
+            -webkit-text-size-adjust: none;
+            text-size-adjust: none;
+            overflow: visible;
+        }
+
         body {
-            font-family: 'Segoe UI', 'Cairo', 'Arial', sans-serif;
-            margin: 0 auto;
+            width: 80mm;
+            margin: 0;
             padding: 0;
-            width: 100%;
-            max-width: 72mm;
-            min-width: 0;
             background: #ffffff;
             color: #000000;
             direction: rtl;
+            unicode-bidi: embed;
+            font-family: 'Cairo', 'Segoe UI', 'Arial', 'Tahoma', sans-serif;
             text-align: center;
-            line-height: 1.35;
-            font-size: 11px;
+            line-height: 1.4;
+            font-size: 10pt;
             -webkit-font-smoothing: antialiased;
             overflow: visible;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
         
         .kitchen-ticket {
-            width: 100%;
-            max-width: 72mm;
-            padding: 2mm 1mm 2mm 5mm;
-            margin: 0 auto;
+            /* ✅ عرض صريح: 70mm = 80mm - 5mm يمين - 5mm يسار */
+            width: 70mm;
+            padding-top: 3mm;
+            padding-bottom: 3mm;
+            padding-left: 0;
+            padding-right: 0;
+            margin: 0;
             box-sizing: border-box;
         }
         
         .kitchen-logo {
-            width: 28mm;
-            height: 28mm;
-            max-width: 28mm;
-            max-height: 28mm;
+            width: 25mm;
+            height: 25mm;
+            max-width: 25mm;
+            max-height: 25mm;
             object-fit: contain;
-            margin: 0 auto 2mm auto;
             display: block;
-            filter: grayscale(100%) contrast(150%);
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: 2mm;
+            filter: grayscale(100%) contrast(150%) brightness(0.9);
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
         }
         
         .kitchen-header {
@@ -888,37 +903,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         .kitchen-rest-name {
-            font-size: 11px;
+            font-size: 9.5pt;
             font-weight: 700;
-            color: #555555;
+            color: #444444;
             margin-bottom: 1mm;
         }
         
         .kitchen-title {
-            font-size: 20px;
+            /* عنوان بارز — منطقة أمان */
+            font-size: 17pt;
             font-weight: 900;
-            margin: 2mm 0;
+            margin-top: 2mm;
+            margin-bottom: 2mm;
             background: #000000;
             color: #ffffff;
-            padding: 2mm;
+            padding-top: 2mm;
+            padding-bottom: 2mm;
+            padding-left: 3mm;
+            padding-right: 3mm;
             display: inline-block;
             min-width: 50mm;
+            letter-spacing: 0.03em;
         }
         
         .order-id {
-            font-size: 16px;
+            font-size: 14pt;
             font-weight: 800;
-            margin: 2mm 0;
+            margin-top: 2mm;
+            margin-bottom: 2mm;
+            font-variant-numeric: tabular-nums;
         }
         
         .order-type {
-            font-size: 13px;
+            font-size: 11pt;
             font-weight: 700;
-            margin: 1.5mm 0;
+            margin-top: 1.5mm;
+            margin-bottom: 1.5mm;
         }
         
         .order-date {
-            font-size: 10px;
+            font-size: 8.5pt;
             color: #555555;
             margin-top: 1mm;
         }
@@ -927,20 +951,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             width: 100%;
             table-layout: fixed;
             border-collapse: collapse;
-            margin: 3mm 0;
-            border: 1px solid #000000;
+            margin-top: 3mm;
+            margin-bottom: 3mm;
+            border: 1.5px solid #000000;
+            break-inside: avoid;
         }
         
         .items-table thead th {
-            padding: 1.5mm 1mm;
-            background: #f0f0f0;
+            padding-top: 1.5mm;
+            padding-bottom: 1.5mm;
+            padding-left: 1.5mm;
+            padding-right: 1.5mm;
+            background: #eeeeee;
             font-weight: 800;
-            font-size: 10px;
+            font-size: 9pt;
             border: 1px solid #000000;
         }
         
         .items-table thead th:first-child {
-            text-align: right;
+            text-align: start; /* يمين في RTL */
         }
         
         .items-table thead th:last-child {
@@ -950,13 +979,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         .kitchen-item td {
             border: 1px solid #000000;
+            break-inside: avoid;
         }
         
         .item-name-cell {
-            padding: 2mm 1.5mm;
-            font-size: 13px;
+            padding-top: 2mm;
+            padding-bottom: 2mm;
+            padding-left: 2mm;
+            padding-right: 2mm;
+            font-size: 12pt;
             font-weight: 800;
-            text-align: right;
+            text-align: start; /* يمين في RTL */
             direction: rtl;
             overflow-wrap: anywhere;
             word-break: break-word;
@@ -965,22 +998,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         .item-qty-cell {
             text-align: center;
-            font-size: 22px;
+            font-size: 20pt; /* كبير وواضح للطاهي */
             font-weight: 900;
-            padding: 2mm 1mm;
-            min-width: 0;
+            padding-top: 2mm;
+            padding-bottom: 2mm;
+            padding-left: 1.5mm;
+            padding-right: 1.5mm;
             vertical-align: middle;
+            font-variant-numeric: tabular-nums;
         }
         
         .divider {
             border-top: 2px dashed #000000;
-            margin: 3mm 0;
+            margin-top: 3mm;
+            margin-bottom: 3mm;
         }
         
         .footer-message {
             text-align: center;
-            font-size: 10px;
-            color: #777777;
+            font-size: 9pt;
+            color: #666666;
             margin-top: 3mm;
         }
     </style>

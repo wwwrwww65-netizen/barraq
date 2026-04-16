@@ -700,100 +700,135 @@ document.addEventListener('DOMContentLoaded', async () => {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        * {
+        /* === Report CSS — Arabic RTL 80mm — Modern 2024 Standards ===
+           ESC/POS printable area: 72-76mm | Safe content zone: 70mm
+        */
+        *, *::before, *::after {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
         
         @page {
             size: 80mm auto;
             margin: 0;
-            padding: 0;
         }
         
-        html { overflow: visible; }
-        
+        html {
+            -webkit-text-size-adjust: none;
+            text-size-adjust: none;
+            overflow: visible;
+        }
+
         body {
-            font-family: 'Segoe UI', 'Cairo', 'Arial', sans-serif;
-            margin: 0 auto;
+            width: 80mm;
+            margin: 0;
             padding: 0;
-            width: 100%;
-            max-width: 72mm;
-            min-width: 0;
             background: #ffffff;
             color: #000000;
             direction: rtl;
+            unicode-bidi: embed;
+            font-family: 'Cairo', 'Segoe UI', 'Arial', 'Tahoma', sans-serif;
             text-align: center;
-            line-height: 1.35;
-            font-size: 11px;
+            line-height: 1.4;
+            font-size: 10pt;
             -webkit-font-smoothing: antialiased;
             overflow: visible;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
         
         .receipt-wrapper {
-            width: 100%;
-            max-width: 72mm;
-            padding: 2mm 1mm 2mm 5mm;
-            margin: 0 auto;
+            /* ✅ عرض صريح: 70mm = 80mm - 5mm يمين - 5mm يسار
+               يعمل مع كل محركات الطباعة بلا غموض */
+            width: 70mm;
+            padding-top: 3mm;
+            padding-bottom: 3mm;
+            padding-left: 0;
+            padding-right: 0;
+            margin: 0;
             box-sizing: border-box;
         }
         
         .store-logo {
-            width: 28mm;
-            height: 28mm;
-            max-width: 28mm;
-            max-height: 28mm;
+            width: 25mm;
+            height: 25mm;
+            max-width: 25mm;
+            max-height: 25mm;
             object-fit: contain;
-            margin: 0 auto 2mm auto;
             display: block;
-            filter: grayscale(100%) contrast(120%);
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: 2mm;
+            filter: grayscale(100%) contrast(130%) brightness(0.95);
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
         }
         
         .report-title {
-            font-size: 15px;
+            font-size: 13pt;
             font-weight: 900;
-            margin: 2mm 0 1mm 0;
+            margin-top: 2mm;
+            margin-bottom: 1mm;
             overflow-wrap: anywhere;
             word-break: break-word;
-            padding: 0 1mm;
+            padding-left: 1mm;
+            padding-right: 1mm;
         }
         
         .report-subtitle {
-            font-size: 11px;
+            font-size: 9.5pt;
             font-weight: 700;
-            margin: 1mm 0;
+            margin-top: 1mm;
+            margin-bottom: 1mm;
         }
         
         .manager-info {
-            font-size: 10px;
+            font-size: 9pt;
             font-weight: 700;
-            margin: 1.5mm 0;
+            margin-top: 1.5mm;
+            margin-bottom: 1.5mm;
             overflow-wrap: anywhere;
             word-break: break-word;
-            padding: 0 1mm;
+            padding-left: 1mm;
+            padding-right: 1mm;
+        }
+        
+        .cashier-info {
+            font-size: 9pt;
+            font-weight: 700;
+            margin-top: 1.5mm;
+            margin-bottom: 1.5mm;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            padding-left: 1mm;
+            padding-right: 1mm;
         }
         
         .datetime {
-            font-size: 9px;
+            font-size: 8pt;
             color: #555555;
-            margin: 1mm 0;
+            margin-top: 1mm;
+            margin-bottom: 1mm;
             overflow-wrap: anywhere;
             word-break: break-word;
-            padding: 0 1mm;
+            padding-left: 1mm;
+            padding-right: 1mm;
         }
         
         .divider {
             border-top: 1.5px dashed #000000;
-            margin: 3mm 0;
+            margin-top: 3mm;
+            margin-bottom: 3mm;
             width: 100%;
         }
         
         .divider-thick {
             border-top: 2px solid #000000;
-            margin: 3mm 0;
+            margin-top: 3mm;
+            margin-bottom: 3mm;
             width: 100%;
         }
         
@@ -801,70 +836,88 @@ document.addEventListener('DOMContentLoaded', async () => {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            margin: 2mm 0;
-            font-size: 10px;
-            border: 1px solid #000000;
+            margin-top: 2mm;
+            margin-bottom: 2mm;
+            font-size: 9pt;
+            border: 1.5px solid #000000;
+            break-inside: avoid;
         }
         
         .report-table thead th {
-            padding: 1.5mm 1mm;
+            padding-top: 1.5mm;
+            padding-bottom: 1.5mm;
+            padding-left: 1.5mm;
+            padding-right: 1.5mm;
             border: 1px solid #000000;
-            background: #e8e8e8;
+            background: #e0e0e0;
             font-weight: 800;
-            font-size: 10px;
+            font-size: 9pt;
             text-align: center;
         }
         
         .report-table tbody td {
-            padding: 1.2mm 1.5mm;
-            border: 1px solid #000000;
+            padding-top: 1.5mm;
+            padding-bottom: 1.5mm;
+            padding-left: 2mm;
+            padding-right: 2mm;
+            border: 1px solid #cccccc;
             vertical-align: middle;
             overflow-wrap: anywhere;
             word-break: break-word;
+            break-inside: avoid;
         }
         
+        /* Logical Properties للطاول: start = يمين في RTL */
         .report-table tbody td:first-child {
             width: 56%;
-            text-align: right;
+            text-align: start;
             font-weight: 600;
         }
         
         .report-table tbody td:last-child {
             width: 44%;
-            text-align: left;
+            text-align: end;
             font-weight: 700;
+            font-variant-numeric: tabular-nums;
         }
         
         .report-table tbody tr.row-strong td {
             background: #f0f0f0;
             font-weight: 800;
-            font-size: 10px;
+            font-size: 9.5pt;
         }
         
         .report-table tbody tr.grand-total td {
-            font-size: 12px;
+            font-size: 11pt;
             font-weight: 900;
             background: #000000;
             color: #ffffff;
             border-color: #000000;
-            padding: 2mm 1.5mm;
+            padding-top: 2.5mm;
+            padding-bottom: 2.5mm;
+            padding-left: 2mm;
+            padding-right: 2mm;
         }
         
         .footer-message {
-            font-size: 10px;
+            font-size: 9.5pt;
             font-weight: 700;
-            margin: 3mm 0 1mm 0;
+            margin-top: 3mm;
+            margin-bottom: 1mm;
             text-align: center;
-            padding: 0 1mm;
+            padding-left: 1mm;
+            padding-right: 1mm;
             overflow-wrap: anywhere;
+            line-height: 1.5;
         }
         
         .powered-by {
-            font-size: 8px;
-            color: #666666;
+            font-size: 7.5pt;
+            color: #555555;
             margin-top: 2mm;
             text-align: center;
-            padding: 0 1mm;
+            padding-left: 1mm;
+            padding-right: 1mm;
             overflow-wrap: anywhere;
         }
     </style>
@@ -1011,100 +1064,122 @@ document.addEventListener('DOMContentLoaded', async () => {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        * {
+        /* === Shift Report CSS — Arabic RTL 80mm — Modern 2024 Standards ===
+           ESC/POS printable area: 72-76mm | Safe content zone: 70mm
+        */
+        *, *::before, *::after {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
         
         @page {
             size: 80mm auto;
             margin: 0;
-            padding: 0;
         }
         
-        html { overflow: visible; }
-        
+        html {
+            -webkit-text-size-adjust: none;
+            text-size-adjust: none;
+            overflow: visible;
+        }
+
         body {
-            font-family: 'Segoe UI', 'Cairo', 'Arial', sans-serif;
-            margin: 0 auto;
+            width: 80mm;
+            margin: 0;
             padding: 0;
-            width: 100%;
-            max-width: 72mm;
-            min-width: 0;
             background: #ffffff;
             color: #000000;
             direction: rtl;
+            unicode-bidi: embed;
+            font-family: 'Cairo', 'Segoe UI', 'Arial', 'Tahoma', sans-serif;
             text-align: center;
-            line-height: 1.35;
-            font-size: 11px;
+            line-height: 1.4;
+            font-size: 10pt;
             -webkit-font-smoothing: antialiased;
             overflow: visible;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
         
         .receipt-wrapper {
             width: 100%;
-            max-width: 72mm;
-            padding: 2mm 1mm 2mm 5mm;
-            margin: 0 auto;
+            padding-top: 3mm;
+            padding-bottom: 3mm;
+            padding-left: 5mm;
+            padding-right: 5mm;
+            margin: 0;
             box-sizing: border-box;
         }
         
         .store-logo {
-            width: 28mm;
-            height: 28mm;
-            max-width: 28mm;
-            max-height: 28mm;
+            width: 25mm;
+            height: 25mm;
+            max-width: 25mm;
+            max-height: 25mm;
             object-fit: contain;
-            margin: 0 auto 2mm auto;
             display: block;
-            filter: grayscale(100%) contrast(120%);
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: 2mm;
+            filter: grayscale(100%) contrast(130%) brightness(0.95);
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
         }
         
         .report-title {
-            font-size: 15px;
+            font-size: 13pt;
             font-weight: 900;
-            margin: 2mm 0 1mm 0;
+            margin-top: 2mm;
+            margin-bottom: 1mm;
             overflow-wrap: anywhere;
             word-break: break-word;
-            padding: 0 1mm;
+            padding-left: 1mm;
+            padding-right: 1mm;
         }
         
         .report-subtitle {
-            font-size: 11px;
+            font-size: 9.5pt;
             font-weight: 700;
-            margin: 1mm 0;
+            margin-top: 1mm;
+            margin-bottom: 1mm;
         }
         
         .cashier-info {
-            font-size: 10px;
+            font-size: 9pt;
             font-weight: 700;
-            margin: 1.5mm 0;
+            margin-top: 1.5mm;
+            margin-bottom: 1.5mm;
             overflow-wrap: anywhere;
             word-break: break-word;
-            padding: 0 1mm;
+            padding-left: 1mm;
+            padding-right: 1mm;
         }
         
         .datetime {
-            font-size: 9px;
+            font-size: 8pt;
             color: #555555;
-            margin: 1mm 0;
+            margin-top: 1mm;
+            margin-bottom: 1mm;
             overflow-wrap: anywhere;
             word-break: break-word;
-            padding: 0 1mm;
+            padding-left: 1mm;
+            padding-right: 1mm;
         }
         
         .divider {
             border-top: 1.5px dashed #000000;
-            margin: 3mm 0;
+            margin-top: 3mm;
+            margin-bottom: 3mm;
             width: 100%;
         }
         
         .divider-thick {
             border-top: 2px solid #000000;
-            margin: 3mm 0;
+            margin-top: 3mm;
+            margin-bottom: 3mm;
             width: 100%;
         }
         
@@ -1112,70 +1187,87 @@ document.addEventListener('DOMContentLoaded', async () => {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            margin: 2mm 0;
-            font-size: 10px;
-            border: 1px solid #000000;
+            margin-top: 2mm;
+            margin-bottom: 2mm;
+            font-size: 9pt;
+            border: 1.5px solid #000000;
+            break-inside: avoid;
         }
         
         .report-table thead th {
-            padding: 1.5mm 1mm;
+            padding-top: 1.5mm;
+            padding-bottom: 1.5mm;
+            padding-left: 1.5mm;
+            padding-right: 1.5mm;
             border: 1px solid #000000;
-            background: #e8e8e8;
+            background: #e0e0e0;
             font-weight: 800;
-            font-size: 10px;
+            font-size: 9pt;
             text-align: center;
         }
         
         .report-table tbody td {
-            padding: 1.2mm 1.5mm;
-            border: 1px solid #000000;
+            padding-top: 1.5mm;
+            padding-bottom: 1.5mm;
+            padding-left: 2mm;
+            padding-right: 2mm;
+            border: 1px solid #cccccc;
             vertical-align: middle;
             overflow-wrap: anywhere;
             word-break: break-word;
+            break-inside: avoid;
         }
         
         .report-table tbody td:first-child {
             width: 56%;
-            text-align: right;
+            text-align: start;
             font-weight: 600;
         }
         
         .report-table tbody td:last-child {
             width: 44%;
-            text-align: left;
+            text-align: end;
             font-weight: 700;
+            font-variant-numeric: tabular-nums;
         }
         
         .report-table tbody tr.row-strong td {
             background: #f0f0f0;
             font-weight: 800;
-            font-size: 10px;
+            font-size: 9.5pt;
         }
         
         .report-table tbody tr.grand-total td {
-            font-size: 12px;
+            font-size: 11pt;
             font-weight: 900;
             background: #000000;
             color: #ffffff;
             border-color: #000000;
-            padding: 2mm 1.5mm;
+            padding-top: 2.5mm;
+            padding-bottom: 2.5mm;
+            padding-left: 2mm;
+            padding-right: 2mm;
         }
         
         .footer-message {
-            font-size: 10px;
+            font-size: 9.5pt;
             font-weight: 700;
-            margin: 3mm 0 1mm 0;
+            margin-top: 3mm;
+            margin-bottom: 1mm;
             text-align: center;
-            padding: 0 1mm;
+            padding-left: 1mm;
+            padding-right: 1mm;
             overflow-wrap: anywhere;
+            line-height: 1.5;
         }
         
         .powered-by {
-            font-size: 8px;
-            color: #666666;
+            font-size: 7.5pt;
+            color: #555555;
             margin-top: 2mm;
             text-align: center;
-            padding: 0 1mm;
+            padding-left: 1mm;
+            padding-right: 1mm;
             overflow-wrap: anywhere;
         }
     </style>

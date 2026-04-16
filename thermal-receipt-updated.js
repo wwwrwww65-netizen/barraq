@@ -177,58 +177,77 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        * {
+        /* === Modern Thermal Receipt CSS — Arabic RTL 80mm ===
+           Standards: CSS Logical Properties (2024), W3C Writing Modes L4,
+           ESC/POS 80mm printable area: 72-76mm (dead zone: ~4mm per side)
+           Safe content width: 70mm = 80mm - 5mm*2 padding
+        */
+        *, *::before, *::after {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
         
         @page {
-            size: 80mm auto;
-            margin: 0;
-            padding: 0;
+            size: 80mm auto;   /* عرض الورق الفيزيائي = 80mm */
+            margin: 0;         /* الهامش من @page يُصفَّر — سيعوّض بـ padding داخلي */
         }
         
         html {
+            -webkit-text-size-adjust: none; /* منع توسيع الخط الوهمي في WebKit */
+            text-size-adjust: none;
             overflow: visible;
         }
-        
+
         body {
-            font-family: 'Segoe UI', 'Cairo', 'Arial', sans-serif;
-            margin: 0 auto;
+            /* عرض 80mm كامل، الاقتطاع يُعالَج بالـ padding لا بالـ max-width */
+            width: 80mm;
+            margin: 0;
             padding: 0;
-            width: 100%;
-            max-width: 72mm;
-            min-width: 0;
             background: #ffffff;
             color: #000000;
             direction: rtl;
+            unicode-bidi: embed;   /* ضروري لصحة ترتيب النص العربي المختلط */
+            font-family: 'Cairo', 'Segoe UI', 'Arial', 'Tahoma', sans-serif;
             text-align: center;
-            line-height: 1.35;
-            font-size: 11px;
+            line-height: 1.4;
+            font-size: 10.5pt;     /* نقاط بدلاً من px لاستقلالية DPI الطابعة */
             -webkit-font-smoothing: antialiased;
-            overflow: visible;
+            overflow: visible;     /* visible — لا نقطع فاتورة طويلة */
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
         
         .receipt-wrapper {
-            width: 100%;
-            max-width: 72mm;
-            padding: 2mm 1mm 2mm 5mm;
-            margin: 0 auto;
+            /* ✅ أوضح طريقة: عرض المحتوى = 70mm صريح
+               80mm (ورق) - 5mm (يمين) - 5mm (يسار) = 70mm
+               لا غموض لأي محرك طباعة */
+            width: 70mm;
+            padding-top: 3mm;
+            padding-bottom: 3mm;
+            padding-left: 0;
+            padding-right: 0;
+            margin: 0;
             box-sizing: border-box;
         }
         
         .store-logo {
-            width: 28mm;
-            height: 28mm;
-            max-width: 28mm;
-            max-height: 28mm;
+            width: 25mm;
+            height: 25mm;
+            max-width: 25mm;
+            max-height: 25mm;
             object-fit: contain;
-            margin: 0 auto 2mm auto;
             display: block;
-            filter: grayscale(100%) contrast(120%);
+            /* Logical margin للـ RTL */
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: 2mm;
+            /* ضبط جودة الشعار للطباعة الحرارية */
+            filter: grayscale(100%) contrast(140%) brightness(0.95);
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
         }
         
         .store-name {
@@ -284,68 +303,89 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
             width: 100%;
             table-layout: fixed;
             border-collapse: collapse;
-            margin: 2mm 0;
-            font-size: 10px;
-            border: 1px solid #000000;
+            margin-top: 2mm;
+            margin-bottom: 2mm;
+            font-size: 9.5pt;
+            border: 1.5px solid #000000;
+            /* break-inside على الجدول كله — أكثر موثوقية من tr */
+            break-inside: avoid;
+            page-break-inside: avoid; /* legacy fallback للـ Chromium القديم */
         }
         
         .items-table thead th {
-            padding: 1.5mm 1mm;
+            padding-top: 1.5mm;
+            padding-bottom: 1.5mm;
+            padding-left: 1.5mm;
+            padding-right: 1.5mm;
             border: 1px solid #000000;
             font-weight: 800;
-            font-size: 9px;
+            font-size: 8.5pt;
             text-align: center;
-            background: #f2f2f2;
+            background: #f0f0f0;
         }
         
         .items-table tbody td {
-            padding: 1.2mm 1mm;
+            padding-top: 1.5mm;
+            padding-bottom: 1.5mm;
+            padding-left: 1.5mm;
+            padding-right: 1.5mm;
             text-align: center;
-            vertical-align: top;
+            vertical-align: middle;
             overflow-wrap: anywhere;
             word-break: break-word;
-            border: 1px solid #000000;
+            border: 1px solid #cccccc;
+        }
+        
+        /* ✅ الحل الصحيح لـ Chromium: break-inside على div داخل td لا على tr */
+        .items-table tbody td > div {
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
         
         .items-table tbody tr {
-            border-bottom: none;
+            /* break-inside على tr غير موثوق في Chromium — نعتمد على الجدول كله */
+            page-break-inside: avoid;
         }
         
+        /* Logical text-align للـ RTL: start = يمين في RTL، end = يسار */
         .item-name {
-            text-align: right !important;
+            text-align: start !important; /* في RTL تعني إلى اليمين */
             font-weight: 600;
-            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: anywhere;
             max-width: none;
         }
         
         .item-qty {
             text-align: center !important;
             font-weight: 700;
-            min-width: 10mm;
         }
         
         .item-price {
-            text-align: left !important;
+            text-align: end !important; /* في RTL تعني إلى اليسار */
             font-weight: 600;
-            min-width: 15mm;
         }
         
         .totals-section {
-            margin: 2mm 0;
-            font-size: 11px;
+            margin-top: 2mm;
+            margin-bottom: 2mm;
+            font-size: 10.5pt;
+            break-inside: avoid;
         }
         
         .total-row {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
-            padding: 1mm 0;
-            gap: 2mm;
+            align-items: baseline; /* محاذاة نص على خط القاعدة */
+            padding-top: 1mm;
+            padding-bottom: 1mm;
+            gap: 3mm;
             min-width: 0;
         }
         
+        /* Logical Properties للـ RTL — لا نكتب right/left */
         .total-label {
-            text-align: right;
+            text-align: start; /* يمين في RTL */
             flex: 1;
             min-width: 0;
             overflow-wrap: anywhere;
@@ -353,60 +393,75 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
         }
         
         .total-value {
-            text-align: left;
-            font-weight: 600;
+            text-align: end; /* يسار في RTL */
+            font-weight: 700;
             min-width: 0;
             flex-shrink: 0;
-            max-width: 46%;
+            max-width: 50%;
             overflow-wrap: anywhere;
             word-break: break-word;
+            font-variant-numeric: tabular-nums; /* أرقام بعرض ثابت */
         }
         
         .grand-total {
-            font-size: 14px;
+            font-size: 13pt;
             font-weight: 900;
-            border-top: 1.5px solid #000000;
+            border-top: 2px solid #000000;
             padding-top: 2mm;
             margin-top: 1mm;
         }
         
         .payment-method {
-            font-size: 12px;
+            font-size: 11pt;
             font-weight: 700;
-            margin: 2mm 0;
-            padding: 1.5mm;
-            border: 1px solid #000000;
+            margin-top: 2mm;
+            margin-bottom: 2mm;
+            padding-top: 1.5mm;
+            padding-bottom: 1.5mm;
+            padding-left: 3mm;
+            padding-right: 3mm;
+            border: 1.5px solid #000000;
             display: inline-block;
-            min-width: 40mm;
+            min-width: 42mm;
+            letter-spacing: 0.02em;
         }
         
         .qr-container {
-            margin: 3mm auto;
+            margin-top: 3mm;
+            margin-bottom: 3mm;
+            margin-left: auto;
+            margin-right: auto;
             text-align: center;
+            break-inside: avoid;
         }
         
         .qr-code {
-            width: 25mm;
-            height: 25mm;
-            max-width: 25mm;
-            max-height: 25mm;
-            margin: 0 auto;
+            /* QR كود ZATCA Phase 1: 25x25mm حد أدنى للمسح الضوئي */
+            width: 28mm;
+            height: 28mm;
+            max-width: 28mm;
+            max-height: 28mm;
+            margin-left: auto;
+            margin-right: auto;
             display: block;
             image-rendering: -webkit-optimize-contrast;
             image-rendering: crisp-edges;
+            image-rendering: pixelated;
         }
         
         .footer-message {
-            font-size: 11px;
+            font-size: 10.5pt;
             font-weight: 700;
-            margin: 3mm 0 1mm 0;
-            line-height: 1.4;
+            margin-top: 3mm;
+            margin-bottom: 1mm;
+            line-height: 1.5;
         }
         
         .powered-by {
-            font-size: 8px;
-            color: #666666;
-            margin: 1mm 0;
+            font-size: 7.5pt;
+            color: #555555;
+            margin-top: 1mm;
+            margin-bottom: 1mm;
         }
     </style>
 </head>
