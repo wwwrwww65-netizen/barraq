@@ -1346,5 +1346,113 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert('حدث خطأ في طباعة التقرير: ' + e.message);
         }
     };
+    window.testBrowserPrintDay = async function() {
+        // Open the day report silently to calculate and populate UI values
+        await window.openDayCloseReport();
+
+        setTimeout(() => {
+            const managerName = document.getElementById('day-cashier-name')?.innerText || 'المسؤول: المدير';
+            const datetime = document.getElementById('day-datetime')?.innerText || '';
+            const date = document.getElementById('day-date')?.innerText || '';
+            
+            const totalOrders = document.getElementById('day-orders-count')?.innerText || '0';
+            const totalCash = document.getElementById('day-total-cash')?.innerText || '0.00';
+            const totalNetwork = document.getElementById('day-total-network')?.innerText || '0.00';
+            const totalIncome = document.getElementById('day-total-income')?.innerText || '0.00';
+            const totalTax = document.getElementById('day-total-tax')?.innerText || '0.00';
+            const totalReturns = document.getElementById('day-total-returns')?.innerText || '0.00';
+            const totalExpenses = document.getElementById('day-total-expenses')?.innerText || '0.00';
+            const netTotal = document.getElementById('day-net-total')?.innerText || '0.00';
+            const restName = document.getElementById('day-res-name')?.innerText || 'هش HASH';
+
+            let logoSrc = '';
+            const logoEl = document.getElementById('day-logo');
+            if (logoEl && logoEl.src) {
+                logoSrc = logoEl.src;
+            }
+
+            const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <title>تجربة طباعة اقفال اليوم (متصفح)</title>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        @page { size: 80mm auto; margin: 0; }
+        body { width: 80mm; margin: 0 auto; background: #ffffff; color: #000000; direction: rtl; font-family: 'Cairo', 'Segoe UI', sans-serif; text-align: center; font-size: 10pt; word-break: break-word; }
+        .receipt-wrapper { width: 70mm; padding: 3mm 0; margin: 0 auto; }
+        .store-logo { width: 25mm; height: 25mm; object-fit: contain; display: block; margin: 0 auto 2mm; filter: grayscale(100%); }
+        .report-title { font-size: 13pt; font-weight: 900; margin: 2mm 0 1mm; }
+        .report-subtitle { font-size: 9.5pt; font-weight: 700; margin: 1mm 0; }
+        .manager-info, .datetime { font-size: 9pt; margin: 1.5mm 0; }
+        .divider { border-top: 1.5px dashed #000000; margin: 3mm 0; width: 100%; }
+        .divider-thick { border-top: 2px solid #000000; margin: 3mm 0; width: 100%; }
+        .report-table { width: 100%; border-collapse: collapse; margin: 2mm 0; border: 1.5px solid #000000; }
+        .report-table thead th { padding: 1.5mm; border: 1px solid #000000; background: #e0e0e0; font-weight: 800; font-size: 9pt; text-align: center; }
+        .report-table tbody td { padding: 1.5mm 2mm; border: 1px solid #cccccc; }
+        .report-table tbody td:first-child { width: 56%; text-align: start; font-weight: 600; }
+        .report-table tbody td:last-child { width: 44%; text-align: end; font-weight: 700; }
+        .report-table tbody tr.row-strong td { background: #f0f0f0; font-weight: 800; }
+        .report-table tbody tr.grand-total td { font-size: 11pt; font-weight: 900; background: #000000; color: #ffffff; border-color: #000000; }
+        .footer-message { font-size: 9.5pt; font-weight: 700; margin: 3mm 0 1mm; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="receipt-wrapper">
+        ${logoSrc ? '<img src="' + logoSrc + '" alt="Logo" class="store-logo">' : ''}
+        <div class="report-title">${restName}</div>
+        <div class="report-subtitle">تقرير إقفال اليوم (X-Report) - تجربة متصفح</div>
+        
+        <div class="manager-info">${managerName}</div>
+        <div class="datetime">${date} - ${datetime}</div>
+        
+        <div class="divider"></div>
+        <table class="report-table">
+            <thead><tr><th colspan="2">ملخص اليوم الكامل</th></tr></thead>
+            <tbody>
+                <tr><td>عدد الطلبات</td><td>${totalOrders}</td></tr>
+                <tr><td>إجمالي الكاش</td><td>${totalCash}</td></tr>
+                <tr><td>إجمالي الشبكة</td><td>${totalNetwork}</td></tr>
+                <tr class="row-strong"><td>إجمالي الدخل</td><td>${totalIncome}</td></tr>
+            </tbody>
+        </table>
+        
+        <table class="report-table">
+            <thead><tr><th colspan="2">الضريبة والتعديلات</th></tr></thead>
+            <tbody>
+                <tr><td>الضريبة</td><td>${totalTax}</td></tr>
+                <tr><td>المرتجعات</td><td>${totalReturns}</td></tr>
+                <tr><td>المصروفات</td><td>${totalExpenses}</td></tr>
+            </tbody>
+        </table>
+        
+        <div class="divider-thick"></div>
+        <table class="report-table">
+            <tbody>
+                <tr class="grand-total"><td>صافي اليوم</td><td>${netTotal}</td></tr>
+            </tbody>
+        </table>
+        <div class="footer-message">نتيجة تجربة الطباعة للمتصفح المباشر!<br><br></div>
+    </div>
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 500);
+        }
+    </script>
+</body>
+</html>`;
+
+            const testWin = window.open('', '_blank', 'width=350,height=600');
+            if (testWin) {
+                testWin.document.open();
+                testWin.document.write(html);
+                testWin.document.close();
+            } else {
+                alert('الرجاء السماح بالنوافذ المنبثقة (Popups) لاختبار الطباعة على المتصفح.');
+            }
+        }, 800); // give time for the modal to populate data
+    };
 
 });
