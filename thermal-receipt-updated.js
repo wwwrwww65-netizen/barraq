@@ -202,9 +202,10 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
         }
 
         body {
-            /* عرض 80mm كامل، الاقتطاع يُعالَج بالـ padding لا بالـ max-width */
-            width: 80mm;
-            margin: 0;
+            /* عرض 100% وبحد أقصى 80mm، لضمان التوسيط وعدم القص في الطباعة */
+            width: 100%;
+            max-width: 80mm;
+            margin: 0 auto;
             padding: 0;
             background: #ffffff;
             color: #000000;
@@ -221,15 +222,13 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
         }
         
         .receipt-wrapper {
-            /* ✅ أوضح طريقة: عرض المحتوى = 70mm صريح
-               80mm (ورق) - 5mm (يمين) - 5mm (يسار) = 70mm
-               لا غموض لأي محرك طباعة */
-            width: 70mm;
+            /* تعديل الهوامش لضمان عدم قص جهة اليسار/اليمين للمتصفحات والطابعات */
+            width: 100%;
             padding-top: 3mm;
             padding-bottom: 3mm;
-            padding-left: 0;
-            padding-right: 0;
-            margin: 0;
+            padding-left: 4mm;
+            padding-right: 4mm;
+            margin: 0 auto;
             box-sizing: border-box;
         }
         

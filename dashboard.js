@@ -723,8 +723,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         body {
-            width: 80mm;
-            margin: 0;
+            width: 100%;
+            max-width: 80mm;
+            margin: 0 auto;
             padding: 0;
             background: #ffffff;
             color: #000000;
@@ -741,14 +742,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         .receipt-wrapper {
-            /* ✅ عرض صريح: 70mm = 80mm - 5mm يمين - 5mm يسار
-               يعمل مع كل محركات الطباعة بلا غموض */
-            width: 70mm;
+            width: 100%;
             padding-top: 3mm;
             padding-bottom: 3mm;
-            padding-left: 0;
-            padding-right: 0;
-            margin: 0;
+            padding-left: 4mm;
+            padding-right: 4mm;
+            margin: 0 auto;
             box-sizing: border-box;
         }
         
@@ -1087,8 +1086,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         body {
-            width: 80mm;
-            margin: 0;
+            width: 100%;
+            max-width: 80mm;
+            margin: 0 auto;
             padding: 0;
             background: #ffffff;
             color: #000000;
@@ -1108,9 +1108,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             width: 100%;
             padding-top: 3mm;
             padding-bottom: 3mm;
-            padding-left: 5mm;
-            padding-right: 5mm;
-            margin: 0;
+            padding-left: 4mm;
+            padding-right: 4mm;
+            margin: 0 auto;
             box-sizing: border-box;
         }
         
@@ -1379,8 +1379,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         @page { size: 80mm auto; margin: 0; }
-        body { width: 80mm; margin: 0 auto; background: #ffffff; color: #000000; direction: rtl; font-family: 'Cairo', 'Segoe UI', sans-serif; text-align: center; font-size: 10pt; word-break: break-word; }
-        .receipt-wrapper { width: 70mm; padding: 3mm 0; margin: 0 auto; }
+        body { width: 100%; max-width: 80mm; margin: 0 auto; background: #ffffff; color: #000000; direction: rtl; font-family: 'Cairo', 'Segoe UI', sans-serif; text-align: center; font-size: 10pt; word-break: break-word; }
+        .receipt-wrapper { width: 100%; padding: 3mm 4mm; margin: 0 auto; box-sizing: border-box; }
         .store-logo { width: 25mm; height: 25mm; object-fit: contain; display: block; margin: 0 auto 2mm; filter: grayscale(100%); }
         .report-title { font-size: 13pt; font-weight: 900; margin: 2mm 0 1mm; }
         .report-subtitle { font-size: 9.5pt; font-weight: 700; margin: 1mm 0; }
