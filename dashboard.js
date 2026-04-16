@@ -746,7 +746,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             padding-top: 3mm;
             padding-bottom: 3mm;
             padding-left: 4mm;
-            padding-right: 4mm;
+            padding-right: 6mm;
             margin: 0 auto;
             box-sizing: border-box;
         }
@@ -1109,7 +1109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             padding-top: 3mm;
             padding-bottom: 3mm;
             padding-left: 4mm;
-            padding-right: 4mm;
+            padding-right: 6mm;
             margin: 0 auto;
             box-sizing: border-box;
         }
@@ -1380,7 +1380,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         @page { size: 80mm auto; margin: 0; }
         body { width: 100%; max-width: 80mm; margin: 0 auto; background: #ffffff; color: #000000; direction: rtl; font-family: 'Cairo', 'Segoe UI', sans-serif; text-align: center; font-size: 10pt; word-break: break-word; }
-        .receipt-wrapper { width: 100%; padding: 3mm 4mm; margin: 0 auto; box-sizing: border-box; }
+        .receipt-wrapper { width: 100%; padding: 3mm 6mm 3mm 4mm; margin: 0 auto; box-sizing: border-box; }
         .store-logo { width: 25mm; height: 25mm; object-fit: contain; display: block; margin: 0 auto 2mm; filter: grayscale(100%); }
         .report-title { font-size: 13pt; font-weight: 900; margin: 2mm 0 1mm; }
         .report-subtitle { font-size: 9.5pt; font-weight: 700; margin: 1mm 0; }

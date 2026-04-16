@@ -222,12 +222,12 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
         }
         
         .receipt-wrapper {
-            /* تعديل الهوامش لضمان عدم قص جهة اليسار/اليمين للمتصفحات والطابعات */
+            /* تعديل الهوامش لضمان عدم قص جهة اليسار/اليمين وإدخال اليمين للوسط قليلاً */
             width: 100%;
             padding-top: 3mm;
             padding-bottom: 3mm;
             padding-left: 4mm;
-            padding-right: 4mm;
+            padding-right: 6mm;
             margin: 0 auto;
             box-sizing: border-box;
         }
