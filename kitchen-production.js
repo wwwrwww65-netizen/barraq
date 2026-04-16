@@ -135,14 +135,37 @@ function printKitchenReceiveReceipt(tx, copyLabel) {
         <style>
             @page { size: 80mm auto; margin: 0; }
             html { overflow: visible; }
-            body { font-family:'Segoe UI',Tahoma,sans-serif; padding:8px 10px; box-sizing:border-box; color:#111; text-align:center; max-width:72mm; margin:0 auto; background:#fff; overflow:visible; }
-            .logo { font-size:22px; font-weight:900; margin-bottom:4px; }
-            .badge { display:inline-block; border:2px solid #333; padding:6px 18px; border-radius:6px; font-weight:700; margin:12px 0; }
-            .details { text-align:right; background:#f9f9f9; border-radius:8px; padding:14px; margin-bottom:16px; font-size:14px; }
-            .details p { margin:7px 0; border-bottom:1px solid #eee; padding-bottom:4px; }
-            .label { font-weight:700; display:inline-block; width:125px; }
-            @media print { button { display:none; } }
+            body { 
+                width: 100%; 
+                max-width: 80mm; 
+                margin: 0 auto; 
+                padding: 0;
+                background: #fff; 
+                color: #000; 
+                direction: rtl;
+                font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; 
+                text-align: center; 
+                font-size: 10pt;
+                line-height: 1.4;
+                overflow: visible; 
+            }
+            .receipt-wrapper {
+                width: 100%;
+                padding-top: 3mm;
+                padding-bottom: 3mm;
+                padding-left: 4mm;
+                padding-right: 6mm;
+                margin: 0 auto;
+                box-sizing: border-box;
+            }
+            .logo { font-size: 22px; font-weight: 900; margin-bottom: 4px; }
+            .badge { display: inline-block; border: 2px solid #333; padding: 6px 18px; border-radius: 6px; font-weight: 700; margin: 12px 0; }
+            .details { text-align: right; background: #f9f9f9; border-radius: 8px; padding: 14px; margin-bottom: 16px; font-size: 14px; }
+            .details p { margin: 7px 0; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+            .label { font-weight: 700; display: inline-block; width: 125px; }
+            @media print { button { display: none; } }
         </style></head><body>
+            <div class="receipt-wrapper">
             <div class="logo">🍽 هـش HASH</div>
             <div style="color:#888;font-size:12px;margin-bottom:8px;">المطبخ — استلام من المخزن${label}</div>
             <div class="badge">سند استلام #${tx.id}</div>
@@ -155,8 +178,9 @@ function printKitchenReceiveReceipt(tx, copyLabel) {
                 <p><span class="label">ملاحظات:</span> ${tx.notes || '-'}</p>
                 <p><span class="label">المستلم:</span> ${tx.user || '-'}</p>
             </div>
+            </div>
             <button onclick="window.print()" style="padding:8px 18px;background:#ff4757;color:white;border:none;border-radius:6px;cursor:pointer;">طباعة</button>
-        </body></html>`;
+        </div></body></html>`;
     void sendKitchenHtmlToPrinter(html);
 }
 
@@ -808,7 +832,26 @@ window.printKitchenReport = function() {
         <style>
             @page { size: 80mm auto; margin: 0; }
             html { overflow: visible; }
-            body { font-family: 'Segoe UI', Tahoma, sans-serif; padding:10px 10px; box-sizing:border-box; color:#111; max-width:72mm; margin:0 auto; background:#fff; overflow:visible; }
+            body { 
+                width: 100%; 
+                max-width: 80mm; 
+                margin: 0 auto; 
+                padding: 0;
+                background: #fff; 
+                color: #000; 
+                direction: rtl;
+                font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; 
+                text-align: center; 
+                font-size: 10pt;
+                line-height: 1.4;
+                overflow: visible; 
+            }
+            .receipt-wrapper {
+                width: 100%;
+                padding: 3mm 6mm 3mm 4mm;
+                margin: 0 auto;
+                box-sizing: border-box;
+            }
             h1 { text-align:center; font-size:22px; margin-bottom:5px; }
             p.sub { text-align:center; color:#666; margin:0 0 20px; }
             table { width:100%; border-collapse:collapse; margin-top:20px; font-size:12px; }
@@ -820,6 +863,7 @@ window.printKitchenReport = function() {
             @media print { button { display:none; } }
         </style></head>
         <body>
+            <div class="receipt-wrapper">
             <h1>🍽 تقرير المطبخ والإنتاج</h1>
             <p class="sub">طُبع بتاريخ: ${new Date().toLocaleString('ar-SA')}</p>
             <table>
@@ -829,6 +873,7 @@ window.printKitchenReport = function() {
             <p class="total">إجمالي عدد السندات: ${txs.length} | إجمالي الكميات: ${totalQty}</p>
             <div class="footer">تم الإنشاء بواسطة نظام هـش HASH للمطاعم</div>
             <br><button onclick="window.print()" style="padding:10px 20px;background:#ff4757;color:white;border:none;border-radius:6px;cursor:pointer;font-size:15px;">🖨️ طباعة الآن</button>
+            </div>
         </body></html>`;
     void sendKitchenHtmlToPrinter(html);
 };
@@ -843,7 +888,26 @@ window.printSingleTx = function(txId) {
         <style>
             @page { size: 80mm auto; margin: 0; }
             html { overflow: visible; }
-            body { font-family:'Segoe UI',Tahoma,sans-serif; padding:8px 10px; box-sizing:border-box; color:#111; text-align:center; max-width:72mm; margin:0 auto; background:#fff; overflow:visible; }
+            body { 
+                width: 100%; 
+                max-width: 80mm; 
+                margin: 0 auto; 
+                padding: 0;
+                background: #fff; 
+                color: #000; 
+                direction: rtl;
+                font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; 
+                text-align: center; 
+                font-size: 10pt;
+                line-height: 1.4;
+                overflow: visible; 
+            }
+            .receipt-wrapper {
+                width: 100%;
+                padding: 3mm 6mm 3mm 4mm;
+                margin: 0 auto;
+                box-sizing: border-box;
+            }
             .logo { font-size:24px; font-weight:900; margin-bottom:5px; }
             .subtitle { color:#888; font-size:13px; margin-bottom:15px; }
             .type-badge { display:inline-block; border:2px solid #333; padding:5px 20px; border-radius:5px; font-weight:700; margin-bottom:20px; }
@@ -855,6 +919,7 @@ window.printSingleTx = function(txId) {
             @media print { button { display:none; } }
         </style></head>
         <body>
+            <div class="receipt-wrapper">
             <div class="logo">🍽 هـش HASH</div>
             <div class="subtitle">المطبخ والإنتاج</div>
             <div class="type-badge">${typeName}</div>
@@ -872,6 +937,7 @@ window.printSingleTx = function(txId) {
                 <p>هـش HASH — نظام إدارة المطاعم</p>
             </div>
             <br><button onclick="window.print()" style="padding:8px 18px;background:#ff4757;color:white;border:none;border-radius:6px;cursor:pointer;">🖨️ طباعة</button>
+            </div>
         </body></html>`;
     void sendKitchenHtmlToPrinter(html);
 };

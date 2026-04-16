@@ -852,8 +852,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         body {
-            width: 80mm;
-            margin: 0;
+            width: 100%;
+            max-width: 80mm;
+            margin: 0 auto;
             padding: 0;
             background: #ffffff;
             color: #000000;
@@ -870,13 +871,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         .kitchen-ticket {
-            /* ✅ عرض صريح: 70mm = 80mm - 5mm يمين - 5mm يسار */
-            width: 70mm;
+            width: 100%;
             padding-top: 3mm;
             padding-bottom: 3mm;
-            padding-left: 0;
-            padding-right: 0;
-            margin: 0;
+            padding-left: 4mm;
+            padding-right: 6mm;
+            margin: 0 auto;
             box-sizing: border-box;
         }
         

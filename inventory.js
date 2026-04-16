@@ -882,11 +882,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                     html, body {
                         margin: 0;
                         padding: 0;
-                        width: 80mm;
-                        font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-                        color: #000;
-                        background: #fff;
-                        overflow: visible !important;
+                        width: 100%;
+                        max-width: 80mm;
+                        margin: 0 auto;
+                        background: #ffffff;
+                        color: #000000;
+                        direction: rtl;
+                        unicode-bidi: embed;
+                        font-family: 'Cairo', 'Segoe UI', 'Arial', 'Tahoma', sans-serif;
+                        text-align: center;
+                        line-height: 1.4;
+                        font-size: 10pt;
+                        -webkit-font-smoothing: antialiased;
+                        overflow: visible;
+                        word-break: break-word;
+                        overflow-wrap: anywhere;
                         -webkit-text-size-adjust: none;
                     }
                     @page {
@@ -894,12 +904,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                         margin: 0;
                     }
                     .receipt-wrapper {
-                        width: 70mm;
-                        margin: 0;
+                        width: 100%;
                         padding-top: 3mm;
                         padding-bottom: 3mm;
-                        padding-left: 0;
-                        padding-right: 0;
+                        padding-left: 4mm;
+                        padding-right: 6mm;
+                        margin: 0 auto;
+                        box-sizing: border-box;
                         unicode-bidi: embed;
                         font-variant-numeric: tabular-nums;
                     }
@@ -1003,11 +1014,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                     html, body {
                         margin: 0;
                         padding: 0;
-                        width: 80mm;
-                        font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-                        color: #000;
-                        background: #fff;
-                        overflow: visible !important;
+                        width: 100%;
+                        max-width: 80mm;
+                        margin: 0 auto;
+                        background: #ffffff;
+                        color: #000000;
+                        direction: rtl;
+                        unicode-bidi: embed;
+                        font-family: 'Cairo', 'Segoe UI', 'Arial', 'Tahoma', sans-serif;
+                        text-align: center;
+                        line-height: 1.4;
+                        font-size: 10pt;
+                        -webkit-font-smoothing: antialiased;
+                        overflow: visible;
+                        word-break: break-word;
+                        overflow-wrap: anywhere;
                         -webkit-text-size-adjust: none;
                     }
                     @page {
@@ -1015,12 +1036,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                         margin: 0;
                     }
                     .receipt-wrapper {
-                        width: 70mm;
-                        margin: 0;
+                        width: 100%;
                         padding-top: 3mm;
                         padding-bottom: 3mm;
-                        padding-left: 0;
-                        padding-right: 0;
+                        padding-left: 4mm;
+                        padding-right: 6mm;
+                        margin: 0 auto;
+                        box-sizing: border-box;
                         unicode-bidi: embed;
                         font-variant-numeric: tabular-nums;
                     }
