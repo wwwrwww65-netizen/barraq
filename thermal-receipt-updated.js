@@ -247,10 +247,10 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
         }
         
         .store-logo {
-            width: 25mm;
-            height: 25mm;
-            max-width: 25mm;
-            max-height: 25mm;
+            width: 29mm;
+            height: 29mm;
+            max-width: 29mm;
+            max-height: 29mm;
             object-fit: contain;
             display: block;
             /* Logical margin للـ RTL */
@@ -420,7 +420,7 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
         }
         
         .grand-total {
-            font-size: 10.5pt; /* تصغير النص لكي يتسع في سطر واحد */
+            font-size: 9pt; /* تصغير إضافي ليتسع في سطر واحد دائماً */
             font-weight: 900;
             border-top: 2px solid #000000;
             padding-top: 2mm;

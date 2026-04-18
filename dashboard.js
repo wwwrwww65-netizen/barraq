@@ -1514,7 +1514,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         html { -webkit-text-size-adjust: none; text-size-adjust: none; overflow: visible; }
         body { width: 100%; max-width: 80mm; margin: 0 auto; padding: 0; background: #ffffff; color: #000000; direction: rtl; unicode-bidi: embed; font-family: 'Cairo', 'Segoe UI', 'Arial', 'Tahoma', sans-serif; text-align: center; line-height: 1.4; font-size: 10.5pt; -webkit-font-smoothing: antialiased; overflow: visible; word-break: break-word; overflow-wrap: anywhere; }
         .receipt-wrapper { width: 100%; padding-top: 3mm; padding-bottom: 3mm; padding-left: 4mm; padding-right: 6mm; margin: 0 auto; box-sizing: border-box; }
-        .store-logo { width: 25mm; height: 25mm; max-width: 25mm; max-height: 25mm; object-fit: contain; display: block; margin-left: auto; margin-right: auto; margin-bottom: 2mm; filter: grayscale(100%); image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; }
+        .store-logo { width: 29mm; height: 29mm; max-width: 29mm; max-height: 29mm; object-fit: contain; display: block; margin-left: auto; margin-right: auto; margin-bottom: 2mm; filter: grayscale(100%); image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; }
         .store-name { font-size: 16px; font-weight: 900; margin: 2mm 0 1mm 0; line-height: 1.2; }
         .store-info { font-size: 10px; margin: 0.5mm 0; line-height: 1.4; }
         .tax-number { font-size: 10px; font-weight: 700; margin: 1mm 0; }
@@ -1535,7 +1535,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .total-row { display: flex; justify-content: space-between; align-items: baseline; padding-top: 1mm; padding-bottom: 1mm; gap: 3mm; min-width: 0; }
         .total-label { text-align: start; flex: 1; min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
         .total-value { text-align: end; font-weight: 700; min-width: 0; flex-shrink: 0; max-width: 50%; overflow-wrap: anywhere; word-break: break-word; font-variant-numeric: tabular-nums; }
-        .grand-total { font-size: 10.5pt; font-weight: 900; border-top: 2px solid #000000; padding-top: 2mm; margin-top: 1mm; }
+        .grand-total { font-size: 9pt; font-weight: 900; border-top: 2px solid #000000; padding-top: 2mm; margin-top: 1mm; }
         .payment-method { font-size: 11pt; font-weight: 700; margin-top: 2mm; margin-bottom: 2mm; padding: 1.5mm 3mm; border: 1.5px solid #000000; display: inline-block; min-width: 42mm; letter-spacing: 0.02em; }
         .qr-container { margin-top: 3mm; margin-bottom: 3mm; margin-left: auto; margin-right: auto; text-align: center; break-inside: avoid; }
         .footer-message { font-size: 10.5pt; font-weight: 700; margin-top: 3mm; margin-bottom: 1mm; line-height: 1.5; }
