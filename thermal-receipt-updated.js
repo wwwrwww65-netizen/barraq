@@ -171,6 +171,20 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
         const qrEl = el('r-qr-code');
         qrSrc = qrEl ? qrEl.src : '';
     }
+    
+    let taxFreeSubtotalText = rSubtotal || rTotal;
+    try {
+        const _calcTotal = parseFloat(String(rTotal).replace(/[^\\d.-]/g, '')) || 0;
+        const _calcTax = parseFloat(String(rTax).replace(/[^\\d.-]/g, '')) || 0;
+        const _calcDis = parseFloat(String(rDiscount).replace(/[^\\d.-]/g, '')) || 0;
+        const rawSub = _calcTotal - _calcTax + _calcDis;
+        if (rawSub >= 0) {
+            const curMatch = String(rTotal).match(/[^\\d.\\s,-]+/g);
+            const curSym = curMatch ? curMatch.join('').trim() : '';
+            taxFreeSubtotalText = rawSub.toFixed(2) + (curSym ? ' ' + curSym : '');
+        }
+    } catch(e) {}
+
     return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -244,7 +258,7 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
             margin-right: auto;
             margin-bottom: 2mm;
             /* ضبط جودة الشعار للطباعة الحرارية */
-            filter: grayscale(100%) contrast(140%) brightness(0.95);
+            filter: grayscale(100%);
             image-rendering: -webkit-optimize-contrast;
             image-rendering: crisp-edges;
         }
@@ -353,6 +367,7 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
             word-break: break-word;
             overflow-wrap: anywhere;
             max-width: none;
+            padding-right: 3mm !important; /* إبعاد النص عن خط الجدول */
         }
         
         .item-qty {
@@ -363,6 +378,8 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
         .item-price {
             text-align: end !important; /* في RTL تعني إلى اليسار */
             font-weight: 600;
+            font-size: 8.5pt;
+            white-space: nowrap; /* منع نزول العملة للسطر التالي */
         }
         
         .totals-section {
@@ -403,7 +420,7 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
         }
         
         .grand-total {
-            font-size: 13pt;
+            font-size: 10.5pt; /* تصغير النص لكي يتسع في سطر واحد */
             font-weight: 900;
             border-top: 2px solid #000000;
             padding-top: 2mm;
@@ -485,8 +502,8 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
             <thead>
                 <tr>
                     <th style="text-align: right;">الصنف</th>
-                    <th style="width: 12mm;">كمية</th>
-                    <th style="width: 18mm;">السعر</th>
+                    <th style="width: 11mm;">كمية</th>
+                    <th style="width: 21mm;">السعر</th>
                 </tr>
             </thead>
             <tbody>
@@ -499,7 +516,7 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
         <div class="totals-section">
             <div class="total-row">
                 <span class="total-label">مجموع الأصناف:</span>
-                <span class="total-value">${rSubtotal || rTotal}</span>
+                <span class="total-value">${taxFreeSubtotalText}</span>
             </div>
             ${(() => {
                 if (isNonZeroMoneyDisplay(rDiscount)) {

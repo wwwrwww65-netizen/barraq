@@ -761,7 +761,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             margin-left: auto;
             margin-right: auto;
             margin-bottom: 2mm;
-            filter: grayscale(100%) contrast(130%) brightness(0.95);
+            filter: grayscale(100%);
             image-rendering: -webkit-optimize-contrast;
             image-rendering: crisp-edges;
         }
@@ -1124,7 +1124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             margin-left: auto;
             margin-right: auto;
             margin-bottom: 2mm;
-            filter: grayscale(100%) contrast(130%) brightness(0.95);
+            filter: grayscale(100%);
             image-rendering: -webkit-optimize-contrast;
             image-rendering: crisp-edges;
         }
@@ -1453,6 +1453,181 @@ document.addEventListener('DOMContentLoaded', async () => {
                 alert('الرجاء السماح بالنوافذ المنبثقة (Popups) لاختبار الطباعة على المتصفح.');
             }
         }, 800); // give time for the modal to populate data
+    };
+
+    window.testBrowserPrintInvoice = function() {
+        const sysSet = localStorage.getItem('restaurant_settings');
+        let restName = 'هش HASH';
+        let restTax = '310000000000003';
+        let restBranch = 'شارع المعارض جوار محطة مزايا';
+        let logoSrc = '';
+        
+        if (sysSet) {
+            try {
+                const s = JSON.parse(sysSet);
+                if (s.name) restName = s.name;
+                if (s.taxNumber) restTax = s.taxNumber;
+                if (s.branch) restBranch = s.branch;
+                if (s.logo && s.logo !== '1111.png' && s.logo !== '1(1).png') logoSrc = s.logo;
+            } catch(e){}
+        }
+
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('ar-u-nu-latn') + " " + now.toLocaleTimeString('ar-u-nu-latn');
+
+        let rItemsHtml = `
+            <tr style="border-bottom: 1px dashed #ccc;">
+                <td class="item-name" style="padding-right: 3mm !important;">نصف مندي دجاج</td>
+                <td class="item-qty">2</td>
+                <td class="item-price">40.00 ر.س</td>
+            </tr>
+            <tr style="border-bottom: 1px dashed #ccc;">
+                <td class="item-name" style="padding-right: 3mm !important;">سلطة خضراء</td>
+                <td class="item-qty">1</td>
+                <td class="item-price">8.00 ر.س</td>
+            </tr>
+            <tr style="border-bottom: 1px dashed #ccc;">
+                <td class="item-name" style="padding-right: 3mm !important;">بيبسي</td>
+                <td class="item-qty">3</td>
+                <td class="item-price">9.00 ر.س</td>
+            </tr>
+            <tr style="border-bottom: 1px dashed #ccc;">
+                <td class="item-name" style="padding-right: 3mm !important;">كنافة قشطة</td>
+                <td class="item-qty">1</td>
+                <td class="item-price">18.00 ر.س</td>
+            </tr>
+        `;
+
+        const rTotal = '75.00 ر.س';
+        const rSubtotal = '65.22 ر.س'; // Before tax
+        const rTax = '9.78 ر.س';
+        const rDiscount = '0.00 ر.س';
+
+        const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <title>تجربة طباعة الفاتورة (متصفح)</title>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        @page { size: 80mm auto; margin: 0; }
+        html { -webkit-text-size-adjust: none; text-size-adjust: none; overflow: visible; }
+        body { width: 100%; max-width: 80mm; margin: 0 auto; padding: 0; background: #ffffff; color: #000000; direction: rtl; unicode-bidi: embed; font-family: 'Cairo', 'Segoe UI', 'Arial', 'Tahoma', sans-serif; text-align: center; line-height: 1.4; font-size: 10.5pt; -webkit-font-smoothing: antialiased; overflow: visible; word-break: break-word; overflow-wrap: anywhere; }
+        .receipt-wrapper { width: 100%; padding-top: 3mm; padding-bottom: 3mm; padding-left: 4mm; padding-right: 6mm; margin: 0 auto; box-sizing: border-box; }
+        .store-logo { width: 25mm; height: 25mm; max-width: 25mm; max-height: 25mm; object-fit: contain; display: block; margin-left: auto; margin-right: auto; margin-bottom: 2mm; filter: grayscale(100%); image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; }
+        .store-name { font-size: 16px; font-weight: 900; margin: 2mm 0 1mm 0; line-height: 1.2; }
+        .store-info { font-size: 10px; margin: 0.5mm 0; line-height: 1.4; }
+        .tax-number { font-size: 10px; font-weight: 700; margin: 1mm 0; }
+        .divider { border-top: 1.5px dashed #000000; margin: 3mm 0; width: 100%; }
+        .divider-thick { border-top: 2px solid #000000; margin: 3mm 0; width: 100%; }
+        .order-type { font-size: 14px; font-weight: 800; margin: 2mm 0 1mm 0; }
+        .order-number { font-size: 13px; font-weight: 700; margin: 1mm 0; }
+        .order-date { font-size: 9px; margin: 1mm 0; text-align: right; }
+        .items-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 2mm; margin-bottom: 2mm; font-size: 9.5pt; border: 1.5px solid #000000; break-inside: avoid; page-break-inside: avoid; }
+        .items-table thead th { padding: 1.5mm; border: 1px solid #000000; font-weight: 800; font-size: 8.5pt; text-align: center; background: #f0f0f0; }
+        .items-table tbody td { padding: 1.5mm; text-align: center; vertical-align: middle; overflow-wrap: anywhere; word-break: break-word; border: 1px solid #cccccc; }
+        .items-table tbody td > div { break-inside: avoid; page-break-inside: avoid; }
+        .items-table tbody tr { page-break-inside: avoid; }
+        .item-name { text-align: start !important; font-weight: 600; word-break: break-word; overflow-wrap: anywhere; max-width: none; padding-right: 3mm !important; }
+        .item-qty { text-align: center !important; font-weight: 700; }
+        .item-price { text-align: end !important; font-weight: 600; font-size: 8.5pt; white-space: nowrap; }
+        .totals-section { margin-top: 2mm; margin-bottom: 2mm; font-size: 10.5pt; break-inside: avoid; }
+        .total-row { display: flex; justify-content: space-between; align-items: baseline; padding-top: 1mm; padding-bottom: 1mm; gap: 3mm; min-width: 0; }
+        .total-label { text-align: start; flex: 1; min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+        .total-value { text-align: end; font-weight: 700; min-width: 0; flex-shrink: 0; max-width: 50%; overflow-wrap: anywhere; word-break: break-word; font-variant-numeric: tabular-nums; }
+        .grand-total { font-size: 10.5pt; font-weight: 900; border-top: 2px solid #000000; padding-top: 2mm; margin-top: 1mm; }
+        .payment-method { font-size: 11pt; font-weight: 700; margin-top: 2mm; margin-bottom: 2mm; padding: 1.5mm 3mm; border: 1.5px solid #000000; display: inline-block; min-width: 42mm; letter-spacing: 0.02em; }
+        .qr-container { margin-top: 3mm; margin-bottom: 3mm; margin-left: auto; margin-right: auto; text-align: center; break-inside: avoid; }
+        .footer-message { font-size: 10.5pt; font-weight: 700; margin-top: 3mm; margin-bottom: 1mm; line-height: 1.5; }
+        .powered-by { font-size: 7.5pt; color: #555555; margin-top: 1mm; margin-bottom: 1mm; }
+    </style>
+</head>
+<body>
+    <div class="receipt-wrapper">
+        ${logoSrc ? '<img src="' + logoSrc + '" alt="Logo" class="store-logo">' : '<img src="1111.png" alt="Logo" class="store-logo">'}
+        
+        <div class="store-name">${restName}</div>
+        <div class="tax-number">الرقم الضريبي: ${restTax}</div>
+        <div class="store-info">${restBranch}</div>
+        
+        <div class="divider"></div>
+        
+        <div class="order-type">طلب محلي (تجربة متصفح)</div>
+        <div class="order-number">رقم الطلب: #1046</div>
+        <div class="order-date">${dateStr}</div>
+        
+        <div class="divider-thick"></div>
+        
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="text-align: right;">الصنف</th>
+                    <th style="width: 11mm;">كمية</th>
+                    <th style="width: 21mm;">السعر</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rItemsHtml}
+            </tbody>
+        </table>
+        
+        <div class="divider-thick"></div>
+        
+        <div class="totals-section">
+            <div class="total-row">
+                <span class="total-label">مجموع الأصناف:</span>
+                <span class="total-value">${rSubtotal}</span>
+            </div>
+            
+            <div class="total-row">
+                <span class="total-label">الخصم:</span>
+                <span class="total-value">${rDiscount}</span>
+            </div>
+            <div class="total-row">
+                <span class="total-label">قيمة الضريبة المضافة 15%:</span>
+                <span class="total-value">${rTax}</span>
+            </div>
+            <div class="total-row grand-total">
+                <span class="total-label">الإجمالي النهائي (شامل الضريبة):</span>
+                <span class="total-value">${rTotal}</span>
+            </div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="payment-method">
+            كاش
+        </div>
+        
+        <div class="qr-container">
+            <div style="width: 120px; height: 120px; border: 1px dashed #000; margin: 0 auto; display: flex; align-items:center; justify-content:center; font-size:12px;">مساحة QR</div>
+        </div>
+        
+        <div class="footer-message">
+            شكراً لزيارتكم!<br>
+            بالهناء والشفاء
+        </div>
+        
+        <div class="powered-by">Hash POS — تجربة طباعة المتصفح<br><br></div>
+    </div>
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 500);
+        }
+    </script>
+</body>
+</html>`;
+
+        const testWin = window.open('', '_blank', 'width=350,height=700');
+        if (testWin) {
+            testWin.document.open();
+            testWin.document.write(html);
+            testWin.document.close();
+        } else {
+            alert('الرجاء السماح بالنوافذ المنبثقة (Popups) لاختبار الطباعة على المتصفح.');
+        }
     };
 
 });

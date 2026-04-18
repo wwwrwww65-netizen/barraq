@@ -976,7 +976,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         margin-right: auto;
                         display: block;
                         margin-bottom: 2mm;
-                        filter: grayscale(100%) contrast(130%) brightness(0.95);
+                        filter: grayscale(100%);
                         image-rendering: -webkit-optimize-contrast;
                         image-rendering: crisp-edges;
                         image-rendering: pixelated;
@@ -1108,7 +1108,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         margin-right: auto;
                         display: block;
                         margin-bottom: 2mm;
-                        filter: grayscale(100%) contrast(130%) brightness(0.95);
+                        filter: grayscale(100%);
                         image-rendering: -webkit-optimize-contrast;
                         image-rendering: crisp-edges;
                         image-rendering: pixelated;

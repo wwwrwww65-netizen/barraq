@@ -932,7 +932,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             margin-left: auto;
             margin-right: auto;
             margin-bottom: 2mm;
-            filter: grayscale(100%) contrast(150%) brightness(0.9);
+            filter: grayscale(100%);
             image-rendering: -webkit-optimize-contrast;
             image-rendering: crisp-edges;
         }
