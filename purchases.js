@@ -48,52 +48,58 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('kpi-top-sup').innerText = topSup;
     }
 
-    // --- Table Render ---
+    // ── Pagination State ───────────────────────────────
+    const PUR_PAGE_SIZE = 25;
+    let purCurrentPage = 1;
+
+    // --- Table Render with Pagination ---
     function renderTable() {
         const tbody = document.getElementById('pur-tbody');
-        if(!tbody) return;
-        
+        if (!tbody) return;
+
         tbody.innerHTML = '';
         const search = document.getElementById('search-inv')?.value.toLowerCase() || '';
 
-        const filtered = purchases.filter(p =>
-            String(p.id || '').toLowerCase().includes(search) ||
+        let filtered = purchases.filter(p =>
+            String(p.id      || '').toLowerCase().includes(search) ||
             String(p.supName || '').toLowerCase().includes(search) ||
-            String(p.ref || '').toLowerCase().includes(search)
+            String(p.ref     || '').toLowerCase().includes(search)
         );
-        
-        // Sort descending
-        filtered.sort((a,b) => new Date(b.date) - new Date(a.date));
+        filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        if(filtered.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#666">لا توجد فواتير.</td></tr>';
+        const total      = filtered.length;
+        const totalPages = Math.max(1, Math.ceil(total / PUR_PAGE_SIZE));
+        if (purCurrentPage > totalPages) purCurrentPage = totalPages;
+
+        const start     = (purCurrentPage - 1) * PUR_PAGE_SIZE;
+        const pageItems = filtered.slice(start, start + PUR_PAGE_SIZE);
+
+        if (total === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:#666">لا توجد فواتير.</td></tr>';
+            _renderPurPagination(0, 0, 0, tbody);
             return;
         }
 
-        filtered.forEach(p => {
+        const fragment = document.createDocumentFragment();
+        pageItems.forEach(p => {
             let pLabel = p.payMethod === 'cash' ? 'كاش من الخزينة' : (p.payMethod === 'bank' ? 'حوالة بنكية' : 'دفع آجل (ذمم)');
             let pColor = p.payMethod === 'credit' ? 'color:var(--accent-red)' : 'color:var(--accent-green)';
-            
-            const isReceived = p.status === 'مستلمة بالمخزن';
+
+            const isReceived  = p.status === 'مستلمة بالمخزن';
             const isCancelled = p.status === 'ملغاة';
 
             let statusTag;
-            if (isReceived) {
-                statusTag = `<span class="inv-tag tag-safe"><i class="ph-fill ph-check-circle"></i> مُستلمة بالمخزن</span>`;
-            } else if (isCancelled) {
-                statusTag = `<span class="inv-tag" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid #ef4444;"><i class="ph-fill ph-x-circle"></i> ملغاة</span>`;
-            } else {
-                statusTag = `<span class="inv-tag tag-low"><i class="ph ph-clock"></i> قيد الاستلام</span>`;
-            }
+            if (isReceived)       statusTag = `<span class="inv-tag tag-safe"><i class="ph-fill ph-check-circle"></i> مُستلمة بالمخزن</span>`;
+            else if (isCancelled) statusTag = `<span class="inv-tag" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid #ef4444;"><i class="ph-fill ph-x-circle"></i> ملغاة</span>`;
+            else                  statusTag = `<span class="inv-tag tag-low"><i class="ph ph-clock"></i> قيد الاستلام</span>`;
 
             const tr = document.createElement('tr');
             if (isCancelled) tr.style.opacity = '0.5';
-
             tr.innerHTML = `
-                <td><strong>${p.id}</strong> <div style="font-size:11px; color:var(--text-muted)">مرجع: ${p.ref}</div></td>
+                <td><strong>${p.id}</strong> <div style="font-size:11px;color:var(--text-muted)">مرجع: ${p.ref}</div></td>
                 <td>${p.supName}</td>
                 <td>${p.date}</td>
-                <td style="font-weight:700;">${xf(p.total)}</td>
+                <td style="font-weight:700">${xf(p.total)}</td>
                 <td style="${pColor}">${pLabel}</td>
                 <td>${statusTag}</td>
                 <td>
@@ -101,66 +107,90 @@ document.addEventListener('DOMContentLoaded', async () => {
                         ${!isReceived && !isCancelled ? `<button class="btn-receive-pur" data-id="${p.id}" title="تأكيد الاستلام وإضافة للمخزون" style="background:var(--accent-green);color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;"><i class="ph ph-check"></i> استلام</button>` : ''}
                         ${!isReceived && !isCancelled ? `<button class="btn-edit-pur" data-id="${p.id}" title="تعديل الفاتورة" style="background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;"><i class="ph ph-pencil"></i> تعديل</button>` : ''}
                         ${!isReceived && !isCancelled ? `<button class="btn-delete-pur" data-id="${p.id}" title="حذف الفاتورة" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;"><i class="ph ph-trash"></i> حذف</button>` : ''}
-                        ${isReceived ? `<button class="btn-cancel-pur" data-id="${p.id}" title="إلغاء الفاتورة وعكس التأثير على المخزون" style="background:#f97316;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;"><i class="ph ph-arrow-u-up-left"></i> إلغاء</button>` : ''}
-                        <button class="print-pur" data-id="${p.id}" title="طباعة فاتورة المشتريات" style="background:rgba(255,255,255,0.1);color:var(--text-secondary);border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;"><i class="ph ph-printer"></i></button>
+                        ${isReceived  ? `<button class="btn-cancel-pur" data-id="${p.id}" title="إلغاء الفاتورة" style="background:#f97316;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;"><i class="ph ph-arrow-u-up-left"></i> إلغاء</button>` : ''}
+                        <button class="print-pur" data-id="${p.id}" style="background:rgba(255,255,255,0.1);color:var(--text-secondary);border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;"><i class="ph ph-printer"></i></button>
                     </div>
                 </td>
             `;
-            tbody.appendChild(tr);
+            fragment.appendChild(tr);
         });
+        tbody.appendChild(fragment);
+        _renderPurPagination(purCurrentPage, totalPages, total, tbody);
 
-        // Attach Print Handlers
-        document.querySelectorAll('.print-pur').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const purId = e.currentTarget.dataset.id;
-                const activePur = purchases.find(x => x.id === purId);
-                if(activePur) printPurchaseInvoice(activePur);
+        // ربط الأحداث
+        tbody.querySelectorAll('.print-pur').forEach(btn => {
+            btn.addEventListener('click', e => {
+                const activePur = purchases.find(x => x.id === e.currentTarget.dataset.id);
+                if (activePur) printPurchaseInvoice(activePur);
             });
         });
-
-        // Attach Receive Handlers
-        document.querySelectorAll('.btn-receive-pur').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const purId = e.currentTarget.dataset.id;
-                const pur = purchases.find(x => x.id === purId);
+        tbody.querySelectorAll('.btn-receive-pur').forEach(btn => {
+            btn.addEventListener('click', async e => {
+                const pur = purchases.find(x => x.id === e.currentTarget.dataset.id);
                 if (!pur) return;
                 if (!confirm(`هل تؤكد استلام الفاتورة ${pur.id} وإضافة الكميات للمخزون؟`)) return;
                 await receivePurchaseToInventory(pur);
             });
         });
-
-        // Attach Edit Handlers
-        document.querySelectorAll('.btn-edit-pur').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const purId = e.currentTarget.dataset.id;
-                const pur = purchases.find(x => x.id === purId);
+        tbody.querySelectorAll('.btn-edit-pur').forEach(btn => {
+            btn.addEventListener('click', e => {
+                const pur = purchases.find(x => x.id === e.currentTarget.dataset.id);
                 if (pur) openEditModal(pur);
             });
         });
-
-        // Attach Delete Handlers
-        document.querySelectorAll('.btn-delete-pur').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const purId = e.currentTarget.dataset.id;
-                const pur = purchases.find(x => x.id === purId);
-                if (!pur) return;
-                await deletePurchase(pur);
+        tbody.querySelectorAll('.btn-delete-pur').forEach(btn => {
+            btn.addEventListener('click', async e => {
+                const pur = purchases.find(x => x.id === e.currentTarget.dataset.id);
+                if (pur) await deletePurchase(pur);
             });
         });
-
-        // Attach Cancel Handlers (received invoices)
-        document.querySelectorAll('.btn-cancel-pur').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const purId = e.currentTarget.dataset.id;
-                const pur = purchases.find(x => x.id === purId);
-                if (!pur) return;
-                await cancelReceivedPurchase(pur);
+        tbody.querySelectorAll('.btn-cancel-pur').forEach(btn => {
+            btn.addEventListener('click', async e => {
+                const pur = purchases.find(x => x.id === e.currentTarget.dataset.id);
+                if (pur) await cancelReceivedPurchase(pur);
             });
         });
     }
 
-    document.getElementById('search-inv')?.addEventListener('input', renderTable);
-    
+    function _renderPurPagination(page, totalPages, total, tbody) {
+        let bar = document.getElementById('pur-pagination-bar');
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'pur-pagination-bar';
+            bar.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:8px;padding:16px 0;flex-wrap:wrap;';
+            tbody.closest('table')?.parentElement?.appendChild(bar);
+        }
+        if (totalPages <= 1) { bar.innerHTML = ''; return; }
+
+        const start = (page - 1) * PUR_PAGE_SIZE + 1;
+        const end   = Math.min(page * PUR_PAGE_SIZE, total);
+        const bs = (active) => `background:${active?'var(--accent-blue)':'var(--bg-card)'};color:${active?'#fff':'var(--text-secondary)'};border:1px solid ${active?'var(--accent-blue)':'var(--border-color)'};border-radius:8px;padding:6px 14px;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;transition:background-color 0.15s ease;`;
+
+        let html = `<span style="color:var(--text-muted);font-size:13px">صفحة ${page}/${totalPages} (فاتورة ${start}–${end} من ${total})</span>`;
+        html += `<button style="${bs(false)}" id="pp-first" ${page===1?'disabled':''}>«</button>`;
+        html += `<button style="${bs(false)}" id="pp-prev"  ${page===1?'disabled':''}>‹</button>`;
+        for (let i = Math.max(1, page-2); i <= Math.min(totalPages, page+2); i++)
+            html += `<button style="${bs(i===page)}" class="pp-num" data-p="${i}">${i}</button>`;
+        html += `<button style="${bs(false)}" id="pp-next" ${page===totalPages?'disabled':''}>›</button>`;
+        html += `<button style="${bs(false)}" id="pp-last" ${page===totalPages?'disabled':''}>»</button>`;
+
+        bar.innerHTML = html;
+        bar.querySelector('#pp-first')?.addEventListener('click', () => { purCurrentPage = 1; renderTable(); });
+        bar.querySelector('#pp-prev' )?.addEventListener('click', () => { purCurrentPage--; renderTable(); });
+        bar.querySelector('#pp-next' )?.addEventListener('click', () => { purCurrentPage++; renderTable(); });
+        bar.querySelector('#pp-last' )?.addEventListener('click', () => { purCurrentPage = totalPages; renderTable(); });
+        bar.querySelectorAll('.pp-num').forEach(b =>
+            b.addEventListener('click', () => { purCurrentPage = Number(b.dataset.p); renderTable(); })
+        );
+    }
+
+    // Debounce على البحث
+    let _purSearchTimer;
+    document.getElementById('search-inv')?.addEventListener('input', () => {
+        clearTimeout(_purSearchTimer);
+        _purSearchTimer = setTimeout(() => { purCurrentPage = 1; renderTable(); }, 300);
+    });
+
     renderKPIs();
     renderTable();
 

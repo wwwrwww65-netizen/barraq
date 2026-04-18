@@ -34,6 +34,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
+    // ── Infinite Scroll State for Products ─────────────────────
+    const PROD_INIT = 50;
+    const PROD_MORE = 20;
+    let _prodFiltered = [];
+    let _prodRendered = 0;
+    let _prodLoading  = false;
+
     // --- Render Products Table ---
     const pTableBody = document.getElementById('products-table-body');
     const searchProdInput = document.getElementById('search-products-input');
@@ -41,12 +48,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderProducts(query = '') {
         if(!pTableBody) return;
         pTableBody.innerHTML = '';
-        const filtered = products.filter(p => p.nameAr.toLowerCase().includes(query.toLowerCase()));
-        if(filtered.length === 0) {
+        _prodRendered = 0;
+
+        _prodFiltered = products.filter(p => p.nameAr.toLowerCase().includes(query.toLowerCase()));
+        
+        if(_prodFiltered.length === 0) {
             pTableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 20px;">لا توجد أصناف مطابقة.</td></tr>`;
             return;
         }
-        filtered.forEach(p => {
+        
+        _appendMenuProducts(PROD_INIT);
+    }
+
+    function _appendMenuProducts(count) {
+        if(!pTableBody) return;
+        const fragment = document.createDocumentFragment();
+        const end = Math.min(_prodRendered + count, _prodFiltered.length);
+
+        for (let i = _prodRendered; i < end; i++) {
+            const p = _prodFiltered[i];
             const cat = categories.find(c => c.id === p.categoryId);
             const catName = cat ? cat.nameAr : 'غير مصنف';
             const tr = document.createElement('tr');
@@ -68,21 +88,58 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <button class="action-btn del-prod-btn" style="color:var(--accent-red);" data-id="${p.id}" title="حذف"><i class="ph ph-trash"></i></button>
                 </td>
             `;
-            pTableBody.appendChild(tr);
-        });
+            fragment.appendChild(tr);
+        }
 
-        document.querySelectorAll('.edit-prod-btn').forEach(btn => {
+        pTableBody.appendChild(fragment);
+        _prodRendered = end;
+        _bindProdActions(pTableBody);
+    }
+
+    function _bindProdActions(container) {
+        container.querySelectorAll('.edit-prod-btn:not([data-bound])').forEach(btn => {
+            btn.dataset.bound = '1';
             btn.addEventListener('click', (e) => openEditProduct(e.target.closest('button').dataset.id));
         });
-        document.querySelectorAll('.toggle-prod-btn').forEach(btn => {
+        container.querySelectorAll('.toggle-prod-btn:not([data-bound])').forEach(btn => {
+            btn.dataset.bound = '1';
             btn.addEventListener('click', (e) => toggleProductStatus(e.target.closest('button').dataset.id));
         });
-        document.querySelectorAll('.del-prod-btn').forEach(btn => {
+        container.querySelectorAll('.del-prod-btn:not([data-bound])').forEach(btn => {
+            btn.dataset.bound = '1';
             btn.addEventListener('click', (e) => deleteProduct(e.target.closest('button').dataset.id));
         });
     }
 
-    if(searchProdInput) searchProdInput.addEventListener('input', (e) => renderProducts(e.target.value));
+    // Intersection Observer للمنتجات
+    const _menuSentinel = document.createElement('tr');
+    _menuSentinel.innerHTML = '<td colspan="8"></td>';
+    const _menuObserver = new IntersectionObserver((entries) => {
+        if (!entries[0].isIntersecting || _prodLoading || _prodRendered >= _prodFiltered.length) return;
+        _prodLoading = true;
+        requestAnimationFrame(() => {
+            _appendMenuProducts(PROD_MORE);
+            _prodLoading = false;
+        });
+    }, { threshold: 0.1 });
+
+    const _origRenderProducts = renderProducts;
+    renderProducts = function(query = '') {
+        _menuObserver.unobserve(_menuSentinel);
+        _origRenderProducts(query);
+        if (_prodFiltered.length > PROD_INIT) {
+            pTableBody.appendChild(_menuSentinel);
+            _menuObserver.observe(_menuSentinel);
+        }
+    };
+
+    let _menuProdSearchTimer;
+    if(searchProdInput) {
+        searchProdInput.addEventListener('input', (e) => {
+            clearTimeout(_menuProdSearchTimer);
+            _menuProdSearchTimer = setTimeout(() => renderProducts(e.target.value.trim()), 300);
+        });
+    }
 
     // --- Render Categories Table ---
     const cTableBody = document.getElementById('categories-table-body');
@@ -97,6 +154,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             cTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 20px;">لا توجد أقسام مطابقة.</td></tr>`;
             return;
         }
+        
+        const fragment = document.createDocumentFragment();
         filtered.forEach(c => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -109,18 +168,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <button class="action-btn del-cat-btn" style="color:var(--accent-red);" data-id="${c.id}"><i class="ph ph-trash"></i> حذف</button>
                 </td>
             `;
-            cTableBody.appendChild(tr);
+            fragment.appendChild(tr);
         });
+        
+        cTableBody.appendChild(fragment);
 
-        document.querySelectorAll('.edit-cat-btn').forEach(btn => {
+        cTableBody.querySelectorAll('.edit-cat-btn').forEach(btn => {
             btn.addEventListener('click', (e) => openEditCategory(e.target.closest('button').dataset.id));
         });
-        document.querySelectorAll('.del-cat-btn').forEach(btn => {
+        cTableBody.querySelectorAll('.del-cat-btn').forEach(btn => {
             btn.addEventListener('click', (e) => deleteCategory(e.target.closest('button').dataset.id));
         });
     }
 
-    if(searchCatInput) searchCatInput.addEventListener('input', (e) => renderCategories(e.target.value));
+    let _menuCatSearchTimer;
+    if(searchCatInput) {
+        searchCatInput.addEventListener('input', (e) => {
+            clearTimeout(_menuCatSearchTimer);
+            _menuCatSearchTimer = setTimeout(() => renderCategories(e.target.value.trim()), 300);
+        });
+    }
 
     // --- Product Edit ---
     function openEditProduct(id) {

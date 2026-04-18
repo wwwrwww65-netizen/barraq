@@ -8,7 +8,11 @@ const {
   globalShortcut,
 } = require('electron');
 
-app.disableHardwareAcceleration(); // تمنع الشاشة السوداء عند الانتقال بين الصفحات أو عند النقر
+// تحسين الأداء: تفعيل GPU بشكل صحيح مع تفادي الشاشة السوداء بطريقة أفضل
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+app.commandLine.appendSwitch('enable-hardware-overlays', 'single-fullscreen,single-on-top,underlay');
 
 app.on('web-contents-created', (e, webContents) => {
   webContents.on('context-menu', (event, params) => {
@@ -1141,10 +1145,12 @@ function createWindow () {
     width: 1280,
     height: 800,
     autoHideMenuBar: true,
-    icon: path.join(__dirname, '1111.png'), // شعار هش HASH الرسمي
+    icon: path.join(__dirname, '1111.png'),
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false
+      contextIsolation: false,
+      backgroundThrottling: false,  // منع تبطئة الصفحة في الخلفية
+      enableWebSQL: false,
     }
   });
 

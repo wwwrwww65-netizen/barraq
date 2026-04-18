@@ -333,47 +333,65 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
+    // ── Infinite Scroll State ────────────────────────────────────────────────
+    const INV_INITIAL_CHUNK = 50;    // أول تحميل
+    const INV_LOAD_MORE     = 20;    // كل scroll إضافي
+    let   _filteredItems    = [];    // البيانات المصفاة الكاملة
+    let   _renderedCount    = 0;     // كم صف رُسم حتى الآن
+    let   _isLoadingMore    = false; // حارس لمنع طلبين متزامنين
+
+    /** يُرتّب البيانات المصفاة ويُخزّنها، ثم يرسم أول chunk */
     function renderTable() {
-        tbody.innerHTML = '';
         updateTableTitle();
+        tbody.innerHTML = '';
+        _renderedCount = 0;
 
-        let currentItems = erpItems.filter((i) => whNorm(i.warehouseId) === currentWH);
+        let base = erpItems.filter((i) => whNorm(i.warehouseId) === currentWH);
 
-        if (viewFilters.category) {
-            currentItems = currentItems.filter((it) => (it.category || '') === viewFilters.category);
-        }
-        if (viewFilters.lowOnly) {
-            currentItems = currentItems.filter((it) => (Number(it.qty) || 0) <= (Number(it.minQty) || 0));
-        }
+        if (viewFilters.category)
+            base = base.filter((it) => (it.category || '') === viewFilters.category);
+        if (viewFilters.lowOnly)
+            base = base.filter((it) => (Number(it.qty) || 0) <= (Number(it.minQty) || 0));
 
         const q = (document.getElementById('inv-search')?.value || '').toLowerCase().trim();
-        if (q) {
-            currentItems = currentItems.filter(
-                (it) =>
-                    String(it.name || '')
-                        .toLowerCase()
-                        .includes(q) ||
-                    String(it.sku || '')
-                        .toLowerCase()
-                        .includes(q)
+        if (q)
+            base = base.filter((it) =>
+                String(it.name || '').toLowerCase().includes(q) ||
+                String(it.sku  || '').toLowerCase().includes(q)
             );
-        }
 
-        if (currentItems.length === 0) {
-            tbody.innerHTML =
-                '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:20px;">لا توجد أصناف مطابقة للعرض الحالي.</td></tr>';
+        _filteredItems = base;
+
+        if (_filteredItems.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:20px;">لا توجد أصناف مطابقة للعرض الحالي.</td></tr>';
             return;
         }
 
-        currentItems.forEach((item) => {
-            const { rowClass, html } = buildRowHtml(item);
+        _appendRows(INV_INITIAL_CHUNK);
+    }
+
+    /** يضيف `count` صف من _filteredItems ابتداءً من _renderedCount */
+    function _appendRows(count) {
+        const fragment = document.createDocumentFragment();
+        const end = Math.min(_renderedCount + count, _filteredItems.length);
+
+        for (let i = _renderedCount; i < end; i++) {
+            const { rowClass, html } = buildRowHtml(_filteredItems[i]);
             const tr = document.createElement('tr');
             if (rowClass) tr.className = rowClass;
             tr.innerHTML = html;
-            tbody.appendChild(tr);
-        });
+            fragment.appendChild(tr);
+        }
 
-        document.querySelectorAll('.btn-quick-in').forEach((btn) => {
+        tbody.appendChild(fragment);
+        _renderedCount = end;
+        _bindRowActions(tbody);
+    }
+
+    /** يربط أحداث الأزرار فقط للصفوف الجديدة غير المربوطة */
+    function _bindRowActions(container) {
+        container.querySelectorAll('.btn-quick-in:not([data-bound])').forEach((btn) => {
+            btn.dataset.bound = '1';
             btn.addEventListener('click', (e) => {
                 const sku = e.currentTarget.dataset.sku;
                 document.getElementById('tx-sku').value = sku;
@@ -382,29 +400,65 @@ document.addEventListener('DOMContentLoaded', async () => {
                 openModal('txModal');
             });
         });
-
-        document.querySelectorAll('.btn-edit-item').forEach((btn) => {
+        container.querySelectorAll('.btn-edit-item:not([data-bound])').forEach((btn) => {
+            btn.dataset.bound = '1';
             btn.addEventListener('click', (e) => {
                 const sku = e.currentTarget.dataset.sku;
-                const wh = e.currentTarget.dataset.wh || currentWH;
+                const wh  = e.currentTarget.dataset.wh || currentWH;
                 openItemModalEdit(sku, wh);
             });
         });
     }
 
-    document.getElementById('inv-search')?.addEventListener('input', () => {
+    // ── Intersection Observer: تحميل المزيد عند الوصول لآخر صف ────────────
+    const _sentinel = document.createElement('tr');
+    _sentinel.id = 'inv-scroll-sentinel';
+    _sentinel.innerHTML = '<td colspan="9" style="padding:4px"></td>';
+
+    const _scrollObserver = new IntersectionObserver((entries) => {
+        if (!entries[0].isIntersecting) return;
+        if (_isLoadingMore) return;
+        if (_renderedCount >= _filteredItems.length) return;
+
+        _isLoadingMore = true;
+        // requestAnimationFrame يضمن الاستجابة بعد رسم الإطار الحالي
+        requestAnimationFrame(() => {
+            _appendRows(INV_LOAD_MORE);
+            _isLoadingMore = false;
+        });
+    }, { threshold: 0.1 });
+
+    // أعد تعليق sentinel بعد كل renderTable
+    const _origRenderTable = renderTable;
+    function _observeSentinel() {
+        tbody.appendChild(_sentinel);
+        _scrollObserver.observe(_sentinel);
+    }
+    // نُضيف sentinel بعد استدعاء renderTable
+    const _patchedRender = function() {
+        _scrollObserver.unobserve(_sentinel);
         renderTable();
+        if (_filteredItems.length > INV_INITIAL_CHUNK) _observeSentinel();
+    };
+
+    // ── Debounce: بحث 300ms ─────────────────────────────────────────────────
+    let _invSearchTimer;
+    document.getElementById('inv-search')?.addEventListener('input', () => {
+        clearTimeout(_invSearchTimer);
+        _invSearchTimer = setTimeout(() => _patchedRender(), 300);
     });
 
-    renderTable();
+    _patchedRender();
     renderKPIs();
+    // تفعيل sentinel عند التحميل الأول
+    if (_filteredItems.length > INV_INITIAL_CHUNK) _observeSentinel();
 
     if (typeof window.registerPosDatabaseRefresh === 'function') {
         window.registerPosDatabaseRefresh(async () => {
             db = await window.dbRead();
             erpItems = db.inventory || [];
             erpTx = db.inventoryTx || [];
-            renderTable();
+            _patchedRender();
             renderKPIs();
         });
     }
@@ -416,7 +470,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             tab.classList.add('active');
             currentWH = tab.dataset.wh || 'main';
             updateTableTitle();
-            renderTable();
+            _patchedRender();
             renderKPIs();
         });
     });

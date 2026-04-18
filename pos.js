@@ -116,49 +116,99 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Render Products
-    if(productsGrid) {
+    // ── Infinite Scroll State for POS Products ──────────────────────────
+    const POS_PROD_INIT = 50;
+    const POS_PROD_MORE = 20;
+    let _posFiltered = [];
+    let _posRendered = 0;
+    let _posLoading  = false;
+
+    // We only filter active products to sell
+    const activeProducts = prodData.filter(p => p.isActive);
+
+    function renderPosProducts(category = 'الكل', query = '') {
+        if (!productsGrid) return;
         productsGrid.innerHTML = '';
-        prodData.filter(p => p.isActive).forEach(p => {
-            const html = `
-                <div class="product-card" data-category="${p.categoryId}" data-name="${p.nameAr}" data-price="${p.price}" data-id="${p.id}">
-                    <div class="product-img-wrapper">
-                        <img src="${p.image}" alt="${p.nameAr}">
-                    </div>
-                    <div class="product-details">
-                        <h4>${p.nameAr}</h4>
-                        <div class="price-row">
-                            <span class="product-price">${formatCurrency(p.price)}</span>
-                            <button class="add-btn"><i class="ph ph-plus"></i></button>
-                        </div>
+        _posRendered = 0;
+
+        _posFiltered = activeProducts.filter(p => {
+            const matchesCat = (category === 'الكل' || p.categoryId === category);
+            const matchesSearch = p.nameAr.toLowerCase().includes(query.toLowerCase());
+            return matchesCat && matchesSearch;
+        });
+
+        if (_posFiltered.length === 0) {
+            productsGrid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:50px;color:var(--text-muted);">لا توجد أصناف مطابقة.</div>`;
+            return;
+        }
+
+        _appendPosProducts(POS_PROD_INIT);
+    }
+
+    function _appendPosProducts(count) {
+        if (!productsGrid) return;
+        const fragment = document.createDocumentFragment();
+        const end = Math.min(_posRendered + count, _posFiltered.length);
+
+        for (let i = _posRendered; i < end; i++) {
+            const p = _posFiltered[i];
+            const div = document.createElement('div');
+            div.className = 'product-card';
+            div.dataset.category = p.categoryId;
+            div.dataset.name = p.nameAr;
+            div.dataset.price = p.price;
+            div.dataset.id = p.id;
+            div.innerHTML = `
+                <div class="product-img-wrapper">
+                    <img src="${p.image || 'placeholder.svg'}" alt="${p.nameAr}">
+                </div>
+                <div class="product-details">
+                    <h4>${p.nameAr}</h4>
+                    <div class="price-row">
+                        <span class="product-price">${formatCurrency(p.price)}</span>
+                        <button class="add-btn"><i class="ph ph-plus"></i></button>
                     </div>
                 </div>
             `;
-            productsGrid.insertAdjacentHTML('beforeend', html);
-        });
+            // Add click listener to the card directly instead of global delegate
+            div.addEventListener('click', (e) => {
+                // If they clicked the plus button, don't double fire if button handles it, 
+                // but here card click handles everything:
+                addProductToCart(div);
+            });
+            fragment.appendChild(div);
+        }
+        
+        productsGrid.appendChild(fragment);
+        _posRendered = end;
     }
+
+    // Intersection Observer للمنتجات في الـ Grid
+    const _posSentinel = document.createElement('div');
+    _posSentinel.style.cssText = 'height:10px;grid-column:1/-1;';
+    const _posObserver = new IntersectionObserver((entries) => {
+        if (!entries[0].isIntersecting || _posLoading || _posRendered >= _posFiltered.length) return;
+        _posLoading = true;
+        requestAnimationFrame(() => {
+            _appendPosProducts(POS_PROD_MORE);
+            _posLoading = false;
+        });
+    }, { threshold: 0.1 });
+
+    const _origRenderPos = renderPosProducts;
+    renderPosProducts = function(cat, query) {
+        _posObserver.unobserve(_posSentinel);
+        _origRenderPos(cat, query);
+        if (_posFiltered.length > POS_PROD_INIT) {
+            productsGrid.appendChild(_posSentinel);
+            _posObserver.observe(_posSentinel);
+        }
+    };
 
     /* ===============================
        Category & Product Filtering
     =============================== */
     let categoryBtns = document.querySelectorAll('.category-btn');
-
-    function filterProducts(category, searchQuery) {
-        const products = document.querySelectorAll('.product-card');
-        products.forEach(product => {
-            const pCat = product.dataset.category;
-            const pName = product.dataset.name.toLowerCase();
-
-            const matchesCategory = (category === 'الكل' || pCat === category);
-            const matchesSearch = (pName.includes(searchQuery));
-
-            if (matchesCategory && matchesSearch) {
-                product.style.display = 'flex';
-            } else {
-                product.style.display = 'none';
-            }
-        });
-    }
 
     function bindPosCatalogInteraction() {
         categoryBtns = document.querySelectorAll('.category-btn');
@@ -169,32 +219,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 targetBtn.classList.add('active');
 
                 const category = targetBtn.dataset.category;
-                filterProducts(category, searchInput.value.toLowerCase());
-            });
-        });
-
-        const productCardsClickable = document.querySelectorAll('.product-card');
-        productCardsClickable.forEach(card => {
-            card.addEventListener('click', (e) => {
-                if (e.target.closest('.add-btn')) return;
-                addProductToCart(card);
-            });
-        });
-
-        document.querySelectorAll('.product-card .add-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const card = e.target.closest('.product-card');
-                addProductToCart(card);
+                renderPosProducts(category, searchInput.value.toLowerCase().trim());
             });
         });
     }
 
+    let _posSearchTimer;
     searchInput.addEventListener('input', (e) => {
-        const activeBtn = document.querySelector('.category-btn.active');
-        const category = activeBtn ? activeBtn.dataset.category : 'الكل';
-        filterProducts(category, e.target.value.toLowerCase());
+        clearTimeout(_posSearchTimer);
+        const val = e.target.value.toLowerCase().trim();
+        _posSearchTimer = setTimeout(() => {
+            const activeBtn = document.querySelector('.category-btn.active');
+            const category = activeBtn ? activeBtn.dataset.category : 'الكل';
+            renderPosProducts(category, val);
+        }, 300);
     });
 
+    // Render automatically once
+    renderPosProducts('الكل', '');
     bindPosCatalogInteraction();
 
     /* ===============================

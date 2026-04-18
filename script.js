@@ -541,7 +541,7 @@ try {
     }
 })();
 
-// Update Date and Time continuously
+// Update Date and Time — يتحدث مرة واحدة بالدقيقة دون ضغط على المعالج
 function updateDateTime() {
     const timeDisplay = document.getElementById('datetime-display');
     if (!timeDisplay) return;
@@ -557,8 +557,17 @@ function updateDateTime() {
     timeDisplay.innerHTML = `${dateStr} - ${timeStr}`;
 }
 
-setInterval(updateDateTime, 1000);
-updateDateTime();
+// تحديث كفؤ: مرة واحدة بالدقيقة دون setInterval كل ثانية
+(function smartDateLoop() {
+    updateDateTime();
+    const now = new Date();
+    // انتظر حتى نهاية الدقيقة الحالية + 1 ثانية
+    const msUntilNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds() + 1000;
+    setTimeout(function tick() {
+        updateDateTime();
+        setTimeout(tick, 60000);
+    }, msUntilNextMinute);
+})();
 
 document.addEventListener('DOMContentLoaded', () => {
     // Generic UI Interactions

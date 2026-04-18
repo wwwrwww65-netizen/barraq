@@ -77,6 +77,12 @@ const statusConfig = {
 };
 
 // ── Nav & Views Logic ─────────────────────────────────────────
+// ── Pagination State (Employees Grid) ────────────────────────────
+
+
+const EMP_PAGE_SIZE = 24;
+let empCurrentPage  = 1;
+let _empSearchTimer;
 window.showView = function(viewId, navId) {
     document.querySelectorAll('.hr-view').forEach(v => v.style.display = 'none');
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -150,39 +156,43 @@ let searchQuery = '';
 function renderEmployees() {
     updateKPIs();
     const grid = document.getElementById('staff-grid');
-    if(!grid) return;
+    if (!grid) return;
 
     let filtered = db.employees.filter(e => {
         const matchRole   = activeRoleFilter === 'all' || e.role === activeRoleFilter;
-        const matchSearch = e.name.toLowerCase().includes(searchQuery.toLowerCase()) || (e.iqama||'').includes(searchQuery);
+        const matchSearch = e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            (e.iqama || '').includes(searchQuery);
         return matchRole && matchSearch;
     });
 
-    // Update tab counters & Generate dynamically
+    // تحديث التبويبات
     const roleTabsContainer = document.getElementById('role-tabs');
     if (roleTabsContainer) {
-        // Find unique roles
         const uniqueRoles = [...new Set(db.employees.map(e => e.role))].filter(Boolean);
         let tabsHtml = `<button class="role-tab ${activeRoleFilter === 'all' ? 'active' : ''}" data-role="all">الجميع (${db.employees.length})</button>`;
-        
         uniqueRoles.forEach(r => {
             const cnt = db.employees.filter(e => e.role === r).length;
             tabsHtml += `<button class="role-tab ${activeRoleFilter === r ? 'active' : ''}" data-role="${r}">${r} (${cnt})</button>`;
         });
         roleTabsContainer.innerHTML = tabsHtml;
-
-        // Re-bind click events
         document.querySelectorAll('.role-tab').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.role-tab').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 activeRoleFilter = btn.dataset.role;
+                empCurrentPage = 1;
                 renderEmployees();
             });
         });
     }
 
-    // Helper: Dynamic Status
+    // ── Pagination ─────────────────────────────────────────────────
+    const total      = filtered.length;
+    const totalPages = Math.max(1, Math.ceil((total + 1) / EMP_PAGE_SIZE)); // +1 for add-card
+    if (empCurrentPage > totalPages) empCurrentPage = totalPages;
+    const start     = (empCurrentPage - 1) * EMP_PAGE_SIZE;
+    const pageItems = filtered.slice(start, start + EMP_PAGE_SIZE);
+
     const todayStr = new Date().toLocaleDateString('ar-SA');
     function getEmpStatus(empId) {
         const todayAtt = db.attendance.find(a => a.empId === empId && a.date === todayStr);
@@ -192,16 +202,16 @@ function renderEmployees() {
     }
 
     grid.innerHTML = '';
-    
-    filtered.forEach(emp => {
-        const rc = roleConfig[emp.role] || { badge:'', icon:'ph-user', color:'#64748b' };
+    const fragment = document.createDocumentFragment();
+
+    pageItems.forEach(emp => {
+        const rc = roleConfig[emp.role] || { badge: '', icon: 'ph-user', color: '#64748b' };
         const sc = getEmpStatus(emp.id);
-        const avatarHtml = emp.avatar 
-            ? `<img src="${emp.avatar}" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:3px solid ${rc.color}; box-shadow:0 8px 25px rgba(0,0,0,0.5);">`
+        const avatarHtml = emp.avatar
+            ? `<img src="${emp.avatar}" style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:3px solid ${rc.color};box-shadow:0 8px 25px rgba(0,0,0,0.5);">`
             : `<div style="width:100px;height:100px;border-radius:50%;background:var(--bg-card);display:flex;align-items:center;justify-content:center;font-size:40px;border:3px solid ${rc.color};box-shadow:0 8px 25px rgba(0,0,0,0.5);"><i class="ph ${rc.icon}" style="color:${rc.color}"></i></div>`;
 
         const netSalary = (emp.salary || 0) - (emp.loans || 0);
-
         const card = document.createElement('div');
         card.className = 'staff-card card';
         let customStyle = sc.style ? `style="${sc.style}"` : '';
@@ -221,25 +231,62 @@ function renderEmployees() {
                     <span><i class="ph ph-identification-card"></i> ${emp.iqama || '—'}</span>
                 </div>
             </div>
-            <div style="width:100%; display:flex; gap:6px; margin-top:16px;">
-                <button class="action-btn-mini btn-att-present" onclick="markAttendanceQuick('${emp.id}', 'حضور')" title="تسجيل حضور سريع"><i class="ph ph-fingerprint"></i></button>
-                <button class="action-btn-mini btn-att-absent" onclick="markAttendanceQuick('${emp.id}', 'غياب')" title="تسجيل غياب"><i class="ph ph-user-minus"></i></button>
-                <button class="action-btn-mini btn-att-excused" onclick="markAttendanceQuick('${emp.id}', 'مستأذن')" title="تسجيل إذن"><i class="ph ph-clock"></i></button>
-                <button class="action-btn-full" style="background:var(--accent-blue); color:white; border:none;" onclick="openFullProfile('${emp.id}')"><i class="ph ph-user-circle"></i> عرض الملف</button>
+            <div style="width:100%;display:flex;gap:6px;margin-top:16px;">
+                <button class="action-btn-mini btn-att-present" onclick="markAttendanceQuick('${emp.id}','حضور')" title="حضور"><i class="ph ph-fingerprint"></i></button>
+                <button class="action-btn-mini btn-att-absent" onclick="markAttendanceQuick('${emp.id}','غياب')" title="غياب"><i class="ph ph-user-minus"></i></button>
+                <button class="action-btn-mini btn-att-excused" onclick="markAttendanceQuick('${emp.id}','مستأذن')" title="إذن"><i class="ph ph-clock"></i></button>
+                <button class="action-btn-full" style="background:var(--accent-blue);color:white;border:none;" onclick="openFullProfile('${emp.id}')"><i class="ph ph-user-circle"></i> عرض الملف</button>
             </div>
         `;
-        grid.appendChild(card);
+        fragment.appendChild(card);
     });
 
-    const addCard = document.createElement('div');
-    addCard.className = 'staff-card card add-new-staff-card';
-    addCard.innerHTML = `
-        <i class="ph ph-user-plus icon-huge text-pink"></i>
-        <h3>تعيين موظف جديد</h3>
-        <button class="hr-btn-solid bg-pink mt-3" onclick="showView('view-add-employee', 'nav-new-emp')"><i class="ph ph-plus"></i> إنشاء الملف الآن</button>
-    `;
-    grid.appendChild(addCard);
+    // كارد إضافة موظف — فقط في آخر صفحة أو إذا كانت الصفحة الأخيرة
+    if (empCurrentPage === totalPages) {
+        const addCard = document.createElement('div');
+        addCard.className = 'staff-card card add-new-staff-card';
+        addCard.innerHTML = `
+            <i class="ph ph-user-plus icon-huge text-pink"></i>
+            <h3>تعيين موظف جديد</h3>
+            <button class="hr-btn-solid bg-pink mt-3" onclick="showView('view-add-employee','nav-new-emp')"><i class="ph ph-plus"></i> إنشاء الملف الآن</button>
+        `;
+        fragment.appendChild(addCard);
+    }
+
+    grid.appendChild(fragment);
+    _renderEmpPagination(empCurrentPage, totalPages, total, grid);
 }
+
+function _renderEmpPagination(page, totalPages, total, grid) {
+    let bar = document.getElementById('emp-pagination-bar');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'emp-pagination-bar';
+        bar.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:8px;padding:20px 0;flex-wrap:wrap;grid-column:1/-1;';
+        grid.parentElement?.appendChild(bar);
+    }
+    if (totalPages <= 1) { bar.innerHTML = ''; return; }
+
+    const bs = (active) => `background:${active?'var(--accent-blue)':'var(--bg-card)'};color:${active?'#fff':'var(--text-secondary)'};border:1px solid ${active?'var(--accent-blue)':'var(--border-color)'};border-radius:8px;padding:6px 16px;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;transition:background-color 0.15s ease;`;
+
+    let html = `<span style="color:var(--text-muted);font-size:13px">صفحة ${page}/${totalPages} — ${total} موظف</span>`;
+    html += `<button style="${bs(false)}" id="ep-first" ${page===1?'disabled':''}>«</button>`;
+    html += `<button style="${bs(false)}" id="ep-prev"  ${page===1?'disabled':''}>‹</button>`;
+    for (let i = Math.max(1, page-2); i <= Math.min(totalPages, page+2); i++)
+        html += `<button style="${bs(i===page)}" class="ep-num" data-p="${i}">${i}</button>`;
+    html += `<button style="${bs(false)}" id="ep-next" ${page===totalPages?'disabled':''}>›</button>`;
+    html += `<button style="${bs(false)}" id="ep-last" ${page===totalPages?'disabled':''}>»</button>`;
+
+    bar.innerHTML = html;
+    bar.querySelector('#ep-first')?.addEventListener('click', () => { empCurrentPage = 1; renderEmployees(); });
+    bar.querySelector('#ep-prev' )?.addEventListener('click', () => { empCurrentPage--; renderEmployees(); });
+    bar.querySelector('#ep-next' )?.addEventListener('click', () => { empCurrentPage++; renderEmployees(); });
+    bar.querySelector('#ep-last' )?.addEventListener('click', () => { empCurrentPage = totalPages; renderEmployees(); });
+    bar.querySelectorAll('.ep-num').forEach(b =>
+        b.addEventListener('click', () => { empCurrentPage = Number(b.dataset.p); renderEmployees(); })
+    );
+}
+
 
 // ── Open Employee Profile (Full Page) ────────────────────────
 let currentProfileId = null;
@@ -1110,10 +1157,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
-    // Search Box
+    // Search Box — debounce 300ms
     document.getElementById('search-emp')?.addEventListener('input', (e) => {
-        searchQuery = e.target.value.trim();
-        renderEmployees();
+        clearTimeout(_empSearchTimer);
+        const val = e.target.value.trim();
+        _empSearchTimer = setTimeout(() => {
+            searchQuery = val;
+            empCurrentPage = 1;
+            renderEmployees();
+        }, 300);
     });
 
     renderEmployees();
