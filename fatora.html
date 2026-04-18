@@ -62,6 +62,15 @@
     </style>
 </head>
 <body>
+    <script>
+        (function(){
+            var theme = localStorage.getItem('sys_theme') || 'dark';
+            if (theme === 'light') {
+                document.body.classList.remove('dark-theme');
+                document.body.classList.add('light-theme');
+            }
+        })();
+    </script>
     <div class="premium-bg"></div>
     <div class="app-container" style="background: transparent;">
         <!-- Sidebar Navigation -->

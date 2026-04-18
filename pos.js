@@ -923,10 +923,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         .kitchen-logo {
-            width: 25mm;
-            height: 25mm;
-            max-width: 25mm;
-            max-height: 25mm;
+            width: 29mm;
+            height: 29mm;
+            max-width: 29mm;
+            max-height: 29mm;
             object-fit: contain;
             display: block;
             margin-left: auto;

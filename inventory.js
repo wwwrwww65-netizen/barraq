@@ -969,8 +969,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         font-variant-numeric: tabular-nums;
                     }
                     .store-logo {
-                        width: 25mm;
-                        height: 25mm;
+                        width: 29mm;
+                        height: 29mm;
                         object-fit: contain;
                         margin-left: auto;
                         margin-right: auto;
@@ -1101,8 +1101,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         font-variant-numeric: tabular-nums;
                     }
                     .store-logo {
-                        width: 25mm;
-                        height: 25mm;
+                        width: 29mm;
+                        height: 29mm;
                         object-fit: contain;
                         margin-left: auto;
                         margin-right: auto;

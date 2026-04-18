@@ -16,6 +16,15 @@
     <script src="node_modules/chart.js/dist/chart.umd.js"></script>
 </head>
 <body class="dark-theme">
+    <script>
+        (function(){
+            var theme = localStorage.getItem('sys_theme') || 'dark';
+            if (theme === 'light') {
+                document.body.classList.remove('dark-theme');
+                document.body.classList.add('light-theme');
+            }
+        })();
+    </script>
     <div class="app-container">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -122,8 +131,6 @@
                             <button class="btn btn-outline" style="border-color: #fcd34d; color: #fcd34d; background: transparent;" onclick="openShiftFloatModal()"><i class="ph ph-money"></i> رصيد مبدئي للدرج</button>
                             <button class="btn btn-danger" onclick="openShiftReport()"><i class="ph ph-lock-key"></i> إغلاق الوردية</button>
                             <button class="btn btn-danger" style="background: linear-gradient(135deg, #7c3aed, #4f46e5); border:none;" onclick="openDayCloseReport()"><i class="ph ph-moon-stars"></i> اقفال اليوم</button>
-                            <button class="btn btn-outline" style="border-color: #8b5cf6; color: #8b5cf6;" onclick="testBrowserPrintDay()"><i class="ph ph-printer"></i> تجربة يوم</button>
-                            <button class="btn btn-outline" style="border-color: #10b981; color: #10b981;" onclick="testBrowserPrintInvoice()"><i class="ph ph-receipt"></i> تجربة فاتورة</button>
                         </div>
                     </div>
                 </div>
