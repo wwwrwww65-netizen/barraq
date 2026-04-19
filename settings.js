@@ -863,4 +863,105 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     })();
 
+    // --- تصفير العمليات الحسابية فقط (يبقي المنتجات والأصناف والإعدادات) ---
+    (function initOpsReset() {
+        const btnOpen   = document.getElementById('btn-ops-reset-open');
+        const mConfirm  = document.getElementById('modal-ops-reset-confirm');
+        const mPwd      = document.getElementById('modal-ops-reset-password');
+        const inpPwd    = document.getElementById('ops-pwd-input');
+        const btnNo     = document.getElementById('btn-ops-confirm-no');
+        const btnYes    = document.getElementById('btn-ops-confirm-yes');
+        const btnCancel = document.getElementById('btn-ops-pwd-cancel');
+        const btnSubmit = document.getElementById('btn-ops-pwd-submit');
+        if (!btnOpen || !mConfirm || !mPwd || !inpPwd) return;
+
+        function openM(el)  { el.classList.add('active'); el.setAttribute('aria-hidden','false'); }
+        function closeM(el) { el.classList.remove('active'); el.setAttribute('aria-hidden','true'); }
+
+        btnOpen.addEventListener('click', () => openM(mConfirm));
+        if (btnNo)    btnNo.addEventListener('click',    () => closeM(mConfirm));
+        if (btnYes)   btnYes.addEventListener('click',   () => { closeM(mConfirm); inpPwd.value = ''; openM(mPwd); setTimeout(() => inpPwd.focus(), 80); });
+        if (btnCancel) btnCancel.addEventListener('click', () => { closeM(mPwd); inpPwd.value = ''; });
+
+        mConfirm.addEventListener('click', (e) => { if (e.target === mConfirm) closeM(mConfirm); });
+        mPwd.addEventListener('click',     (e) => { if (e.target === mPwd)     closeM(mPwd); });
+        inpPwd.addEventListener('keydown', (e) => { if (e.key === 'Enter') btnSubmit.click(); });
+
+        if (btnSubmit) {
+            btnSubmit.addEventListener('click', async () => {
+                const pwd      = inpPwd.value.trim();
+                const expected = localStorage.getItem('admin_pwd') || '123456';
+                if (pwd !== expected) {
+                    alert('كلمة السر غير صحيحة.');
+                    return;
+                }
+                if (typeof window.dbRead !== 'function' || typeof window.dbWrite !== 'function') {
+                    alert('تعذر الاتصال بقاعدة البيانات. شغّل التطبيق من البرنامج الرسمي (Electron).');
+                    return;
+                }
+                const prevHtml = btnSubmit.innerHTML;
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<i class="ph ph-spinner-gap ph-spin"></i> جاري التصفير...';
+                try {
+                    // اقرأ قاعدة البيانات الحالية
+                    const currentDb = await window.dbRead();
+
+                    // احتفظ بالبيانات الثابتة (المنتجات، الأصناف، المخزون، الموردين، الموظفين، إلخ)
+                    const preserved = {
+                        products:         currentDb.products         || [],
+                        categories:       currentDb.categories       || [],
+                        inventory:        currentDb.inventory        || [],
+                        suppliers:        currentDb.suppliers        || [],
+                        employees:        currentDb.employees        || [],
+                        penaltyRules:     currentDb.penaltyRules     || [],
+                        chartOfAccounts:  currentDb.chartOfAccounts  || [],
+                        customers:        currentDb.customers        || [],
+                        inventoryAlertState: currentDb.inventoryAlertState || {},
+                    };
+
+                    // قاعدة بيانات جديدة: احتفظ بالثوابت وصفّر العمليات
+                    const newDb = {
+                        ...preserved,
+                        orders:              [],
+                        purchases:           [],
+                        returns:             [],
+                        expenses:            [],
+                        bankTransfers:       [],
+                        hrExpenses:          [],
+                        otherIncome:         [],
+                        inventoryTx:         [],
+                        journalEntries:      [],
+                        attendance:          [],
+                        systemNotifications: [],
+                    };
+
+                    const ok = await window.dbWrite(newDb, { broadcast: false });
+                    if (!ok) {
+                        alert('فشل حفظ قاعدة البيانات. لم تُمس البيانات.');
+                        return;
+                    }
+
+                    // مسح المفاتيح الحسابية من localStorage دون المساس بالإعدادات
+                    const keysToRemove = [
+                        'current_shift', 'shift_history', 'daily_summary',
+                        'cashier_session', 'open_orders', 'pending_orders',
+                        'last_sale_no', 'last_purchase_no', 'last_expense_no',
+                        'last_return_no', 'last_order_no',
+                    ];
+                    keysToRemove.forEach(k => { try { localStorage.removeItem(k); } catch(e){} });
+
+                    closeM(mPwd);
+                    alert('✅ تم تصفير جميع العمليات الحسابية بنجاح!\n\nالأصناف والمنتجات والإعدادات ظلت كما هي.\nسيتم إعادة تحميل الصفحة الآن.');
+                    location.reload();
+                } catch (err) {
+                    console.error(err);
+                    alert('حدث خطأ أثناء التصفير: ' + (err && err.message ? err.message : String(err)));
+                } finally {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = prevHtml;
+                }
+            });
+        }
+    })();
+
 });

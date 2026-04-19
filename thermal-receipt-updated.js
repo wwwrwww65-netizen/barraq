@@ -174,12 +174,12 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
     
     let taxFreeSubtotalText = rSubtotal || rTotal;
     try {
-        const _calcTotal = parseFloat(String(rTotal).replace(/[^\\d.-]/g, '')) || 0;
-        const _calcTax = parseFloat(String(rTax).replace(/[^\\d.-]/g, '')) || 0;
-        const _calcDis = parseFloat(String(rDiscount).replace(/[^\\d.-]/g, '')) || 0;
+        const _calcTotal = parseFloat(String(rTotal).replace(/[^\d.-]/g, '')) || 0;
+        const _calcTax = parseFloat(String(rTax).replace(/[^\d.-]/g, '')) || 0;
+        const _calcDis = parseFloat(String(rDiscount).replace(/[^\d.-]/g, '')) || 0;
         const rawSub = _calcTotal - _calcTax + _calcDis;
         if (rawSub >= 0) {
-            const curMatch = String(rTotal).match(/[^\\d.\\s,-]+/g);
+            const curMatch = String(rTotal).match(/[^\d.\s,-]+/g);
             const curSym = curMatch ? curMatch.join('').trim() : '';
             taxFreeSubtotalText = rawSub.toFixed(2) + (curSym ? ' ' + curSym : '');
         }

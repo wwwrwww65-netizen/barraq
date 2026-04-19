@@ -31,6 +31,7 @@
     gap: 8px;
     cursor: pointer;
     transition: var(--transition);
+    white-space: nowrap;
 }
 .inv-btn-solid i { font-size: 18px; }
 
@@ -57,40 +58,49 @@
     gap: 6px;
     cursor: pointer;
     transition: var(--transition);
+    white-space: nowrap;
 }
 .inv-btn-outline:hover { background: rgba(255,255,255,0.1); border-color: white; }
 
-/* Warehouses Tabs Container */
+/* Inventory Dashboard Grid */
 .inv-dashboard-grid {
-    padding: 32px;
+    padding: 28px 32px;
     display: flex;
     flex-direction: column;
-    gap: 32px;
+    gap: 28px;
+    /* لا overflow هنا - main-content تتولى التمرير */
 }
+
 
 .warehouses-tabs {
     display: flex;
-    gap: 20px;
+    gap: 16px;
     overflow-x: auto;
     padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+    /* scrollbar خفي لأسباب جمالية */
+    scrollbar-width: none;
 }
+.warehouses-tabs::-webkit-scrollbar { display: none; }
 
 .warehouse-tab {
     flex: 1;
-    min-width: 250px;
+    min-width: 200px;
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-xl);
-    padding: 20px 24px;
+    padding: 16px 20px;
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 16px;
     cursor: pointer;
     transition: var(--transition);
     text-align: right;
     font-family: inherit;
     color: white;
 }
+
+
 .warehouse-tab:hover {
     background: var(--bg-card-hover);
     border-color: var(--border-light);
@@ -155,13 +165,16 @@
 .inv-toolbar {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .inv-toolbar .search-box {
     background: rgba(15,23,42,0.5);
-    min-width: 300px;
+    min-width: 220px;
+    flex: 1;
 }
+
 
 /* Badges for SKU */
 .badge-barcode {
@@ -330,3 +343,132 @@
     background: rgba(245, 158, 11, 0.1);
 }
 
+/* ============================================
+   RESPONSIVE — Inventory Page
+   ============================================ */
+
+/* Medium screens: tablets / small laptop (< 1024px) */
+@media (max-width: 1024px) {
+    .inv-dashboard-grid {
+        padding: 20px;
+        gap: 20px;
+    }
+    .warehouses-tabs {
+        gap: 12px;
+    }
+    .warehouse-tab {
+        min-width: 170px;
+        padding: 14px 16px;
+        gap: 12px;
+    }
+    .wh-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 28px;
+    }
+    .wh-details h3 { font-size: 15px; }
+    .wh-details span { font-size: 12px; }
+    .inv-table-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .inv-toolbar {
+        width: 100%;
+    }
+}
+
+/* Small screens: mobile / very small laptop (< 768px) */
+@media (max-width: 768px) {
+    .inv-dashboard-grid {
+        padding: 14px;
+        gap: 14px;
+    }
+    /* Header: stack buttons vertically */
+    .inv-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px;
+    }
+    .inv-header .header-actions {
+        flex-wrap: wrap;
+        width: 100%;
+        gap: 8px;
+    }
+    .inv-btn-solid {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+    .inv-btn-solid i { font-size: 14px; }
+    /* Hide text in header buttons on very small screens, keep icon */
+    .inv-header .inv-btn-solid span {
+        display: none;
+    }
+    /* Warehouse tabs: smaller cards that fit in a row */
+    .warehouses-tabs {
+        gap: 8px;
+    }
+    .warehouse-tab {
+        min-width: 130px;
+        padding: 12px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    .wh-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 22px;
+        border-radius: 10px;
+    }
+    .wh-details h3 { font-size: 13px; }
+    .wh-details span { font-size: 11px; }
+    /* KPI cards: 2 per row */
+    .inv-kpis {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    .kpi-value { font-size: 20px; }
+    /* Table toolbar */
+    .inv-table-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding-bottom: 12px;
+    }
+    .inv-toolbar {
+        width: 100%;
+        gap: 6px;
+    }
+    .inv-toolbar .search-box {
+        min-width: 100%;
+        width: 100%;
+    }
+    .inv-btn-outline {
+        padding: 7px 10px;
+        font-size: 12px;
+    }
+    /* Modal: full width on mobile */
+    .modal-box {
+        width: 96%;
+        padding: 16px;
+    }
+    .form-group-row {
+        flex-direction: column;
+    }
+}
+
+/* Very small screens (< 480px) */
+@media (max-width: 480px) {
+    .warehouse-tab {
+        min-width: 110px;
+        padding: 10px;
+    }
+    .wh-details h3 { font-size: 12px; }
+    .wh-details span { display: none; }
+    .inv-kpis {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+}

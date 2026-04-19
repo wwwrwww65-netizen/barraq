@@ -28,9 +28,6 @@ if (!_isPublicAuthPage) {
 
             // Map each page to the exact permission key defined in permissions.js
             const pageMap = {
-                'index.html':         'pos_access',
-                'profile.html':       'pos_access',
-
                 // نقطة البيع والمبيعات
                 'pos.html':           'pos_access',
                 'kitchen.html':       'pos_access',
@@ -75,8 +72,8 @@ if (!_isPublicAuthPage) {
             const path = window.location.pathname;
             const currentPageKey = Object.keys(pageMap).find(p => path.endsWith(p));
 
+            // 1. الحماية الصارمة للمسارات (Route Guard)
             if (currentPageKey) {
-                // Super Admin bypasses all permission checks
                 if (cUser.role !== 'المدير العام') {
                     const systemRoles = JSON.parse(localStorage.getItem('system_roles') || '[]');
                     const myRole = systemRoles.find(r => r.name === cUser.role);
@@ -84,10 +81,49 @@ if (!_isPublicAuthPage) {
 
                     if (!myRole || !myRole.perms || myRole.perms[requiredPerm] !== true) {
                         alert('📛 تنبيه أمني: حسابك لا يملك صلاحية الدخول لهذه الشاشة. يرجى مراجعة الإدارة.');
-                        window.location.href = 'index.html';
+                        if (!path.endsWith('index.html')) {
+                            window.location.href = 'index.html';
+                        } else {
+                            window.location.href = 'login.html';
+                        }
                     }
                 }
             }
+
+            // 2. وظيفة إخفاء العناصر غير المصرح بها من الواجهة (UI Filtering)
+            window.syncGlobalPermissionsUI = function() {
+                if (cUser.role === 'المدير العام') return; // المدير يرى كل شيء
+
+                const systemRoles = JSON.parse(localStorage.getItem('system_roles') || '[]');
+                const myRole = systemRoles.find(r => r.name === cUser.role);
+                if (!myRole || !myRole.perms) return;
+
+                // فحص كل الروابط في الصفحة (Sidebar + Dashboard Buttons)
+                const links = document.querySelectorAll('a[href]');
+                links.forEach(link => {
+                    const href = link.getAttribute('href');
+                    const targetPage = Object.keys(pageMap).find(p => href.endsWith(p));
+                    
+                    if (targetPage) {
+                        const requiredPerm = pageMap[targetPage];
+                        if (myRole.perms[requiredPerm] !== true) {
+                            // إخفاء العنصر تماماً
+                            link.style.display = 'none';
+                            
+                            // إذا كان في قائمة منسدلة أو أب له كلاس nav-item
+                            const parentNav = link.closest('.nav-item');
+                            if (parentNav) parentNav.style.display = 'none';
+                        }
+                    }
+                });
+
+                // إخفاء المجموعات الفارغة في السايدبار (اختياري لتحسين المظهر)
+                document.querySelectorAll('.nav-group').forEach(group => {
+                    const visibleItems = Array.from(group.querySelectorAll('.nav-item')).filter(i => i.style.display !== 'none');
+                    if (visibleItems.length === 0) group.style.display = 'none';
+                });
+            };
+
         } catch(e) { console.error('Auth Guard Check Failed', e); }
     }
 }
@@ -683,92 +719,279 @@ window.syncGlobalSettings = function() {
     }
 
     // --- 3. Profile Setup & Dropdown Menu ---
+    // الـ dropdown يُنشأ مباشرة على body بـ position:fixed لتجنب
+    // قطعه بسبب overflow:hidden أو contain:strict على الحاويات الأصلية
     const cUserStr = localStorage.getItem('currentUser');
+
+    // إنشاء dropdown عام واحد على مستوى الـ body
+    let _globalDrop = document.getElementById('_profile-drop-global');
+    if (!_globalDrop) {
+        _globalDrop = document.createElement('div');
+        _globalDrop.id = '_profile-drop-global';
+        _globalDrop.innerHTML = `
+            <a href="profile.html" class="pdrop-item"><i class="ph-fill ph-user-circle"></i> معلومات الحساب</a>
+            <a href="settings.html" class="pdrop-item"><i class="ph-fill ph-gear"></i> إعدادات الهوية</a>
+            <a href="permissions.html" class="pdrop-item"><i class="ph-fill ph-shield-check"></i> الصلاحيات</a>
+            <div id="pdrop-switch-section"></div>
+            <div class="pdrop-item pdrop-logout" id="btn-logout-global"><i class="ph-bold ph-sign-out"></i> تسجيل الخروج</div>
+        `;
+
+        // Inject styles once
+        const pdropStyle = document.createElement('style');
+        pdropStyle.textContent = `
+            #_profile-drop-global {
+                position: fixed;
+                background: rgba(10, 15, 30, 0.97);
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px);
+                border: 1px solid rgba(255,255,255,0.12);
+                border-radius: 12px;
+                width: 220px;
+                display: none;
+                flex-direction: column;
+                box-shadow: 0 16px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04) inset;
+                z-index: 2147483000;
+                overflow: hidden;
+                animation: pdropIn 0.18s cubic-bezier(0.34,1.3,0.64,1) both;
+            }
+            @keyframes pdropIn {
+                from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+                to   { opacity: 1; transform: translateY(0)   scale(1); }
+            }
+            .pdrop-item {
+                padding: 13px 16px;
+                display: flex;
+                gap: 11px;
+                align-items: center;
+                color: rgba(255,255,255,0.88);
+                font-weight: 600;
+                font-size: 14px;
+                font-family: 'Cairo', sans-serif;
+                text-decoration: none;
+                border-bottom: 1px solid rgba(255,255,255,0.05);
+                transition: background 0.15s;
+                cursor: pointer;
+            }
+            .pdrop-item:last-child { border-bottom: none; }
+            .pdrop-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
+            .pdrop-item i { font-size: 17px; opacity: 0.85; }
+            .pdrop-logout { color: #f87171 !important; font-weight: 800; }
+            .pdrop-logout:hover { background: rgba(239,68,68,0.12) !important; }
+            /* Switch section */
+            #pdrop-switch-section { display: contents; }
+            .pdrop-divider {
+                margin: 4px 12px;
+                border: none;
+                border-top: 1px solid rgba(255,255,255,0.07);
+            }
+            .pdrop-section-label {
+                padding: 6px 16px 4px;
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 0.8px;
+                color: rgba(255,255,255,0.3);
+                text-transform: uppercase;
+                font-family: 'Cairo', sans-serif;
+            }
+            .pdrop-switch-user {
+                padding: 10px 16px;
+                display: flex;
+                gap: 10px;
+                align-items: center;
+                color: rgba(255,255,255,0.75);
+                font-size: 13px;
+                font-weight: 600;
+                font-family: 'Cairo', sans-serif;
+                border-bottom: 1px solid rgba(255,255,255,0.05);
+                transition: background 0.15s;
+                cursor: pointer;
+            }
+            .pdrop-switch-user:hover { background: rgba(255,255,255,0.06); color: #fff; }
+            .pdrop-switch-user .sw-avatar {
+                width: 28px; height: 28px;
+                border-radius: 50%;
+                background: rgba(59,130,246,0.2);
+                border: 1.5px solid rgba(59,130,246,0.4);
+                display: flex; align-items: center; justify-content: center;
+                font-size: 13px; flex-shrink: 0;
+            }
+            .pdrop-switch-user .sw-info { display: flex; flex-direction: column; }
+            .pdrop-switch-user .sw-name { font-size: 13px; font-weight: 700; }
+            .pdrop-switch-user .sw-role { font-size: 10px; color: rgba(255,255,255,0.4); }
+            /* Light theme */
+            body.light-theme #_profile-drop-global {
+                background: rgba(255,255,255,0.97);
+                border-color: rgba(0,0,0,0.1);
+                box-shadow: 0 16px 40px rgba(0,0,0,0.15);
+            }
+            body.light-theme .pdrop-item { color: #1e293b; border-bottom-color: rgba(0,0,0,0.06); }
+            body.light-theme .pdrop-item:hover { background: rgba(0,0,0,0.04); }
+            body.light-theme .pdrop-section-label { color: rgba(0,0,0,0.35); }
+            body.light-theme .pdrop-switch-user { color: #334155; border-bottom-color: rgba(0,0,0,0.06); }
+            body.light-theme .pdrop-switch-user:hover { background: rgba(0,0,0,0.04); }
+            body.light-theme .pdrop-divider { border-top-color: rgba(0,0,0,0.07); }
+        `;
+        document.head.appendChild(pdropStyle);
+        document.body.appendChild(_globalDrop);
+
+        // Logout
+        document.getElementById('btn-logout-global').addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            _globalDrop.style.display = 'none';
+            localStorage.removeItem('currentUser');
+            window.location.href = 'login.html';
+        });
+
+        // Close on click outside
+        document.addEventListener('click', (ev) => {
+            if (!_globalDrop.contains(ev.target)) {
+                _globalDrop.style.display = 'none';
+            }
+        });
+
+        // Close on scroll / resize
+        window.addEventListener('scroll', () => { _globalDrop.style.display = 'none'; }, true);
+        window.addEventListener('resize', () => { _globalDrop.style.display = 'none'; });
+    }
+
     if(cUserStr) {
         try {
             const cUser = JSON.parse(cUserStr);
             const profiles = document.querySelectorAll('.user-profile');
-            
+
             profiles.forEach(p => {
-                // Update text
+                // Update display text
                 const uName = p.querySelector('.user-name');
                 const uRole = p.querySelector('.user-role');
-                const ava = p.querySelector('.avatar');
-                
+                const ava   = p.querySelector('.avatar');
                 if(uName) uName.innerText = cUser.username;
-                if(uRole) uRole.innerText = cUser.role;
-                if(ava) ava.src = cUser.avatar;
-                
-                // Set relative positioning & pointer cursor
-                p.style.position = 'relative';
+                if(uRole) uRole.innerText  = cUser.role;
+                if(ava && cUser.avatar)   ava.src = cUser.avatar;
+
                 p.style.cursor = 'pointer';
-                p.style.display = 'flex';
-                p.style.alignItems = 'center';
-                
-                // Add Icon indicating dropdown
+
+                // Caret indicator (once)
                 if(!p.querySelector('.drop-icon-indicator')) {
-                    p.innerHTML += '<i class="ph-bold ph-caret-down drop-icon-indicator" style="margin-right: 10px; color: var(--text-muted);"></i>';
+                    const caret = document.createElement('i');
+                    caret.className = 'ph-bold ph-caret-down drop-icon-indicator';
+                    caret.style.cssText = 'margin-right:10px; font-size:13px; color:var(--text-muted); flex-shrink:0;';
+                    p.appendChild(caret);
                 }
 
-                // Create Dropdown Node Native HTML
-                if(!p.querySelector('.profile-dropdown')) {
-                    const drop = document.createElement('div');
-                    drop.className = 'profile-dropdown';
-                    drop.style.position = 'absolute';
-                    drop.style.top = '110%';
-                    drop.style.left = '0';
-                    drop.style.background = 'rgba(15, 23, 42, 0.95)';
-                    drop.style.backdropFilter = 'blur(10px)';
-                    drop.style.border = '1px solid rgba(255,255,255,0.1)';
-                    drop.style.borderRadius = '8px';
-                    drop.style.width = '200px';
-                    drop.style.display = 'none';
-                    drop.style.flexDirection = 'column';
-                    drop.style.boxShadow = '0 10px 25px rgba(0,0,0,0.5)';
-                    drop.style.zIndex = '9999';
-                    
-                    drop.innerHTML = `
-                        <a href="profile.html" style="padding: 12px 15px; display:flex; gap:10px; align-items:center; color:white; border-bottom:1px solid rgba(255,255,255,0.05); font-weight:600;"><i class="ph-fill ph-user-circle"></i> معلومات الحساب</a>
-                        <a href="settings.html" style="padding: 12px 15px; display:flex; gap:10px; align-items:center; color:white; border-bottom:1px solid rgba(255,255,255,0.05); font-weight:600;"><i class="ph-fill ph-gear"></i> إعدادات الهوية</a>
-                        <a href="permissions.html" style="padding: 12px 15px; display:flex; gap:10px; align-items:center; color:white; border-bottom:1px solid rgba(255,255,255,0.05); font-weight:600;"><i class="ph-fill ph-shield-check"></i> الصلاحيات</a>
-                        <div id="btn-logout-global" style="padding: 12px 15px; display:flex; gap:10px; align-items:center; color:var(--accent-red); font-weight:800; cursor:pointer;"><i class="ph-bold ph-sign-out"></i> تسجيل الخروج</div>
-                    `;
-                    p.appendChild(drop);
-
-                    // Add hover/click listener
+                // Toggle dropdown on click — use fixed position from element's rect
+                if (!p._pdropBound) {
+                    p._pdropBound = true;
                     p.addEventListener('click', (ev) => {
                         ev.stopPropagation();
-                        // Toggle logic
-                        if(drop.style.display === 'flex') {
-                            drop.style.display = 'none';
-                        } else {
-                            // close others
-                            document.querySelectorAll('.profile-dropdown').forEach(d => d.style.display = 'none');
-                            drop.style.display = 'flex';
-                        }
-                    });
+                        const isVisible = _globalDrop.style.display === 'flex';
+                        _globalDrop.style.display = 'none';
+                        if (isVisible) return;
 
-                    // Logout Action
-                    drop.querySelector('#btn-logout-global').addEventListener('click', (ev) => {
-                        ev.stopPropagation();
-                        // Clear user
-                        localStorage.removeItem('currentUser');
-                        // Optional: don't clear restaurant_settings so they persist for login page
-                        window.location.href = 'login.html';
+                        // ── بناء قائمة تبديل الحساب ──────────────────────
+                        _buildSwitchSection(cUser);
+
+                        // Position below the profile element
+                        const rect = p.getBoundingClientRect();
+                        const dropW = 240;
+                        let left = rect.left;
+                        if (left + dropW > window.innerWidth - 8) {
+                            left = window.innerWidth - dropW - 8;
+                        }
+                        _globalDrop.style.width = dropW + 'px';
+                        _globalDrop.style.top  = (rect.bottom + 6) + 'px';
+                        _globalDrop.style.left  = left + 'px';
+                        _globalDrop.style.right = 'auto';
+
+                        // Re-trigger animation
+                        _globalDrop.style.animation = 'none';
+                        _globalDrop.offsetHeight;
+                        _globalDrop.style.animation = '';
+
+                        _globalDrop.style.display = 'flex';
                     });
                 }
-            });
-
-            // Global Click outside dropdown to close
-            document.addEventListener('click', () => {
-                document.querySelectorAll('.profile-dropdown').forEach(d => {
-                    d.style.display = 'none';
-                });
             });
 
         } catch(e) {
             console.error('Profile auth error', e);
         }
+    }
+
+    // ── دالة بناء قسم تبديل الحساب ──────────────────────────────────────
+    function _buildSwitchSection(currentUser) {
+        const section = document.getElementById('pdrop-switch-section');
+        if (!section) return;
+        section.innerHTML = '';
+
+        // جمع كل المستخدمين المعروفين في الجهاز
+        const knownUsers = [];
+
+        // 1. المدير الرئيسي
+        const adminUser = localStorage.getItem('admin_username') || 'admin';
+        knownUsers.push({ username: adminUser, display: 'المدير العام System Admin', role: 'المدير العام' });
+
+        // 2. الموظفون من system_roles
+        try {
+            const roles = JSON.parse(localStorage.getItem('system_roles') || '[]');
+            roles.forEach(r => {
+                if (r.username && r.username !== adminUser) {
+                    knownUsers.push({ username: r.username, display: r.name || r.username, role: r.role || '' });
+                }
+            });
+        } catch(e) {}
+
+        // 3. الموظفون من قاعدة البيانات (employees في localStorage كـ cache)
+        try {
+            const db = JSON.parse(localStorage.getItem('pos_database') || '{}');
+            (db.employees || []).forEach(emp => {
+                if (emp.username && emp.status !== 'end' &&
+                    !knownUsers.find(u => u.username === emp.username)) {
+                    knownUsers.push({ username: emp.username, display: emp.name || emp.username, role: emp.role || '' });
+                }
+            });
+        } catch(e) {}
+
+        // فلتر: استبعاد المستخدم الحالي
+        const currentUsername = currentUser?.username || '';
+        const others = knownUsers.filter(u =>
+            u.username !== currentUsername &&
+            u.display  !== currentUsername
+        );
+
+        if (others.length === 0) return; // لا يوجد مستخدمون آخرون
+
+        // رسم القسم
+        const divider = document.createElement('hr');
+        divider.className = 'pdrop-divider';
+        section.appendChild(divider);
+
+        const label = document.createElement('div');
+        label.className = 'pdrop-section-label';
+        label.textContent = 'تبديل الحساب';
+        section.appendChild(label);
+
+        others.forEach(u => {
+            const item = document.createElement('div');
+            item.className = 'pdrop-switch-user';
+            // أول حرف من الاسم كـ avatar نصي
+            const initial = (u.display || u.username || '?')[0];
+            item.innerHTML = `
+                <div class="sw-avatar">${initial}</div>
+                <div class="sw-info">
+                    <span class="sw-name">${u.display}</span>
+                    <span class="sw-role">${u.role}</span>
+                </div>
+                <i class="ph ph-arrow-left" style="margin-right:auto; font-size:13px; opacity:0.4;"></i>
+            `;
+            item.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                _globalDrop.style.display = 'none';
+                // تسجيل خروج وانتقال لصفحة الدخول مع username جاهز
+                localStorage.removeItem('currentUser');
+                window.location.href = 'login.html?switch=' + encodeURIComponent(u.username);
+            });
+            section.appendChild(item);
+        });
     }
 
     if (window.HashCurrency && typeof window.HashCurrency.applySymToDom === 'function') {
@@ -778,6 +1001,9 @@ window.syncGlobalSettings = function() {
 
 document.addEventListener('DOMContentLoaded', () => {
     window.syncGlobalSettings();
+    if (typeof window.syncGlobalPermissionsUI === 'function') {
+        window.syncGlobalPermissionsUI();
+    }
 
     const isLoginPage = window.location.pathname.includes('login.html') ||
                         window.location.href.includes('login.html');

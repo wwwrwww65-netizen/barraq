@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     updateTaxLabel();
 
+
     // Re-apply if network sync updates settings
     window.addEventListener('storage', (e) => {
         if (e.key === 'restaurant_settings') {

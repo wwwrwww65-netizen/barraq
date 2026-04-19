@@ -1144,6 +1144,8 @@ function createWindow () {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
+    show: false, // لا تظهر النافذة فوراً لمنع الوميض الأبيض
+    backgroundColor: '#0b0f19', // لون خلفية مظلم يطابق لون التطبيق
     autoHideMenuBar: true,
     icon: path.join(__dirname, '1111.png'),
     webPreferences: {
@@ -1162,8 +1164,17 @@ function createWindow () {
       event.preventDefault();
     }
   });
+  
   win.loadFile('login.html');
+  
+  // قم بتكبير النافذة برمجياً وهي لا تزال في حالة الإخفاء 
+  // هذا يمنع ظهور المربع الأسود الصغير قبل عملية التكبير (Maximize Animation)
   win.maximize();
+  
+  win.once('ready-to-show', () => {
+    // إظهار النافذة وهي مجهزة مسبقاً بالشاشة الكاملة
+    win.show();
+  });
 }
 
 app.whenReady().then(() => {

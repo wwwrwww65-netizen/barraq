@@ -357,19 +357,44 @@
                             </div>
                         </div>
 
-                        <!-- تصفير كامل — يظهر للمدير العام فقط -->
+                        <!-- منطقة خطرة — يظهر للمدير العام فقط -->
                         <div id="settings-factory-reset-wrap" class="settings-card" style="grid-column: 1 / -1; display: none; border-color: rgba(239, 68, 68, 0.45); background: rgba(127, 29, 29, 0.12);">
                             <div class="sc-header" style="border-bottom-color: rgba(239, 68, 68, 0.25);">
                                 <i class="ph-fill ph-warning-octagon" style="color: #ef4444;"></i>
-                                <h3 style="color: #fecaca;">منطقة خطرة — تصفير النظام</h3>
+                                <h3 style="color: #fecaca;">منطقة خطرة — إعادة ضبط البيانات</h3>
                             </div>
-                            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; margin: 0;">
-                                حذف <strong style="color:#fca5a5;">جميع</strong> بيانات العمل: الطلبات، الأصناف، المخزون، الموظفين، المحاسبة، الإعدادات المحفوظة محلياً، وغيرها. يبقى فقط اسم المستخدم وكلمة سر المدير العام للدخول لاحقاً. عند التنفيذ تختار: <strong>هذا الجهاز فقط</strong> أو <strong>كل الأجهزة على الشبكة</strong> (المزامنة المحلية). يُنصح بأخذ نسخة احتياطية قبل التنفيذ.
-                            </p>
-                            <div>
-                                <button type="button" id="btn-factory-reset-open" class="btn btn-primary" style="background: #b91c1c; border: none; color: white;">
-                                    <i class="ph-fill ph-trash"></i> تصفير النظام بالكامل
-                                </button>
+
+                            <!-- زر 1: تصفير العمليات فقط -->
+                            <div style="background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3); border-radius: 10px; padding: 16px; margin-bottom: 14px;">
+                                <div style="display:flex; align-items:flex-start; gap:14px;">
+                                    <i class="ph-fill ph-eraser" style="color:#f59e0b; font-size:26px; flex-shrink:0; margin-top:2px;"></i>
+                                    <div style="flex:1;">
+                                        <h4 style="margin:0 0 6px; color:#fde68a; font-size:15px;">تصفير العمليات الحسابية فقط</h4>
+                                        <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6; margin: 0 0 12px;">
+                                            يحذف <strong style="color:#fde68a;">جميع العمليات التجريبية</strong>: الطلبات، المبيعات، المشتريات، المرتجعات، المصروفات، السحبيات، حركات المخزون، القيود المحاسبية، سجل الحضور والغياب. <br>
+                                            <strong style="color:#86efac;">✓ تبقى:</strong> الأصناف، المنتجات، الصور، المنيو، الموردين، الموظفين، المخزون الحالي، وجميع الإعدادات كما هي.
+                                        </p>
+                                        <button type="button" id="btn-ops-reset-open" class="btn btn-primary" style="background: #d97706; border: none; color: white; display:inline-flex; align-items:center; gap:8px;">
+                                            <i class="ph-fill ph-eraser"></i> تصفير العمليات الحسابية
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- زر 2: تصفير النظام بالكامل -->
+                            <div style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3); border-radius: 10px; padding: 16px;">
+                                <div style="display:flex; align-items:flex-start; gap:14px;">
+                                    <i class="ph-fill ph-trash" style="color:#ef4444; font-size:26px; flex-shrink:0; margin-top:2px;"></i>
+                                    <div style="flex:1;">
+                                        <h4 style="margin:0 0 6px; color:#fecaca; font-size:15px;">تصفير النظام بالكامل (فاكتوري ريست)</h4>
+                                        <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6; margin: 0 0 12px;">
+                                            حذف <strong style="color:#fca5a5;">جميع</strong> بيانات العمل: الطلبات، الأصناف، المخزون، الموظفين، المحاسبة، الإعدادات المحفوظة محلياً، وغيرها. يبقى فقط اسم المستخدم وكلمة سر المدير العام. يُنصح بأخذ نسخة احتياطية قبل التنفيذ.
+                                        </p>
+                                        <button type="button" id="btn-factory-reset-open" class="btn btn-primary" style="background: #b91c1c; border: none; color: white; display:inline-flex; align-items:center; gap:8px;">
+                                            <i class="ph-fill ph-trash"></i> تصفير النظام بالكامل
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -464,6 +489,32 @@
         </div>
     </div>
 
+    <!-- نوافذ تصفير العمليات الحسابية فقط -->
+    <div id="modal-ops-reset-confirm" class="factory-modal-overlay" aria-hidden="true">
+        <div class="factory-modal-box" role="dialog" aria-labelledby="ops-confirm-title" aria-modal="true">
+            <h3 id="ops-confirm-title" class="factory-modal-title"><i class="ph-fill ph-eraser" style="color:#f59e0b;"></i> تأكيد تصفير العمليات</h3>
+            <p class="factory-modal-text">سيتم حذف <strong>جميع العمليات الحسابية</strong> (الطلبات، المبيعات، المشتريات، المرتجعات، المصروفات، السحبيات، حركات المخزون، القيود المحاسبية، الحضور والغياب). لا يمكن التراجع عن هذا الإجراء.</p>
+            <p class="factory-modal-text" style="background:rgba(134,239,172,0.1); border:1px solid rgba(134,239,172,0.3); border-radius:8px; padding:10px; color:#86efac; font-size:13px;">
+                <i class="ph-fill ph-check-circle"></i> <strong>ستبقى كاملةً:</strong> الأصناف، المنتجات، الصور، المنيو، الموردين، الموظفين، رصيد المخزون الحالي، وجميع إعدادات النظام.
+            </p>
+            <div class="factory-modal-actions">
+                <button type="button" id="btn-ops-confirm-no" class="factory-btn factory-btn-muted">لا، إلغاء</button>
+                <button type="button" id="btn-ops-confirm-yes" class="factory-btn" style="background:#d97706; color:white;">نعم، متأكد</button>
+            </div>
+        </div>
+    </div>
+    <div id="modal-ops-reset-password" class="factory-modal-overlay" aria-hidden="true">
+        <div class="factory-modal-box" role="dialog" aria-labelledby="ops-pwd-title" aria-modal="true">
+            <h3 id="ops-pwd-title" class="factory-modal-title"><i class="ph-fill ph-key" style="color:#94a3b8;"></i> تأكيد الهوية — تصفير العمليات</h3>
+            <p class="factory-modal-text">أدخل كلمة سر المدير العام لتأكيد تصفير العمليات الحسابية:</p>
+            <input type="password" id="ops-pwd-input" class="input-modern" autocomplete="current-password" placeholder="كلمة السر">
+            <div class="factory-modal-actions" style="margin-top:18px;">
+                <button type="button" id="btn-ops-pwd-cancel" class="factory-btn factory-btn-muted">رجوع</button>
+                <button type="button" id="btn-ops-pwd-submit" class="factory-btn" style="background:#d97706; color:white;"><i class="ph-fill ph-eraser"></i> تنفيذ التصفير</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="currency-helper.js"></script>
     <script src="script.js"></script>
@@ -471,4 +522,3 @@
     <script src="settings.js"></script>
 </body>
 </html>
-

@@ -1,19 +1,65 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    const form = document.getElementById('loginForm');
-    const userInp = document.getElementById('username');
-    const pwdInp = document.getElementById('password');
-    const errBox = document.getElementById('login-error');
+    const form      = document.getElementById('loginForm');
+    const userInp   = document.getElementById('username');
+    const pwdInp    = document.getElementById('password');
+    const errBox    = document.getElementById('login-error');
     const btnSubmit = document.getElementById('btn-login-submit');
 
     // Make sure we are logged out fully when visiting login page
     localStorage.removeItem('currentUser');
 
+    // ── تبديل الحساب: قراءة ?switch=username من الـ URL ──────────────────
+    const urlParams = new URLSearchParams(window.location.search);
+    const switchUser = urlParams.get('switch');
+    let isSwitchMode = false;
+
+    if (switchUser) {
+        isSwitchMode = true;
+        userInp.value = decodeURIComponent(switchUser);
+        userInp.readOnly = true; // اليوزر محدد مسبقاً لا يتغير
+
+        // إضافة badge جميل يوضّح وضع التبديل
+        const switchBadge = document.createElement('div');
+        switchBadge.style.cssText = `
+            background: rgba(59,130,246,0.12);
+            border: 1px solid rgba(59,130,246,0.3);
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #93c5fd;
+            font-family: 'Cairo', sans-serif;
+            direction: rtl;
+        `;
+        switchBadge.innerHTML = `
+            <i class="ph-fill ph-swap" style="font-size:18px;"></i>
+            <span>تبديل الحساب إلى: <strong style="color:#fff;">${decodeURIComponent(switchUser)}</strong></span>
+        `;
+        // أضف قبل الـ form مباشرة
+        form.parentNode.insertBefore(switchBadge, form);
+
+        // تنسيق حقل username في وضع القراءة
+        userInp.style.cssText += `
+            background: rgba(59,130,246,0.08) !important;
+            border-color: rgba(59,130,246,0.3) !important;
+            color: #93c5fd !important;
+            cursor: default;
+        `;
+
+        // التركيز الفوري على حقل كلمة المرور
+        setTimeout(() => { pwdInp.focus(); }, 100);
+    }
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const adminUser = localStorage.getItem('admin_username') || 'admin';
-        const adminPwd = localStorage.getItem('admin_pwd') || '123456';
+        const adminPwd  = localStorage.getItem('admin_pwd') || '123456';
 
         const uVal = userInp.value.trim();
         const pVal = pwdInp.value.trim();
@@ -34,12 +80,14 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const { ipcRenderer } = require('electron');
                 const db = await ipcRenderer.invoke('db-read-full') || {};
-                const emp = db.employees?.find(emp => emp.username === uVal && emp.password === pVal && emp.status !== 'end');
-                
+                const emp = db.employees?.find(emp =>
+                    emp.username === uVal && emp.password === pVal && emp.status !== 'end'
+                );
+
                 if (emp) {
                     authenticatedUser = {
                         username: emp.name,
-                        role: emp.role, // role must map to system_roles
+                        role: emp.role,
                         avatar: emp.avatar || 'avatar.svg',
                         empId: emp.id
                     };
@@ -52,16 +100,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (authenticatedUser) {
             setTimeout(() => {
                 localStorage.setItem('currentUser', JSON.stringify(authenticatedUser));
-                window.location.href = 'index.html'; // Navigate to dashboard
+                // نظّف الـ URL من معامل switch عند النجاح
+                window.location.href = 'index.html';
             }, 800);
         } else {
             // Fail
             btnSubmit.innerHTML = origHTML;
             btnSubmit.style.pointerEvents = 'auto';
-            
+
             errBox.style.display = 'block';
             pwdInp.value = ''; // clear password
-            
+            pwdInp.focus();
+
             const box = document.querySelector('.login-box');
             box.style.animation = 'none';
             setTimeout(() => { box.style.animation = 'slideUpFade 0.4s reverse forwards'; }, 10);

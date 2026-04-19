@@ -24,11 +24,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    const fDate = document.getElementById('filter-date');
-    if(fDate) {
-        fDate.addEventListener('change', () => {
-             salesCurrentPage = 1;
-             loadSales();
+    const periodFilter = document.getElementById('sales-period-filter');
+    const customWrap = document.getElementById('sales-custom-date-wrap');
+    
+    if (periodFilter) {
+        periodFilter.addEventListener('change', (e) => {
+            if (e.target.value === 'custom') {
+                if (customWrap) customWrap.style.display = 'flex';
+            } else {
+                if (customWrap) customWrap.style.display = 'none';
+                salesCurrentPage = 1;
+                loadSales();
+            }
         });
     }
 });
@@ -38,17 +45,34 @@ async function loadSales() {
     allSalesOrders = await ipcRenderer.invoke('db-get-orders');
     if (!allSalesOrders) allSalesOrders = [];
 
-    const fDate = document.getElementById('filter-date');
-    if(fDate && fDate.value) {
-        let selectedDate = new Date(fDate.value);
-        let selectedStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-        let selectedEnd = new Date(selectedStart.getTime());
-        selectedEnd.setDate(selectedEnd.getDate() + 1);
-        allSalesOrders = allSalesOrders.filter(o => {
-            let d = new Date(o.timestamp || o.dateStr || o.date);
-            return d >= selectedStart && d < selectedEnd;
-        });
+    const period = document.getElementById('sales-period-filter')?.value || 'today';
+    let filteredList = [];
+    
+    if (period === 'all') {
+        filteredList = allSalesOrders;
+    } else if (period === 'custom') {
+        const fromVal = document.getElementById('sales-date-from')?.value;
+        const toVal = document.getElementById('sales-date-to')?.value;
+        if (fromVal && toVal) {
+            const startStr = fromVal + 'T00:00:00';
+            const endStr = toVal + 'T23:59:59';
+            filteredList = allSalesOrders.filter(o => {
+                const ts = o.timestamp || new Date(o.dateStr || o.date).getTime();
+                return ts >= new Date(startStr).getTime() && ts <= new Date(endStr).getTime();
+            });
+        } else {
+            filteredList = allSalesOrders; // Fallback if dates are not selected
+        }
+    } else {
+        // today, yesterday, week, month
+        if (typeof window.isDateInPeriod === 'function') {
+            filteredList = allSalesOrders.filter(o => window.isDateInPeriod(o.timestamp || o.dateStr || o.date, period));
+        } else {
+            filteredList = allSalesOrders;
+        }
     }
+    
+    allSalesOrders = filteredList;
 
     // Sort descending by timestamp
     allSalesOrders.sort((a, b) => b.timestamp - a.timestamp);
@@ -124,6 +148,7 @@ function _renderSalesPagination(page, totalPages, total, tbody) {
     if (!bar) {
         bar = document.createElement('div');
         bar.id = 'sales-pagination-bar';
+        bar.className = 'no-print';
         bar.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:8px;padding:16px 0;flex-wrap:wrap;';
         const tbl = document.querySelector('.sales-table');
         if(tbl) tbl.parentNode.insertBefore(bar, tbl.nextSibling);
@@ -174,7 +199,72 @@ function updateKPIs(orders) {
     if(el('kpi-total-orders')) el('kpi-total-orders').innerText = orderCount;
     if(el('kpi-cash-revenue')) el('kpi-cash-revenue').innerText = xf(cashRev);
     if(el('kpi-card-revenue')) el('kpi-card-revenue').innerText = xf(cardRev);
+
+    // Update table footer (for print and view)
+    const tfoot = document.getElementById('sales-tfoot');
+    if(tfoot) {
+        if(orders.length > 0) {
+            tfoot.style.display = 'table-footer-group';
+            tfoot.innerHTML = `
+                <tr style="background: rgba(245, 158, 11, 0.1); border-top: 2px solid rgba(245, 158, 11, 0.3);">
+                    <td colspan="3" style="text-align:right; font-weight:800; font-size:15px; color:var(--text-primary);">الإجمالي الكلي (كاش + شبكة)</td>
+                    <td colspan="2" style="text-align:right; font-weight:700; color:var(--text-secondary);">عدد الطلبات: ${orderCount}</td>
+                    <td style="font-weight:900; font-size:16px; color:var(--accent-orange);">${xf(totalRev)}</td>
+                    <td class="no-print"></td>
+                </tr>
+                <tr style="background: rgba(15, 23, 42, 0.4);">
+                    <td colspan="6" style="text-align:center; padding: 12px; font-weight:700;">
+                        <span style="color:var(--accent-green); margin-left: 20px;">كاش: ${xf(cashRev)}</span>
+                        <span style="color:var(--accent-blue);">شبكة/بطاقة: ${xf(cardRev)}</span>
+                    </td>
+                    <td class="no-print"></td>
+                </tr>
+            `;
+        } else {
+            tfoot.style.display = 'none';
+        }
+    }
 }
+
+// === تحسين التصدير والطباعة (PDF) للمبيعات لكي تتم طباعة كل السجلات دفعة واحدة ===
+window.addEventListener('beforeprint', () => {
+    const tbody = document.getElementById('sales-tbody');
+    if (!tbody || !filteredSalesOrders) return;
+    
+    let bar = document.getElementById('sales-pagination-bar');
+    if(bar) bar.style.display = 'none';
+
+    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
+    const fragment = document.createDocumentFragment();
+
+    filteredSalesOrders.forEach(order => {
+        let typeClass = (order.type||'').includes('محلي') ? 'badge-dinein' : 'badge-takeout';
+        const itemsCount = Array.isArray(order.items) ? order.items.length : (order.itemsCount || 0);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${order.orderId}</strong></td>
+            <td style="font-size:12px;">${order.date || order.dateStr || ''}</td>
+            <td>${order.type || ''}</td>
+            <td>${order.paymentMethod || ''}</td>
+            <td>${itemsCount} أصناف</td>
+            <td style="font-weight:800;">${xf(order.total)}</td>
+            <td class="no-print"></td>
+        `;
+        fragment.appendChild(tr);
+    });
+    
+    tbody.innerHTML = '';
+    tbody.appendChild(fragment);
+});
+
+window.addEventListener('afterprint', () => {
+    let bar = document.getElementById('sales-pagination-bar');
+    if(bar) bar.style.display = 'flex';
+    renderSalesTable(document.getElementById('sales-search')?.value.toLowerCase().trim()||'');
+});
+
+
 
 async function clearSales() {
     if(confirm('هل أنت متأكد من مسح جميع سجلات المبيعات الحالية؟ لا يمكن التراجع!')) {
@@ -258,5 +348,27 @@ async function reprintOrder(orderId) {
         // Trigger print via IPC - you can implement this based on your printing logic
         alert('جاري إرسال أمر الطباعة...');
         // You can call the same print logic used in pos.js here
+    }
+}
+
+function exportSalesPDF() {
+    let restName = "نظام_هش";
+    try {
+        const sysRaw = localStorage.getItem('restaurant_settings');
+        if (sysRaw) {
+            const sys = JSON.parse(sysRaw);
+            if (sys.name && sys.name.trim() !== '') {
+                restName = sys.name.trim().replace(/\s+/g, '_');
+            }
+        }
+    } catch(e) {}
+    
+    const d = new Date();
+    const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    
+    if (typeof window.exportPageToPDF === 'function') {
+        window.exportPageToPDF('مبيعات_' + restName + '_' + dateStr + '.pdf');
+    } else {
+        window.print();
     }
 }

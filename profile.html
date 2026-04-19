@@ -5,15 +5,325 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>حسابي - هـــش HASH POS</title>
-    <!-- Base styles -->
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="permissions.css"> <!-- Reusing nice card styles -->
-    <!-- Google Fonts -->
-    
-    
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
-    <!-- Phosphor Icons -->
     <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
+    <style>
+        /* ─── Profile Page Styles ─── */
+        .profile-page-grid {
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+            overflow-y: auto;
+            height: 100%;
+        }
+
+        /* Hero Card */
+        .profile-hero {
+            background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(16,185,129,0.1));
+            border: 1px solid rgba(59,130,246,0.25);
+            border-radius: 20px;
+            padding: 36px 40px;
+            display: flex;
+            align-items: center;
+            gap: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+        .profile-hero::before {
+            content: '';
+            position: absolute;
+            top: -60px; left: -60px;
+            width: 220px; height: 220px;
+            border-radius: 50%;
+            background: rgba(59,130,246,0.06);
+            pointer-events: none;
+        }
+        .profile-hero::after {
+            content: '';
+            position: absolute;
+            bottom: -80px; right: -40px;
+            width: 260px; height: 260px;
+            border-radius: 50%;
+            background: rgba(16,185,129,0.05);
+            pointer-events: none;
+        }
+
+        .profile-avatar-wrap {
+            position: relative;
+            flex-shrink: 0;
+        }
+        .profile-avatar-wrap img {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            border: 3px solid var(--accent-blue);
+            box-shadow: 0 0 30px rgba(59,130,246,0.35);
+            object-fit: cover;
+        }
+        .profile-status-dot {
+            position: absolute;
+            bottom: 6px; right: 6px;
+            width: 16px; height: 16px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            border: 2px solid var(--bg-main);
+            box-shadow: 0 0 8px rgba(16,185,129,0.6);
+        }
+
+        .profile-hero-info {
+            flex: 1;
+        }
+        .profile-hero-info h1 {
+            font-size: 28px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        .profile-hero-info .role-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(16,185,129,0.15);
+            border: 1px solid rgba(16,185,129,0.3);
+            color: var(--accent-green);
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 14px;
+        }
+        .profile-hero-meta {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+        .profile-hero-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .profile-hero-meta-item i { font-size: 16px; color: var(--accent-blue); }
+
+        /* Cards */
+        .profile-cards-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        @media (max-width: 900px) {
+            .profile-cards-row { grid-template-columns: 1fr; }
+            .profile-hero { flex-direction: column; text-align: center; }
+            .profile-hero-meta { justify-content: center; }
+        }
+
+        .profile-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            backdrop-filter: blur(8px);
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+        }
+        .profile-card-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .profile-card-header i {
+            width: 36px; height: 36px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+        }
+        .profile-card-header i.blue { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+        .profile-card-header i.green { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+        .profile-card-header i.orange { background: rgba(245,158,11,0.15); color: var(--accent-orange); }
+        .profile-card-header i.red { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+        .profile-card-header h3 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .profile-card-body { padding: 24px; }
+
+        /* Info Grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .info-field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .info-field label {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .info-field-value {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+
+        /* Form */
+        .form-group { margin-bottom: 18px; }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        .form-input-modern {
+            width: 100%;
+            padding: 11px 14px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-family: 'Cairo', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input-modern:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+        }
+        .form-input-modern::placeholder { color: var(--text-muted); }
+
+        /* Password strength bar */
+        .pwd-strength-bar {
+            height: 4px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.06);
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .pwd-strength-fill {
+            height: 100%;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.3s, background 0.3s;
+        }
+        .pwd-strength-label {
+            font-size: 11px;
+            margin-top: 4px;
+            font-weight: 600;
+        }
+
+        /* Alert boxes */
+        .alert-box {
+            display: none;
+            padding: 11px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .alert-box.error { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+        .alert-box.success { background: rgba(16,185,129,0.1); color: var(--accent-green); border: 1px solid rgba(16,185,129,0.25); }
+
+        /* Button */
+        .btn-save-profile {
+            width: 100%;
+            padding: 13px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border: none;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: 'Cairo', sans-serif;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 18px rgba(59,130,246,0.35);
+            transition: all 0.2s;
+        }
+        .btn-save-profile:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(59,130,246,0.5); }
+        .btn-save-profile:active { transform: translateY(0); }
+
+        /* Security Stats */
+        .security-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .sec-stat {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+        }
+        .sec-stat-icon { font-size: 22px; margin-bottom: 6px; }
+        .sec-stat-value { font-size: 16px; font-weight: 800; color: var(--text-primary); }
+        .sec-stat-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+        /* Active session */
+        .session-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+        }
+        .session-icon {
+            width: 40px; height: 40px;
+            border-radius: 10px;
+            background: rgba(16,185,129,0.1);
+            color: var(--accent-green);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .session-details { flex: 1; }
+        .session-details h4 { font-size: 14px; color: var(--text-primary); margin-bottom: 2px; }
+        .session-details p { font-size: 12px; color: var(--text-muted); }
+        .session-badge {
+            font-size: 11px; font-weight: 700;
+            padding: 3px 9px; border-radius: 20px;
+            background: rgba(16,185,129,0.15);
+            color: var(--accent-green);
+            border: 1px solid rgba(16,185,129,0.25);
+        }
+
+        /* Light theme overrides */
+        body.light-theme .profile-hero {
+            background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(16,185,129,0.06));
+        }
+        body.light-theme .form-input-modern {
+            background: #fff;
+            border-color: rgba(0,0,0,0.12);
+            color: #1e293b;
+        }
+        body.light-theme .info-field-value {
+            background: rgba(0,0,0,0.02);
+            border-color: rgba(0,0,0,0.08);
+            color: #1e293b;
+        }
+    </style>
 </head>
 <body class="dark-theme">
     <script>
@@ -26,39 +336,49 @@
         })();
     </script>
     <div class="app-container">
-        <!-- Sidebar Navigation -->
+        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo">
-                <img src="1111.png" alt="مطعم هـــش HASH" class="restaurant-logo">
+                <img src="1111.png" alt="شعار هـــش HASH" class="restaurant-logo">
                 <span>هـــش HASH <span class="highlight">POS</span></span>
             </div>
-            
             <nav class="nav-menu">
-                <a href="index.html" class="nav-item"><i class="ph ph-squares-four"></i><span>الرئيسية</span></a>
-                <a href="pos.html" class="nav-item"><i class="ph ph-monitor"></i><span>نقطة البيع (الكاشير)</span></a>
-                <a href="kitchen-production.html" class="nav-item"><i class="ph ph-cooking-pot"></i><span>المطبخ والإنتاج</span></a>
-                <a href="orders.html" class="nav-item"><i class="ph ph-list-numbers"></i><span>سجل الطلبات</span></a>
-                <a href="sales.html" class="nav-item"><i class="ph ph-receipt"></i><span>المبيعات</span></a>
-                <a href="menu.html" class="nav-item"><i class="ph ph-list-dashes"></i><span>الأصناف والمنيو</span></a>
-                
-                <div class="nav-divider"></div>
-                <p class="nav-label">العمليات والمخزون</p>
-                <a href="inventory.html" class="nav-item"><i class="ph ph-package"></i><span>المخازن والمستودعات</span></a>
-                <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>المشتريات والموردين</span></a>
-                <a href="returns.html" class="nav-item"><i class="ph ph-arrow-u-down-left"></i><span>المرتجعات</span></a>
-                
-                <div class="nav-divider"></div>
-                <p class="nav-label">الإدارة والتقارير</p>
-                <a href="staff.html" class="nav-item"><i class="ph ph-users"></i><span>الموظفين والعمال</span></a>
-                <a href="customers.html" class="nav-item"><i class="ph ph-users-three"></i><span>العملاء</span></a>
-                <a href="accounting.html" class="nav-item"><i class="ph ph-calculator"></i><span>النظام المحاسبي</span></a>
-                <a href="statistics.html" class="nav-item"><i class="ph ph-chart-pie"></i><span>الإحصائيات</span></a>
+                <div class="nav-group">
+                    <p class="nav-label">الرئيسية</p>
+                    <a href="index.html" class="nav-item"><i class="ph ph-squares-four"></i><span>لوحة القيادة</span></a>
+                    <a href="pos.html" class="nav-item"><i class="ph ph-calculator"></i><span>نقطة البيع (الكاشير)</span></a>
+                    <a href="kitchen-production.html" class="nav-item"><i class="ph ph-cooking-pot"></i><span>المطبخ والإنتاج</span></a>
+                </div>
+                <div class="nav-group">
+                    <p class="nav-label">المبيعات والمنيو</p>
+                    <a href="orders.html" class="nav-item"><i class="ph ph-list-numbers"></i><span>سجل الطلبات</span></a>
+                    <a href="sales.html" class="nav-item"><i class="ph ph-chart-line-up"></i><span>المبيعات</span></a>
+                    <a href="menu.html" class="nav-item"><i class="ph ph-list-dashes"></i><span>الأصناف والمنيو</span></a>
+                </div>
+                <div class="nav-group">
+                    <p class="nav-label">العمليات والمخزون</p>
+                    <a href="inventory.html" class="nav-item"><i class="ph ph-package"></i><span>المخازن والمستودعات</span></a>
+                    <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>المشتريات والموردين</span></a>
+                    <a href="returns.html" class="nav-item"><i class="ph ph-arrow-u-down-left"></i><span>المرتجعات</span></a>
+                </div>
+                <div class="nav-group">
+                    <p class="nav-label">الإدارة والتقارير</p>
+                    <a href="staff.html" class="nav-item"><i class="ph ph-users"></i><span>الموظفين والعمال</span></a>
+                    <a href="customers.html" class="nav-item"><i class="ph ph-users-three"></i><span>العملاء</span></a>
+                    <a href="accounting.html" class="nav-item"><i class="ph ph-calculator"></i><span>النظام المحاسبي</span></a>
+                    <a href="statistics.html" class="nav-item"><i class="ph ph-chart-pie"></i><span>الإحصائيات</span></a>
                     <a href="profit-loss.html" class="nav-item"><i class="ph ph-scales"></i><span>الأرباح والخسائر</span></a>
-                <a href="settings.html" class="nav-item"><i class="ph ph-gear"></i><span>الإعدادات</span></a>
-                <a href="permissions.html" class="nav-item"><i class="ph ph-shield-check"></i><span>الصلاحيات</span></a>
-                <div class="nav-divider" style="margin: 15px 0; border-top: 1px solid var(--border-color); width: 80%; align-self: center;"></div>
-                <p class="nav-label">مؤسسة الزكاة والضريبة</p>
-                <a href="fatora.html" class="nav-item"><i class="ph ph-link"></i><span>الربط مع منصة فوترة (الزكاة)</span></a>
+                    <div class="nav-divider" style="margin:15px 0; border-top:1px solid var(--border-color);"></div>
+                    <p class="nav-label">مؤسسة الزكاة والضريبة</p>
+                    <a href="fatora.html" class="nav-item"><i class="ph ph-link"></i><span>الربط مع منصة فوترة (الزكاة)</span></a>
+                </div>
+                <div class="nav-group">
+                    <p class="nav-label">النظام</p>
+                    <a href="settings.html" class="nav-item"><i class="ph ph-gear"></i><span>الإعدادات</span></a>
+                    <a href="permissions.html" class="nav-item"><i class="ph ph-shield-check"></i><span>الصلاحيات</span></a>
+                    <a href="profile.html" class="nav-item active"><i class="ph ph-user-circle"></i><span>حسابي</span></a>
+                    <a href="login.html" class="nav-item logout"><i class="ph ph-sign-out"></i><span>تسجيل خروج</span></a>
+                </div>
             </nav>
         </aside>
 
@@ -66,14 +386,14 @@
         <main class="main-content">
             <!-- Header -->
             <header class="top-header">
-                <div class="header-left">
-                    <div class="breadcrumbs pt-0">
-                        <h2>الملف الشخصي والحماية</h2>
-                        <span class="separator">/</span>
-                        <span>إعدادات كلمة المرور</span>
-                    </div>
+                <div class="header-left" style="display:flex; align-items:center; gap:12px;">
+                    <h2 style="font-size:18px; font-weight:700; color:var(--text-primary);">
+                        <i class="ph-fill ph-user-circle" style="color:var(--accent-blue); margin-left:6px;"></i>
+                        الملف الشخصي
+                    </h2>
                 </div>
                 <div class="header-actions">
+                    <div id="datetime-display" class="datetime"></div>
                     <div class="user-profile">
                         <img src="avatar.svg" alt="المستخدم" class="avatar">
                         <div class="user-info">
@@ -84,47 +404,240 @@
                 </div>
             </header>
 
-            <div class="perm-container" style="grid-template-columns: 1fr; max-width: 800px;">
-                
-                <div class="perm-matrix-card active" style="padding: 40px;">
-                    <div style="display:flex; align-items:center; gap:20px; margin-bottom:40px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom: 20px;">
-                        <img src="avatar.svg" style="width:100px; height:100px; border-radius:50%; box-shadow:0 0 20px rgba(59,130,246,0.3);">
-                        <div>
-                            <h2 style="color:white; font-size:28px;" id="disp-username">admin</h2>
-                            <p style="color:var(--accent-green); font-weight:700;"><i class="ph-fill ph-shield-check"></i> صلاحيات: <span id="disp-role">المدير العام</span></p>
+            <!-- Profile Content -->
+            <div class="profile-page-grid">
+
+                <!-- Hero -->
+                <div class="profile-hero">
+                    <div class="profile-avatar-wrap">
+                        <img src="avatar.svg" alt="صورة المستخدم" id="hero-avatar">
+                        <div class="profile-status-dot"></div>
+                    </div>
+                    <div class="profile-hero-info">
+                        <h1 id="hero-username">جاري التحميل...</h1>
+                        <div class="role-badge">
+                            <i class="ph-fill ph-shield-check"></i>
+                            <span id="hero-role">—</span>
+                        </div>
+                        <div class="profile-hero-meta">
+                            <div class="profile-hero-meta-item">
+                                <i class="ph ph-clock"></i>
+                                <span id="hero-login-time">—</span>
+                            </div>
+                            <div class="profile-hero-meta-item">
+                                <i class="ph ph-desktop"></i>
+                                <span>هذا الجهاز</span>
+                            </div>
+                            <div class="profile-hero-meta-item">
+                                <i class="ph ph-check-circle" style="color:var(--accent-green);"></i>
+                                <span style="color:var(--accent-green);">نشط الآن</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Two Columns -->
+                <div class="profile-cards-row">
+
+                    <!-- Account Info -->
+                    <div class="profile-card">
+                        <div class="profile-card-header">
+                            <i class="ph-fill ph-identification-card blue"></i>
+                            <h3>معلومات الحساب</h3>
+                        </div>
+                        <div class="profile-card-body">
+                            <div class="info-grid">
+                                <div class="info-field">
+                                    <label>اسم المستخدم</label>
+                                    <div class="info-field-value" id="info-username">—</div>
+                                </div>
+                                <div class="info-field">
+                                    <label>الصلاحية</label>
+                                    <div class="info-field-value" id="info-role">—</div>
+                                </div>
+                                <div class="info-field" style="grid-column: 1 / -1;">
+                                    <label>حالة الحساب</label>
+                                    <div class="info-field-value" style="color:var(--accent-green);">
+                                        <i class="ph-fill ph-check-circle"></i> نشط ومفعّل
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Security Stats -->
+                            <div style="margin-top:20px;">
+                                <div class="security-stats">
+                                    <div class="sec-stat">
+                                        <div class="sec-stat-icon" style="color:var(--accent-green);">🔐</div>
+                                        <div class="sec-stat-value">مؤمّن</div>
+                                        <div class="sec-stat-label">الحماية</div>
+                                    </div>
+                                    <div class="sec-stat">
+                                        <div class="sec-stat-icon" style="color:var(--accent-blue);">💻</div>
+                                        <div class="sec-stat-value">1</div>
+                                        <div class="sec-stat-label">جلسة نشطة</div>
+                                    </div>
+                                    <div class="sec-stat">
+                                        <div class="sec-stat-icon" style="color:var(--accent-orange);">⏱</div>
+                                        <div class="sec-stat-value" id="session-duration">—</div>
+                                        <div class="sec-stat-label">مدة الجلسة</div>
+                                    </div>
+                                </div>
+
+                                <!-- Active Session -->
+                                <div class="session-item">
+                                    <div class="session-icon"><i class="ph-fill ph-monitor"></i></div>
+                                    <div class="session-details">
+                                        <h4>هذا الجهاز</h4>
+                                        <p id="session-info">جلسة نشطة</p>
+                                    </div>
+                                    <span class="session-badge">نشط</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <h3 style="color:white; margin-bottom:20px; font-size:20px;"><i class="ph-fill ph-lock-key"></i> تغيير كلمة المرور</h3>
-                    
-                    <form id="password-form">
-                        <div class="perm-group" style="margin-bottom:15px;">
-                            <label style="color:var(--text-secondary); display:block; margin-bottom:8px; font-size:14px; font-weight:bold;">كلمة المرور الحالية</label>
-                            <input type="password" id="cur-pwd" class="role-input-modern" required placeholder="••••••••">
+                    <!-- Change Password -->
+                    <div class="profile-card">
+                        <div class="profile-card-header">
+                            <i class="ph-fill ph-lock-key green"></i>
+                            <h3>تغيير كلمة المرور</h3>
                         </div>
-                        <div class="perm-group" style="margin-bottom:15px;">
-                            <label style="color:var(--text-secondary); display:block; margin-bottom:8px; font-size:14px; font-weight:bold;">كلمة المرور الجديدة</label>
-                            <input type="password" id="new-pwd" class="role-input-modern" required placeholder="أدخل كلمة مرور قوية">
-                        </div>
-                        <div class="perm-group" style="margin-bottom:25px;">
-                            <label style="color:var(--text-secondary); display:block; margin-bottom:8px; font-size:14px; font-weight:bold;">تأكيد كلمة المرور الجديدة</label>
-                            <input type="password" id="new-pwd-conf" class="role-input-modern" required placeholder="أعد إدخال كلمة المرور">
-                        </div>
-                        
-                        <div id="pwd-error" style="display:none; color:var(--accent-red); margin-bottom:15px; background:rgba(239, 68, 68, 0.1); padding:10px; border-radius:8px;"></div>
-                        <div id="pwd-success" style="display:none; color:var(--accent-green); margin-bottom:15px; background:rgba(16, 185, 129, 0.1); padding:10px; border-radius:8px;">تم تغيير كلمة المرور بنجاح!</div>
+                        <div class="profile-card-body">
+                            <div id="pwd-error" class="alert-box error"></div>
+                            <div id="pwd-success" class="alert-box success">
+                                <i class="ph ph-check-circle"></i> تم تحديث كلمة المرور بنجاح!
+                            </div>
 
-                        <button type="submit" class="btn-save-role" id="btn-save-pwd"><i class="ph-bold ph-floppy-disk"></i> تحديث الحماية</button>
-                    </form>
-                </div>
+                            <div class="form-group">
+                                <label>كلمة المرور الحالية</label>
+                                <input type="password" id="cur-pwd" class="form-input-modern" placeholder="••••••••">
+                            </div>
+                            <div class="form-group">
+                                <label>كلمة المرور الجديدة</label>
+                                <input type="password" id="new-pwd" class="form-input-modern" placeholder="أدخل كلمة مرور قوية">
+                                <div class="pwd-strength-bar">
+                                    <div class="pwd-strength-fill" id="pwd-strength-fill"></div>
+                                </div>
+                                <div class="pwd-strength-label" id="pwd-strength-label" style="color:var(--text-muted);"></div>
+                            </div>
+                            <div class="form-group">
+                                <label>تأكيد كلمة المرور الجديدة</label>
+                                <input type="password" id="new-pwd-conf" class="form-input-modern" placeholder="أعد إدخال كلمة المرور">
+                            </div>
 
-            </div>
+                            <button class="btn-save-profile" id="btn-save-pwd">
+                                <i class="ph-bold ph-floppy-disk"></i>
+                                تحديث كلمة المرور
+                            </button>
+                        </div>
+                    </div>
+
+                </div><!-- end profile-cards-row -->
+
+            </div><!-- end profile-page-grid -->
         </main>
     </div>
 
-    <!-- Scripts -->
     <script src="currency-helper.js"></script>
     <script src="script.js"></script>
-    <script src="profile.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const cUserStr = localStorage.getItem('currentUser');
+        const cUser = cUserStr ? JSON.parse(cUserStr) : { username: 'مستخدم', role: 'غير محدد' };
+
+        // Hero
+        document.getElementById('hero-username').textContent = cUser.username || '—';
+        document.getElementById('hero-role').textContent = cUser.role || '—';
+
+        // Info card
+        document.getElementById('info-username').textContent = cUser.username || '—';
+        document.getElementById('info-role').textContent = cUser.role || '—';
+
+        // Login time
+        const loginTime = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('hero-login-time').textContent = 'دخل الساعة ' + loginTime;
+
+        // Session info
+        const loginTs = parseInt(localStorage.getItem('login_timestamp') || Date.now());
+        localStorage.setItem('login_timestamp', loginTs);
+        function updateSessionDuration() {
+            const diff = Math.floor((Date.now() - loginTs) / 1000 / 60);
+            const h = Math.floor(diff / 60), m = diff % 60;
+            document.getElementById('session-duration').textContent = h > 0 ? `${h}س ${m}د` : `${m} دقيقة`;
+            document.getElementById('session-info').textContent = `منذ ${h > 0 ? h + ' ساعة و' : ''}${m} دقيقة`;
+        }
+        updateSessionDuration();
+        setInterval(updateSessionDuration, 60000);
+
+        // Password strength
+        const newPInput = document.getElementById('new-pwd');
+        const strengthFill = document.getElementById('pwd-strength-fill');
+        const strengthLabel = document.getElementById('pwd-strength-label');
+        newPInput.addEventListener('input', () => {
+            const v = newPInput.value;
+            let score = 0;
+            if (v.length >= 5) score++;
+            if (v.length >= 8) score++;
+            if (/[A-Z]/.test(v) || /[\u0600-\u06FF]/.test(v)) score++;
+            if (/[0-9]/.test(v)) score++;
+            if (/[^a-zA-Z0-9\u0600-\u06FF]/.test(v)) score++;
+            const levels = [
+                { pct: '0%', color: 'transparent', label: '' },
+                { pct: '25%', color: '#ef4444', label: 'ضعيفة جداً' },
+                { pct: '50%', color: '#f59e0b', label: 'متوسطة' },
+                { pct: '75%', color: '#3b82f6', label: 'جيدة' },
+                { pct: '90%', color: '#10b981', label: 'قوية' },
+                { pct: '100%', color: '#10b981', label: 'قوية جداً 💪' },
+            ];
+            const lvl = levels[Math.min(score, 5)];
+            strengthFill.style.width = lvl.pct;
+            strengthFill.style.background = lvl.color;
+            strengthLabel.textContent = lvl.label;
+            strengthLabel.style.color = lvl.color;
+        });
+
+        // Save password
+        document.getElementById('btn-save-pwd').addEventListener('click', () => {
+            const errBox = document.getElementById('pwd-error');
+            const succBox = document.getElementById('pwd-success');
+            errBox.style.display = 'none';
+            succBox.style.display = 'none';
+
+            const cv = document.getElementById('cur-pwd').value.trim();
+            const nv = newPInput.value.trim();
+            const cof = document.getElementById('new-pwd-conf').value.trim();
+
+            function showErr(msg) {
+                errBox.innerHTML = '<i class="ph ph-warning-circle"></i> ' + msg;
+                errBox.style.display = 'block';
+            }
+
+            if (!cv || !nv || !cof) return showErr('الرجاء تعبئة جميع الحقول!');
+
+            const truePwd = localStorage.getItem('admin_pwd') || '123456';
+            if (cv !== truePwd) return showErr('كلمة المرور الحالية غير صحيحة.');
+            if (nv !== cof) return showErr('كلمة المرور الجديدة غير متطابقة.');
+            if (nv.length < 5) return showErr('كلمة المرور قصيرة جداً. يجب 5 رموز على الأقل.');
+
+            localStorage.setItem('admin_pwd', nv);
+
+            // Also update in system_roles if exists
+            try {
+                const roles = JSON.parse(localStorage.getItem('system_roles') || '[]');
+                const idx = roles.findIndex(r => r.username === cUser.username);
+                if (idx !== -1) { roles[idx].password = nv; localStorage.setItem('system_roles', JSON.stringify(roles)); }
+            } catch(e) {}
+
+            document.getElementById('cur-pwd').value = '';
+            newPInput.value = '';
+            document.getElementById('new-pwd-conf').value = '';
+            strengthFill.style.width = '0%';
+            strengthLabel.textContent = '';
+
+            succBox.style.display = 'block';
+            setTimeout(() => { succBox.style.display = 'none'; }, 5000);
+        });
+    });
+    </script>
 </body>
 </html>

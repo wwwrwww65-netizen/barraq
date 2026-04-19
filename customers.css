@@ -268,3 +268,27 @@
 .btn-save-cust:hover {
     transform: translateY(-3px); box-shadow: 0 15px 30px rgba(59, 130, 246, 0.5);
 }
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+    .customers-container { padding: 20px; gap: 20px; }
+    .cust-kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .cust-toolbar { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .cust-search { max-width: 100%; width: 100%; }
+}
+@media (max-width: 768px) {
+    .customers-container { padding: 14px; gap: 14px; }
+    .customers-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+    .cust-kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .cust-kpi-card { padding: 16px; gap: 14px; }
+    .cust-kpi-info h2 { font-size: 24px; }
+    .cust-toolbar { padding: 14px; }
+    .cust-actions { width: 100%; justify-content: space-between; }
+}
+@media (max-width: 480px) {
+    .customers-grid { grid-template-columns: 1fr; }
+    .cust-kpi-grid { grid-template-columns: 1fr 1fr; }
+    .customer-card { padding: 16px; }
+    .cust-avatar { width: 50px; height: 50px; font-size: 18px; }
+    .cust-info h3 { font-size: 15px; }
+}
