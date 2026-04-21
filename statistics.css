@@ -110,7 +110,7 @@
 .stat-value {
     font-size: 28px;
     font-weight: 800;
-    color: white;
+    color: var(--text-primary);
     z-index: 1;
 }
 .stat-value.highlight-green { color: var(--accent-green); text-shadow: 0 0 10px rgba(16, 185, 129, 0.3); }
@@ -143,7 +143,7 @@
 
 .chart-header h3 {
     font-size: 18px;
-    color: white;
+    color: var(--text-primary);
     font-weight: 700;
     display: flex; align-items: center; gap: 8px;
 }
@@ -183,7 +183,7 @@
     display: flex;
     justify-content: space-between;
     font-size: 14px;
-    color: white;
+    color: var(--text-primary);
     font-weight: 600;
 }
 .item-meta span:last-child {
@@ -240,13 +240,13 @@
 .perf-icon.out { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
 .perf-icon.bal { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
 
-.perf-name h4 { font-size: 15px; color: white; margin-bottom: 2px; }
+.perf-name h4 { font-size: 15px; color: var(--text-primary); margin-bottom: 2px; }
 .perf-name p { font-size: 12px; color: var(--text-muted); }
 
 .perf-amount {
     text-align: left;
 }
-.perf-amount h3 { font-size: 16px; font-weight: 800; color: white; }
+.perf-amount h3 { font-size: 16px; font-weight: 800; color: var(--text-primary); }
 .perf-amount.pos h3 { color: var(--accent-green); }
 .perf-amount.neg h3 { color: var(--accent-red); }
 
@@ -279,4 +279,42 @@
     .stat-header h4 { font-size: 12px; }
     .chart-wrapper { min-height: 180px; }
     .perf-item { padding: 10px 12px; }
+}
+
+/* =========================================
+   LIGHT THEME OVERRIDES FOR STATISTICS
+   ========================================= */
+body.light-theme .stats-toolbar {
+    background: #fff !important;
+}
+
+body.light-theme .date-filters {
+    background: #f1f5f9 !important;
+}
+
+body.light-theme .stat-kpi,
+body.light-theme .chart-card {
+    background: #fff !important;
+    border-color: rgba(0,0,0,0.05) !important;
+}
+
+body.light-theme .stat-value:not(.highlight-green) {
+    color: #1e293b !important;
+}
+
+body.light-theme .chart-header h3,
+body.light-theme .item-meta {
+    color: #1e293b !important;
+}
+
+body.light-theme .prog-bar-bg {
+    background: #f1f5f9 !important;
+}
+
+body.light-theme .perf-item {
+    background: #f8fafc !important;
+}
+
+body.light-theme .perf-item:hover {
+    background: #f1f5f9 !important;
 }

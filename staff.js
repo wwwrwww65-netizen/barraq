@@ -6,6 +6,127 @@ const xfNum = (n) => (window.HashCurrency ? HashCurrency.formatNumber(n) : fmt(n
 const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : fmt(n) + ' ر.س');
 
 let db = {};
+let voucherSearchQuery = '';
+
+function formatVoucherNo(n) {
+    const num = Math.max(1, Number(n) || 1);
+    return `V-${String(num).padStart(6, '0')}`;
+}
+
+function ensureVoucherConfig() {
+    if (!db.hrMeta || typeof db.hrMeta !== 'object') db.hrMeta = {};
+    if (!Number.isFinite(Number(db.hrMeta.nextVoucherNo)) || Number(db.hrMeta.nextVoucherNo) < 1) {
+        db.hrMeta.nextVoucherNo = 1;
+    } else {
+        db.hrMeta.nextVoucherNo = Math.floor(Number(db.hrMeta.nextVoucherNo));
+    }
+}
+
+function allocateVoucherNo() {
+    ensureVoucherConfig();
+    const no = formatVoucherNo(db.hrMeta.nextVoucherNo);
+    db.hrMeta.nextVoucherNo += 1;
+    return no;
+}
+
+function normalizeVoucherNumber(raw) {
+    const txt = String(raw || '').trim().toUpperCase();
+    const m = txt.match(/(\d+)/);
+    if (!m) return '';
+    return formatVoucherNo(Number(m[1]));
+}
+
+function ensureVoucherNumbersOnDb() {
+    ensureVoucherConfig();
+    if (!Array.isArray(db.hrExpenses)) return false;
+
+    let changed = false;
+    let maxNum = 0;
+    db.hrExpenses.forEach((item) => {
+        const n = normalizeVoucherNumber(item?.voucherNo);
+        if (n) {
+            item.voucherNo = n;
+            const numeric = Number((n.match(/\d+/) || ['0'])[0]) || 0;
+            if (numeric > maxNum) maxNum = numeric;
+        }
+    });
+
+    const sorted = [...db.hrExpenses].sort((a, b) => {
+        const ta = Number(a?.timestamp || a?.lastModified || 0);
+        const tb = Number(b?.timestamp || b?.lastModified || 0);
+        return ta - tb;
+    });
+    sorted.forEach((item) => {
+        if (!normalizeVoucherNumber(item?.voucherNo)) {
+            maxNum += 1;
+            item.voucherNo = formatVoucherNo(maxNum);
+            changed = true;
+        }
+    });
+
+    if (Number(db.hrMeta.nextVoucherNo) <= maxNum) {
+        db.hrMeta.nextVoucherNo = maxNum + 1;
+        changed = true;
+    }
+    return changed;
+}
+
+function ensurePayrollCycleConfig() {
+    if (!db.hrCycle || typeof db.hrCycle !== 'object') {
+        db.hrCycle = {
+            startDay: 1,
+            cycleLengthDays: 30,
+            cycleNumber: 1,
+            lastResetAt: null,
+            nextAutoResetAt: null,
+            autoResetEnabled: true,
+            payrollClosed: false,
+            warnedPendingClose: false,
+        };
+    }
+    if (!Number.isFinite(Number(db.hrCycle.startDay))) db.hrCycle.startDay = 1;
+    db.hrCycle.startDay = Math.max(1, Math.min(28, Number(db.hrCycle.startDay)));
+    if (!Number.isFinite(Number(db.hrCycle.cycleLengthDays))) db.hrCycle.cycleLengthDays = 30;
+    db.hrCycle.cycleLengthDays = Math.max(1, Math.min(62, Number(db.hrCycle.cycleLengthDays)));
+    if (!Number.isFinite(Number(db.hrCycle.cycleNumber))) db.hrCycle.cycleNumber = 1;
+    if (typeof db.hrCycle.autoResetEnabled !== 'boolean') db.hrCycle.autoResetEnabled = true;
+    db.hrCycle.payrollClosed = Boolean(db.hrCycle.payrollClosed);
+    db.hrCycle.warnedPendingClose = Boolean(db.hrCycle.warnedPendingClose);
+}
+
+function calcNextAutoResetFromNow() {
+    ensurePayrollCycleConfig();
+    return Date.now() + (Number(db.hrCycle.cycleLengthDays || 30) * 24 * 60 * 60 * 1000);
+}
+
+async function checkAndRunAutoCycleReset() {
+    ensurePayrollCycleConfig();
+    if (!db.hrCycle.autoResetEnabled) return;
+    const nextAt = Number(db.hrCycle.nextAutoResetAt || 0);
+    if (!nextAt) {
+        db.hrCycle.nextAutoResetAt = calcNextAutoResetFromNow();
+        await persistDb();
+        return;
+    }
+    if (Date.now() < nextAt) return;
+    if (!db.hrCycle.payrollClosed) {
+        if (!db.hrCycle.warnedPendingClose) {
+            db.hrCycle.warnedPendingClose = true;
+            await persistDb();
+            alert('تم تجاوز موعد التصفير التلقائي، لكن الدورة غير مقفلة. يرجى إقفال دورة الرواتب أولاً ثم يتم التصفير.');
+        }
+        return;
+    }
+
+    db.employees.forEach(e => { e.loans = 0; });
+    db.hrCycle.cycleNumber = Number(db.hrCycle.cycleNumber || 1) + 1;
+    db.hrCycle.lastResetAt = Date.now();
+    db.hrCycle.nextAutoResetAt = calcNextAutoResetFromNow();
+    db.hrCycle.payrollClosed = false;
+    db.hrCycle.warnedPendingClose = false;
+    await persistDb();
+    alert('تم تنفيذ التصفير التلقائي لدورة الرواتب وبدء دورة جديدة.');
+}
 
 async function persistDb() {
     await window.dbWrite(db);
@@ -235,7 +356,7 @@ function renderEmployees() {
                 <button class="action-btn-mini btn-att-present" onclick="markAttendanceQuick('${emp.id}','حضور')" title="حضور"><i class="ph ph-fingerprint"></i></button>
                 <button class="action-btn-mini btn-att-absent" onclick="markAttendanceQuick('${emp.id}','غياب')" title="غياب"><i class="ph ph-user-minus"></i></button>
                 <button class="action-btn-mini btn-att-excused" onclick="markAttendanceQuick('${emp.id}','مستأذن')" title="إذن"><i class="ph ph-clock"></i></button>
-                <button class="action-btn-full" style="background:var(--accent-blue);color:white;border:none;" onclick="openFullProfile('${emp.id}')"><i class="ph ph-user-circle"></i> عرض الملف</button>
+                <button class="action-btn-full" style="background:var(--accent-blue);color:var(--text-primary);border:none;" onclick="openFullProfile('${emp.id}')"><i class="ph ph-user-circle"></i> عرض الملف</button>
             </div>
         `;
         fragment.appendChild(card);
@@ -432,6 +553,27 @@ window.openFullProfile = function(id) {
         alert(`✅ تم حذف الموظف "${emp.name}" بنجاح.\nسجلاته المالية محفوظة في قاعدة البيانات.`);
     };
 
+    document.getElementById('pro-btn-reset').onclick = async () => {
+        const openLoans = Number(emp.loans) || 0;
+        if (openLoans <= 0) {
+            alert('لا توجد سلف/خصومات مفتوحة لهذا الموظف حالياً.');
+            return;
+        }
+        const confirmed = confirm(
+            `تصفير حساب الموظف: ${emp.name}\n\n` +
+            `سيتم تصفير الرصيد المفتوح (${xf(openLoans)}) والبدء بدورة جديدة له.\n` +
+            `هل تريد المتابعة؟`
+        );
+        if (!confirmed) return;
+        emp.loans = 0;
+        await persistDb();
+        updateKPIs();
+        renderEmployees();
+        renderPayroll();
+        openFullProfile(emp.id);
+        alert('تم تصفير حساب الموظف بنجاح.');
+    };
+
     // Switch view
     showView('view-emp-profile');
     // Ensure first tab is active
@@ -467,19 +609,25 @@ window.openFullProfile = function(id) {
 };
 
 function renderProfileFinances(empName) {
-    const myVouchers = db.hrExpenses.filter(h => h.employee === empName);
+    const myVouchers = (db.hrExpenses || [])
+        .map((h, idx) => ({ h, idx }))
+        .filter(({ h }) => h.employee === empName);
     const tbody = document.getElementById('pro-finances-body');
     if(!tbody) return;
     if(myVouchers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px;">لا توجد حركات مالية مسجلة.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px;">لا توجد حركات مالية مسجلة.</td></tr>';
         return;
     }
-    tbody.innerHTML = [...myVouchers].reverse().map(v => `
+    tbody.innerHTML = [...myVouchers].reverse().map(({ h, idx }) => `
         <tr>
-            <td dir="ltr" style="text-align:right">${v.date}</td>
-            <td style="color:${v.type.includes('سلفة')||v.type.includes('عليه')?'#f87171':'#34d399'}; font-weight:700;">${v.type}</td>
-            <td style="font-weight:800; font-size:16px;">${xf(v.amount)}</td>
-            <td>${v.reason || '—'}</td>
+            <td dir="ltr" style="text-align:right">${h.date}</td>
+            <td style="color:${h.type.includes('سلفة')||h.type.includes('عليه')?'#f87171':'#34d399'}; font-weight:700;">${h.type}</td>
+            <td style="font-weight:800; font-size:16px;">${xf(h.amount)}</td>
+            <td>${h.reason || '—'}</td>
+            <td>
+                <button onclick="editHrVoucher(${idx})" style="background:none; border:none; color:var(--accent-blue); font-size:16px; cursor:pointer;" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
+                <button onclick="deleteHrVoucher(${idx})" style="background:none; border:none; color:#ef4444; font-size:16px; cursor:pointer; margin-right:8px;" title="حذف"><i class="ph ph-trash"></i></button>
+            </td>
         </tr>`).join('');
 }
 
@@ -631,7 +779,34 @@ function populateEmpSelect() {
     sel.disabled = false; // Reset disabled
 }
 
+function openVoucherEditor(voucherIndex) {
+    const voucher = (db.hrExpenses || [])[voucherIndex];
+    if (!voucher) return;
+    populateEmpSelect();
+    const empSel = document.getElementById('voucher-employee');
+    const amtEl = document.getElementById('voucher-amount');
+    const rsnEl = document.getElementById('voucher-reason');
+    const typeSel = document.getElementById('voucher-type');
+    const paySel = document.getElementById('voucher-pay-method');
+    if (!empSel || !amtEl || !rsnEl || !typeSel || !paySel) return;
+
+    empSel.value = voucher.employee || '';
+    amtEl.value = Number(voucher.amount) || 0;
+    rsnEl.value = voucher.reason || '';
+    paySel.value = voucher.pMethod === 'bank' ? 'bank' : 'cash';
+
+    const t = String(voucher.type || '');
+    if (t.includes('عليه') || t.includes('سلفة')) typeSel.value = 'advance';
+    else if (t.includes('مكافأة')) typeSel.value = 'bonus';
+    else typeSel.value = 'salary';
+
+    document.getElementById('advance-modal').dataset.editIndex = String(voucherIndex);
+    openHrModal('advance-modal');
+}
+
 document.getElementById('btn-open-advance-modal')?.addEventListener('click', () => {
+    const modal = document.getElementById('advance-modal');
+    if (modal) delete modal.dataset.editIndex;
     populateEmpSelect();
     openHrModal('advance-modal');
     requestAnimationFrame(() => {
@@ -647,14 +822,25 @@ document.getElementById('btn-open-advance-modal')?.addEventListener('click', () 
 });
 
 document.getElementById('btn-close-advance-modal')?.addEventListener('click', () => {
+    const modal = document.getElementById('advance-modal');
+    if (modal) delete modal.dataset.editIndex;
     closeHrModal('advance-modal');
 });
+
+window.generateVoucherFromSelection = function() {
+    const sel = document.getElementById('voucher-type');
+    const v = (sel && sel.value) || 'salary';
+    if (v === 'advance') return generateVoucher('عليه (سلفة)');
+    if (v === 'bonus') return generateVoucher('له (مكافأة)');
+    return generateVoucher('له (راتب)');
+};
 
 
 // ── Payroll & Vouchers Views ─────────────────────────────────
 function renderPayroll() {
     const tbody = document.getElementById('payroll-tbody');
     if(!tbody) return;
+    ensurePayrollCycleConfig();
     let html = '';
     let totalPayroll = 0;
     db.employees.filter(e => e.status !== 'end').forEach(emp => {
@@ -670,29 +856,121 @@ function renderPayroll() {
         </tr>`;
     });
     html += `<tr style="background:rgba(255,255,255,0.05); font-weight:900;">
-        <td colspan="4" style="text-align:left; color:white; padding:14px;">إجمالي المسير للصرف</td>
+        <td colspan="4" style="text-align:left; color:var(--text-primary); padding:14px;">إجمالي المسير للصرف</td>
         <td colspan="2" style="color:var(--accent-green); font-size:20px; font-weight:900;">${xf(totalPayroll)}</td>
     </tr>`;
     tbody.innerHTML = html;
+
+    const cycleInput = document.getElementById('payroll-cycle-start-day');
+    if (cycleInput) cycleInput.value = String(db.hrCycle.startDay || 1);
+    const cycleLenInput = document.getElementById('payroll-cycle-length-days');
+    if (cycleLenInput) cycleLenInput.value = String(db.hrCycle.cycleLengthDays || 30);
+    const nextDateInput = document.getElementById('payroll-next-reset-date');
+    if (nextDateInput) {
+        if (db.hrCycle.nextAutoResetAt) {
+            const d = new Date(db.hrCycle.nextAutoResetAt);
+            const ymd = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            nextDateInput.value = ymd;
+        } else {
+            nextDateInput.value = '';
+        }
+    }
+    const cycleMeta = document.getElementById('payroll-cycle-meta');
+    if (cycleMeta) {
+        const lastReset = db.hrCycle.lastResetAt ? new Date(db.hrCycle.lastResetAt).toLocaleString('ar-SA') : 'لم يتم بعد';
+        const nextReset = db.hrCycle.nextAutoResetAt ? new Date(db.hrCycle.nextAutoResetAt).toLocaleString('ar-SA') : 'غير محدد';
+        const closeState = db.hrCycle.payrollClosed ? 'مقفلة وجاهزة للتصفير' : 'غير مقفلة';
+        const autoState = db.hrCycle.autoResetEnabled ? 'مفعل' : 'معطل';
+        cycleMeta.innerHTML = `الدورة الحالية: <strong>#${db.hrCycle.cycleNumber}</strong> — بداية الدورة: يوم <strong>${db.hrCycle.startDay}</strong> — مدة الدورة: <strong>${db.hrCycle.cycleLengthDays} يوم</strong> — آخر تصفير: <strong>${lastReset}</strong> — التصفير التلقائي القادم: <strong>${nextReset}</strong> — حالة الإقفال: <strong>${closeState}</strong> — التصفير التلقائي: <strong>${autoState}</strong>`;
+    }
+    const autoToggle = document.getElementById('auto-reset-toggle');
+    const autoToggleText = document.getElementById('auto-reset-toggle-text');
+    if (autoToggle) autoToggle.checked = Boolean(db.hrCycle.autoResetEnabled);
+    if (autoToggleText) autoToggleText.textContent = db.hrCycle.autoResetEnabled ? 'التصفير التلقائي: مفعل' : 'التصفير التلقائي: معطل';
+    const closeBtn = document.getElementById('btn-close-payroll-cycle');
+    if (closeBtn) closeBtn.textContent = db.hrCycle.payrollClosed ? 'إلغاء إقفال الدورة' : 'إقفال دورة الرواتب';
 }
 
 function renderVouchers() {
     const tbody = document.getElementById('vouchers-tbody');
     if (!tbody) return;
-    const vouchers = db.hrExpenses || [];
+    let vouchers = (db.hrExpenses || []).map((h, idx) => ({ h, idx }));
+    const q = String(voucherSearchQuery || '').trim().toLowerCase();
+    if (q) {
+        vouchers = vouchers.filter(({ h }) => {
+            const no = String(h.voucherNo || '').toLowerCase();
+            const emp = String(h.employee || '').toLowerCase();
+            const reason = String(h.reason || '').toLowerCase();
+            const type = String(h.type || '').toLowerCase();
+            return no.includes(q) || emp.includes(q) || reason.includes(q) || type.includes(q);
+        });
+    }
     if (vouchers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">لا توجد حركات مالية.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted);">لا توجد نتائج مطابقة.</td></tr>';
         return;
     }
-    tbody.innerHTML = [...vouchers].reverse().map(v => `
+    tbody.innerHTML = [...vouchers].reverse().map(({ h, idx }) => `
         <tr>
-            <td dir="ltr" style="text-align:right">${v.date}</td>
-            <td><strong>${v.employee}</strong></td>
-            <td style="color:${v.type.includes('سلفة')||v.type.includes('عليه')||v.type.includes('جزاء') ? '#f87171' : '#34d399'}; font-weight:700;">${v.type}</td>
-            <td style="font-weight:800; font-size:16px;">${xf(v.amount)}</td>
-            <td>${v.reason || '—'}</td>
+            <td><strong dir="ltr">${h.voucherNo || '—'}</strong></td>
+            <td dir="ltr" style="text-align:right">${h.date}</td>
+            <td><strong>${h.employee}</strong></td>
+            <td style="color:${h.type.includes('سلفة')||h.type.includes('عليه')||h.type.includes('جزاء') ? '#f87171' : '#34d399'}; font-weight:700;">${h.type}</td>
+            <td style="font-weight:800; font-size:16px;">${xf(h.amount)}</td>
+            <td>${h.reason || '—'}</td>
+            <td>
+                <button onclick="editHrVoucher(${idx})" style="background:none; border:none; color:var(--accent-blue); font-size:16px; cursor:pointer;" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
+                <button onclick="deleteHrVoucher(${idx})" style="background:none; border:none; color:#ef4444; font-size:16px; cursor:pointer; margin-right:8px;" title="حذف"><i class="ph ph-trash"></i></button>
+            </td>
         </tr>`).join('');
 }
+
+function voucherAffectsEmployeeLoans(voucherType) {
+    const t = String(voucherType || '');
+    return t.includes('سلفة') || t.includes('عليه') || t.includes('خصم / جزاء') || t.includes('جزاء');
+}
+
+function applyVoucherLoanDelta(voucher, direction) {
+    if (!voucherAffectsEmployeeLoans(voucher?.type)) return;
+    const emp = db.employees.find(e => e.name === voucher.employee);
+    if (!emp) return;
+    const amt = Number(voucher.amount) || 0;
+    emp.loans = Math.max(0, (Number(emp.loans) || 0) + (direction * amt));
+}
+
+function refreshHrViewsAfterVoucherChange() {
+    updateKPIs();
+    renderEmployees();
+    renderPayroll();
+    renderVouchers();
+    if (currentProfileId) {
+        const emp = db.employees.find(e => e.id === currentProfileId);
+        if (emp) openFullProfile(currentProfileId);
+    }
+}
+
+window.deleteHrVoucher = async function(index) {
+    const voucher = (db.hrExpenses || [])[index];
+    if (!voucher) return;
+    const ok = confirm(
+        `هل تريد حذف العملية المالية؟\n\n` +
+        `رقم السند: ${voucher.voucherNo || '—'}\n` +
+        `الموظف: ${voucher.employee}\n` +
+        `النوع: ${voucher.type}\n` +
+        `المبلغ: ${xf(voucher.amount)}\n` +
+        `البيان: ${voucher.reason || '—'}`
+    );
+    if (!ok) return;
+
+    applyVoucherLoanDelta(voucher, -1);
+    db.hrExpenses.splice(index, 1);
+    await persistDb();
+    refreshHrViewsAfterVoucherChange();
+    alert('تم حذف العملية المالية بنجاح.');
+};
+
+window.editHrVoucher = function(index) {
+    openVoucherEditor(index);
+};
 
 // ── Deductions View & Rules ────────────────────────────────
 async function renderDeductions() {
@@ -928,7 +1206,6 @@ window.generateVoucher = async function(typeStr) {
     const todayStr = new Date().toISOString().split('T')[0].replace(/-/g, '/');
     if (document.getElementById('v-date')) document.getElementById('v-date').innerText = todayStr;
     if (document.getElementById('v-bottom-date')) document.getElementById('v-bottom-date').innerText = todayStr;
-    if (document.getElementById('v-number')) document.getElementById('v-number').innerText = Math.floor(Math.random() * 90000) + 10000;
     if (document.getElementById('v-name')) document.getElementById('v-name').innerText = employee;
     const amtFmt = Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     if (document.getElementById('v-amt')) document.getElementById('v-amt').innerText = amtFmt;
@@ -956,6 +1233,13 @@ window.generateVoucher = async function(typeStr) {
 
     const paySel = document.getElementById('voucher-pay-method');
     const pMethod = paySel && paySel.value === 'bank' ? 'bank' : 'cash';
+    const advanceModal = document.getElementById('advance-modal');
+    const editIndexRaw = advanceModal?.dataset?.editIndex;
+    const isEditMode = editIndexRaw !== undefined && editIndexRaw !== '';
+    const editIndex = isEditMode ? Number(editIndexRaw) : -1;
+    const existingVoucher = (isEditMode && db.hrExpenses && db.hrExpenses[editIndex]) ? db.hrExpenses[editIndex] : null;
+    const voucherNo = normalizeVoucherNumber(existingVoucher?.voucherNo) || allocateVoucherNo();
+    if (document.getElementById('v-number')) document.getElementById('v-number').innerText = voucherNo;
 
     const printContainer = document.getElementById('voucher-print-container');
     let voucherEl = null;
@@ -1029,21 +1313,35 @@ window.generateVoucher = async function(typeStr) {
 
         const imgData = finalCanvas.toDataURL('image/jpeg', 0.95);
 
-        const newEntry = {
-            employee,
-            amount: Number(amount),
-            type: typeStr,
-            reason,
-            date: new Date().toLocaleDateString('ar-SA'),
-            timestamp: Date.now(),
-            pMethod,
-        };
         if (!db.hrExpenses) db.hrExpenses = [];
-        db.hrExpenses.push(newEntry);
-
-        if (typeStr.includes('عليه') || typeStr.includes('سلفة')) {
-            const emp = db.employees?.find(e => e.name === employee);
-            if (emp) emp.loans = (emp.loans || 0) + Number(amount);
+        if (isEditMode && db.hrExpenses[editIndex]) {
+            const oldEntry = { ...db.hrExpenses[editIndex] };
+            applyVoucherLoanDelta(oldEntry, -1);
+            db.hrExpenses[editIndex] = {
+                ...db.hrExpenses[editIndex],
+                employee,
+                amount: Number(amount),
+                type: typeStr,
+                reason,
+                date: new Date().toLocaleDateString('ar-SA'),
+                pMethod,
+                voucherNo,
+                lastModified: Date.now(),
+            };
+            applyVoucherLoanDelta(db.hrExpenses[editIndex], 1);
+        } else {
+            const newEntry = {
+                employee,
+                amount: Number(amount),
+                type: typeStr,
+                reason,
+                date: new Date().toLocaleDateString('ar-SA'),
+                timestamp: Date.now(),
+                pMethod,
+                voucherNo,
+            };
+            db.hrExpenses.push(newEntry);
+            applyVoucherLoanDelta(newEntry, 1);
         }
 
         await persistDb();
@@ -1058,25 +1356,74 @@ window.generateVoucher = async function(typeStr) {
         if(document.getElementById('view-payroll').style.display==='block') renderPayroll();
         if(document.getElementById('view-vouchers').style.display==='block') renderVouchers();
 
-        alert('✅ تم قيد الحركة المالية بنجاح في النظام المحاسبي.');
+        if (advanceModal) delete advanceModal.dataset.editIndex;
+        alert(isEditMode ? '✅ تم تعديل الحركة المالية بنجاح.' : '✅ تم قيد الحركة المالية بنجاح في النظام المحاسبي.');
 
         // send WhatsApp message automatically to employee and admin if enabled
         try {
+            const { ipcRenderer } = require('electron');
+            const waDbg = (level, message) => {
+                try { ipcRenderer.send('wa-debug-log', { level, message }); } catch (_) {}
+            };
+            waDbg('info', `[Voucher] Start WA flow voucherNo=${voucherNo} employee="${employee}" editMode=${isEditMode}`);
+
             const waRaw = localStorage.getItem('wa_settings');
-            if (waRaw) {
-                const waSettings = JSON.parse(waRaw);
-                if (waSettings.loans) {
-                    const { ipcRenderer } = require('electron');
+            if (!waRaw) {
+                // Fallback for installations that only saved restaurant_settings.whatsapp
+                // and never visited "حفظ الإعدادات" after adding WA block.
+                let waFallback = {
+                    admin: '',
+                    hubIp: '',
+                    loans: true,
+                    expenses: true,
+                    reports: true
+                };
+                try {
+                    const rsRaw = localStorage.getItem('restaurant_settings');
+                    if (rsRaw) {
+                        const rs = JSON.parse(rsRaw);
+                        const adminCandidate = String(rs?.whatsapp || rs?.phone || '').trim();
+                        if (adminCandidate) waFallback.admin = adminCandidate;
+                    }
+                } catch (_) {}
+
+                localStorage.setItem('wa_settings', JSON.stringify(waFallback));
+                waDbg('warn', `[Voucher] wa_settings missing -> created fallback (admin=${waFallback.admin ? 'yes' : 'no'})`);
+            }
+
+            const waSettings = JSON.parse(localStorage.getItem('wa_settings') || '{}');
+            if (!waSettings || typeof waSettings !== 'object') {
+                waDbg('error', '[Voucher] wa_settings invalid JSON/object -> skipping WA send');
+            } else {
+                if (!waSettings.admin) {
+                    try {
+                        const rsRaw = localStorage.getItem('restaurant_settings');
+                        if (rsRaw) {
+                            const rs = JSON.parse(rsRaw);
+                            const fallbackAdmin = String(rs?.whatsapp || rs?.phone || '').trim();
+                            if (fallbackAdmin) {
+                                waSettings.admin = fallbackAdmin;
+                                localStorage.setItem('wa_settings', JSON.stringify(waSettings));
+                                waDbg('warn', '[Voucher] Admin missing in wa_settings -> recovered from restaurant_settings (whatsapp/phone)');
+                            }
+                        }
+                    } catch (_) {}
+                }
+                waDbg('info', `[Voucher] wa_settings loaded loans=${waSettings.loans} admin=${waSettings.admin ? 'yes' : 'no'}`);
+                // Default behavior: enabled unless explicitly disabled.
+                if (waSettings.loans !== false) {
                     const hubIp =
                         typeof window.resolveWaHubIp === 'function'
                             ? window.resolveWaHubIp(waSettings)
                             : (waSettings.hubIp && String(waSettings.hubIp).trim()) || '';
+                    waDbg('info', `[Voucher] WA enabled, hubIp=${hubIp || 'local'}`);
 
+                    const actionText = isEditMode ? 'تم تعديل سند' : 'تم إصدار سند';
                     // 1- Send to Employee
                     const empObj = db.employees?.find(e => e.name === employee);
                     if (empObj && empObj.phone) {
                         let phoneNum = String(empObj.phone).replace(/^0/, '+966');
-                        const captionMsg = `مرحباً ${empObj.name}،\nتم إصدار سند لعملية ( ${typeStr} ) بقيمة ${xf(amount)}.\nالبيان: ${reason}`;
+                        const captionMsg = `مرحباً ${empObj.name}،\n${actionText} رقم (${voucherNo}) لعملية ( ${typeStr} ) بقيمة ${xf(amount)}.\nالبيان: ${reason}`;
                         
                         ipcRenderer.send('wa-send-message', {
                             number: phoneNum,
@@ -1084,13 +1431,16 @@ window.generateVoucher = async function(typeStr) {
                             image: imgData,
                             waHubIp: hubIp,
                         });
+                        waDbg('info', `[Voucher] Queued WA send to employee phone=${phoneNum}`);
                         console.log('Sending WA directly to employee:', phoneNum);
+                    } else {
+                        waDbg('warn', `[Voucher] Employee phone missing or employee not found for "${employee}"`);
                     }
 
                     // 2- Send to Admin/Accountant
                     if (waSettings.admin) {
                         let adminPhone = String(waSettings.admin).replace(/^0/, '+966');
-                        const adminCaptionMsg = `إشعار إداري:\nتم إصدار سند ( ${typeStr} )\nللموظف: ${employee}\nالقيمة: ${xf(amount)}\nالبيان: ${reason}`;
+                        const adminCaptionMsg = `إشعار إداري:\n${actionText} (${voucherNo})\nالنوع: ${typeStr}\nالموظف: ${employee}\nالقيمة: ${xf(amount)}\nالبيان: ${reason}`;
                         
                         ipcRenderer.send('wa-send-message', {
                             number: adminPhone,
@@ -1098,8 +1448,13 @@ window.generateVoucher = async function(typeStr) {
                             image: imgData,
                             waHubIp: hubIp,
                         });
+                        waDbg('info', `[Voucher] Queued WA send to admin phone=${adminPhone}`);
                         console.log('Sending WA to Admin:', adminPhone);
+                    } else {
+                        waDbg('warn', '[Voucher] Admin phone missing in wa_settings -> admin send skipped');
                     }
+                } else {
+                    waDbg('warn', '[Voucher] WA loans toggle is disabled -> skipping WA send');
                 }
             }
         } catch(e) { console.error('Error auto-sending WA voucher', e); }
@@ -1131,6 +1486,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!db.employees) db.employees = [];
     if (!db.hrExpenses) db.hrExpenses = [];
     if (!db.attendance) db.attendance = [];
+    ensureVoucherConfig();
+    if (ensureVoucherNumbersOnDb()) await persistDb();
+    ensurePayrollCycleConfig();
+    await checkAndRunAutoCycleReset();
 
     if (db.employees.length === 0) {
         db.employees = [
@@ -1146,6 +1505,94 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('nav-payroll')?.addEventListener('click', (e) => { e.preventDefault(); showView('view-payroll', 'nav-payroll'); });
     document.getElementById('nav-vouchers')?.addEventListener('click', (e) => { e.preventDefault(); showView('view-vouchers', 'nav-vouchers'); });
     document.getElementById('nav-deductions')?.addEventListener('click', (e) => { e.preventDefault(); showView('view-deductions', 'nav-deductions'); });
+
+    document.getElementById('btn-save-cycle-start')?.addEventListener('click', async () => {
+        ensurePayrollCycleConfig();
+        const inputDay = document.getElementById('payroll-cycle-start-day');
+        const inputLen = document.getElementById('payroll-cycle-length-days');
+        const day = Number(inputDay?.value || 1);
+        const lengthDays = Number(inputLen?.value || 30);
+        if (!Number.isFinite(day) || day < 1 || day > 28) {
+            alert('الرجاء إدخال يوم بداية صحيح من 1 إلى 28.');
+            return;
+        }
+        if (!Number.isFinite(lengthDays) || lengthDays < 1 || lengthDays > 62) {
+            alert('الرجاء إدخال مدة دورة صحيحة من 1 إلى 62 يوم.');
+            return;
+        }
+        db.hrCycle.startDay = day;
+        db.hrCycle.cycleLengthDays = lengthDays;
+        db.hrCycle.nextAutoResetAt = calcNextAutoResetFromNow();
+        db.hrCycle.warnedPendingClose = false;
+        await persistDb();
+        renderPayroll();
+        alert(`تم حفظ إعدادات الدورة: البداية يوم ${day} والمدة ${lengthDays} يوم.`);
+    });
+
+    document.getElementById('btn-save-next-reset-date')?.addEventListener('click', async () => {
+        ensurePayrollCycleConfig();
+        const dateInput = document.getElementById('payroll-next-reset-date');
+        const raw = String(dateInput?.value || '').trim();
+        if (!raw) {
+            alert('يرجى اختيار تاريخ التصفير القادم.');
+            return;
+        }
+        const d = new Date(raw + 'T00:00:00');
+        if (Number.isNaN(d.getTime())) {
+            alert('تاريخ غير صالح.');
+            return;
+        }
+        db.hrCycle.nextAutoResetAt = d.getTime();
+        db.hrCycle.warnedPendingClose = false;
+        await persistDb();
+        renderPayroll();
+        alert('تم حفظ موعد التصفير القادم بنجاح.');
+    });
+
+    document.getElementById('auto-reset-toggle')?.addEventListener('change', async (ev) => {
+        ensurePayrollCycleConfig();
+        db.hrCycle.autoResetEnabled = Boolean(ev.target.checked);
+        db.hrCycle.warnedPendingClose = false;
+        await persistDb();
+        renderPayroll();
+        alert(db.hrCycle.autoResetEnabled ? 'تم تفعيل التصفير التلقائي.' : 'تم تعطيل التصفير التلقائي.');
+    });
+
+    document.getElementById('btn-close-payroll-cycle')?.addEventListener('click', async () => {
+        ensurePayrollCycleConfig();
+        db.hrCycle.payrollClosed = !db.hrCycle.payrollClosed;
+        db.hrCycle.warnedPendingClose = false;
+        await persistDb();
+        renderPayroll();
+        alert(db.hrCycle.payrollClosed ? 'تم إقفال الدورة. التصفير التلقائي مسموح عند الموعد.' : 'تم إلغاء إقفال الدورة.');
+    });
+
+    document.getElementById('btn-start-new-cycle')?.addEventListener('click', async () => {
+        ensurePayrollCycleConfig();
+        const impacted = db.employees.filter(e => (Number(e.loans) || 0) > 0);
+        const total = impacted.reduce((s, e) => s + (Number(e.loans) || 0), 0);
+        const ok = confirm(
+            `بدء دورة شهر جديد\n\n` +
+            `سيتم تصفير السلف/الخصومات المفتوحة لجميع الموظفين.\n` +
+            `عدد الموظفين المتأثرين: ${impacted.length}\n` +
+            `إجمالي المبالغ التي ستُصفّر: ${xf(total)}\n\n` +
+            `هل تريد المتابعة؟`
+        );
+        if (!ok) return;
+
+        db.employees.forEach(e => { e.loans = 0; });
+        db.hrCycle.cycleNumber = Number(db.hrCycle.cycleNumber || 1) + 1;
+        db.hrCycle.lastResetAt = Date.now();
+        db.hrCycle.nextAutoResetAt = calcNextAutoResetFromNow();
+        db.hrCycle.payrollClosed = false;
+        db.hrCycle.warnedPendingClose = false;
+        await persistDb();
+        updateKPIs();
+        renderEmployees();
+        renderPayroll();
+        if (currentProfileId) openFullProfile(currentProfileId);
+        alert('تم بدء دورة شهر جديد وتصفير حسابات الموظفين بنجاح.');
+    });
 
     // Role Tabs click logic
     document.querySelectorAll('.role-tab').forEach(btn => {
@@ -1167,6 +1614,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderEmployees();
         }, 300);
     });
+    document.getElementById('search-voucher')?.addEventListener('input', (e) => {
+        voucherSearchQuery = String(e.target.value || '').trim();
+        renderVouchers();
+    });
 
     renderEmployees();
 
@@ -1176,6 +1627,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!db.employees) db.employees = [];
             if (!db.hrExpenses) db.hrExpenses = [];
             if (!db.attendance) db.attendance = [];
+            ensureVoucherConfig();
+            if (ensureVoucherNumbersOnDb()) await persistDb();
             updateKPIs();
             renderEmployees();
             renderPayroll();

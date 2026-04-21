@@ -162,6 +162,25 @@ window.addEventListener('beforeprint', () => {
     let pageTitle = document.title;
     const h2 = document.querySelector('.top-header h2') || document.querySelector('.page-title h1') || document.querySelector('h2');
     if(h2) pageTitle = h2.innerText;
+
+    // Detect filtered period (Today, Yesterday, Custom Range, etc.)
+    let periodInfo = "";
+    const periodSelect = document.querySelector('select[id*="period-filter"]');
+    if (periodSelect) {
+        const val = periodSelect.value;
+        const text = periodSelect.options[periodSelect.selectedIndex].text;
+        if (val !== 'all') {
+            periodInfo = text;
+            if (val === 'custom') {
+                const fDate = document.querySelector('input[id*="date-from"]')?.value;
+                const tDate = document.querySelector('input[id*="date-to"]')?.value;
+                if (fDate && tDate) {
+                    periodInfo = `الفترة من: ${fDate} إلى: ${tDate}`;
+                }
+            }
+            periodInfo = `<div style="font-size:13px; font-weight:700; color:#475569 !important; margin-top:5px;">${periodInfo}</div>`;
+        }
+    }
     
     const dateStr = new Date().toLocaleString('en-GB', { 
         year: 'numeric', 
@@ -187,6 +206,7 @@ window.addEventListener('beforeprint', () => {
                 <img src="${logoSrc}" style="width:auto;height:auto;max-height:120px;max-width:280px;object-fit:contain;margin-bottom:12px;" onerror="this.src='placeholder.svg'">
                 <div style="background:#f8fafc !important; padding:6px 20px; border:2px solid #cbd5e1 !important; border-radius:25px;">
                     <span style="font-size:17px; font-weight:800; color:#0f172a !important;">${pageTitle}</span>
+                    ${periodInfo}
                 </div>
             </div>
             

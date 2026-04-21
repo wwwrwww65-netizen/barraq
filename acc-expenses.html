@@ -63,8 +63,12 @@
             <header class="top-header acc-header">
                 <div>
                     <h2>سجل المصروفات العامة (سندات صرف)</h2>
-                            <div style="display:flex;gap:10px;"><button class="btn btn-primary" style="font-size:13px" onclick="window.exportTableToCSV('expenses.csv')"><i class="ph ph-export"></i> تصدير (Excel)</button><button class="btn btn-outline" style="font-size:13px; margin-right:10px; border-color:#e11d48; color:#e11d48;" onclick="exportExpensesPDF()"><i class="ph ph-file-pdf"></i> تصدير (PDF)</button><button class="btn btn-outline" style="font-size:13px" onclick="window.print()"><i class="ph ph-printer"></i> طباعة</button></div>
-                    <p style="color:var(--text-secondary); font-size:14px; margin-top:5px;">سجل مصروفات التشغيل (إيجارات، رواتب، كهرباء، ونثريات يومية).</p>
+                    <div class="acc-header-btn-group" style="display:flex; gap:10px; margin-top:10px;">
+                        <button class="btn btn-primary" style="font-size:13px" onclick="window.exportTableToCSV('expenses.csv')"><i class="ph ph-export"></i> تصدير (Excel)</button>
+                        <button class="btn btn-outline" style="font-size:13px; border-color:#e11d48; color:#e11d48;" onclick="exportExpensesPDF()"><i class="ph ph-file-pdf"></i> تصدير (PDF)</button>
+                        <button class="btn btn-outline" style="font-size:13px" onclick="window.print()"><i class="ph ph-printer"></i> طباعة</button>
+                    </div>
+                    <p style="color:var(--text-secondary); font-size:13px; margin-top:8px;">سجل مصروفات التشغيل (إيجارات، رواتب، كهرباء، ونثريات يومية).</p>
                 </div>
                 <div class="header-actions">
                     <button class="btn btn-primary" style="background:var(--accent-blue)" id="btn-add-expense"><i class="ph ph-plus-circle"></i> إصدار سند صرف جديد</button>
@@ -104,25 +108,27 @@
                         </div>
                     </div>
                     
-                    <table class="data-table data-table-expenses">
-                        <thead>
-                            <tr>
-                                <th>رقم السند</th>
-                                <th>التاريخ</th>
-                                <th>تصنيف المصروف</th>
-                                <th>الوصف والبيان</th>
-                                <th>عليه مدين (<span class="js-cur-sym">ر.س</span>)</th>
-                                <th>له دائن (<span class="js-cur-sym">ر.س</span>)</th>
-                                <th>طريقة الدفع</th>
-                                <th>الرصيد (<span class="js-cur-sym">ر.س</span>)</th>
-                                <th class="no-print">إجراء</th>
-                            </tr>
-                        </thead>
-                        <tbody id="exp-tbody">
-                            <!-- Filled by JS -->
-                        </tbody>
-                        <tfoot id="exp-tfoot"></tfoot>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="data-table data-table-expenses">
+                            <thead>
+                                <tr>
+                                    <th>رقم السند</th>
+                                    <th>التاريخ</th>
+                                    <th>تصنيف المصروف</th>
+                                    <th>الوصف والبيان</th>
+                                    <th>عليه مدين (<span class="js-cur-sym">ر.س</span>)</th>
+                                    <th>له دائن (<span class="js-cur-sym">ر.س</span>)</th>
+                                    <th>طريقة الدفع</th>
+                                    <th>الرصيد (<span class="js-cur-sym">ر.س</span>)</th>
+                                    <th class="no-print">إجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody id="exp-tbody">
+                                <!-- Filled by JS -->
+                            </tbody>
+                            <tfoot id="exp-tfoot"></tfoot>
+                        </table>
+                    </div>
                 </div>
             </div>
         </main>

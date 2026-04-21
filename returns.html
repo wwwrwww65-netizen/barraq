@@ -182,6 +182,56 @@
         </main>
     </div>
 
+    <!-- Returns Confirmation Modal -->
+    <div class="modal-overlay" id="return-modal">
+        <div class="return-modal-content">
+            <div class="modal-header-danger">
+                <i class="ph-fill ph-warning-circle"></i>
+                <h3>تأكيد عملية إرجاع الأموال</h3>
+            </div>
+            <div class="modal-body">
+                <div class="return-info-summary">
+                    <div class="info-item">
+                        <span class="label">رقم الطلب</span>
+                        <span class="value" id="modal-order-id">ORD-0000</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">إجمالي المبلغ المسترد</span>
+                        <span class="value amount" id="modal-order-total">0.00 ر.س</span>
+                    </div>
+                </div>
+
+                <div class="payment-method-selector">
+                    <label>اختر طريقة رد المبلغ للعميل:</label>
+                    <div class="method-options">
+                        <label class="method-option">
+                            <input type="radio" name="return-method" value="نقدي" checked>
+                            <div class="method-box">
+                                <i class="ph ph-money"></i>
+                                <span>نقدي (كاش)</span>
+                            </div>
+                        </label>
+                        <label class="method-option">
+                            <input type="radio" name="return-method" value="شبكة">
+                            <div class="method-box">
+                                <i class="ph ph-credit-card"></i>
+                                <span>بطاقة (شبكة)</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <p style="color: var(--text-muted); font-size: 13px; text-align: center; line-height: 1.6;">
+                    تنبيه: سيتم تسجيل هذه العملية كمرتجع مالي، وسيتم تحديث سجل المبيعات والمخزون بشكل آلي.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-confirm-return" id="confirm-return-final">تأكيد الإرجاع</button>
+                <button class="btn-cancel-modal" id="cancel-return-modal">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="currency-helper.js"></script>
     <script src="script.js"></script>
@@ -189,4 +239,3 @@
     <script src="returns.js"></script>
 </body>
 </html>
-

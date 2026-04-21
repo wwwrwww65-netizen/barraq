@@ -9,6 +9,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     function curSym() {
         return window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س';
     }
+    function splitOrderAmountsGlobal(o) {
+        const pm = String(o?.paymentMethod || '').trim();
+        const total = Number(o?.total) || 0;
+        if (pm === 'مجزأ') {
+            const c = Number(o?.splitCash) || 0;
+            const n = Number(o?.splitNetwork) || 0;
+            if (c || n) return { cash: c, network: n };
+            return { cash: 0, network: total };
+        }
+        if (pm.includes('كاش') || pm === 'cash') return { cash: total, network: 0 };
+        return { cash: 0, network: total };
+    }
+    function splitReturnAmountsGlobal(r) {
+        const pm = String(r?.method || '').trim();
+        const amount = Number(r?.amount) || 0;
+        if (pm === 'مجزأ') {
+            const c = Number(r?.splitCash) || 0;
+            const n = Number(r?.splitNetwork) || 0;
+            if (c || n) return { cash: c, network: n };
+            return { cash: 0, network: amount };
+        }
+        if (pm.includes('كاش') || pm === 'cash') return { cash: amount, network: 0 };
+        return { cash: 0, network: amount };
+    }
 
     const { getReceiptFooterLine, escapeHtmlPrint } = require('./thermal-receipt-updated.js');
 
@@ -66,6 +90,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Item sales tracking for Top Selling
     let itemSalesMap = {}; 
 
+    function splitOrderAmounts(o) {
+        const pm = String(o.paymentMethod || '').trim();
+        const total = Number(o.total) || 0;
+        if (pm === 'مجزأ') {
+            const c = Number(o.splitCash) || 0;
+            const n = Number(o.splitNetwork) || 0;
+            if (c || n) return { cash: c, network: n };
+            return { cash: 0, network: total };
+        }
+        if (pm.includes('كاش') || pm === 'cash') return { cash: total, network: 0 };
+        return { cash: 0, network: total };
+    }
+    function splitReturnAmounts(r) {
+        const pm = String(r.method || '').trim();
+        const amount = Number(r.amount) || 0;
+        if (pm === 'مجزأ') {
+            const c = Number(r.splitCash) || 0;
+            const n = Number(r.splitNetwork) || 0;
+            if (c || n) return { cash: c, network: n };
+            return { cash: 0, network: amount };
+        }
+        if (pm.includes('كاش') || pm === 'cash') return { cash: amount, network: 0 };
+        return { cash: 0, network: amount };
+    }
+
     orders.forEach(o => {
         dailySales += o.total;
         
@@ -73,11 +122,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         let orderTax = o.total - (o.total / (1 + TAX_RATE));
         totalTax += orderTax;
 
-        if(o.paymentMethod && o.paymentMethod.includes('كاش')) {
-            cashSales += o.total;
-        } else {
-            networkSales += o.total;
-        }
+        const pay = splitOrderAmounts(o);
+        cashSales += pay.cash;
+        networkSales += pay.network;
 
         if(Array.isArray(o.items)) {
             o.items.forEach(itm => {
@@ -94,19 +141,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     returns.forEach(r => {
         dailySales -= r.amount;
         totalReturnsAmt += r.amount;
-        if(r.method && r.method.includes('كاش')) {
-            cashSales -= r.amount;
-        } else {
-            networkSales -= r.amount;
-        }
+        const back = splitReturnAmounts(r);
+        cashSales -= back.cash;
+        networkSales -= back.network;
     });
 
     let totalExp = 0;
     hrExpenses.forEach(h => totalExp += h.amount);
 
-    let shiftCashFloat = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
-    // Only cash goes to drawer
-    let drawerBalance = shiftCashFloat + cashSales - totalExp + (totalReturnsAmt < 0 ? 0 : 0); // returns are handled in cashSales directly since cashSales -= r.amount
+    // Drawer balance must always be shift-based (today + after last Z), independent from current dashboard filter.
+    const shiftCashFloat = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
+    const shiftOrders = (db.orders || []).filter(o =>
+        window.isDateInPeriod(o.timestamp || o.dateStr || o.date, 'today') &&
+        ((o.timestamp || o.createdAt || Date.now()) >= lastZReport)
+    );
+    const shiftReturns = (db.returns || []).filter(r =>
+        window.isDateInPeriod(r.timestamp || r.date, 'today') &&
+        ((r.timestamp || Date.now()) >= lastZReport)
+    );
+    const shiftExpenses = ((db.hrExpenses || []).concat(db.expenses || [])).filter(h =>
+        window.isDateInPeriod(h.timestamp || h.date, 'today') &&
+        ((h.timestamp || new Date(h.date).getTime()) >= lastZReport)
+    );
+
+    let shiftCashSales = 0;
+    shiftOrders.forEach(o => {
+        const pay = splitOrderAmounts(o);
+        shiftCashSales += pay.cash;
+    });
+    shiftReturns.forEach(r => {
+        const back = splitReturnAmounts(r);
+        shiftCashSales -= back.cash;
+    });
+
+    let shiftTotalExp = 0;
+    shiftExpenses.forEach(h => { shiftTotalExp += Number(h.amount) || 0; });
+
+    // Keep same accounting rule used in expenses page summary.
+    const drawerBalance = shiftCashFloat + shiftCashSales - shiftTotalExp;
 
     window.__dashboardData = { dailySales, cashSales, networkSales, totalTax, totalReturnsAmt, totalExp, shiftCashFloat, drawerBalance };
 
@@ -262,7 +334,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 else if(txt.includes('شهر')) p = 'month';
             }
             currentDashboardPeriod = p || 'today';
-            loadDashboardData(currentDashboardPeriod);
+            loadDashboardData(currentDashboardPeriod).catch((err) => {
+                console.error('Dashboard reload failed:', err);
+                alert('حدث خطأ أثناء تحديث بيانات اللوحة.');
+            });
         });
     });
 
@@ -273,18 +348,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         initPeriod = activeBtn.dataset.period || (activeBtn.innerText.includes('اليوم') ? 'today' : (activeBtn.innerText.includes('الأمس') ? 'yesterday' : 'week'));
     }
     currentDashboardPeriod = initPeriod;
-    await loadDashboardData(initPeriod);
+    try {
+        await loadDashboardData(initPeriod);
+    } catch (err) {
+        console.error('Initial dashboard load failed:', err);
+    }
 
     if (typeof window.registerPosDatabaseRefresh === 'function') {
-        window.registerPosDatabaseRefresh(() => loadDashboardData(currentDashboardPeriod));
+        window.registerPosDatabaseRefresh(() =>
+            loadDashboardData(currentDashboardPeriod).catch((err) => {
+                console.error('Dashboard refresh failed:', err);
+            }),
+        );
     }
 
     // --- 5. SHIFT REPORT MODAL LOGIC ---
+    window.__floatModalMode = 'set';
+
+    function setupFloatModalUi(mode) {
+        const titleEl = document.getElementById('floatModalTitle');
+        const labelEl = document.getElementById('floatModalLabel');
+        const saveEl = document.getElementById('floatModalSaveBtn');
+        if (mode === 'add') {
+            if (titleEl) titleEl.innerHTML = '<i class="ph ph-plus-circle"></i> إضافة رصيد إضافي للدرج';
+            if (labelEl) labelEl.textContent = 'أدخل المبلغ الإضافي الذي تريد إضافته للدرج:';
+            if (saveEl) saveEl.textContent = 'إضافة الرصيد';
+            return;
+        }
+        if (titleEl) titleEl.innerHTML = '<i class="ph ph-money"></i> رصيد مبدئي للدرج';
+        if (labelEl) labelEl.textContent = 'أدخل العهدة المبدئية للدرج:';
+        if (saveEl) saveEl.textContent = 'حفظ الرصيد';
+    }
+
     window.openShiftFloatModal = function() {
+        window.__floatModalMode = 'set';
         const currentFloat = localStorage.getItem('shift_cash_float') || 0;
         const modal = document.getElementById('floatModal');
         const input = document.getElementById('floatInput');
         if(modal && input) {
+            setupFloatModalUi('set');
             input.value = currentFloat;
             modal.style.display = 'flex';
         } else {
@@ -308,10 +410,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         const input = document.getElementById('floatInput');
         if(input) {
             const val = parseFloat(input.value) || 0;
-            localStorage.setItem('shift_cash_float', val);
-            alert('تم تعيين الرصيد الافتتاحي للدرج بنجاح.');
+            if (window.__floatModalMode === 'add') {
+                if (val <= 0) {
+                    alert('يرجى إدخال مبلغ إضافي صحيح أكبر من صفر.');
+                    return;
+                }
+                const currentFloat = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
+                const newFloat = currentFloat + val;
+                localStorage.setItem('shift_cash_float', newFloat);
+                alert(`تمت إضافة ${curPlain(val)} للدرج.\nالرصيد الافتتاحي الجديد: ${curPlain(newFloat)}.`);
+            } else {
+                localStorage.setItem('shift_cash_float', val);
+                alert('تم تعيين الرصيد الافتتاحي للدرج بنجاح.');
+            }
             window.location.reload();
         }
+    };
+
+    window.addExtraDrawerFloat = function() {
+        window.__floatModalMode = 'add';
+        const modal = document.getElementById('floatModal');
+        const input = document.getElementById('floatInput');
+        if (modal && input) {
+            setupFloatModalUi('add');
+            input.value = '';
+            input.focus();
+            modal.style.display = 'flex';
+            return;
+        }
+        const userInput = prompt('أدخل المبلغ الإضافي لإيداعه في الدرج:', '0');
+        if (userInput === null) return;
+        const addVal = parseFloat(userInput);
+        if (!Number.isFinite(addVal) || addVal <= 0) {
+            alert('يرجى إدخال مبلغ إضافي صحيح أكبر من صفر.');
+            return;
+        }
+        const currentFloat = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
+        const newFloat = currentFloat + addVal;
+        localStorage.setItem('shift_cash_float', newFloat);
+        alert(`تمت إضافة ${curPlain(addVal)} للدرج.\nالرصيد الافتتاحي الجديد: ${curPlain(newFloat)}.`);
+        window.location.reload();
     };
 
     window.openShiftReport = function() {
@@ -406,6 +544,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // =============================================
 
     window.openDayCloseReport = async function() {
+        try {
         const modal = document.getElementById('dayCloseModal');
         if (!modal) return;
 
@@ -446,9 +585,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Read database
         let db = await window.dbRead();
-        let allOrders = db.orders || [];
-        let allReturns = db.returns || [];
-        let allHrExpenses = (db.hrExpenses || []).concat(db.expenses || []);
+        if (!db || typeof db !== 'object') {
+            throw new Error('صيغة قاعدة البيانات غير صالحة (dbRead لم يرجع كائن).');
+        }
+        if (!Array.isArray(db.orders)) console.warn('[DayClose] db.orders is not an array:', db.orders);
+        if (!Array.isArray(db.returns)) console.warn('[DayClose] db.returns is not an array:', db.returns);
+        if (!Array.isArray(db.hrExpenses)) console.warn('[DayClose] db.hrExpenses is not an array:', db.hrExpenses);
+        if (!Array.isArray(db.expenses)) console.warn('[DayClose] db.expenses is not an array:', db.expenses);
+        const allOrders = Array.isArray(db?.orders) ? db.orders : [];
+        const allReturns = Array.isArray(db?.returns) ? db.returns : [];
+        const hrExpenses = Array.isArray(db?.hrExpenses) ? db.hrExpenses : [];
+        const extraExpenses = Array.isArray(db?.expenses) ? db.expenses : [];
+        const allHrExpenses = hrExpenses.concat(extraExpenses);
 
         // Filter only TODAY's data (full day, ignore shift boundaries)
         const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -502,13 +650,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             let cash = 0, net = 0, tax = 0, ret = 0, exp = 0;
             rOrders.forEach(o => {
                 tax += o.total - (o.total / (1 + TAX_RATE));
-                if (o.paymentMethod && o.paymentMethod.includes('كاش')) cash += o.total;
-                else net += o.total;
+                const pay = splitOrderAmountsGlobal(o);
+                cash += pay.cash;
+                net += pay.network;
             });
             rReturns.forEach(r => {
                 ret += r.amount;
-                if (r.method && r.method.includes('كاش')) cash -= r.amount;
-                else net -= r.amount;
+                const back = splitReturnAmountsGlobal(r);
+                cash -= back.cash;
+                net -= back.network;
             });
             rExpenses.forEach(ex => exp += ex.amount);
 
@@ -538,6 +688,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         const dayTotalIncome = dayTotalCash + dayTotalNet;
         const dayNetTotal    = dayTotalIncome - dayTotalRet - dayTotalExp;
+        const dayDrawerTotal = allDayShifts.reduce((sum, s) => sum + (Number(s.drawerBalance) || 0), 0);
 
         // Populate summary
         document.getElementById('day-shifts-count').innerText  = allDayShifts.length + ' وردية';
@@ -548,7 +699,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('day-total-tax').innerText     = curPlain(dayTotalTax);
         document.getElementById('day-total-returns').innerText = curPlain(dayTotalRet);
         document.getElementById('day-total-expenses').innerText= curPlain(dayTotalExp);
-        document.getElementById('day-net-total').innerText     = curPlain(dayNetTotal);
+        document.getElementById('day-total-sales').innerText   = curPlain(dayTotalIncome);
+        document.getElementById('day-drawer-total').innerText  = curPlain(dayDrawerTotal);
 
         // ---- Render Per-Shift Breakdown ----
         const breakdownEl = document.getElementById('day-shifts-breakdown');
@@ -578,9 +730,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         // Store snapshot for confirmCloseDay
-        window.__dayCloseSnapshot = { allDayShifts, dayTotalCash, dayTotalNet, dayTotalTax, dayTotalRet, dayTotalExp, dayTotalIncome, dayNetTotal, dayTotalOrders, dayDate: todayStr, closedAt: now.getTime() };
+        window.__dayCloseSnapshot = { allDayShifts, dayTotalCash, dayTotalNet, dayTotalTax, dayTotalRet, dayTotalExp, dayTotalIncome, dayNetTotal, dayDrawerTotal, dayTotalOrders, dayDate: todayStr, closedAt: now.getTime() };
 
         modal.style.display = 'flex';
+        } catch (error) {
+            const errMsg = (error && error.message) ? error.message : String(error);
+            console.error('openDayCloseReport error:', error);
+            alert(`تعذر فتح تقرير إقفال اليوم.\nالسبب: ${errMsg}`);
+        }
     };
 
     window.closeDayCloseReport = function() {
@@ -678,14 +835,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const date = document.getElementById('day-date').innerText;
         
         // Collect all rows from day report
-        const totalOrders = document.getElementById('day-total-orders')?.innerText || '0';
+        const totalOrders = document.getElementById('day-orders-count')?.innerText || '0';
         const totalCash = document.getElementById('day-total-cash')?.innerText || curPlain(0);
         const totalNetwork = document.getElementById('day-total-network')?.innerText || curPlain(0);
         const totalIncome = document.getElementById('day-total-income')?.innerText || curPlain(0);
         const totalTax = document.getElementById('day-total-tax')?.innerText || curPlain(0);
         const totalReturns = document.getElementById('day-total-returns')?.innerText || curPlain(0);
         const totalExpenses = document.getElementById('day-total-expenses')?.innerText || curPlain(0);
-        const netTotal = document.getElementById('day-net-total')?.innerText || curPlain(0);
+        const totalSales = document.getElementById('day-total-sales')?.innerText || curPlain(0);
+        const drawerTotal = document.getElementById('day-drawer-total')?.innerText || curPlain(0);
 
         console.log('🖨️  Printing day closure report...');
         console.log('   Logo:', logoBase64 ? '✓ Base64 (' + logoBase64.length + ' bytes)' : '✗ No logo');
@@ -960,7 +1118,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         <table class="report-table">
             <tbody>
-                <tr class="grand-total"><td>صافي اليوم</td><td>${netTotal}</td></tr>
+                <tr class="grand-total"><td>إجمالي المبيعات</td><td>${totalSales}</td></tr>
+                <tr class="row-strong"><td>رصيد الدرج</td><td>${drawerTotal}</td></tr>
             </tbody>
         </table>
         

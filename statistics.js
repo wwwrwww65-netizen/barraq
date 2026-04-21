@@ -103,17 +103,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         let cashSales = 0;
         let cardSales = 0;
         
+        function splitOrderAmounts(o) {
+            const pm = String(o.paymentMethod || '').trim();
+            const total = Number(o.total) || 0;
+            if (pm === 'مجزأ') {
+                const c = Number(o.splitCash) || 0;
+                const n = Number(o.splitNetwork) || 0;
+                if (c || n) return { cash: c, card: n };
+                return { cash: 0, card: total };
+            }
+            if (pm.includes('كاش') || pm === 'cash') return { cash: total, card: 0 };
+            return { cash: 0, card: total };
+        }
+        function splitReturnAmounts(r) {
+            const pm = String(r.method || '').trim();
+            const amount = Number(r.amount) || 0;
+            if (pm === 'مجزأ') {
+                const c = Number(r.splitCash) || 0;
+                const n = Number(r.splitNetwork) || 0;
+                if (c || n) return { cash: c, card: n };
+                return { cash: 0, card: amount };
+            }
+            if (pm.includes('كاش') || pm === 'cash') return { cash: amount, card: 0 };
+            return { cash: 0, card: amount };
+        }
+
         orders.forEach(o => {
             totalRevenue += o.total;
-            if((o.paymentMethod||'').includes('كاش')) cashSales += o.total;
-            else cardSales += o.total;
+            const pay = splitOrderAmounts(o);
+            cashSales += pay.cash;
+            cardSales += pay.card;
         });
 
         let totalReturns = 0;
         returns.forEach(r => {
             totalReturns += r.amount;
-            if((r.method||'').includes('كاش')) cashSales -= r.amount;
-            else cardSales -= r.amount;
+            const back = splitReturnAmounts(r);
+            cashSales -= back.cash;
+            cardSales -= back.card;
         });
 
         const netRevenue = totalRevenue - totalReturns;

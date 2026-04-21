@@ -129,6 +129,7 @@
                             <a href="cashier-report.html" class="btn btn-outline" style="text-decoration: none; border-color: #a78bfa; color: #a78bfa;"><i class="ph ph-identification-card"></i> تقارير الكاشيرين</a>
                             <a href="pos.html" class="btn btn-primary" style="text-decoration: none;"><i class="ph ph-plus-circle"></i> طلب جديد</a>
                             <button class="btn btn-outline" style="border-color: #fcd34d; color: #fcd34d; background: transparent;" onclick="openShiftFloatModal()"><i class="ph ph-money"></i> رصيد مبدئي للدرج</button>
+                            <button class="btn btn-outline" style="border-color: #22c55e; color: #22c55e; background: transparent;" onclick="addExtraDrawerFloat()"><i class="ph ph-plus-circle"></i> إضافة رصيد إضافي للدرج</button>
                             <button class="btn btn-danger" onclick="openShiftReport()"><i class="ph ph-lock-key"></i> إغلاق الوردية</button>
                             <button class="btn btn-danger" style="background: linear-gradient(135deg, #7c3aed, #4f46e5); border:none;" onclick="openDayCloseReport()"><i class="ph ph-moon-stars"></i> اقفال اليوم</button>
                         </div>
@@ -445,8 +446,12 @@
                     <div class="receipt-divider"></div>
 
                     <div class="receipt-row bold grand-total">
-                        <span>صافي اليوم الكامل:</span>
-                        <span id="day-net-total">0.00 <span class="js-cur-sym">ر.س</span></span>
+                        <span>إجمالي المبيعات:</span>
+                        <span id="day-total-sales">0.00 <span class="js-cur-sym">ر.س</span></span>
+                    </div>
+                    <div class="receipt-row bold highlight-drawer">
+                        <span>رصيد الدرج:</span>
+                        <span id="day-drawer-total">0.00 <span class="js-cur-sym">ر.س</span></span>
                     </div>
 
                     <div class="receipt-footer" id="day-footer">
@@ -466,16 +471,16 @@
         <div id="floatModal" class="shift-modal" style="display:none;">
             <div class="shift-modal-content" style="width: 350px;">
                 <div class="shift-modal-header">
-                    <h2><i class="ph ph-money"></i> رصيد مبدئي للدرج</h2>
+                    <h2 id="floatModalTitle"><i class="ph ph-money"></i> رصيد مبدئي للدرج</h2>
                     <button class="close-btn" onclick="closeShiftFloatModal()"><i class="ph ph-x"></i></button>
                 </div>
                 <div style="padding: 24px;">
-                    <label style="display:block; margin-bottom:8px; font-weight:bold; color:var(--text-primary);">أدخل العهدة المبدئية للدرج:</label>
+                    <label id="floatModalLabel" style="display:block; margin-bottom:8px; font-weight:bold; color:var(--text-primary);">أدخل العهدة المبدئية للدرج:</label>
                     <input type="number" id="floatInput" class="form-input" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-primary); font-size:16px;" placeholder="0.00" min="0" step="0.01">
                 </div>
                 <div class="shift-modal-actions">
                     <button class="btn btn-outline" style="border-color:var(--border-color); color:var(--text-primary);" onclick="closeShiftFloatModal()">إلغاء</button>
-                    <button class="btn btn-primary" style="background:#fcd34d; border:none; color:#000; font-weight:bold;" onclick="saveShiftFloatModal()">حفظ الرصيد</button>
+                    <button id="floatModalSaveBtn" class="btn btn-primary" style="background:#fcd34d; border:none; color:#000; font-weight:bold;" onclick="saveShiftFloatModal()">حفظ الرصيد</button>
                 </div>
             </div>
         </div>

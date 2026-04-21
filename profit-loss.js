@@ -121,7 +121,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 3. مصروفات فعلية من القاعدة (بدون أرقام وهمية)
         function hrCountsAsSalaryExpense(hr) {
             const t = String(hr.type || '');
-            return !t.includes('خصم') && !t.includes('جزاء');
+            if (t.includes('سلفة')) return true;
+            return !t.includes('خصم / جزاء') && !t.includes('جزاء');
         }
         let totalSalaries = 0;
         hrExpenses.forEach((hr) => {

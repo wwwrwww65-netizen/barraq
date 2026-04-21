@@ -572,12 +572,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const waSettingsRaw = localStorage.getItem('wa_settings');
     if(waSettingsRaw) {
         const waOpts = JSON.parse(waSettingsRaw);
+        // If admin exists in storage, always prefer it over the HTML default.
         if(waOpts.admin) inputWaAdmin.value = waOpts.admin;
         if (inputWaHubIp && waOpts.hubIp) inputWaHubIp.value = waOpts.hubIp;
         if(waOpts.loans !== undefined) inputWaLoans.checked = waOpts.loans;
         if(waOpts.reports !== undefined) inputWaReports.checked = waOpts.reports;
         const setExpenses = document.getElementById('set-wa-expenses');
         if(setExpenses && waOpts.expenses !== undefined) setExpenses.checked = waOpts.expenses;
+
+        // Repair case: wa_settings exists but admin is empty, while the UI has a value (HTML default or user-filled).
+        // Without this, the input may look filled but staff/accounting pages will still read an empty admin and skip sending.
+        try {
+            const uiAdmin = (inputWaAdmin?.value || '').trim();
+            if (!waOpts.admin && uiAdmin) {
+                waOpts.admin = uiAdmin;
+                localStorage.setItem('wa_settings', JSON.stringify(waOpts));
+                console.warn('[WA][Settings] wa_settings.admin was empty -> repaired from UI value.');
+            }
+        } catch (e) {}
+    } else {
+        // Bootstrap wa_settings from currently visible UI values (including default admin value)
+        const waBootstrap = {
+            admin: (inputWaAdmin?.value || '').trim(),
+            hubIp: (inputWaHubIp?.value || '').trim(),
+            loans: inputWaLoans ? inputWaLoans.checked : true,
+            expenses: document.getElementById('set-wa-expenses') ? document.getElementById('set-wa-expenses').checked : true,
+            reports: inputWaReports ? inputWaReports.checked : true
+        };
+        localStorage.setItem('wa_settings', JSON.stringify(waBootstrap));
+        console.warn('[WA][Settings] wa_settings was missing -> bootstrapped from current form values.');
     }
 
     try {
@@ -728,7 +751,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Capture save to storage
     form.addEventListener('submit', () => {
         const waData = {
-            admin: inputWaAdmin.value,
+            admin: (inputWaAdmin?.value || '').trim(),
             hubIp: inputWaHubIp ? inputWaHubIp.value.trim() : '',
             loans: inputWaLoans.checked,
             expenses: document.getElementById('set-wa-expenses') ? document.getElementById('set-wa-expenses').checked : true,

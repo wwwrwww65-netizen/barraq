@@ -292,3 +292,51 @@
     .cust-avatar { width: 50px; height: 50px; font-size: 18px; }
     .cust-info h3 { font-size: 15px; }
 }
+
+/* =========================================
+   LIGHT THEME OVERRIDES FOR CUSTOMERS
+   ========================================= */
+body.light-theme .cust-toolbar,
+body.light-theme .cust-kpi-card,
+body.light-theme .customer-card,
+body.light-theme .modal-content {
+    background: #fff !important;
+}
+
+body.light-theme .cust-search input {
+    color: #1e293b !important;
+}
+
+body.light-theme .cust-filters {
+    background: #f1f5f9 !important;
+}
+
+body.light-theme .cust-filter-btn:not(.active):hover {
+    color: #1e293b !important;
+}
+
+body.light-theme .cust-kpi-info h2,
+body.light-theme .cust-info h3,
+body.light-theme .stat-item strong,
+body.light-theme .new-cust-card h3,
+body.light-theme .modal-header h3 {
+    color: #1e293b !important;
+}
+
+body.light-theme .cust-stats {
+    background: #f8fafc !important;
+}
+
+body.light-theme .cust-btn {
+    background: #f1f5f9 !important;
+}
+
+body.light-theme .input-modern {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.light-theme .cust-kpi-card {
+    background: #fff !important;
+}

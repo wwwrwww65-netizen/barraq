@@ -7,6 +7,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentOrderType = 'محلي';
     let discountAmount = 0;
     let currentFinalTotal = 0;
+    let isEditingOrder = false;
+    let editingOrderId = '';
+
+    function setEditModeBadge(isOn, orderIdText) {
+        const badge = document.getElementById('pos-edit-mode-badge');
+        const text = document.getElementById('pos-edit-mode-text');
+        if (!badge || !text) return;
+        if (isOn) {
+            text.innerText = `وضع تعديل الطلب: ${orderIdText || ''}`.trim();
+            badge.style.display = 'inline-flex';
+        } else {
+            badge.style.display = 'none';
+            text.innerText = 'وضع تعديل طلب';
+        }
+    }
 
     // ── Dynamic Tax Rate (from restaurant_settings) ─────────────────────────
     function getTaxRate() {
@@ -398,6 +413,55 @@ document.addEventListener('DOMContentLoaded', async () => {
         calculateChange();
     }
 
+    function activateOrderTypeTab(typeValue) {
+        const target = typeValue || 'محلي';
+        const btns = document.querySelectorAll('.type-btn');
+        btns.forEach((b) => b.classList.remove('active'));
+        const hit = Array.from(btns).find((b) => (b.dataset.type || '') === target);
+        if (hit) {
+            hit.classList.add('active');
+            currentOrderType = target;
+        }
+    }
+
+    function loadOrderEditDraftIfAny() {
+        let raw = '';
+        try {
+            raw = localStorage.getItem('pos_order_edit_draft') || '';
+            if (!raw) return;
+            const draft = JSON.parse(raw);
+            if (!draft || !Array.isArray(draft.items) || draft.items.length === 0) return;
+
+            cart = draft.items.map((it) => ({
+                id: String(it.id),
+                name: it.name,
+                price: Number(it.price) || 0,
+                imgSrc: it.imgSrc || it.image || 'placeholder.svg',
+                qty: Number(it.qty) > 0 ? Number(it.qty) : 1,
+            }));
+            discountAmount = 0;
+            if (discountInput) discountInput.value = '';
+            activateOrderTypeTab(draft.type || 'محلي');
+            isEditingOrder = true;
+            editingOrderId = String(draft.orderId || '').trim();
+            if (editingOrderId) {
+                orderId = editingOrderId;
+                const displayIdEl = document.getElementById('display-order-id');
+                if (displayIdEl) displayIdEl.innerText = editingOrderId;
+            }
+            setEditModeBadge(true, editingOrderId);
+            renderCart();
+            localStorage.removeItem('pos_order_edit_draft');
+        } catch (e) {
+            console.error('Failed loading edit draft on POS', e);
+            localStorage.removeItem('pos_order_edit_draft');
+            setEditModeBadge(false);
+        }
+    }
+
+    loadOrderEditDraftIfAny();
+    if (!isEditingOrder) setEditModeBadge(false);
+
 
     /* ===============================
        Checkout Modal & Payment
@@ -543,9 +607,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             } catch (e) {}
 
-            // Securely save via IPC to backend SQLite (Atomic Transaction)
-            const { ipcRenderer } = require('electron');
-            await ipcRenderer.invoke('db-save-order', orderData);
+            // Save mode:
+            // - normal: append as new order via db-save-order
+            // - edit mode: replace existing order by same orderId
+            if (isEditingOrder && editingOrderId) {
+                const dbNow = await window.dbRead();
+                dbNow.orders = dbNow.orders || [];
+                const idx = dbNow.orders.findIndex((o) => String(o.orderId) === String(editingOrderId));
+                if (idx >= 0) {
+                    const oldOrder = dbNow.orders[idx] || {};
+                    orderData.orderId = editingOrderId;
+                    orderData.timestamp = oldOrder.timestamp || orderData.timestamp;
+                    orderData.updatedAt = Date.now();
+                    orderData.editVersion = Number(oldOrder.editVersion || 0) + 1;
+                    dbNow.orders[idx] = orderData;
+                } else {
+                    // fallback if original missing
+                    dbNow.orders.push(orderData);
+                }
+                await window.dbWrite(dbNow);
+            } else {
+                // Securely save via IPC to backend SQLite (Atomic Transaction)
+                await ipcRenderer.invoke('db-save-order', orderData);
+            }
             
             // Fatora Integration Hook
             try {
@@ -604,13 +688,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderCart();
             modalCheckout.classList.remove('active');
 
+            const wasEditingOrder = isEditingOrder;
+            isEditingOrder = false;
+            editingOrderId = '';
+            setEditModeBadge(false);
             orderId = await generateOrderId();
             document.getElementById('display-order-id').innerText = orderId;
 
             // Non-blocking notification instead of alert()
             const successNotif = document.createElement('div');
             successNotif.style.cssText = 'position:fixed; top:20px; right:20px; background:#10b981; color:white; padding:15px 25px; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.3); z-index:9999999; display:flex; align-items:center; gap:10px; font-weight:bold; animation: slideIn 0.3s ease-out;';
-            successNotif.innerHTML = '<i class="ph-fill ph-check-circle" style="font-size:24px;"></i> <span>تم الحفظ.. جاري الطباعة التلقائية</span>';
+            successNotif.innerHTML = `<i class="ph-fill ph-check-circle" style="font-size:24px;"></i> <span>${wasEditingOrder ? 'تم تحديث الطلب.. جاري الطباعة التلقائية' : 'تم الحفظ.. جاري الطباعة التلقائية'}</span>`;
             document.body.appendChild(successNotif);
             setTimeout(() => {
                 successNotif.style.opacity = '0';

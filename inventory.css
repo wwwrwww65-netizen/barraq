@@ -22,7 +22,7 @@
     padding: 10px 20px;
     border: none;
     border-radius: var(--border-radius-md);
-    color: white;
+    color: var(--text-primary);
     font-family: inherit;
     font-size: 14px;
     font-weight: 700;
@@ -47,7 +47,7 @@
 .inv-btn-outline {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border-light);
-    color: white;
+    color: var(--text-primary);
     padding: 8px 16px;
     border-radius: var(--border-radius-md);
     font-family: inherit;
@@ -97,7 +97,7 @@
     transition: var(--transition);
     text-align: right;
     font-family: inherit;
-    color: white;
+    color: var(--text-primary);
 }
 
 
@@ -237,7 +237,7 @@
     border: none;
     border-radius: 4px;
     padding: 6px;
-    color: white;
+    color: var(--text-primary);
     cursor: pointer;
     font-size: 16px;
     transition: var(--transition);
@@ -295,7 +295,7 @@
     padding-bottom: 16px;
 }
 
-.modal-header h3 { font-size: 18px; font-weight: 700; color: white; }
+.modal-header h3 { font-size: 18px; font-weight: 700; color: var(--text-primary); }
 .btn-cancel-modal { background: none; border: none; font-size: 20px; color: var(--text-secondary); cursor: pointer; transition: 0.2s;}
 .btn-cancel-modal:hover { color: var(--accent-red); transform: rotate(90deg); }
 
@@ -322,7 +322,7 @@
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-md);
     padding: 12px 14px;
-    color: white;
+    color: var(--text-primary);
     font-family: inherit;
     font-size: 14px;
     transition: var(--transition);
@@ -471,4 +471,88 @@
         grid-template-columns: 1fr 1fr;
         gap: 8px;
     }
+}
+
+/* =========================================
+   LIGHT THEME OVERRIDES FOR INVENTORY
+   ========================================= */
+body.light-theme .inv-header {
+    background: #fff !important;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+body.light-theme .warehouse-tab {
+    background: #fff !important;
+    border-color: #e2e8f0 !important;
+    color: #1e293b !important;
+}
+
+body.light-theme .warehouse-tab:hover:not(.active) {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.light-theme .wh-icon {
+    background: #f1f5f9 !important;
+}
+
+body.light-theme .inv-main-table-card {
+    background: #fff !important;
+}
+
+body.light-theme .search-box {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+    color: #1e293b !important;
+}
+
+body.light-theme .search-box input {
+    color: #1e293b !important;
+}
+
+body.light-theme .inv-btn-outline {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+    color: #475569 !important;
+}
+
+body.light-theme .inv-btn-outline:hover {
+    background: #e2e8f0 !important;
+    border-color: #94a3b8 !important;
+    color: #1e293b !important;
+}
+
+body.light-theme .modal-box {
+    background: #ffffff !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1) !important;
+}
+
+body.light-theme .input-modern {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.light-theme .badge-barcode {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.light-theme .modal-overlay {
+    background: rgba(15, 23, 42, 0.6) !important;
+}
+
+body.light-theme .btn-cancel {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+}
+
+body.light-theme .inv-glow-indigo,
+body.light-theme .inv-glow-red {
+    text-shadow: none !important;
+}
+
+body.light-theme .inv-header h2 {
+    color: #1e293b !important;
 }

@@ -1236,6 +1236,36 @@ app.on('will-quit', () => {
 let waClient = null;
 let waReady = false;
 let waCachedQR = null; // Store latest QR so settings page gets it instantly
+let waRestartTimer = null;
+let waManualStop = false;
+let waInitializing = false;
+let waInitStartedAt = 0;
+let waInitFailures = 0;
+
+async function teardownWaClient() {
+  try {
+    if (waClient) {
+      await waClient.destroy().catch(() => {});
+    }
+  } catch (_) {}
+  waClient = null;
+  waReady = false;
+  waCachedQR = null;
+  waInitializing = false;
+}
+
+function scheduleWhatsAppRestart(reason, delayMs = 6000) {
+  if (waManualStop) {
+    console.log('[WA] Auto-restart skipped (manual stop):', reason);
+    return;
+  }
+  if (waRestartTimer) return;
+  console.log(`[WA] Scheduling auto-restart in ${delayMs}ms. Reason:`, reason);
+  waRestartTimer = setTimeout(() => {
+    waRestartTimer = null;
+    if (!waClient && !waManualStop) startWhatsApp();
+  }, delayMs);
+}
 
 // Find Chrome path (use installed Chrome for 10x faster startup)
 function findChromePath() {
@@ -1253,6 +1283,9 @@ function findChromePath() {
 
 // Core function: initialize WhatsApp client
 function startWhatsApp() {
+  waManualStop = false;
+  waInitializing = true;
+  waInitStartedAt = Date.now();
   // Don't restart if already running or connected
   if (waClient) {
     console.log('[WA] Already initialized, skipping.');
@@ -1264,6 +1297,8 @@ function startWhatsApp() {
 
     const puppeteerConfig = {
       headless: true,
+      // Important for large WA accounts or slow machines; avoids protocol timeouts during init/send.
+      protocolTimeout: 300000,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -1284,7 +1319,8 @@ function startWhatsApp() {
         '--disable-backgrounding-occluded-windows',
         '--disable-ipc-flooding-protection',
         '--memory-pressure-off',
-        '--js-flags=--max-old-space-size=256',
+        // Keep a reasonable memory ceiling; too low can cause random "zombie" behavior on big accounts.
+        '--js-flags=--max-old-space-size=512',
         // NOTE: --single-process removed — caused Chrome instability on some machines
       ],
     };
@@ -1296,7 +1332,8 @@ function startWhatsApp() {
       console.log('[WA] Chrome not found, using bundled Chromium');
     }
 
-    waClient = new Client({
+    const useRemoteVersion = waInitFailures < 3;
+    const waClientConfig = {
       authStrategy: new LocalAuth({
         clientId: 'pos-main-client',
         dataPath: path.join(app.getPath('userData'), 'wa_sessions')
@@ -1305,14 +1342,17 @@ function startWhatsApp() {
       authTimeoutMs: 0,
       qrMaxRetries: 10, // Gives user 10 refresh cycles (~3+ minutes) to get their phone ready
       restartOnAuthFail: false,
-      // SOLUTION: Force a highly stable, specific version of WhatsApp Web from a remote cloud.
-      // This GUARANTEES the connection won't get stuck on "Loading/Connecting" regardless of the PC 
-      // or what WhatsApp pushes in recent updates.
-      webVersionCache: {
+    };
+    if (useRemoteVersion) {
+      waClientConfig.webVersionCache = {
         type: 'remote',
-        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html'
-      },
-    });
+        // Newer WA Web versions tend to be more stable with recent whatsapp-web.js releases.
+        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1030410331-alpha.html'
+      };
+    } else {
+      console.warn('[WA] Falling back to default web version cache after repeated init failures.');
+    }
+    waClient = new Client(waClientConfig);
 
     waReady = false;
     waCachedQR = null;
@@ -1320,6 +1360,7 @@ function startWhatsApp() {
 
     waClient.on('qr', (qr) => {
       console.log('[WA] QR code ready - cached for instant display');
+      waInitializing = false;
       waCachedQR = qr;
       BrowserWindow.getAllWindows().forEach(win => win.webContents.send('wa-qr', qr));
     });
@@ -1345,8 +1386,33 @@ function startWhatsApp() {
       if (_forcedReadyTimer) clearTimeout(_forcedReadyTimer); // Cancel failsafe if ready fires normally
       waReady = true;
       waCachedQR = null;
+      waInitializing = false;
+      waInitFailures = 0;
       BrowserWindow.getAllWindows().forEach(win => win.webContents.send('wa-ready'));
     });
+
+    // Heartbeat: detect "zombie" sessions (connected but not working) and recover automatically.
+    // If getState fails/returns null repeatedly, reinitialize.
+    let _hbFailures = 0;
+    const _hbTimer = setInterval(async () => {
+      try {
+        if (!waClient) return;
+        const st = await waClient.getState().catch(() => null);
+        if (!st) {
+          _hbFailures += 1;
+          if (_hbFailures >= 3) {
+            console.warn('[WA] Heartbeat failed 3x -> reinitializing WhatsApp session...');
+            clearInterval(_hbTimer);
+            await teardownWaClient();
+            scheduleWhatsAppRestart('heartbeat_failed', 2500);
+          }
+          return;
+        }
+        _hbFailures = 0;
+      } catch (e) {
+        _hbFailures += 1;
+      }
+    }, 15000);
 
     waClient.on('auth_failure', (msg) => {
       console.error('[WA] Auth failure:', msg);
@@ -1354,7 +1420,10 @@ function startWhatsApp() {
       waReady = false;
       waClient = null;
       waCachedQR = null;
+      waInitializing = false;
+      waInitFailures += 1;
       BrowserWindow.getAllWindows().forEach(win => win.webContents.send('wa-disconnected', msg));
+      scheduleWhatsAppRestart(`auth_failure: ${msg}`, 8000);
     });
 
     waClient.on('disconnected', (reason) => {
@@ -1363,19 +1432,29 @@ function startWhatsApp() {
       waReady = false;
       waClient = null;
       waCachedQR = null;
+      waInitializing = false;
+      waInitFailures += 1;
       BrowserWindow.getAllWindows().forEach(win => win.webContents.send('wa-disconnected', reason));
+      scheduleWhatsAppRestart(`disconnected: ${reason}`, 6000);
     });
 
     console.log('[WA] Initializing in background...');
     waClient.initialize().catch(e => {
       console.error('[WA] Initialize error:', e);
       waClient = null;
+      waInitializing = false;
+      waInitFailures += 1;
       BrowserWindow.getAllWindows().forEach(win => win.webContents.send('wa-disconnected', e.toString()));
+      const msg = String(e?.message || e || '');
+      const isDetachedFrame = msg.toLowerCase().includes('frame was detached');
+      scheduleWhatsAppRestart(`initialize_error: ${msg}`, isDetachedFrame ? 4000 : 10000);
     });
 
   } catch(e) {
     console.error('[WA] Fatal error:', e);
     waClient = null;
+    waInitializing = false;
+    waInitFailures += 1;
   }
 }
 
@@ -1387,7 +1466,12 @@ ipcMain.on('wa-check-status', (event) => {
   } else if (waCachedQR) {
     // QR already generated and cached - send it immediately!
     event.sender.send('wa-qr', waCachedQR);
-  } else if (waClient) {
+  } else if (waClient || waInitializing) {
+    // If init hangs too long, auto-recover then restart.
+    if (waInitializing && waInitStartedAt && (Date.now() - waInitStartedAt) > 60000) {
+      console.warn('[WA] Init appears stuck >60s. Reinitializing...');
+      teardownWaClient().finally(() => startWhatsApp());
+    }
     // Still loading (Chrome starting up)
     event.sender.send('wa-still-loading');
   } else {
@@ -1418,15 +1502,13 @@ ipcMain.on('wa-start', (event) => {
 // Disconnect: destroy session + clear credentials folder
 ipcMain.on('wa-disconnect', async () => {
   console.log('[WA] Disconnecting and clearing session...');
-  try {
-    if (waClient) {
-      await waClient.logout().catch(() => {});
-      await waClient.destroy().catch(() => {});
-    }
-  } catch(e) {}
-  waClient = null;
-  waReady = false;
-  waCachedQR = null;
+  waManualStop = true;
+  if (waRestartTimer) {
+    clearTimeout(waRestartTimer);
+    waRestartTimer = null;
+  }
+  try { if (waClient) await waClient.logout().catch(() => {}); } catch(e) {}
+  await teardownWaClient();
   // Delete session folder so next start requires fresh QR
   try {
     const sessionDir = path.join(app.getPath('userData'), 'wa_sessions');
@@ -1441,30 +1523,38 @@ ipcMain.on('wa-disconnect', async () => {
 // Refresh: destroy and restart without clearing session (keeps QR if already scanned)
 ipcMain.on('wa-refresh', async () => {
   console.log('[WA] Refreshing WhatsApp connection...');
-  try {
-    if (waClient) {
-      await waClient.destroy().catch(() => {});
-    }
-  } catch(e) {}
-  waClient = null;
-  waReady = false;
-  waCachedQR = null;
+  waManualStop = true;
+  if (waRestartTimer) {
+    clearTimeout(waRestartTimer);
+    waRestartTimer = null;
+  }
+  await teardownWaClient();
   // Restart after short delay
-  setTimeout(() => startWhatsApp(), 1500);
+  setTimeout(() => {
+    waManualStop = false;
+    startWhatsApp();
+  }, 1500);
 });
 
 /** إرسال فعلي عبر جلسة واتساب على هذا الجهاز */
 async function deliverWhatsAppMessage(data) {
-  if (!waClient) return { ok: false, error: 'no_client' };
+  if (!waClient) return { ok: false, error: 'no_client', code: 'NO_CLIENT' };
   try {
     const { MessageMedia } = require('whatsapp-web.js');
     const number = data.number;
     const text = data.text;
 
-    let chatId = String(number || '').replace(/[^0-9]/g, '');
-    if (chatId.startsWith('05')) {
-      chatId = '966' + chatId.substring(1);
-    }
+    // Normalize phone format robustly (supports Arabic/Indic numerals too)
+    const toEnglishDigits = (v) =>
+      String(v || '')
+        .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+        .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+
+    let chatId = toEnglishDigits(number).replace(/[^0-9]/g, '');
+    if (chatId.startsWith('00966')) chatId = chatId.substring(2); // 00966xxxx -> 966xxxx
+    if (chatId.startsWith('9660')) chatId = '966' + chatId.substring(4); // 96605xxxx -> 9665xxxx
+    if (chatId.startsWith('05')) chatId = '966' + chatId.substring(1); // 05xxxx -> 9665xxxx
+    if (chatId.startsWith('5') && chatId.length === 9) chatId = '966' + chatId; // 5xxxxxxxx -> 9665xxxxxxxx
     if (!chatId.endsWith('@c.us')) chatId += '@c.us';
 
     try {
@@ -1472,17 +1562,25 @@ async function deliverWhatsAppMessage(data) {
       if (registered) {
         chatId = registered._serialized;
       } else {
-        console.log('WhatsApp Number not found:', chatId);
-        return { ok: false, error: 'number_not_found' };
+        // getNumberId can intermittently return null even for valid numbers.
+        // Continue with normalized chatId instead of failing immediately.
+        console.warn('WhatsApp Number check returned null, sending directly:', chatId);
       }
     } catch (e) {
-      console.error('Error verifying number:', e);
-      return { ok: false, error: e.message || 'verify_failed' };
+      // Verification may fail transiently; fallback to direct send attempt.
+      console.warn('Error verifying number, fallback to direct send:', e?.message || e);
     }
 
     if (data.image) {
       const parts = data.image.split(',');
-      const mime = parts[0].match(/:(.*?);/)[1];
+      if (!parts[0] || !parts[1]) {
+        return { ok: false, error: 'invalid_image_payload', code: 'INVALID_IMAGE_PAYLOAD' };
+      }
+      const m = parts[0].match(/:(.*?);/);
+      if (!m || !m[1]) {
+        return { ok: false, error: 'invalid_image_mime', code: 'INVALID_IMAGE_MIME' };
+      }
+      const mime = m[1];
       const b64 = parts[1];
       const media = new MessageMedia(mime, b64, 'voucher.jpg');
       await waClient.sendMessage(chatId, media, { caption: text });
@@ -1490,10 +1588,10 @@ async function deliverWhatsAppMessage(data) {
       await waClient.sendMessage(chatId, text);
     }
     console.log('WhatsApp message/media sent to ' + chatId);
-    return { ok: true };
+    return { ok: true, chatId };
   } catch (e) {
     console.error('Failed to send WA message:', e);
-    return { ok: false, error: e.message || 'send_failed' };
+    return { ok: false, error: e?.message || 'send_failed', code: e?.name || 'SEND_FAILED' };
   }
 }
 
@@ -1540,18 +1638,53 @@ ipcMain.on('wa-send-message', async (event, data) => {
   const hubIp = String(data.waHubIp || '').trim();
   const payload = { ...data };
   delete payload.waHubIp;
+  const targetRaw = String(payload.number || '');
+  const msgType = payload.image ? 'image+text' : 'text-only';
+  const textPreview = String(payload.text || '').replace(/\s+/g, ' ').trim().slice(0, 100);
+  console.log(`[WA][SEND] Start -> target="${targetRaw}" type=${msgType} via=${hubIp ? `hub:${hubIp}` : 'local'} preview="${textPreview}"`);
 
   if (hubIp) {
     const remote = await relayWaHttp(hubIp, payload);
     if (remote && remote.ok) {
-      console.log('[WA] Sent via LAN hub', hubIp);
+      console.log(`[WA][SEND] Success via LAN hub (${hubIp}) -> target="${targetRaw}"`);
       return;
     }
-    console.warn('[WA] Hub relay failed, trying local WhatsApp:', remote && remote.error);
+    console.warn(`[WA][SEND] Hub relay failed (${hubIp}) -> target="${targetRaw}" reason="${(remote && remote.error) || 'unknown'}", fallback=local`);
   }
 
   const local = await deliverWhatsAppMessage(payload);
-  if (!local.ok) console.warn('[WA] Local send failed:', local.error);
+  if (local.ok) {
+    console.log(`[WA][SEND] Success local -> target="${targetRaw}" chatId="${local.chatId || ''}" type=${msgType}`);
+    return;
+  }
+
+  console.error(`[WA][SEND] Local failed -> target="${targetRaw}" type=${msgType} code="${local.code || 'UNKNOWN'}" reason="${local.error || 'unknown'}"`);
+  // Fallback: if media send fails, retry text-only to avoid losing critical notice.
+  if (payload.image) {
+    const fallbackPayload = { ...payload };
+    delete fallbackPayload.image;
+    console.warn(`[WA][SEND] Trying fallback text-only -> target="${targetRaw}"`);
+    const textOnly = await deliverWhatsAppMessage(fallbackPayload);
+    if (textOnly.ok) {
+      console.warn(`[WA][SEND] Fallback success (text-only) -> target="${targetRaw}" chatId="${textOnly.chatId || ''}"`);
+      return;
+    }
+    console.error(`[WA][SEND] Fallback failed -> target="${targetRaw}" code="${textOnly.code || 'UNKNOWN'}" reason="${textOnly.error || 'unknown'}"`);
+  }
+});
+
+// Debug channel from renderer -> main terminal (for staff/settings pages)
+ipcMain.on('wa-debug-log', (event, payload) => {
+  try {
+    const p = payload && typeof payload === 'object' ? payload : { message: String(payload || '') };
+    const level = String(p.level || 'info').toLowerCase();
+    const msg = String(p.message || '');
+    if (level === 'error') console.error(`[WA][RENDERER] ${msg}`);
+    else if (level === 'warn') console.warn(`[WA][RENDERER] ${msg}`);
+    else console.log(`[WA][RENDERER] ${msg}`);
+  } catch (e) {
+    console.warn('[WA][RENDERER] debug-log parse error:', e?.message || e);
+  }
 });
 
 app.on('window-all-closed', () => {

@@ -21,7 +21,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         allOrders = db.orders || [];
         allOrders = allOrders.sort((a, b) => b.timestamp - a.timestamp);
         const returns = db.returns || [];
-        returns.forEach(r => returnedIds.add(r.origId));
+        returnedIds = new Set();
+        returns.forEach(r => {
+            if (r && r.origId) returnedIds.add(r.origId);
+            if (r && r.orderId) returnedIds.add(r.orderId);
+        });
         currentPage = 1;  // إعادة لأول صفحة
         renderOrders();
     }
@@ -99,9 +103,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="oc-items">${itemsHtml}</div>
                 </div>
                 <div class="oc-footer">
-                    <button class="btn-card-return" ${isReturned ? 'disabled' : ''} onclick="gotoReturn('${o.orderId}')">
-                        <i class="ph ph-arrow-u-down-left"></i> ${isReturned ? 'تم الإرجاع' : 'مرتجع / استرداد'}
-                    </button>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <button class="btn-card-edit" onclick="editOrder('${o.orderId}')">
+                            <i class="ph ph-pencil-simple"></i> تعديل
+                        </button>
+                        <button class="btn-card-return" ${isReturned ? 'disabled' : ''} onclick="gotoReturn('${o.orderId}')">
+                            <i class="ph ph-arrow-u-down-left"></i> ${isReturned ? 'تم الإرجاع' : 'مرتجع / استرداد'}
+                        </button>
+                    </div>
                     <span style="font-size:12px;color:var(--text-muted)">بواسطة: ${o.emp || 'الكاشير'}</span>
                 </div>
             `;
@@ -221,6 +230,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.gotoReturn = function(orderId) {
         window.location.href = 'returns.html?orderId=' + encodeURIComponent(orderId);
+    };
+
+    window.editOrder = function(orderId) {
+        const order = allOrders.find(o => String(o.orderId) === String(orderId));
+        if (!order) {
+            alert('لم يتم العثور على الطلب للتعديل.');
+            return;
+        }
+        try {
+            localStorage.setItem('pos_order_edit_draft', JSON.stringify({
+                source: 'orders-history',
+                orderId: order.orderId,
+                type: order.type || 'محلي',
+                paymentMethod: order.paymentMethod || 'كاش',
+                items: Array.isArray(order.items) ? order.items : [],
+                timestamp: Date.now(),
+            }));
+            window.location.href = 'pos.html?edit=1';
+        } catch (e) {
+            console.error('Failed to prepare order edit draft', e);
+            alert('تعذر فتح الطلب للتعديل.');
+        }
     };
 
     window.printOrder = function() {

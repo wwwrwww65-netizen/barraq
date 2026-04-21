@@ -1,261 +1,235 @@
 document.addEventListener('DOMContentLoaded', async () => {
-
-    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
-    
-    // --- Elements ---
     const searchInput = document.getElementById('return-search-input');
-    const btnSearch = document.getElementById('btn-search-order');
+    const searchBtn = document.getElementById('btn-search-order');
     const resultCard = document.getElementById('order-result');
-    
-    const resId = document.getElementById('res-order-id');
-    const resDate = document.getElementById('res-date');
-    const resTotal = document.getElementById('res-total');
-    const resMethod = document.getElementById('res-method');
-    const resType = document.getElementById('res-type');
-    
-    const btnProcess = document.getElementById('btn-process-return');
+    const processBtn = document.getElementById('btn-process-return');
+    const modal = document.getElementById('return-modal');
+    const cancelModalBtn = document.getElementById('cancel-return-modal');
+    const confirmReturnBtn = document.getElementById('confirm-return-final');
+    const returnsTbody = document.getElementById('returns-tbody');
+    const emptyReturns = document.getElementById('empty-returns');
 
-    let currentFoundOrder = null;
+    let db = await window.dbRead();
+    if (!db.orders) db.orders = [];
+    if (!db.returns) db.returns = [];
 
-    // --- Search Logic (from JSON DB via IPC) ---
-    btnSearch.addEventListener('click', async () => {
+    let selectedOrder = null;
+
+    const xf = (n) =>
+        window.HashCurrency
+            ? HashCurrency.format(n)
+            : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س';
+
+    function currentOperatorName() {
         try {
-            let query = searchInput.value.trim();
-            if(!query) return alert('الرجاء إدخال رقم الطلب أولاً');
-
-            // Normalize the search text to handle 'ORD-' or '#' if user typed it
-            query = query.replace(/^#/, '').replace(/^ord-?/i, '').trim();
-
-            const db = await window.dbRead();
-            const orders = (db.orders || []);
-            
-            const found = orders.find((o) => {
-                const oid = String(o.orderId || o.id || '').replace(/^#/, '').replace(/^ord-?/i, '').trim();
-                return oid.toLowerCase() === query.toLowerCase();
-            });
-
-            if(found) {
-                currentFoundOrder = found;
-                resId.innerText = 'رقم الطلب: ' + (found.orderId || found.id || 'غير معروف');
-                resDate.innerText = found.date || found.dateStr || new Date().toLocaleDateString('ar-SA');
-                resTotal.innerText = xf(found.total || found.grandTotal || 0);
-                resMethod.innerText = found.paymentMethod || 'نقدي';
-                resType.innerText = found.type || found.orderType || 'محلي';
-                
-                resultCard.style.display = 'flex';
-                resultCard.style.flexDirection = 'column';
-                resultCard.style.width = '100%';
-                resultCard.classList.add('active');
-
-                // Clean up any old buttons or messages
-                const oldMsg = document.getElementById('already-returned-msg');
-                if (oldMsg) oldMsg.remove();
-                
-                // Force destruction of older button to avoid duplicates
-                let oldBtn = document.getElementById('btn-process-return');
-                if(oldBtn) oldBtn.remove();
-
-                if (found.isReturned) {
-                    const msg = document.createElement('div');
-                    msg.id = 'already-returned-msg';
-                    msg.innerHTML = '<i class="ph-fill ph-warning-circle"></i> هذه الفاتورة تم استرجاعها وإلغاؤها مسبقاً!';
-                    msg.style.padding = '15px';
-                    msg.style.background = 'rgba(245, 158, 11, 0.1)';
-                    msg.style.color = 'var(--accent-orange)';
-                    msg.style.borderRadius = 'var(--border-radius-md)';
-                    msg.style.textAlign = 'center';
-                    msg.style.fontWeight = 'bold';
-                    msg.style.marginTop = '15px';
-                    resultCard.appendChild(msg);
-                } else {
-                    // Forcefully create a new button with heavy inline styles to bypass ANY css conflicts
-                    const newBtn = document.createElement('button');
-                    newBtn.id = 'btn-process-return';
-                    newBtn.innerHTML = '<i class="ph-fill ph-warning-circle"></i> إرجاع الأموال وإلغاء الطلب نهائياً';
-                    newBtn.style.cssText = `
-                        width: 100%;
-                        padding: 15px;
-                        background: #dc2626; /* bright red */
-                        color: white;
-                        border: 2px solid #b91c1c;
-                        border-radius: 8px;
-                        font-family: inherit;
-                        font-size: 18px;
-                        font-weight: 800;
-                        cursor: pointer;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        gap: 10px;
-                        margin-top: 20px;
-                        box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
-                        transition: all 0.2s;
-                    `;
-                    
-                    newBtn.onmouseover = () => { newBtn.style.transform = 'translateY(-2px)'; };
-                    newBtn.onmouseout = () => { newBtn.style.transform = 'translateY(0)'; };
-                    
-                    // Attach the event
-                    newBtn.addEventListener('click', processReturnAction);
-                    
-                    // Directly append it to the result card!
-                    resultCard.appendChild(newBtn);
-                }
-
-            } else {
-                resultCard.style.display = 'none';
-                resultCard.classList.remove('active');
-                currentFoundOrder = null;
-                alert('لم يتم العثور على أي فاتورة مبيعات مسجلة بهذا الرقم. يرجى التأكد من الرقم والمحاولة مرة أخرى.');
-            }
-        } catch(e) {
-            console.error("Search Error:", e);
-            alert("حدث خطأ أثناء البحث عن الفاتورة.");
-        }
-    });
-
-    // Support 'Enter' key press down on input
-    searchInput.addEventListener('keydown', (e) => {
-        if(e.key === 'Enter') {
-            btnSearch.click();
-        }
-    });
-
-    // --- Process Return Logic ---
-    async function processReturnAction() {
-        const currentBtn = document.getElementById('btn-process-return');
-        if(!currentFoundOrder) return;
-
-        if(!confirm('تأكيد عملية الاسترجاع؟ سيتم خصم المبلغ من المبيعات الأصلية، وإرجاع الأصناف لسجل المطبخ.')) return;
-
-        const originalText = currentBtn.innerHTML;
-        currentBtn.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin"></i> جاري إرجاع المبلغ...';
-        currentBtn.style.pointerEvents = 'none';
-
-        try {
-            await window.dbUpdate(db => {
-                // 1. Flag as returned instead of deleting
-                const ord = (db.orders || []).find(o => (o.orderId === currentFoundOrder.orderId) || (o.id === currentFoundOrder.id));
-                if (ord) {
-                    ord.isReturned = true;
-                }
-
-                // 2. Add to returns ledger
-                if(!db.returns) db.returns = [];
-                const now = new Date();
-                db.returns.push({
-                    id: 'RET-' + now.getTime(),
-                    origId: currentFoundOrder.orderId || currentFoundOrder.id,
-                    returnTime: now.toLocaleDateString('ar-SA') + ' ' + now.toLocaleTimeString('ar-SA'),
-                    timestamp: now.getTime(),
-                    date: now.toISOString().split('T')[0],
-                    amount: currentFoundOrder.total || currentFoundOrder.grandTotal || 0,
-                    method: currentFoundOrder.paymentMethod,
-                    splitCash: currentFoundOrder.splitCash,
-                    splitNetwork: currentFoundOrder.splitNetwork,
-                    emp: 'المدير / الكاشير',
-                });
-
-                // 3. Auto-Return to Kitchen Production Log
-                if (currentFoundOrder.items && currentFoundOrder.items.length > 0) {
-                    if (!db.kitchenTx) db.kitchenTx = [];
-                    if (!db.kitchenStock) db.kitchenStock = [];
-
-                    currentFoundOrder.items.forEach(item => {
-                        const itemName = item.name || item.nameAr || "صنف مسترجع";
-                        const qty = Number(item.qty) || 1;
-                        
-                        db.kitchenTx.push({
-                            id: 'RET-' + Math.floor(Math.random() * 100000),
-                            type: 'receive', 
-                            itemName: itemName,
-                            qty: qty,
-                            notes: "مرتجع من المبيعات - فاتورة #" + (currentFoundOrder.orderId || currentFoundOrder.id),
-                            date: new Date().toISOString(),
-                            user: "الكاشير (آلي)"
-                        });
-
-                        const kIdx = db.kitchenStock.findIndex(k => k.name === itemName);
-                        if (kIdx !== -1) {
-                            db.kitchenStock[kIdx].qty += qty;
-                        } else {
-                            db.kitchenStock.push({ name: itemName, qty: qty, unit: "وحدة" });
-                        }
-                    });
-                }
-            });
-
-            alert('✅ تم استرداد المبلغ وإلغاء عملية الكاشير بنجاح! تم تنبيه المطبخ بالمرتجعات.');
-            
-            resultCard.style.display = 'none';
-            resultCard.classList.remove('active');
-            currentFoundOrder = null;
-            searchInput.value = '';
-
-            await loadReturns();
-
-        } catch(e) {
-            console.error('Return process error', e);
-            alert('حدث خطأ أثناء معالجة الاسترجاع.');
-            currentBtn.innerHTML = originalText;
-            currentBtn.style.pointerEvents = 'auto';
-        }
+            const current = JSON.parse(localStorage.getItem('currentUser') || '{}');
+            if (current && (current.name || current.username)) return current.name || current.username;
+        } catch (_) {}
+        return 'المشرف';
     }
 
-    if (btnProcess) {
-        btnProcess.addEventListener('click', processReturnAction);
+    function normalizeDigits(str) {
+        const map = {
+            '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
+            '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9',
+        };
+        return String(str || '').replace(/[٠-٩]/g, (d) => map[d] || d);
     }
 
-    // --- Load Returns Historical Data ---
-    async function loadReturns() {
-        const db = await window.dbRead();
-        const returns = (db.returns || []).slice().sort((a,b) => b.timestamp - a.timestamp);
-        
-        const tbody = document.getElementById('returns-tbody');
-        const emptyState = document.getElementById('empty-returns');
-        const tableObj = document.querySelector('.ret-table');
+    function normalizeOrderId(input) {
+        let raw = normalizeDigits(String(input || '').trim());
+        if (!raw) return '';
+        if (raw.startsWith('#')) raw = raw.slice(1);
+        // keep letters/numbers/dash only to avoid hidden spaces or symbols
+        return raw.replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+    }
 
-        let totalVal = 0;
-        returns.forEach(r => totalVal += r.amount);
+    function findOrderByQuery(orders, query) {
+        const q = normalizeOrderId(query);
+        if (!q) return null;
 
-        const el = (id) => document.getElementById(id);
-        if(el('kpi-total-returns')) el('kpi-total-returns').innerText = xf(totalVal);
-        if(el('kpi-return-count')) el('kpi-return-count').innerText = returns.length + ' طلب';
-        if(returns.length > 0 && el('kpi-last-return')) {
-            el('kpi-last-return').innerHTML = returns[0].returnTime + `<br><span style="font-size:14px;color:var(--text-muted)">(${returns[0].origId})</span>`;
+        const normalizedOrders = (orders || []).map((o) => ({
+            order: o,
+            idNorm: normalizeOrderId(o.orderId),
+        }));
+
+        // exact first
+        let hit = normalizedOrders.find((x) => x.idNorm === q);
+        if (hit) return hit.order;
+
+        // then suffix / contains match for users entering numeric part only
+        hit = normalizedOrders.find((x) => x.idNorm.endsWith(q) || x.idNorm.includes(q));
+        return hit ? hit.order : null;
+    }
+
+    function methodLabel(method) {
+        if (method === 'cash' || method === 'نقدي') return 'نقدي (كاش)';
+        if (method === 'card' || method === 'شبكة') return 'بطاقة (شبكة)';
+        return String(method || '—');
+    }
+
+    function closeModal() {
+        modal.classList.remove('active');
+    }
+
+    function openModalForOrder(order) {
+        document.getElementById('modal-order-id').innerText = order.orderId || '—';
+        document.getElementById('modal-order-total').innerText = xf(order.total || 0);
+        const cashRadio = modal.querySelector('input[name="return-method"][value="نقدي"]');
+        if (cashRadio) cashRadio.checked = true;
+        modal.classList.add('active');
+    }
+
+    function orderAlreadyReturned(orderId) {
+        return (db.returns || []).some((r) => String(r.orderId) === String(orderId));
+    }
+
+    function renderSearchResult(order) {
+        document.getElementById('res-order-id').innerText = `رقم الطلب: #${order.orderId || '—'}`;
+        document.getElementById('res-date').innerText = order.date || new Date(order.timestamp || Date.now()).toLocaleString('ar-SA');
+        document.getElementById('res-total').innerHTML = `${(window.HashCurrency ? HashCurrency.formatNumber(order.total || 0) : Number(order.total || 0).toFixed(2))} <span class="js-cur-sym">${window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س'}</span>`;
+        document.getElementById('res-method').innerText = order.paymentMethod || 'غير محدد';
+        document.getElementById('res-type').innerText = order.type || 'محلي';
+
+        processBtn.disabled = false;
+        processBtn.style.opacity = '';
+        processBtn.innerHTML = '<i class="ph ph-warning-circle"></i> إرجاع الأموال وإلغاء الطلب نهائياً';
+        if (orderAlreadyReturned(order.orderId)) {
+            processBtn.disabled = true;
+            processBtn.style.opacity = '0.55';
+            processBtn.innerHTML = '<i class="ph ph-check-circle"></i> هذا الطلب مُرتجع مسبقاً';
         }
 
-        if(returns.length === 0) {
-            if(tableObj) tableObj.style.display = 'none';
-            if(emptyState) emptyState.style.display = 'block';
+        resultCard.classList.add('active');
+    }
+
+    function renderReturnsTable() {
+        const rows = [...(db.returns || [])].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        returnsTbody.innerHTML = '';
+        if (rows.length === 0) {
+            emptyReturns.style.display = 'block';
             return;
         }
+        emptyReturns.style.display = 'none';
 
-        if(emptyState) emptyState.style.display = 'none';
-        if(tableObj) tableObj.style.display = 'table';
-        tbody.innerHTML = '';
-
-        returns.forEach(r => {
-            tbody.insertAdjacentHTML('beforeend', `
-                <tr>
-                    <td><strong>${r.origId}</strong></td>
-                    <td style="color:var(--text-secondary); font-size:12px;">${r.returnTime}</td>
-                    <td style="color:var(--accent-red); font-weight:800;">${xf(r.amount)}</td>
-                    <td><span style="color:var(--text-secondary)"><i class="ph ph-money"></i> ${r.method}</span></td>
-                    <td>${r.emp || ''}</td>
-                    <td><span class="badge-returned">مسترجع</span></td>
-                </tr>
-            `);
+        rows.forEach((r) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>#${r.orderId || '—'}</strong></td>
+                <td dir="ltr" style="text-align:right">${new Date(r.timestamp || Date.now()).toLocaleString('ar-SA')}</td>
+                <td style="font-weight:800;color:var(--accent-red)">${xf(r.amount || 0)}</td>
+                <td>${methodLabel(r.method)}</td>
+                <td>${r.by || 'المشرف'}</td>
+                <td><span class="badge-returned">تم الإرجاع</span></td>
+            `;
+            returnsTbody.appendChild(tr);
         });
     }
 
-    await loadReturns();
-
-    // --- Auto Fill from URL ---
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlOrderId = urlParams.get('orderId');
-    if (urlOrderId) {
-        searchInput.value = urlOrderId;
-        btnSearch.click();
+    function renderKpis() {
+        const list = db.returns || [];
+        const total = list.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+        document.getElementById('kpi-total-returns').innerHTML = `${window.HashCurrency ? HashCurrency.formatNumber(total) : total.toFixed(2)} <span class="js-cur-sym">${window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س'}</span>`;
+        document.getElementById('kpi-return-count').innerText = `${list.length} طلب`;
+        if (list.length > 0) {
+            const last = [...list].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))[0];
+            document.getElementById('kpi-last-return').innerText = `#${last.orderId || '—'}`;
+        } else {
+            document.getElementById('kpi-last-return').innerText = 'لا يوجد';
+        }
     }
+
+    async function refreshUi() {
+        db = await window.dbRead();
+        if (!db.orders) db.orders = [];
+        if (!db.returns) db.returns = [];
+        renderReturnsTable();
+        renderKpis();
+    }
+
+    async function doSearch() {
+        const q = searchInput.value;
+        if (!q) {
+            alert('الرجاء إدخال رقم الطلب.');
+            return;
+        }
+        db = await window.dbRead();
+        if (!db.orders) db.orders = [];
+        if (!db.returns) db.returns = [];
+
+        const order = findOrderByQuery(db.orders, q);
+        if (!order) {
+            resultCard.classList.remove('active');
+            selectedOrder = null;
+            alert('لم يتم العثور على الطلب. تأكد من الرقم ثم حاول مرة أخرى.');
+            return;
+        }
+        selectedOrder = order;
+        renderSearchResult(order);
+    }
+
+    searchBtn?.addEventListener('click', doSearch);
+    searchInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doSearch();
+    });
+
+    processBtn?.addEventListener('click', () => {
+        if (!selectedOrder) return;
+        if (orderAlreadyReturned(selectedOrder.orderId)) return;
+        openModalForOrder(selectedOrder);
+    });
+
+    cancelModalBtn?.addEventListener('click', closeModal);
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+
+    confirmReturnBtn?.addEventListener('click', async () => {
+        if (!selectedOrder) return;
+        if (orderAlreadyReturned(selectedOrder.orderId)) {
+            closeModal();
+            return;
+        }
+
+        const selectedMethod = modal.querySelector('input[name="return-method"]:checked')?.value || 'نقدي';
+        const methodDb = selectedMethod === 'شبكة' ? 'card' : 'cash';
+
+        const row = {
+            id: 'RET-' + Math.floor(Math.random() * 90000 + 10000),
+            orderId: selectedOrder.orderId,
+            amount: Number(selectedOrder.total) || 0,
+            method: methodDb,
+            reason: 'إلغاء الطلب من شاشة المرتجعات',
+            by: currentOperatorName(),
+            date: new Date().toISOString().split('T')[0],
+            timestamp: Date.now(),
+        };
+
+        const writeDb = await window.dbRead();
+        if (!writeDb.returns) writeDb.returns = [];
+        if (!writeDb.orders) writeDb.orders = [];
+
+        const exists = writeDb.returns.some((r) => String(r.orderId) === String(selectedOrder.orderId));
+        if (exists) {
+            closeModal();
+            await refreshUi();
+            return;
+        }
+
+        writeDb.returns.push(row);
+        const targetOrder = writeDb.orders.find((o) => String(o.orderId) === String(selectedOrder.orderId));
+        if (targetOrder) {
+            targetOrder.status = 'returned';
+            targetOrder.returnedAt = row.timestamp;
+            targetOrder.returnMethod = methodDb;
+        }
+
+        await window.dbWrite(writeDb);
+        closeModal();
+        await refreshUi();
+        renderSearchResult(selectedOrder);
+        alert('تم إرجاع المبلغ وإلغاء الطلب نهائياً بنجاح.');
+    });
+
+    await refreshUi();
 });

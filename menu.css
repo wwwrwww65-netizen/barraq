@@ -470,3 +470,56 @@
 }
 .action-btn i { font-size: 16px; margin: 0; }
 
+
+/* =========================================
+   LIGHT THEME OVERRIDES FOR MENU
+   ========================================= */
+body.light-theme .menu-header {
+    background: #fff !important;
+}
+
+body.light-theme .menu-category-card,
+body.light-theme .menu-toolbar,
+body.light-theme .menu-item-card,
+body.light-theme .item-finances {
+    background: #fff !important;
+}
+
+body.light-theme .menu-category-card:hover:not(.active-cat) {
+    background: #f8fafc !important;
+}
+
+body.light-theme .cat-icon-lg {
+    background: #f1f5f9 !important;
+}
+
+body.light-theme .menu-section-title h3,
+body.light-theme .item-name {
+    color: #1e293b !important;
+}
+
+body.light-theme .menu-select,
+body.light-theme .input-acc {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.light-theme .view-toggles {
+    background: #f1f5f9 !important;
+}
+
+body.light-theme .view-btn.active {
+    background: #fff !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
+}
+
+body.light-theme .menu-tabs-header {
+    border-bottom-color: #e2e8f0 !important;
+}
+
+body.light-theme .overlay-btn:not(.edit):not(.show-btn) {
+    background: rgba(15, 23, 42, 0.1) !important;
+    color: #1e293b !important;
+    border-color: #cbd5e1 !important;
+}

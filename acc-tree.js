@@ -4,7 +4,8 @@
 (function () {
     function hrAffectsLiquidity(h) {
         const t = String(h.type || '');
-        return !t.includes('خصم') && !t.includes('جزاء');
+        if (t.includes('سلفة')) return true;
+        return !t.includes('خصم / جزاء') && !t.includes('جزاء');
     }
 
     function orderToCashBank(o) {

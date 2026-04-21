@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const destWhName = whNames[pur.destWh || 'main'] || pur.destWh;
             const itemsSummary = (pur.items || []).map(i => `${i.name} (${i.qty})`).join(' ، ');
             const card = document.createElement('div');
-            card.style.cssText = 'background:rgba(0,0,0,0.25); border:1px solid rgba(234,179,8,0.25); border-radius:10px; padding:14px 18px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;';
+            card.style.cssText = 'background:var(--bg-card); border:1px solid var(--border-color); border-radius:10px; padding:14px 18px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;';
             card.innerHTML = `
                 <div style="flex:1; min-width:220px;">
                     <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
                 <div style="display:flex; gap:8px; align-items:center;">
-                    <span style="color:white; font-weight:700; font-size:14px;">${xf(pur.total)}</span>
+                    <span style="color:var(--text-primary); font-weight:700; font-size:14px;">${xf(pur.total)}</span>
                     <button class="wh-receive-btn" data-id="${pur.id}"
                         style="background:linear-gradient(135deg,#10b981,#059669); color:#fff; border:none; border-radius:8px; padding:9px 18px; cursor:pointer; font-size:13px; font-weight:700; display:flex; align-items:center; gap:6px;">
                         <i class="ph ph-check-circle"></i> تأكيد الاستلام
@@ -629,7 +629,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const content = document.getElementById('valuation-content');
             content.innerHTML = `
-                <div style="background: rgba(15,23,42,0.5); border-radius:12px; padding:20px; text-align:right;">
+                <div style="background: var(--bg-main); border-radius:12px; padding:20px; text-align:right;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
                         <span>المستودع الرئيسي:</span>
                         <strong style="color:var(--accent-blue)">${xf(valMain)}</strong>
@@ -644,7 +644,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                     <div style="display:flex; justify-content:space-between; margin-top:16px; font-size:18px;">
                         <span>إجمالي التقييم النهائي:</span>
-                        <strong style="color:white; font-size:22px;">${xf(valMain + valRest + valBev)}</strong>
+                        <strong style="color:var(--text-primary); font-size:22px;">${xf(valMain + valRest + valBev)}</strong>
                     </div>
                 </div>
             `;

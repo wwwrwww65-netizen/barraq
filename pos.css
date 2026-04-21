@@ -308,6 +308,23 @@
 }
 .cart-title h3 { font-size: 20px; font-weight: 800; }
 .order-id { background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 6px; font-size: 14px; font-weight: 700; color: var(--accent-orange); }
+.edit-mode-badge {
+    margin-top: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(59,130,246,0.45);
+    background: rgba(59,130,246,0.14);
+    color: #bfdbfe;
+    font-size: 12px;
+    font-weight: 700;
+}
+.edit-mode-badge i {
+    color: var(--accent-blue);
+    font-size: 14px;
+}
 
 .order-type-tabs {
     display: flex;
@@ -508,4 +525,80 @@
     .pos-layout, .modal-overlay { 
         display: none !important; 
     } 
+}
+
+/* =========================================
+   LIGHT THEME OVERRIDES FOR POS
+   ========================================= */
+body.light-theme .pos-sidebar {
+    background: #fff !important;
+    border-left: 1px solid rgba(0,0,0,0.05);
+}
+
+body.light-theme .pos-nav-item:hover {
+    background: #f1f5f9 !important;
+}
+
+body.light-theme .pos-search-box {
+    background: #fff !important;
+}
+
+body.light-theme .pos-action-btn:not(.primary) {
+    background: #fff !important;
+}
+
+body.light-theme .pos-action-btn:hover:not(.primary) {
+    background: #f1f5f9 !important;
+}
+
+body.light-theme .category-btn {
+    background: #fff !important;
+}
+
+body.light-theme .category-btn:not(.active):hover {
+    background: #f8fafc !important;
+}
+
+body.light-theme .product-card {
+    background: #fff !important;
+}
+
+body.light-theme .pos-cart-panel {
+    background: #ffffff !important;
+    border-right: 1px solid rgba(0,0,0,0.05);
+}
+
+body.light-theme .cart-header,
+body.light-theme .cart-footer {
+    background: #fff !important;
+}
+
+body.light-theme .order-type-tabs {
+    background: #f1f5f9 !important;
+}
+
+body.light-theme .type-btn.active {
+    background: #fff !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
+}
+
+body.light-theme .cart-item {
+    background: #f8fafc !important;
+}
+
+body.light-theme .item-qty {
+    background: #f1f5f9 !important;
+}
+
+body.light-theme .btn-suspend,
+body.light-theme .btn-print {
+    background: #fff !important;
+}
+
+body.light-theme .pos-nav-item.active {
+    background: rgba(59, 130, 246, 0.05) !important;
+}
+
+body.light-theme .summary-line.total {
+    border-top: 1px dashed #e2e8f0 !important;
 }

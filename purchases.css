@@ -18,36 +18,64 @@
     margin-bottom: 24px;
 }
 
-@media (max-width: 1024px) {
-    .pur-kpis {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 14px;
+@media (max-width: 1200px) {
+    .pur-kpis { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+}
+
+@media (max-width: 992px) {
+    .pur-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+        padding: 15px 20px;
+        gap: 15px;
+    }
+    .pur-header .header-actions {
+        width: 100%;
+    }
+    .pur-header .header-actions .btn {
+        width: 100%;
+        justify-content: center;
     }
 }
-@media (max-width: 640px) {
-    .pur-kpis {
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-    }
-    .pur-header {
-        flex-wrap: wrap;
-        gap: 10px;
-        padding: 12px;
-    }
-    .pur-header .header-actions { width: 100%; }
+
+@media (max-width: 768px) {
+    .pur-kpis { grid-template-columns: 1fr; gap: 12px; }
     .filter-bar {
         flex-direction: column;
         align-items: flex-start;
-        gap: 10px;
+        gap: 15px;
+        padding: 16px;
     }
-    .filter-left { flex-wrap: wrap; }
+    .filter-left { 
+        flex-direction: column;
+        width: 100%;
+    }
+    .filter-left .input-modern {
+        width: 100% !important;
+    }
+    .filter-left .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    .form-group-row {
+        flex-direction: column;
+        gap: 12px;
+    }
     .item-row {
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        border-bottom: 1px dashed var(--border-color);
+        padding-bottom: 15px;
     }
-    .item-row .form-group:first-child {
-        grid-column: 1 / -1;
-    }
+    .item-row:last-child { border-bottom: none; }
+    .btn-remove-row { width: 100%; margin-top: 5px; }
+    .totals-box { width: 100%; }
+}
+
+@media (max-width: 480px) {
+    .pur-kpis .kpi-card { padding: 16px; gap: 12px; }
+    .kpi-icon { width: 44px; height: 44px; font-size: 24px; }
+    .pur-kpis .kpi-card h3 { font-size: 18px !important; }
 }
 
 
@@ -142,3 +170,41 @@
 
 .btn-primary { background: var(--accent-blue); color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 700; font-family: inherit;}
 .btn-outline { background: transparent; border: 1px solid var(--border-color); color: white; padding: 12px 24px; border-radius: 6px; cursor: pointer; }
+
+/* =========================================
+   LIGHT THEME OVERRIDES FOR PURCHASES
+   ========================================= */
+body.light-theme .pur-header {
+    background: #fff !important;
+}
+
+body.light-theme .kpi-card,
+body.light-theme .filter-bar,
+body.light-theme .modal-box {
+    background: #fff !important;
+}
+
+body.light-theme .pur-table th {
+    background: #f8fafc !important;
+    color: #1e293b !important;
+}
+
+body.light-theme .input-modern {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.light-theme .totals-box {
+    background: #f1f5f9 !important;
+}
+
+body.light-theme .tbl-actions button {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+}
+
+body.light-theme .btn-outline {
+    border-color: #cbd5e1 !important;
+    color: #475569 !important;
+}

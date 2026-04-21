@@ -15,8 +15,7 @@
             display: flex;
             flex-direction: column;
             gap: 28px;
-            overflow-y: auto;
-            height: 100%;
+            /* No overflow here, let main-content handle it */
         }
 
         /* Hero Card */
@@ -114,11 +113,6 @@
             grid-template-columns: 1fr 1fr;
             gap: 24px;
         }
-        @media (max-width: 900px) {
-            .profile-cards-row { grid-template-columns: 1fr; }
-            .profile-hero { flex-direction: column; text-align: center; }
-            .profile-hero-meta { justify-content: center; }
-        }
 
         .profile-card {
             background: var(--bg-card);
@@ -178,6 +172,9 @@
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 10px 12px;
+            min-height: 42px;
+            display: flex;
+            align-items: center;
         }
 
         /* Form */
@@ -307,6 +304,34 @@
             background: rgba(16,185,129,0.15);
             color: var(--accent-green);
             border: 1px solid rgba(16,185,129,0.25);
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 992px) {
+            .profile-page-grid { padding: 20px; }
+            .profile-cards-row { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 768px) {
+            .profile-hero { 
+                flex-direction: column; 
+                text-align: center; 
+                padding: 30px 20px;
+                gap: 20px;
+            }
+            .profile-hero-meta { justify-content: center; }
+            .profile-hero-info h1 { font-size: 24px; }
+            .info-grid { grid-template-columns: 1fr; }
+            .security-stats { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        @media (max-width: 480px) {
+            .profile-page-grid { padding: 12px; gap: 16px; }
+            .profile-hero-meta { gap: 12px; flex-direction: column; align-items: center; }
+            .security-stats { grid-template-columns: 1fr; }
+            .profile-card-header { padding: 16px; }
+            .profile-card-body { padding: 16px; }
+            .session-item { padding: 10px; gap: 10px; }
         }
 
         /* Light theme overrides */

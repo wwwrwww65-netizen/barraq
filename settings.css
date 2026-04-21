@@ -251,3 +251,33 @@
 .factory-reset-scope-label strong {
     color: #e2e8f0;
 }
+
+/* =========================================
+   LIGHT THEME OVERRIDES FOR SETTINGS
+   ========================================= */
+body.light-theme .settings-card,
+body.light-theme .factory-modal-box {
+    background: #fff !important;
+}
+
+body.light-theme .sc-header h3,
+body.light-theme .upload-text,
+body.light-theme .factory-modal-title,
+body.light-theme .factory-reset-scope-label strong {
+    color: #1e293b !important;
+}
+
+body.light-theme .logo-upload-box {
+    background: #f8fafc !important;
+}
+
+body.light-theme .input-modern {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.light-theme .factory-btn-muted {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+}

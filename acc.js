@@ -32,7 +32,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function hrAffectsLiquidity(h) {
         const t = String(h.type || '');
-        return !t.includes('خصم') && !t.includes('جزاء');
+        if (t.includes('سلفة')) return true;
+        return !t.includes('خصم / جزاء') && !t.includes('جزاء');
     }
 
     let totalReturns = 0;
@@ -392,9 +393,36 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             // Apply filtering for expenses report based on selection
-            let filt = db.expenses || [];
+            const baseExpenses = (db.expenses || []).map((e) => ({
+                ...e,
+                _source: 'expense',
+                _textDesc: String(e.desc || ''),
+                _textCat: String(e.cat || ''),
+                _displayCat: String(e.cat || 'مصروف عام'),
+                _displayDesc: String(e.desc || '—'),
+                _displayPMethod: String(e.pMethod || 'cash'),
+                _displayId: String(e.id || 'EXP'),
+            }));
+            const normalizeHrTypeLabel = (type) => {
+                const t = String(type || '').trim();
+                if (t === 'عليه (سلفة/خصم)') return 'عليه (سلفة)';
+                return t || 'سند موظف';
+            };
+            const hrAsExpenses = (db.hrExpenses || []).filter(hrAffectsLiquidity).map((h, hrIdx) => ({
+                ...h,
+                _source: 'hr',
+                _hrIndex: hrIdx,
+                _textDesc: String(h.reason || h.type || ''),
+                _textCat: String(h.type || 'سند موظف'),
+                _displayCat: normalizeHrTypeLabel(h.type),
+                _displayDesc: (h.employee ? `الموظف: ${h.employee} — ` : '') + String(h.reason || 'سند صرف موظف'),
+                _displayPMethod: String(h.pMethod || 'cash'),
+                _displayId: String(h.id || ('HR-' + (h.timestamp || ''))),
+                _dateRef: h.timestamp || h.date,
+            }));
+            let filt = baseExpenses.concat(hrAsExpenses);
             filt = filt.filter(e => {
-                let textMatch = e.desc.toLowerCase().includes(q) || (e.cat && e.cat.includes(q));
+                let textMatch = e._textDesc.toLowerCase().includes(q) || e._textCat.toLowerCase().includes(q);
                 
                 let dateMatch = true;
                 if(selPeriod === 'custom') {
@@ -414,19 +442,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                         }
                     }
                 } else {
-                    dateMatch = window.isDateInPeriod(e.date, selPeriod);
+                    const dateRef = e._dateRef || e.date;
+                    dateMatch = window.isDateInPeriod(dateRef, selPeriod);
                 }
                 
                 return textMatch && dateMatch;
             });
-            filt.sort((a,b) => new Date(a.date) - new Date(b.date)); // Sort ascending for running balance logic
+            filt.sort((a,b) => new Date(a._dateRef || a.date) - new Date(b._dateRef || b.date)); // Sort ascending for running balance logic
             const sum = filt.reduce((s, e) => s + (Number(e.amount) || 0), 0);
             const sumStr = fmt2(sum);
             const wordsLine = sarAmountToArabicWords(sum);
             const sym = window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س';
 
             // Helper to recursively calculate balance up to a date limit
-            function calculateBalancesUpTo(dateLimitExclusive=null) {
+            function calculateBalancesUpTo(dateLimitExclusive=null, startTime=null) {
                 let cash = 0, bank = 0;
                 let bOrders = db.orders || [];
                 let bReturns = db.returns || [];
@@ -436,15 +465,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let bBankTrans = db.bankTransfers || [];
                 let bHrExp = db.hrExpenses || [];
                 
-                const isBefore = (dStr) => {
-                    if(!dateLimitExclusive) return true;
+                const isInRange = (dStr) => {
                     if(!dStr) return false;
-                    let targetD = new Date(dStr);
-                    return targetD < dateLimitExclusive;
+                    let targetD = new Date(dStr || Date.now());
+                    if(startTime && targetD < startTime) return false;
+                    if(dateLimitExclusive && targetD >= dateLimitExclusive) return false;
+                    return true;
                 };
 
                 bOrders.forEach(o => {
-                    if(!isBefore(o.timestamp||o.dateStr||o.date)) return;
+                    if(!isInRange(o.timestamp||o.dateStr||o.date)) return;
                     let t = Number(o.total)||0;
                     let pm = o.paymentMethod||'';
                     if(['cash','كاش','نقد'].includes(pm)) cash += t;
@@ -454,20 +484,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
 
                 bReturns.forEach(r => {
-                    if(!isBefore(r.timestamp||r.date)) return;
+                    if(!isInRange(r.timestamp||r.date)) return;
                     let x = returnRefundCashBank(r);
                     cash -= x.c; bank -= x.b;
                 });
 
                 bPurchases.forEach(p => {
-                    if(!isBefore(p.date)) return;
+                    if(!isInRange(p.date)) return;
                     let pt = Number(p.total)||0;
                     if(p.payMethod==='cash') cash -= pt;
                     if(p.payMethod==='bank') bank -= pt;
                 });
 
                 bExpenses.forEach(e => {
-                    if(!isBefore(e.date)) return;
+                    if(!isInRange(e.date)) return;
                     let a = Number(e.amount)||0;
                     if(e.pMethod==='cash') cash -= a;
                     if(e.pMethod==='bank') bank -= a;
@@ -475,21 +505,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 bHrExp.forEach(h => {
                     if(!hrAffectsLiquidity(h)) return;
-                    if(!isBefore(h.timestamp||h.date)) return;
+                    if(!isInRange(h.timestamp||h.date)) return;
                     let a = Number(h.amount)||0;
                     if(h.pMethod==='bank') bank -= a;
                     else cash -= a;
                 });
 
                 bOtherInc.forEach(row => {
-                    if(!isBefore(row.timestamp||row.date)) return;
+                    if(!isInRange(row.timestamp||row.date)) return;
                     let a = Number(row.amount)||0;
                     if(row.pMethod==='bank') bank += a;
                     else cash += a;
                 });
 
                 bBankTrans.forEach(t => {
-                    if(!isBefore(t.date)) return;
+                    if(!isInRange(t.date)) return;
                     if(t.type==='deposit_cash') cash += Number(t.amount)||0;
                     if(t.type==='deposit_bank') bank += Number(t.amount)||0;
                     if(t.type==='transfer_to_bank') { cash -= Number(t.amount)||0; bank += Number(t.amount)||0; }
@@ -499,9 +529,78 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return { cash, bank };
             }
 
+            // Logic to match Main Dashboard "Drawer Balance" EXACTLY
+            const lastZTimeNum = parseInt(localStorage.getItem('last_z_report_time')) || 0;
+            const shiftFloat = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
+
+            // Dashboard logic: Filter by Today AND last Z-report
+            let dOrders = (db.orders || []).filter(o => 
+                window.isDateInPeriod(o.timestamp || o.dateStr || o.date, 'today') && 
+                ((o.timestamp || o.createdAt || Date.now()) >= lastZTimeNum)
+            );
+            let dReturns = (db.returns || []).filter(r => 
+                window.isDateInPeriod(r.timestamp || r.date, 'today') &&
+                ((r.timestamp || Date.now()) >= lastZTimeNum)
+            );
+            let dExpenses = (db.hrExpenses || []).concat(db.expenses || []).filter(h => 
+                window.isDateInPeriod(h.timestamp || h.date, 'today') &&
+                ((h.timestamp || new Date(h.date).getTime()) >= lastZTimeNum)
+            );
+
+            function splitShiftOrder(o) {
+                const pm = String(o.paymentMethod || '').trim();
+                const total = Number(o.total) || 0;
+                if (pm === 'مجزأ') {
+                    const c = Number(o.splitCash) || 0;
+                    const n = Number(o.splitNetwork) || 0;
+                    if (c || n) return { cash: c, network: n };
+                    return { cash: 0, network: total };
+                }
+                if (pm.includes('كاش') || pm === 'cash') return { cash: total, network: 0 };
+                return { cash: 0, network: total };
+            }
+            function splitShiftReturn(r) {
+                const pm = String(r.method || '').trim();
+                const amount = Number(r.amount) || 0;
+                if (pm === 'مجزأ') {
+                    const c = Number(r.splitCash) || 0;
+                    const n = Number(r.splitNetwork) || 0;
+                    if (c || n) return { cash: c, network: n };
+                    return { cash: 0, network: amount };
+                }
+                if (pm.includes('كاش') || pm === 'cash') return { cash: amount, network: 0 };
+                return { cash: 0, network: amount };
+            }
+
+            let dCashSales = 0;
+            dOrders.forEach(o => {
+                const pay = splitShiftOrder(o);
+                dCashSales += pay.cash;
+            });
+            dReturns.forEach(r => {
+                const back = splitShiftReturn(r);
+                dCashSales -= back.cash;
+            });
+
+            let dTotalExp = 0;
+            dExpenses.forEach(h => dTotalExp += (Number(h.amount) || 0));
+
+            let drawerBalanceNow = shiftFloat + dCashSales - dTotalExp;
+            
+            let dNetworkSales = 0;
+            dOrders.forEach(o => {
+                const pay = splitShiftOrder(o);
+                dNetworkSales += pay.network;
+            });
+            dReturns.forEach(r => {
+                const back = splitShiftReturn(r);
+                dNetworkSales -= back.network;
+            });
+            let networkBalanceNow = dNetworkSales;
+
+            // Accounting Balances (Historical/Lifetime)
             let todayStart = new Date();
             todayStart.setHours(0,0,0,0);
-            
             let balancesYest = calculateBalancesUpTo(todayStart);
             let balancesCurrent = calculateBalancesUpTo(null);
 
@@ -520,27 +619,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const dispFilt = [...filt].reverse();
 
                 dispFilt.forEach(e => {
-                    let m = e.pMethod === 'cash'
+                    let m = e._displayPMethod === 'cash'
                         ? '<span class="inv-tag tag-safe" style="background:#0f172a; border:1px solid #334155; color:white;"><i class="ph-fill ph-money"></i> كاش نقدي</span>'
                         : '<span class="inv-tag tag-safe" style="background:rgba(59,130,246,0.1); color:var(--accent-blue)"><i class="ph-fill ph-bank"></i> حوالة بنكية</span>';
                     const amtStr = fmt2(e.amount);
                     const rbStr = fmt2(e._runningBal);
                     const isCancelled = e.status === 'ملغاة';
+                    const isEditable = !isCancelled;
                     tbody.innerHTML += `
                         <tr style="${isCancelled ? 'opacity:0.45;' : ''}">
-                            <td><strong>${e.id}</strong>${isCancelled ? ' <span style="font-size:10px;color:#ef4444;border:1px solid #ef4444;border-radius:4px;padding:1px 5px;">ملغى</span>' : ''}</td>
+                            <td><strong>${e._displayId}</strong>${isCancelled ? ' <span style="font-size:10px;color:#ef4444;border:1px solid #ef4444;border-radius:4px;padding:1px 5px;">ملغى</span>' : ''}</td>
                             <td dir="ltr" style="text-align:right">${e.date}</td>
-                            <td style="color:var(--accent-orange); font-weight:700;">${e.cat}</td>
-                            <td>${e.desc}</td>
+                            <td style="color:var(--accent-orange); font-weight:700;">${e._displayCat}</td>
+                            <td>${e._displayDesc}</td>
                             <td dir="ltr" style="text-align:right; font-weight:800;">${amtStr}</td>
                             <td dir="ltr" style="text-align:right; font-weight:800;">${amtStr}</td>
                             <td>${m}</td>
                             <td dir="ltr" style="text-align:right; font-weight:800; color:var(--accent-amber);">${rbStr}</td>
                             <td class="no-print">
                                 <div style="display:flex;gap:5px;align-items:center;">
-                                    <button class="btn-print-exp" data-id="${e.id}" title="طباعة السند" style="background:none;border:none;color:var(--accent-blue);font-size:18px;cursor:pointer;"><i class="ph ph-printer"></i></button>
-                                    ${!isCancelled ? `<button class="btn-edit-exp" data-id="${e.id}" title="تعديل السند" style="background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:12px;"><i class="ph ph-pencil"></i> تعديل</button>` : ''}
-                                    ${!isCancelled ? `<button class="btn-delete-exp" data-id="${e.id}" title="حذف السند" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:12px;"><i class="ph ph-trash"></i> حذف</button>` : ''}
+                                    ${e._source === 'expense' ? `<button class="btn-print-exp" data-id="${e.id}" title="طباعة السند" style="background:none;border:none;color:var(--accent-blue);font-size:18px;cursor:pointer;"><i class="ph ph-printer"></i></button>` : '<span style="font-size:11px;color:var(--text-muted);padding:2px 6px;border:1px solid var(--border-color);border-radius:6px;">سند موظف</span>'}
+                                    ${isEditable ? `<button class="btn-edit-exp" data-id="${e.id || ''}" data-source="${e._source}" data-hr-index="${e._source === 'hr' ? e._hrIndex : ''}" title="تعديل السند" style="background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:12px;"><i class="ph ph-pencil"></i> تعديل</button>` : ''}
+                                    ${isEditable ? `<button class="btn-delete-exp" data-id="${e.id || ''}" data-source="${e._source}" data-hr-index="${e._source === 'hr' ? e._hrIndex : ''}" title="حذف السند" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:12px;"><i class="ph ph-trash"></i> حذف</button>` : ''}
                                 </div>
                             </td>
                         </tr>`;
@@ -550,6 +650,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 setTimeout(() => {
                     document.querySelectorAll('.btn-edit-exp').forEach(btn => {
                         btn.addEventListener('click', (ev) => {
+                            const src = ev.currentTarget.dataset.source;
+                            if (src === 'hr') {
+                                const hrIdx = Number(ev.currentTarget.dataset.hrIndex);
+                                const hrRec = (db.hrExpenses || [])[hrIdx];
+                                if (hrRec) openEditHrModal(hrRec, hrIdx);
+                                return;
+                            }
                             const expId = ev.currentTarget.dataset.id;
                             const expRec = (db.expenses || []).find(x => x.id === expId);
                             if (expRec) openEditExpModal(expRec);
@@ -557,6 +664,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                     document.querySelectorAll('.btn-delete-exp').forEach(btn => {
                         btn.addEventListener('click', async (ev) => {
+                            const src = ev.currentTarget.dataset.source;
+                            if (src === 'hr') {
+                                const hrIdx = Number(ev.currentTarget.dataset.hrIndex);
+                                const hrRec = (db.hrExpenses || [])[hrIdx];
+                                if (hrRec) await deleteHrExpense(hrRec, hrIdx);
+                                return;
+                            }
                             const expId = ev.currentTarget.dataset.id;
                             const expRec = (db.expenses || []).find(x => x.id === expId);
                             if (expRec) await deleteExpense(expRec);
@@ -588,23 +702,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <td colspan="9" style="padding:15px; text-align:center;">
                             <div style="display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:20px; font-size:14px;">
                                 <div class="stat-box" style="padding:10px 20px; border-radius:8px; border:1px solid var(--border-color);">
-                                    <span style="color:var(--text-muted);display:block;margin-bottom:4px;font-size:12px">رصيد الدرج الحالي</span>
-                                    <strong style="color:var(--accent-green);font-size:16px;">${fmt2(balancesCurrent.cash)} <span>${sym}</span></strong>
+                                    <span style="color:var(--text-muted);display:block;margin-bottom:4px;font-size:12px">رصيد الدرج الحالي (بالوردية)</span>
+                                    <strong style="color:var(--accent-green);font-size:16px;">${fmt2(drawerBalanceNow)} <span>${sym}</span></strong>
                                 </div>
                                 <div class="stat-box" style="padding:10px 20px; border-radius:8px; border:1px solid var(--border-color);">
-                                    <span style="color:var(--text-muted);display:block;margin-bottom:4px;font-size:12px">رصيد الشبكة الحالي</span>
-                                    <strong style="color:var(--accent-blue);font-size:16px;">${fmt2(balancesCurrent.bank)} <span>${sym}</span></strong>
+                                    <span style="color:var(--text-muted);display:block;margin-bottom:4px;font-size:12px">رصيد الشبكة (بالوردية)</span>
+                                    <strong style="color:var(--accent-blue);font-size:16px;">${fmt2(networkBalanceNow)} <span>${sym}</span></strong>
                                 </div>
                                 <div class="stat-box" style="padding:10px 20px; border-radius:8px; border:1px solid var(--border-color);">
-                                    <span style="color:var(--text-muted);display:block;margin-bottom:4px;font-size:12px">رصيد الدرج (أمس)</span>
-                                    <strong style="color:var(--text-primary);font-size:16px;">${fmt2(balancesYest.cash)} <span>${sym}</span></strong>
+                                    <span style="color:var(--text-muted);display:block;margin-bottom:4px;font-size:12px">رصيد الصندوق الكلي (محاسبياً)</span>
+                                    <strong style="color:var(--text-primary);font-size:16px;">${fmt2(balancesCurrent.cash)} <span>${sym}</span></strong>
                                 </div>
                                 <div class="stat-box" style="padding:10px 20px; border-radius:8px; border:1px solid var(--border-color);">
-                                    <span style="color:var(--text-muted);display:block;margin-bottom:4px;font-size:12px">رصيد الشبكة (أمس)</span>
-                                    <strong style="color:var(--text-primary);font-size:16px;">${fmt2(balancesYest.bank)} <span>${sym}</span></strong>
+                                    <span style="color:var(--text-muted);display:block;margin-bottom:4px;font-size:12px">رصيد البنك الكلي (محاسبياً)</span>
+                                    <strong style="color:var(--text-primary);font-size:16px;">${fmt2(balancesCurrent.bank)} <span>${sym}</span></strong>
                                 </div>
                                 <div class="stat-box" style="padding:10px 20px; border-radius:8px; border:1px solid var(--border-color);">
-                                    <span style="color:var(--text-muted);display:block;margin-bottom:4px;font-size:12px">الإجمالي الكلي بالدرج والشبكة</span>
+                                    <span style="color:var(--text-muted);display:block;margin-bottom:4px;font-size:12px">إجمالي نقدية المؤسسة</span>
                                     <strong style="color:var(--accent-orange);font-size:16px;">${fmt2(balancesCurrent.cash + balancesCurrent.bank)} <span>${sym}</span></strong>
                                 </div>
                             </div>
@@ -789,13 +903,41 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert(`✅ تم حذف السند ${expRec.id} بنجاح.\nالمبلغ ${xf(expRec.amount)} تم عكسه من الرصيد.`);
         }
 
+        function hrAffectsLoans(type) {
+            const t = String(type || '');
+            return t.includes('سلفة') || t.includes('عليه') || t.includes('خصم / جزاء') || t.includes('جزاء');
+        }
+        function adjustHrEmployeeLoans(voucher, direction) {
+            if (!hrAffectsLoans(voucher?.type)) return;
+            const emp = (db.employees || []).find(e => e.name === voucher.employee);
+            if (!emp) return;
+            emp.loans = Math.max(0, (Number(emp.loans) || 0) + direction * (Number(voucher.amount) || 0));
+        }
+        async function deleteHrExpense(hrRec, hrIdx) {
+            const ok = confirm(`هل أنت متأكد من حذف سند الموظف؟\n\nالموظف: ${hrRec.employee}\nالنوع: ${hrRec.type}\nالمبلغ: ${xf(hrRec.amount)}`);
+            if (!ok) return;
+            const dbNow = await window.dbRead();
+            if (!dbNow.hrExpenses) dbNow.hrExpenses = [];
+            if (hrIdx < 0 || hrIdx >= dbNow.hrExpenses.length) return;
+            const oldRec = dbNow.hrExpenses[hrIdx];
+            adjustHrEmployeeLoans(oldRec, -1);
+            dbNow.hrExpenses.splice(hrIdx, 1);
+            await window.dbWrite(dbNow);
+            db.hrExpenses = dbNow.hrExpenses;
+            db.employees = dbNow.employees || db.employees || [];
+            renderExp();
+            alert('✅ تم حذف سند الموظف بنجاح.');
+        }
+
         // ═══════════════════════════════════════════════════
         // ✏️ EDIT EXPENSE - تعديل سند المصروف
         // ═══════════════════════════════════════════════════
         let _editingExpense = null;
+        let _editingHrIndex = null;
 
         function openEditExpModal(expRec) {
             _editingExpense = expRec;
+            _editingHrIndex = null;
             const editExpModal = document.getElementById('editExpenseModal');
             if (!editExpModal) return;
 
@@ -809,18 +951,33 @@ document.addEventListener('DOMContentLoaded', async () => {
             editExpModal.removeAttribute('inert');
             editExpModal.classList.add('active');
         }
+        function openEditHrModal(hrRec, hrIdx) {
+            _editingExpense = null;
+            _editingHrIndex = hrIdx;
+            const editExpModal = document.getElementById('editExpenseModal');
+            if (!editExpModal) return;
+            document.getElementById('edit-exp-id-label').innerText = hrRec.id || `HR-${hrIdx + 1}`;
+            document.getElementById('edit-exp-category').value = hrRec.type || '';
+            document.getElementById('edit-exp-desc').value = hrRec.reason || '';
+            document.getElementById('edit-exp-amount').value = hrRec.amount || '';
+            document.getElementById('edit-exp-date').value = hrRec.date || '';
+            document.getElementById('edit-exp-payment').value = hrRec.pMethod || 'cash';
+            editExpModal.removeAttribute('inert');
+            editExpModal.classList.add('active');
+        }
 
         // Close edit expense modal
         document.querySelectorAll('.btn-close-edit-exp-modal').forEach(b => b.addEventListener('click', () => {
             const m = document.getElementById('editExpenseModal');
             if (m) { m.classList.remove('active'); m.setAttribute('inert', ''); }
             _editingExpense = null;
+            _editingHrIndex = null;
         }));
 
         // Save edited expense
         document.getElementById('form-edit-expense')?.addEventListener('submit', async (ev) => {
             ev.preventDefault();
-            if (!_editingExpense) return;
+            if (!_editingExpense && _editingHrIndex === null) return;
 
             const newCat = document.getElementById('edit-exp-category').value.trim();
             const newDesc = document.getElementById('edit-exp-desc').value.trim();
@@ -835,30 +992,44 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const dbNow = await window.dbRead();
             if (!dbNow.expenses) dbNow.expenses = [];
+            if (!dbNow.hrExpenses) dbNow.hrExpenses = [];
 
-            const recInDb = dbNow.expenses.find(x => x.id === _editingExpense.id);
-            if (!recInDb) { alert('لم يُعثر على السند في قاعدة البيانات!'); return; }
-
-            // Update totals delta
-            const oldAmount = Number(recInDb.amount) || 0;
-            totalExp = totalExp - oldAmount + newAmount;
-            if (kpiExp) kpiExp.innerText = xf(totalExp);
-
-            // Apply changes in DB record
-            recInDb.cat = newCat;
-            recInDb.desc = newDesc;
-            recInDb.amount = newAmount;
-            recInDb.date = newDate;
-            recInDb.pMethod = newPMethod;
-            recInDb.lastModified = new Date().toISOString();
+            if (_editingExpense) {
+                const recInDb = dbNow.expenses.find(x => x.id === _editingExpense.id);
+                if (!recInDb) { alert('لم يُعثر على السند في قاعدة البيانات!'); return; }
+                const oldAmount = Number(recInDb.amount) || 0;
+                totalExp = totalExp - oldAmount + newAmount;
+                if (kpiExp) kpiExp.innerText = xf(totalExp);
+                recInDb.cat = newCat;
+                recInDb.desc = newDesc;
+                recInDb.amount = newAmount;
+                recInDb.date = newDate;
+                recInDb.pMethod = newPMethod;
+                recInDb.lastModified = new Date().toISOString();
+            } else {
+                const hrRec = dbNow.hrExpenses[_editingHrIndex];
+                if (!hrRec) { alert('لم يُعثر على سند الموظف!'); return; }
+                const oldHr = { ...hrRec };
+                adjustHrEmployeeLoans(oldHr, -1);
+                hrRec.type = newCat;
+                hrRec.reason = newDesc;
+                hrRec.amount = newAmount;
+                hrRec.date = newDate;
+                hrRec.pMethod = newPMethod;
+                hrRec.lastModified = new Date().toISOString();
+                adjustHrEmployeeLoans(hrRec, 1);
+            }
 
             await window.dbWrite(dbNow);
             db.expenses = dbNow.expenses;
+            db.hrExpenses = dbNow.hrExpenses;
+            db.employees = dbNow.employees || db.employees || [];
 
             // Close modal
             const m = document.getElementById('editExpenseModal');
             if (m) { m.classList.remove('active'); m.setAttribute('inert', ''); }
             _editingExpense = null;
+            _editingHrIndex = null;
 
             renderExp();
             alert(`✅ تم تعديل السند ${recInDb.id} بنجاح وتحديث جميع البيانات المرتبطة.`);
