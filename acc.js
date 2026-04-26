@@ -854,6 +854,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 text: captionMsg,
                                 image: imgData,
                                 waHubIp: hubIp,
+                                wa_mode: localStorage.getItem('wa_mode') || 'browser'
                             });
                             console.log('Sent expense voucher image to admin:', adminPhone);
                         } finally {

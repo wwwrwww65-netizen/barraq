@@ -1430,6 +1430,7 @@ window.generateVoucher = async function(typeStr) {
                             text: captionMsg,
                             image: imgData,
                             waHubIp: hubIp,
+                            wa_mode: localStorage.getItem('wa_mode') || 'browser'
                         });
                         waDbg('info', `[Voucher] Queued WA send to employee phone=${phoneNum}`);
                         console.log('Sending WA directly to employee:', phoneNum);
@@ -1447,6 +1448,7 @@ window.generateVoucher = async function(typeStr) {
                             text: adminCaptionMsg,
                             image: imgData,
                             waHubIp: hubIp,
+                            wa_mode: localStorage.getItem('wa_mode') || 'browser'
                         });
                         waDbg('info', `[Voucher] Queued WA send to admin phone=${adminPhone}`);
                         console.log('Sending WA to Admin:', adminPhone);

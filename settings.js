@@ -607,45 +607,82 @@ document.addEventListener('DOMContentLoaded', () => {
         const { ipcRenderer } = require('electron');
         const QRCode = require('qrcode');
 
-        function setWaStatus(state) {
-            if (state === 'connected') {
-                waStatusText.innerText = 'متصل (البوت جاهز ونشط الآن)';
-                waStatusText.style.color = '#10b981';
-                btnWaLink.innerHTML = '<i class="ph-fill ph-check-circle"></i> البوت نشط الآن';
-                btnWaLink.style.background = '#10b981';
-                btnWaLink.disabled = true;
-                waQrContainer.innerHTML = '<i class="ph-fill ph-check-circle" style="font-size:60px; color:#10b981;"></i><br><span style="color:#10b981;font-weight:700;">واتساب مرتبط بنجاح ✓</span>';
-                localStorage.setItem('wa_connected', 'true');
-            } else if (state === 'loading') {
-                waStatusText.innerText = 'جاري التهيئة...';
-                waStatusText.style.color = 'var(--text-muted)';
-                btnWaLink.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin"></i> جاري التشغيل...';
-                btnWaLink.disabled = true;
-                waQrContainer.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin" style="font-size:40px; color:#ccc;"></i>';
-            } else if (state === 'disconnected') {
-                waStatusText.innerText = 'غير متصل';
-                waStatusText.style.color = 'var(--accent-red)';
-                btnWaLink.innerHTML = '<i class="ph-bold ph-link"></i> ربط واتساب';
+        // ── تحميل الوضع المحفوظ ──────────────────────────────────────────────
+        const savedMode = localStorage.getItem('wa_mode') || 'browser';
+
+        const modeCards = {
+            browser: document.getElementById('wa-mode-browser-card'),
+            desktop: document.getElementById('wa-mode-desktop-card'),
+            bot:     document.getElementById('wa-mode-bot-card'),
+        };
+        const modeRadios = {
+            browser: document.getElementById('wa-mode-browser'),
+            desktop: document.getElementById('wa-mode-desktop'),
+            bot:     document.getElementById('wa-mode-bot'),
+        };
+
+        function applyModeUI(mode) {
+            // أزل التحديد من كل البطاقات
+            Object.values(modeCards).forEach(c => { if(c) c.style.borderColor = 'rgba(255,255,255,0.1)'; });
+            // حدد البطاقة المختارة
+            if (modeCards[mode]) modeCards[mode].style.borderColor = '#25D366';
+            // حدد الـ radio
+            if (modeRadios[mode]) modeRadios[mode].checked = true;
+
+            // غيّر نص الزر حسب الوضع
+            const icon = document.getElementById('btn-wa-link-icon');
+            const txt  = document.getElementById('btn-wa-link-text');
+            if (mode === 'browser') {
+                if(icon) icon.className = 'ph-bold ph-globe';
+                if(txt)  txt.textContent = 'تفعيل (كروم جاهز — لا يحتاج إعداد)';
+                if(waQrContainer) waQrContainer.style.display = 'none';
+                waStatusText.innerText = 'وضع المتصفح: يرسل عبر كروم تلقائياً عند كل فاتورة';
+                waStatusText.style.color = '#3b82f6';
                 btnWaLink.disabled = false;
-                btnWaLink.style.background = '';
-                waQrContainer.innerHTML = '<i class="ph ph-qr-code" style="font-size:60px; color:var(--text-muted);"></i>';
-                localStorage.setItem('wa_connected', 'false');
+                btnWaLink.style.background = '#3b82f6';
+            } else if (mode === 'desktop') {
+                if(icon) icon.className = 'ph-bold ph-desktop';
+                if(txt)  txt.textContent = 'تفعيل (واتساب Desktop جاهز — لا يحتاج إعداد)';
+                if(waQrContainer) waQrContainer.style.display = 'none';
+                waStatusText.innerText = 'وضع التطبيق المثبت: يرسل عبر واتساب Desktop تلقائياً';
+                waStatusText.style.color = '#a855f7';
+                btnWaLink.disabled = false;
+                btnWaLink.style.background = '#a855f7';
+            } else if (mode === 'bot') {
+                if(icon) icon.className = 'ph-bold ph-app-window';
+                if(txt)  txt.textContent = 'فتح نافذة واتساب للربط/مسح QR';
+                if(waQrContainer) waQrContainer.style.display = 'none';
+                waStatusText.innerText = 'وضع النافذة المخفية: اضغط الزر لفتح نافذة واتساب ومسح QR';
+                waStatusText.style.color = '#25D366';
+                btnWaLink.disabled = false;
+                btnWaLink.style.background = '#25D366';
             }
         }
 
-        // Always check current WA status on page load (QR may already be ready in background)
-        setWaStatus('loading');
-        ipcRenderer.send('wa-check-status');
+        applyModeUI(savedMode);
 
-        // Handle immediate status response (already running)
-        ipcRenderer.on('wa-still-loading', () => {
-            waStatusText.innerText = 'جاري التهيئة في الخلفية...';
+        // تغيير الوضع عند اختيار radio
+        ['browser', 'desktop', 'bot'].forEach(mode => {
+            if (modeRadios[mode]) {
+                modeRadios[mode].addEventListener('change', () => {
+                    localStorage.setItem('wa_mode', mode);
+                    applyModeUI(mode);
+                });
+            }
         });
 
+        // زر التفعيل الرئيسي
         btnWaLink.addEventListener('click', () => {
-            setWaStatus('loading');
-            waQrContainer.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin" style="font-size:40px; color:#ccc;"></i>';
-            ipcRenderer.send('wa-start');
+            const currentMode = localStorage.getItem('wa_mode') || 'browser';
+            if (currentMode === 'bot') {
+                // افتح النافذة المخفية للمسح
+                ipcRenderer.send('wa-show-window');
+                waStatusText.innerText = 'تم فتح نافذة واتساب — امسح الكود ثم أغلق النافذة';
+                waStatusText.style.color = '#25D366';
+            } else {
+                // للأوضاع الأخرى لا يحتاج ضغط — فقط تأكيد بصري
+                waStatusText.innerText = `✓ الوضع "${currentMode === 'browser' ? 'المتصفح' : 'التطبيق المثبت'}" مفعّل. سيعمل تلقائياً عند الإرسال.`;
+            }
         });
 
         // زر التحديث - يعيد الاتصال بدون مسح الجلسة

@@ -1211,13 +1211,9 @@ app.whenReady().then(() => {
     console.warn('[HashPOS] globalShortcut DevTools:', e.message);
   }
 
-  // Auto-start WhatsApp AFTER app is fully loaded and user can interact
-  // Using a longer delay (15s) so the main window is 100% ready first
-  // Puppeteer runs asynchronously and won't block the UI thread
-  setTimeout(() => {
-    // setImmediate ensures this runs only when the event loop is idle
-    setImmediate(() => startWhatsApp());
-  }, 15000);
+  // Auto-start WhatsApp disabled — now starts only when user clicks connect in settings
+  // This prevents Chrome/Puppeteer from starting automatically and freezing the app
+  // setTimeout(() => { setImmediate(() => startWhatsApp()); }, 15000);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -1260,6 +1256,8 @@ function scheduleWhatsAppRestart(reason, delayMs = 6000) {
     return;
   }
   if (waRestartTimer) return;
+  // Only schedule restart if waManualStop is false AND we have waClient (meaning bot mode was active)
+  // This prevents the bot from endlessly restarting on machines where it keeps failing
   console.log(`[WA] Scheduling auto-restart in ${delayMs}ms. Reason:`, reason);
   waRestartTimer = setTimeout(() => {
     waRestartTimer = null;
@@ -1475,9 +1473,8 @@ ipcMain.on('wa-check-status', (event) => {
     // Still loading (Chrome starting up)
     event.sender.send('wa-still-loading');
   } else {
-    // Not started yet - start now
-    startWhatsApp();
-    event.sender.send('wa-still-loading');
+    // Not started yet - tell renderer it's disconnected instead of force-starting
+    event.sender.send('wa-disconnected');
   }
 });
 
@@ -1633,8 +1630,270 @@ function relayWaHttp(host, payload) {
 }
 
 // Handle sending messages from any renderer window (محلياً أو عبر جهاز مركزي على الشبكة)
-ipcMain.on('wa-send-message', async (event, data) => {
+// ── نافذة واتساب المخفية (وضع النافذة الداخلية) ──────────────────────────
+let waNativeWin = null;
+let waNativeReady = false;
+
+ipcMain.on('wa-show-window', () => {
+  if (waNativeWin) { waNativeWin.setOpacity(1); waNativeWin.show(); waNativeWin.focus(); }
+  else { startNativeWaWindow(); waNativeWin.setOpacity(1); waNativeWin.show(); }
+});
+
+function startNativeWaWindow() {
+  if (waNativeWin) { waNativeWin.show(); return; }
+  waNativeWin = new BrowserWindow({
+    width: 1024, height: 768, show: false, opacity: 0,
+    title: 'واتساب - نافذة الإرسال',
+    webPreferences: { partition: 'persist:whatsapp', nodeIntegration: false, contextIsolation: true, backgroundThrottling: false }
+  });
+  waNativeWin.setSkipTaskbar(true);
+  waNativeWin.setMenu(null);
+  waNativeWin.loadURL('https://web.whatsapp.com', { userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" });
+  waNativeWin.on('close', (e) => { e.preventDefault(); waNativeWin.setOpacity(0); waNativeWin.hide(); });
+  waNativeWin.webContents.on('did-finish-load', () => {
+    waNativeReady = true;
+    BrowserWindow.getAllWindows().forEach(w => { if(w !== waNativeWin) w.webContents.send('wa-ready'); });
+  });
+}
+// ───────────────────────────────────────────────────────────────────────────
+
+let waMessageQueue = [];
+let isWaProcessing = false;
+
+async function processWaQueue() {
+  if (isWaProcessing || waMessageQueue.length === 0) return;
+  isWaProcessing = true;
+  
+  while (waMessageQueue.length > 0) {
+    const { event, data } = waMessageQueue.shift();
+    await handleWaSendMessage(event, data);
+    // Wait slightly before processing the next message
+    await new Promise(r => setTimeout(r, 4000));
+  }
+  
+  isWaProcessing = false;
+}
+
+ipcMain.on('wa-send-message', (event, data) => {
+  waMessageQueue.push({ event, data });
+  processWaQueue();
+});
+
+async function handleWaSendMessage(event, data) {
   if (!data || typeof data !== 'object') return;
+
+  // ── وضع المتصفح (Browser Mode) ─────────────────────────────────────────
+  if (data.wa_mode === 'browser') {
+    try {
+      const { clipboard, nativeImage } = require('electron');
+      const toEn = (v) => String(v||'').replace(/[٠-٩]/g,(d)=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,(d)=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+      let phone = toEn(data.number||'').replace(/[^0-9]/g,'');
+      if(phone.startsWith('00966')) phone=phone.substring(2);
+      if(phone.startsWith('9660')) phone='966'+phone.substring(4);
+      if(phone.startsWith('05')) phone='966'+phone.substring(1);
+      if(phone.startsWith('5')&&phone.length===9) phone='966'+phone;
+      const url = `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(data.text||'')}`;
+      const vbsPath = path.join(os.tmpdir(), `wa_br_${Date.now()}.vbs`);
+      
+      let vbs = `Set S=WScript.CreateObject("WScript.Shell")\nS.Run "chrome.exe """&"${url}"&""""\nWScript.Sleep 8000\n`;
+      if (data.image) {
+        clipboard.writeImage(nativeImage.createFromDataURL(data.image));
+        vbs += `S.SendKeys "^v"\nWScript.Sleep 2000\nS.SendKeys "~"\nWScript.Sleep 1500\nS.SendKeys "^{w}"`;
+      } else {
+        vbs += `S.SendKeys "~"\nWScript.Sleep 1500\nS.SendKeys "^{w}"`;
+      }
+      
+      fs.writeFileSync(vbsPath, vbs, 'utf8');
+      require('child_process').exec(`cscript //nologo "${vbsPath}"`, ()=>{ try{fs.unlinkSync(vbsPath);}catch(e){} });
+      console.log(`[WA][BROWSER] macro sent for ${phone}`);
+    } catch(e) { console.error('[WA][BROWSER]', e?.message); }
+    return;
+  }
+
+  // ── وضع التطبيق المثبت (Desktop Mode) ──────────────────────────────────
+  if (data.wa_mode === 'desktop') {
+    try {
+      const { shell, clipboard, nativeImage } = require('electron');
+      const toEn = (v) => String(v||'').replace(/[٠-٩]/g,(d)=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,(d)=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+      let phone = toEn(data.number||'').replace(/[^0-9]/g,'');
+      if(phone.startsWith('00966')) phone=phone.substring(2);
+      if(phone.startsWith('9660')) phone='966'+phone.substring(4);
+      if(phone.startsWith('05')) phone='966'+phone.substring(1);
+      if(phone.startsWith('5')&&phone.length===9) phone='966'+phone;
+      await shell.openExternal(`whatsapp://send?phone=${phone}&text=${encodeURIComponent(data.text||'')}`);
+      if (data.image) {
+        clipboard.writeImage(nativeImage.createFromDataURL(data.image));
+        const vbsPath = path.join(os.tmpdir(), `wa_dt_${Date.now()}.vbs`);
+        fs.writeFileSync(vbsPath, `WScript.Sleep 8000\nSet S=WScript.CreateObject("WScript.Shell")\nS.AppActivate "WhatsApp"\nWScript.Sleep 1000\nS.SendKeys "+{INS}"\nWScript.Sleep 2000\nS.SendKeys "~"\nWScript.Sleep 500\nS.SendKeys "~"`, 'utf8');
+        require('child_process').exec(`cscript //nologo "${vbsPath}"`, ()=>{ try{fs.unlinkSync(vbsPath);}catch(e){} });
+      } else {
+        const vbsPath = path.join(os.tmpdir(), `wa_dt_${Date.now()}.vbs`);
+        fs.writeFileSync(vbsPath, `WScript.Sleep 5500\nSet S=WScript.CreateObject("WScript.Shell")\nS.AppActivate "WhatsApp"\nWScript.Sleep 500\nS.SendKeys "~"`, 'utf8');
+        require('child_process').exec(`cscript //nologo "${vbsPath}"`, ()=>{ try{fs.unlinkSync(vbsPath);}catch(e){} });
+      }
+      console.log(`[WA][DESKTOP] sent for ${phone}`);
+    } catch(e) { console.error('[WA][DESKTOP]', e?.message); }
+    return;
+  }
+
+  // ── وضع النافذة المخفية (Hidden Native Window Mode) ────────────────────
+  if (data.wa_mode === 'bot') {
+    // إذا لم تكن النافذة مهيأة، افتحها تلقائياً وانتظر حتى تجهز
+    if (!waNativeWin) {
+      console.log('[WA][NATIVE] Auto-starting native window...');
+      startNativeWaWindow();
+      // انتظر حتى يتم تحميل الصفحة (did-finish-load) أو 15 ثانية كحد أقصى
+      await new Promise((resolve) => {
+        const timeout = setTimeout(resolve, 15000);
+        waNativeWin.webContents.once('did-finish-load', () => {
+          clearTimeout(timeout);
+          setTimeout(resolve, 1000); // انتظر ثانية إضافية للتأكد
+        });
+      });
+    }
+    if (!waNativeWin) {
+      console.error('[WA][NATIVE] Failed to initialize window');
+      return;
+    }
+    try {
+      const { clipboard, nativeImage } = require('electron');
+      const toEn = (v) => String(v||'').replace(/[٠-٩]/g,(d)=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,(d)=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+      let phone = toEn(data.number||'').replace(/[^0-9]/g,'');
+      if(phone.startsWith('00966')) phone=phone.substring(2);
+      if(phone.startsWith('9660')) phone='966'+phone.substring(4);
+      if(phone.startsWith('05')) phone='966'+phone.substring(1);
+      if(phone.startsWith('5')&&phone.length===9) phone='966'+phone;
+      const url = `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(data.text||'')}`;
+
+      // ─── إظهار النافذة كشفافة بالكامل (Opacity 0) خلف النافذة الرئيسية لمنع الوميض ───
+      const wasHidden = !waNativeWin.isVisible();
+      if (wasHidden) { 
+        waNativeWin.setOpacity(0); 
+        waNativeWin.showInactive(); 
+      }
+      // إبقاء النافذة الرئيسية في المقدمة
+      const mainWins = BrowserWindow.getAllWindows().filter(w => w !== waNativeWin);
+      if (mainWins.length > 0) mainWins[0].focus();
+
+      await waNativeWin.loadURL(url, { userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" });
+      const chatLoaded = await waNativeWin.webContents.executeJavaScript(
+        'new Promise(r=>{let n=0;const t=setInterval(()=>{n++;const m=document.querySelector("#main, footer");const x=document.querySelector("div[data-animate-modal-popup=\\"true\\"]");if(m){clearInterval(t);r(true);}else if(x||n>60){clearInterval(t);r(false);}},500);});'
+      );
+      if (!chatLoaded) {
+        console.error('[WA][NATIVE] Chat not loaded');
+        try {
+          const img = await waNativeWin.webContents.capturePage();
+          require('fs').writeFileSync('e:\\baraaq\\wa_error.png', img.toPNG());
+          console.log('[WA][NATIVE] Screenshot saved to', 'e:\\baraaq\\wa_error.png');
+        } catch(e){}
+        if (wasHidden) waNativeWin.hide();
+        return;
+      }
+      if (data.image) {
+        clipboard.writeImage(nativeImage.createFromDataURL(data.image));
+        
+        // انتظر حتى يقوم واتساب بتعبئة النص في حقل الكتابة من الـ URL، وإلا فإن تعبئة النص لاحقاً ستلغي الصورة
+        if (data.text) {
+          await waNativeWin.webContents.executeJavaScript(`
+            new Promise(r => {
+              let n = 0;
+              const t = setInterval(() => {
+                n++;
+                const b = document.querySelector('footer div[contenteditable="true"]') || document.querySelector('div[contenteditable="true"]');
+                if (b && b.innerText.trim().length > 0) {
+                  clearInterval(t);
+                  r();
+                } else if (n > 20) {
+                  clearInterval(t);
+                  r();
+                }
+              }, 250);
+            })
+          `);
+        } else {
+          await new Promise(r=>setTimeout(r, 1000));
+        }
+
+        await waNativeWin.webContents.executeJavaScript(
+          '(function(){ var b = document.querySelector(\'footer div[contenteditable="true"]\') || document.querySelector(\'div[contenteditable="true"]\'); if(b){ b.click(); b.focus(); } })();'
+        );
+        await new Promise(r=>setTimeout(r,400));
+        waNativeWin.webContents.sendInputEvent({type:'keyDown',keyCode:'V',modifiers:['control']});
+        waNativeWin.webContents.sendInputEvent({type:'keyUp',keyCode:'V',modifiers:['control']});
+        await new Promise(r=>setTimeout(r,2000));
+        waNativeWin.webContents.sendInputEvent({type:'keyDown',keyCode:'Enter'});
+        waNativeWin.webContents.sendInputEvent({type:'char',keyCode:'Enter'});
+        waNativeWin.webContents.sendInputEvent({type:'keyUp',keyCode:'Enter'});
+
+        const clickResult = await waNativeWin.webContents.executeJavaScript(`
+          (function(){
+            // زر الإرسال في معاينة الصورة أو في الدردشة العادية
+            var icon = document.querySelector('span[data-icon="send"]') ||
+                       document.querySelector('[data-testid="send"]') ||
+                       document.querySelector('span[data-icon="send-white"]') ||
+                       document.querySelector('[aria-label="Send"]') ||
+                       document.querySelector('[data-tab="11"]');
+            if(icon) {
+              var btn = icon.closest('div[role="button"]') || icon.closest('button') || icon.parentElement;
+              if(btn) {
+                btn.dispatchEvent(new MouseEvent('mousedown', {bubbles: true, cancelable: true, view: window}));
+                btn.dispatchEvent(new MouseEvent('mouseup', {bubbles: true, cancelable: true, view: window}));
+                btn.click();
+                return "CLICKED_SEND_BUTTON";
+              }
+              return "ICON_FOUND_BUT_NO_BUTTON_PARENT";
+            }
+            return "ICON_NOT_FOUND";
+          })();
+        `);
+        console.log('[WA][NATIVE] Image Click Result:', clickResult);
+      } else {
+        await new Promise(r=>setTimeout(r,1000));
+        waNativeWin.webContents.sendInputEvent({type:'keyDown',keyCode:'Enter'});
+        waNativeWin.webContents.sendInputEvent({type:'char',keyCode:'Enter'});
+        waNativeWin.webContents.sendInputEvent({type:'keyUp',keyCode:'Enter'});
+
+        await new Promise(r=>setTimeout(r,1000));
+        const clickResultText = await waNativeWin.webContents.executeJavaScript(`
+          (function(){
+            var icon = document.querySelector('span[data-icon="send"]');
+            if(icon) {
+              var btn = icon.closest('button') || icon.closest('div[role="button"]') || icon.parentElement;
+              if(btn) {
+                btn.dispatchEvent(new MouseEvent('mousedown', {bubbles: true, cancelable: true, view: window}));
+                btn.dispatchEvent(new MouseEvent('mouseup', {bubbles: true, cancelable: true, view: window}));
+                btn.click();
+                return "CLICKED_SEND_BUTTON";
+              }
+              return "ICON_FOUND_BUT_NO_BUTTON_PARENT";
+            }
+            return "ICON_NOT_FOUND";
+          })();
+        `);
+        console.log('[WA][NATIVE] Text Click Result:', clickResultText);
+      }
+      await new Promise(r=>setTimeout(r,1500));
+      // ─── أخفِ النافذة دائماً بعد الإرسال ───
+      waNativeWin.hide();
+      // أعد تركيز النافذة الرئيسية
+      const mWins = BrowserWindow.getAllWindows().filter(w => w !== waNativeWin);
+      if (mWins.length > 0) mWins[0].focus();
+      console.log(`[WA][NATIVE] sent for ${phone}`);
+    } catch(e) { console.error('[WA][NATIVE]', e?.message); }
+    return;
+  }
+
+  // ─── إذا كان الوضع غير معروف أو غير محدد وتوجد نافذة مخفية، استخدمها ───
+  if (data.wa_mode === 'bot' && !waNativeWin) {
+    console.warn('[WA][NATIVE] Bot mode selected but native window not initialized, falling through.');
+  } else if ((!data.wa_mode || data.wa_mode === 'bot') && waNativeWin) {
+    // إعادة توجيه للمعالج الصحيح إذا لم يتم الإمساك به بالفوق
+    console.warn('[WA][NATIVE] Rerouting to bot mode handler (wa_mode was:', data.wa_mode, ')');
+    data.wa_mode = 'bot';
+    waMessageQueue.unshift({ event: null, data });
+    return processWaQueue();
+  }
+
   const hubIp = String(data.waHubIp || '').trim();
   const payload = { ...data };
   delete payload.waHubIp;
@@ -1671,7 +1930,7 @@ ipcMain.on('wa-send-message', async (event, data) => {
     }
     console.error(`[WA][SEND] Fallback failed -> target="${targetRaw}" code="${textOnly.code || 'UNKNOWN'}" reason="${textOnly.error || 'unknown'}"`);
   }
-});
+}
 
 // Debug channel from renderer -> main terminal (for staff/settings pages)
 ipcMain.on('wa-debug-log', (event, payload) => {
@@ -1692,4 +1951,13 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+
+
+
+
+
+
+
+
+
 
