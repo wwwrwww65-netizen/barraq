@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>هـــش HASH - نظام الكاشير (نقطة البيع)</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="light-theme-fixes.css">
     <link rel="stylesheet" href="pos.css">
     <link rel="stylesheet" href="staff.css"> <!-- Modal styles reused here -->
     <!-- Google Fonts -->
@@ -116,13 +117,16 @@
                     <button class="type-btn" data-type="سفري"><i class="ph ph-bag"></i> سفري</button>
                 </div>
 
+                <!-- Section sub-tabs — تظهر فقط عند اختيار محلي -->
+                <div id="section-type-row" class="section-type-row">
+                    <button class="section-btn active" data-section="أفراد"><i class="ph ph-user"></i> أفراد</button>
+                    <button class="section-btn" data-section="عوائل"><i class="ph ph-users-four"></i> عوائل</button>
+                </div>
+
                 <div class="table-selector">
                     <select id="cart-table-select">
                         <option value="">اختر الطاولة (اختياري)...</option>
-                        <option value="طاولة 01">طاولة 01</option>
-                        <option value="طاولة 02">طاولة 02</option>
-                        <option value="طاولة 03">طاولة 03</option>
-                        <option value="عائلات 01">عائلات 01</option>
+                        <!-- Options will be populated by JS -->
                     </select>
                 </div>
             </div>
@@ -194,6 +198,11 @@
                         <i class="ph ph-arrows-split" style="font-size: 32px; color: var(--text-muted); display: block; margin-bottom: 8px;"></i>
                         <strong style="color: var(--text-muted)">مجزأ</strong>
                     </label>
+                    <label class="payment-method" style="flex:1; padding: 15px; border: 2px solid var(--border-light); border-radius: 8px; cursor: pointer; background: rgba(15, 23, 42, 0.4);">
+                        <input type="radio" name="pay_method" value="هنقرستيشن" style="display:none;">
+                        <i class="ph ph-motorcycle" style="font-size: 32px; color: var(--text-muted); display: block; margin-bottom: 8px;"></i>
+                        <strong style="color: var(--text-muted)">هنقرستيشن</strong>
+                    </label>
                 </div>
 
                 <div id="split-calculator" style="display:none; flex-direction: column; gap: 10px; margin-bottom: 20px; text-align:right; border: 1px dashed var(--accent-orange); padding:10px; border-radius:8px;">
@@ -210,6 +219,11 @@
                         <span style="font-weight: 700; color:var(--text-secondary);">المتبقي للعميل (الصرف):</span>
                         <strong id="cash-change" style="font-size: 20px; color: var(--accent-red);">0.00 <span class="js-cur-sym">ر.س</span></strong>
                     </div>
+                </div>
+
+                <div id="order-notes-field" style="display:none; flex-direction: column; gap: 10px; margin-bottom: 20px; text-align:right;">
+                    <label style="color: var(--text-secondary); font-size:14px; font-weight:700;">ملاحظات الطلب (اختياري):</label>
+                    <textarea id="checkout-order-notes" class="input-modern" placeholder="أضف ملاحظات خاصة بالطلب..." style="font-size: 14px; padding: 12px; min-height: 80px; resize: vertical; font-family: inherit;"></textarea>
                 </div>
 
                 <button class="btn-pay" id="btn-confirm-payment" style="width: 100%; font-size:18px;"><i class="ph ph-check-circle"></i> تأكيد الدفع وطباعة الفواتير</button>
@@ -231,6 +245,7 @@
             <div style="border-bottom: 2px dashed #000; margin: 15px 0;"></div>
             
             <h3 style="margin: 0; font-size: 18px;" id="r-type">طلب محلي</h3>
+            <p style="margin: 5px 0; font-size: 16px; font-weight:bold; display:none;" id="r-table"></p>
             <p style="margin: 5px 0; font-size: 14px; font-weight:bold;">رقم الطلب: <span id="r-order-id">#1046</span></p>
             <p style="margin: 5px 0; font-size: 12px; text-align:right" id="r-date"></p>
             
@@ -269,6 +284,10 @@
                 <span>طريقة الدفع:</span>
                 <span id="r-payment-method">كاش</span>
             </div>
+            <div style="display:flex; justify-content:space-between; font-size:13px; margin-top:5px;" id="r-notes-row" >
+                <span>ملاحظات:</span>
+                <span id="r-order-notes" style="text-align:right; max-width:200px;"></span>
+            </div>
             
             <br>
             <img id="r-qr-code" style="width: 140px; height: 140px; margin: 10px auto; display: block;" alt="ZATCA QR Code">
@@ -301,6 +320,107 @@
         </div>
     </div>
 
+    <!-- Tables Customization Modal -->
+    <div class="modal-overlay" id="tables-modal">
+        <div class="modal-content tables-modal-content" style="max-width: 640px; padding: 0;">
+            <div class="modal-header" style="padding: 20px; border-bottom: 1px solid var(--border-color);">
+                <h3><i class="ph ph-squares-four"></i> إدارة وتخصيص الطاولات</h3>
+                <button class="close-modal" id="btn-close-tables-modal"><i class="ph ph-x"></i></button>
+            </div>
+            
+            <div class="tables-tabs" style="display: flex; border-bottom: 1px solid var(--border-color); background: var(--bg-dark);">
+                <button class="table-tab active" data-target="manage-tables-tab" style="flex: 1; padding: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-family: 'Cairo'; font-weight: 700; font-size: 16px; border-bottom: 3px solid transparent; transition: all 0.3s ease;"><i class="ph ph-gear"></i> إعداد الطاولات</button>
+                <button class="table-tab" data-target="status-tables-tab" style="flex: 1; padding: 15px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-family: 'Cairo'; font-weight: 700; font-size: 16px; border-bottom: 3px solid transparent; transition: all 0.3s ease;"><i class="ph ph-activity"></i> حالة الطاولات (مشغولة / فارغة)</button>
+            </div>
+
+            <div class="modal-body" style="padding: 20px; min-height: 350px; background: #0d1424;">
+                
+                <!-- Manage Tables Tab -->
+                <div id="manage-tables-tab" class="table-tab-content active" style="display: block;">
+                    <div class="add-table-form" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                        <input type="text" id="new-table-name" autocomplete="off" spellcheck="false"
+                            placeholder="اسم الطاولة (مثال: 01، A1)"
+                            style="flex: 2; min-width: 140px; padding: 12px 15px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff; font-family: Cairo, sans-serif; font-size: 15px; outline: none;">
+                        <select id="new-table-section"
+                            style="flex: 1; min-width: 110px; padding: 12px 10px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff; font-family: Cairo, sans-serif; font-size: 15px; outline: none; cursor: pointer;">
+                            <option value="أفراد">👤 أفراد</option>
+                            <option value="عوائل">👨‍👩‍👧 عوائل</option>
+                        </select>
+                        <button id="btn-add-table" style="padding: 0 20px; border-radius: 8px; background: var(--accent-blue); color: white; border: none; font-family: Cairo, sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px;"><i class="ph ph-plus"></i> إضافة</button>
+                    </div>
+                    
+                    <div style="background: rgba(0,0,0,0.25); border-radius: 12px; border: 1px solid rgba(255,255,255,0.07); overflow: hidden;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: right;">
+                            <thead style="background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.07);">
+                                <tr>
+                                    <th style="padding: 14px 15px; color: #94a3b8; font-weight: 600; text-align: right;">اسم الطاولة</th>
+                                    <th style="padding: 14px 15px; color: #94a3b8; font-weight: 600; text-align: center;">القسم</th>
+                                    <th style="padding: 14px 15px; width: 80px; text-align: center; color: #94a3b8; font-weight: 600;">حذف</th>
+                                </tr>
+                            </thead>
+                            <tbody id="manage-tables-list">
+                                <!-- JS injected -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Status Tables Tab -->
+                <div id="status-tables-tab" class="table-tab-content" style="display: none; animation: fadeIn 0.3s ease;">
+                    <div class="tables-status-grid" id="status-tables-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px;">
+                        <!-- JS injected -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        .table-tab.active {
+            color: var(--accent-blue) !important;
+            border-bottom-color: var(--accent-blue) !important;
+            background: rgba(59, 130, 246, 0.05) !important;
+        }
+        .table-tab:hover:not(.active) {
+            color: var(--text-primary) !important;
+            background: rgba(255,255,255,0.02) !important;
+        }
+        .table-item-row:hover {
+            background: rgba(255,255,255,0.03);
+        }
+        .table-status-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .table-status-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255,255,255,0.2);
+        }
+        .table-status-card.busy {
+            background: rgba(239, 68, 68, 0.05);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+        .table-status-card.empty {
+            background: rgba(16, 185, 129, 0.05);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+        .ts-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .table-status-card.busy .ts-icon { color: var(--accent-red); }
+        .table-status-card.empty .ts-icon { color: var(--accent-green); }
+        .ts-name { font-weight: 700; font-size: 15px; margin-bottom: 5px; color: var(--text-primary); }
+        .ts-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+        .table-status-card.busy .ts-badge { background: rgba(239,68,68,0.2); color: var(--accent-red); }
+        .table-status-card.empty .ts-badge { background: rgba(16,185,129,0.2); color: var(--accent-green); }
+    </style>
 
     <script src="node_modules/html2canvas/dist/html2canvas.min.js"></script>
     <script src="db-helper.js"></script>

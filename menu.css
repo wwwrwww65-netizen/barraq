@@ -523,3 +523,80 @@ body.light-theme .overlay-btn:not(.edit):not(.show-btn) {
     color: #1e293b !important;
     border-color: #cbd5e1 !important;
 }
+
+/* Additional Menu Light Theme Fixes */
+body.light-theme .item-desc {
+    color: #64748b !important;
+}
+
+body.light-theme .item-category {
+    color: var(--accent-blue) !important;
+}
+
+body.light-theme .item-finances {
+    background: rgba(0,0,0,0.02) !important;
+    border-color: rgba(0,0,0,0.08) !important;
+}
+
+body.light-theme .finance-col {
+    border-left-color: rgba(0,0,0,0.08) !important;
+}
+
+body.light-theme .finance-col .label {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .finance-col .val {
+    color: #0f172a !important;
+}
+
+body.light-theme .menu-item-card:hover {
+    box-shadow: 0 12px 30px rgba(0,0,0,0.08) !important;
+    border-color: rgba(0,0,0,0.12) !important;
+}
+
+body.light-theme .cat-info-lg span {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .menu-tab-btn {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .menu-tab-btn:hover {
+    color: #0f172a !important;
+}
+
+body.light-theme .menu-tab-btn.active {
+    color: var(--accent-blue) !important;
+    background: linear-gradient(to top, rgba(59, 130, 246, 0.05), transparent) !important;
+}
+
+body.light-theme .menu-btn-secondary {
+    background: rgba(0,0,0,0.02) !important;
+    border-color: #cbd5e1 !important;
+    color: #475569 !important;
+}
+
+body.light-theme .menu-btn-secondary:hover {
+    background: rgba(0,0,0,0.05) !important;
+    border-color: #94a3b8 !important;
+    color: #0f172a !important;
+}
+
+body.light-theme .view-btn {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .view-btn.active {
+    color: #0f172a !important;
+}
+
+body.light-theme .action-btn {
+    color: #64748b !important;
+}
+
+body.light-theme .action-btn:hover {
+    background: rgba(0,0,0,0.05) !important;
+    color: #0f172a !important;
+}

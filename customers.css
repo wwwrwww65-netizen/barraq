@@ -7,6 +7,48 @@
     gap: 30px;
 }
 
+/* Light Theme Fixes for Customers */
+body.light-theme .cust-toolbar {
+    background: rgba(255,255,255,0.9) !important;
+    border-color: rgba(0,0,0,0.08) !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05) !important;
+}
+
+body.light-theme .cust-search i {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .cust-search input {
+    color: #0f172a !important;
+}
+
+body.light-theme .cust-search input::placeholder {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .cust-filters {
+    background: rgba(0,0,0,0.03) !important;
+}
+
+body.light-theme .cust-filter-btn {
+    color: #64748b !important;
+}
+
+body.light-theme .cust-filter-btn.active,
+body.light-theme .cust-filter-btn:hover {
+    color: white !important;
+}
+
+body.light-theme .cust-kpi-card {
+    background: linear-gradient(135deg, #fff 0%, #f8fafc 100%) !important;
+    border-color: rgba(0,0,0,0.08) !important;
+}
+
+body.light-theme .cust-kpi-card:hover {
+    border-color: rgba(0,0,0,0.12) !important;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.08) !important;
+}
+
 /* Header & Filters */
 .cust-toolbar {
     display: flex;

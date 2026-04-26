@@ -1667,8 +1667,12 @@ async function processWaQueue() {
   while (waMessageQueue.length > 0) {
     const { event, data } = waMessageQueue.shift();
     await handleWaSendMessage(event, data);
-    // Wait slightly before processing the next message
-    await new Promise(r => setTimeout(r, 4000));
+    // ─── زيادة وقت الانتظار بين الرسائل لمنع Race Condition ───
+    // عند إرسال صورتين متتاليتين (موظف + مدير)، نحتاج انتظار أطول
+    // للتأكد من أن واتساب أكمل معالجة الرسالة الأولى بالكامل
+    const waitTime = data.image ? 6000 : 4000; // 6 ثواني للصور، 4 ثواني للنص فقط
+    console.log(`[WA][QUEUE] Waiting ${waitTime}ms before next message...`);
+    await new Promise(r => setTimeout(r, waitTime));
   }
   
   isWaProcessing = false;
@@ -1681,6 +1685,9 @@ ipcMain.on('wa-send-message', (event, data) => {
 
 async function handleWaSendMessage(event, data) {
   if (!data || typeof data !== 'object') return;
+
+  const targetRaw = String(data.number || '');
+  let sendResult = { success: false, number: targetRaw, image: data.image };
 
   // ── وضع المتصفح (Browser Mode) ─────────────────────────────────────────
   if (data.wa_mode === 'browser') {
@@ -1706,7 +1713,15 @@ async function handleWaSendMessage(event, data) {
       fs.writeFileSync(vbsPath, vbs, 'utf8');
       require('child_process').exec(`cscript //nologo "${vbsPath}"`, ()=>{ try{fs.unlinkSync(vbsPath);}catch(e){} });
       console.log(`[WA][BROWSER] macro sent for ${phone}`);
-    } catch(e) { console.error('[WA][BROWSER]', e?.message); }
+      sendResult.success = true;
+    } catch(e) { 
+      console.error('[WA][BROWSER]', e?.message); 
+      sendResult.success = false;
+      sendResult.error = e?.message || 'Unknown error';
+    }
+    if (event && event.sender) {
+      event.sender.send('wa-send-result', sendResult);
+    }
     return;
   }
 
@@ -1732,7 +1747,15 @@ async function handleWaSendMessage(event, data) {
         require('child_process').exec(`cscript //nologo "${vbsPath}"`, ()=>{ try{fs.unlinkSync(vbsPath);}catch(e){} });
       }
       console.log(`[WA][DESKTOP] sent for ${phone}`);
-    } catch(e) { console.error('[WA][DESKTOP]', e?.message); }
+      sendResult.success = true;
+    } catch(e) { 
+      console.error('[WA][DESKTOP]', e?.message); 
+      sendResult.success = false;
+      sendResult.error = e?.message || 'Unknown error';
+    }
+    if (event && event.sender) {
+      event.sender.send('wa-send-result', sendResult);
+    }
     return;
   }
 
@@ -1792,35 +1815,69 @@ async function handleWaSendMessage(event, data) {
       if (data.image) {
         clipboard.writeImage(nativeImage.createFromDataURL(data.image));
         
-        // انتظر حتى يقوم واتساب بتعبئة النص في حقل الكتابة من الـ URL، وإلا فإن تعبئة النص لاحقاً ستلغي الصورة
+        // ─── إصلاح Race Condition: انتظر حتى يقوم واتساب بتعبئة النص من URL بالكامل ───
+        // المشكلة: عند إرسال صورتين متتاليتين، يقوم النظام بلصق الصورة بينما واتساب
+        // لا يزال يعالج النص من URL، مما يؤدي لمسح معاينة الصورة
+        // الحل: انتظار ذكي يتحقق من ظهور النص فعلياً في حقل الإدخال
         if (data.text) {
+          console.log('[WA][NATIVE] Waiting for WhatsApp to populate text from URL...');
           await waNativeWin.webContents.executeJavaScript(`
             new Promise(r => {
               let n = 0;
+              const maxAttempts = 40; // زيادة عدد المحاولات من 20 إلى 40
               const t = setInterval(() => {
                 n++;
-                const b = document.querySelector('footer div[contenteditable="true"]') || document.querySelector('div[contenteditable="true"]');
-                if (b && b.innerText.trim().length > 0) {
+                const b = document.querySelector('footer div[contenteditable="true"]') || 
+                          document.querySelector('div[contenteditable="true"]');
+                if (b && b.innerText && b.innerText.trim().length > 0) {
+                  // تأكد أن النص مستقر (لا يتغير) لمدة 300ms إضافية
+                  const initialText = b.innerText.trim();
+                  setTimeout(() => {
+                    const currentText = b.innerText ? b.innerText.trim() : '';
+                    if (currentText === initialText && currentText.length > 0) {
+                      clearInterval(t);
+                      console.log('[WA][WEB] Text stabilized: "' + currentText.substring(0, 50) + '..."');
+                      r(true);
+                    }
+                  }, 300);
+                } else if (n >= maxAttempts) {
                   clearInterval(t);
-                  r();
-                } else if (n > 20) {
-                  clearInterval(t);
-                  r();
+                  console.warn('[WA][WEB] Text population timeout after ' + maxAttempts + ' attempts');
+                  r(false);
                 }
               }, 250);
             })
           `);
+          // انتظار إضافي قصير للتأكد من استقرار DOM
+          await new Promise(r => setTimeout(r, 500));
         } else {
           await new Promise(r=>setTimeout(r, 1000));
         }
 
+        // التركيز على حقل الإدخال قبل لصق الصورة
         await waNativeWin.webContents.executeJavaScript(
           '(function(){ var b = document.querySelector(\'footer div[contenteditable="true"]\') || document.querySelector(\'div[contenteditable="true"]\'); if(b){ b.click(); b.focus(); } })();'
         );
-        await new Promise(r=>setTimeout(r,400));
+        await new Promise(r=>setTimeout(r, 600)); // زيادة وقت الانتظار من 400 إلى 600
+        
+        console.log('[WA][NATIVE] Pasting image into WhatsApp...');
         waNativeWin.webContents.sendInputEvent({type:'keyDown',keyCode:'V',modifiers:['control']});
         waNativeWin.webContents.sendInputEvent({type:'keyUp',keyCode:'V',modifiers:['control']});
-        await new Promise(r=>setTimeout(r,2000));
+        
+        // انتظار أطول للتأكد من ظهور معاينة الصورة قبل الإرسال
+        await new Promise(r=>setTimeout(r, 3000)); // زيادة من 2000 إلى 3000
+        
+        // التحقق من وجود معاينة الصورة قبل الإرسال
+        const imagePreviewCheck = await waNativeWin.webContents.executeJavaScript(`
+          (function(){
+            const imgPreview = document.querySelector('div[data-testid="image-preview"]') || 
+                               document.querySelector('img[src^="blob:"]') ||
+                               document.querySelector('span[data-icon="image"]');
+            return imgPreview ? 'IMAGE_PREVIEW_FOUND' : 'NO_IMAGE_PREVIEW';
+          })();
+        `);
+        console.log('[WA][NATIVE] Image preview check:', imagePreviewCheck);
+        
         waNativeWin.webContents.sendInputEvent({type:'keyDown',keyCode:'Enter'});
         waNativeWin.webContents.sendInputEvent({type:'char',keyCode:'Enter'});
         waNativeWin.webContents.sendInputEvent({type:'keyUp',keyCode:'Enter'});
@@ -1879,7 +1936,30 @@ async function handleWaSendMessage(event, data) {
       const mWins = BrowserWindow.getAllWindows().filter(w => w !== waNativeWin);
       if (mWins.length > 0) mWins[0].focus();
       console.log(`[WA][NATIVE] sent for ${phone}`);
-    } catch(e) { console.error('[WA][NATIVE]', e?.message); }
+      
+      // ─── إعادة تحميل الصفحة لضمان نظافة الحالة للرسالة التالية ───
+      // هذا مهم جداً عند إرسال رسائل متعددة لتجنب مشاكل Race Condition
+      try {
+        console.log('[WA][NATIVE] Resetting WhatsApp page for next message...');
+        await waNativeWin.loadURL('https://web.whatsapp.com', { 
+          userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" 
+        });
+        // انتظار حتى يتم تحميل الصفحة بالكامل
+        await new Promise(r => setTimeout(r, 2000));
+        console.log('[WA][NATIVE] Page reset complete');
+      } catch(e) {
+        console.warn('[WA][NATIVE] Page reset failed:', e?.message);
+      }
+      
+      sendResult.success = true;
+    } catch(e) { 
+      console.error('[WA][NATIVE]', e?.message); 
+      sendResult.success = false;
+      sendResult.error = e?.message || 'Unknown error';
+    }
+    if (event && event.sender) {
+      event.sender.send('wa-send-result', sendResult);
+    }
     return;
   }
 
@@ -1897,7 +1977,6 @@ async function handleWaSendMessage(event, data) {
   const hubIp = String(data.waHubIp || '').trim();
   const payload = { ...data };
   delete payload.waHubIp;
-  const targetRaw = String(payload.number || '');
   const msgType = payload.image ? 'image+text' : 'text-only';
   const textPreview = String(payload.text || '').replace(/\s+/g, ' ').trim().slice(0, 100);
   console.log(`[WA][SEND] Start -> target="${targetRaw}" type=${msgType} via=${hubIp ? `hub:${hubIp}` : 'local'} preview="${textPreview}"`);
@@ -1906,6 +1985,10 @@ async function handleWaSendMessage(event, data) {
     const remote = await relayWaHttp(hubIp, payload);
     if (remote && remote.ok) {
       console.log(`[WA][SEND] Success via LAN hub (${hubIp}) -> target="${targetRaw}"`);
+      sendResult.success = true;
+      if (event && event.sender) {
+        event.sender.send('wa-send-result', sendResult);
+      }
       return;
     }
     console.warn(`[WA][SEND] Hub relay failed (${hubIp}) -> target="${targetRaw}" reason="${(remote && remote.error) || 'unknown'}", fallback=local`);
@@ -1914,10 +1997,14 @@ async function handleWaSendMessage(event, data) {
   const local = await deliverWhatsAppMessage(payload);
   if (local.ok) {
     console.log(`[WA][SEND] Success local -> target="${targetRaw}" chatId="${local.chatId || ''}" type=${msgType}`);
+    sendResult.success = true;
+    if (event && event.sender) {
+      event.sender.send('wa-send-result', sendResult);
+    }
     return;
   }
 
-  console.error(`[WA][SEND] Local failed -> target="${targetRaw}" type=${msgType} code="${local.code || 'UNKNOWN'}" reason="${local.error || 'unknown'}"`);
+  console.error(`[WA][SEND] Local failed -> target="${targetRaw}" type=${msgType} code="${local.code || 'UNKNOWN'}" reason="${local.error || 'unknown'}`);
   // Fallback: if media send fails, retry text-only to avoid losing critical notice.
   if (payload.image) {
     const fallbackPayload = { ...payload };
@@ -1926,9 +2013,20 @@ async function handleWaSendMessage(event, data) {
     const textOnly = await deliverWhatsAppMessage(fallbackPayload);
     if (textOnly.ok) {
       console.warn(`[WA][SEND] Fallback success (text-only) -> target="${targetRaw}" chatId="${textOnly.chatId || ''}"`);
+      sendResult.success = true;
+      sendResult.fallbackTextOnly = true;
+      if (event && event.sender) {
+        event.sender.send('wa-send-result', sendResult);
+      }
       return;
     }
-    console.error(`[WA][SEND] Fallback failed -> target="${targetRaw}" code="${textOnly.code || 'UNKNOWN'}" reason="${textOnly.error || 'unknown'}"`);
+    console.error(`[WA][SEND] Fallback failed -> target="${targetRaw}" code="${textOnly.code || 'UNKNOWN'}" reason="${textOnly.error || 'unknown'}`);
+  }
+
+  sendResult.success = false;
+  sendResult.error = local.error || 'Send failed';
+  if (event && event.sender) {
+    event.sender.send('wa-send-result', sendResult);
   }
 }
 

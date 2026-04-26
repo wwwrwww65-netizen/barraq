@@ -214,6 +214,7 @@ window.showView = function(viewId, navId) {
     if(viewId === 'view-payroll') renderPayroll();
     if(viewId === 'view-vouchers') renderVouchers();
     if(viewId === 'view-deductions') void renderDeductions();
+    if(viewId === 'view-history') loadHistoryData();
     if(viewId === 'view-add-employee') {
         if(navId === 'nav-new-emp') {
             document.getElementById('form-new-emp').reset();
@@ -608,27 +609,204 @@ window.openFullProfile = function(id) {
     };
 };
 
-function renderProfileFinances(empName) {
-    const myVouchers = (db.hrExpenses || [])
+window.exportProFinancesPDF = function() {
+    if(!currentProfileId) return;
+    const emp = db.employees.find(e => e.id === currentProfileId);
+    if(!emp) return;
+    
+    let restName = "الموظفين";
+    try {
+        const sysRaw = localStorage.getItem('restaurant_settings');
+        if (sysRaw) {
+            const sys = JSON.parse(sysRaw);
+            if (sys.name && sys.name.trim() !== '') {
+                restName = sys.name.trim().replace(/\s+/g, '_');
+            }
+        }
+    } catch(e) {}
+    
+    const d = new Date();
+    const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    
+    if (typeof window.exportPageToPDF === 'function') {
+        window.exportPageToPDF('كشف_حساب_' + emp.name.replace(/\s+/g, '_') + '_' + dateStr + '.pdf');
+    } else {
+        window.print();
+    }
+};
+
+window.toggleProFinancesCustomDate = function() {
+    const periodSelect = document.getElementById('pro-finances-period');
+    const customDateDiv = document.getElementById('pro-finances-custom-date');
+    if (periodSelect && customDateDiv) {
+        customDateDiv.style.display = periodSelect.value === 'custom' ? 'flex' : 'none';
+    }
+};
+
+window.renderProfileFinances = function(empName) {
+    if(!empName && currentProfileId) {
+        const e = db.employees.find(x => x.id === currentProfileId);
+        if(e) empName = e.name;
+    }
+    if(!empName) return;
+
+    let myVouchers = (db.hrExpenses || [])
         .map((h, idx) => ({ h, idx }))
         .filter(({ h }) => h.employee === empName);
+        
+    const periodSelect = document.getElementById('pro-finances-period');
+    const filterVal = periodSelect ? periodSelect.value : 'all';
+    
+    // Date Filtering Logic
+    if (filterVal === 'custom') {
+        const fDate = document.getElementById('pro-finances-from')?.value;
+        const tDate = document.getElementById('pro-finances-to')?.value;
+        
+        myVouchers = myVouchers.filter(({ h }) => {
+            const d = new Date(h.timestamp || h.date);
+            if (isNaN(d)) return true; // Keep old records without proper dates
+            
+            let match = true;
+            if (fDate) {
+                const start = new Date(fDate);
+                start.setHours(0, 0, 0, 0);
+                if (d < start) match = false;
+            }
+            if (tDate) {
+                const end = new Date(tDate);
+                end.setHours(23, 59, 59, 999);
+                if (d > end) match = false;
+            }
+            return match;
+        });
+    } else if (filterVal !== 'all' && typeof window.isDateInPeriod === 'function') {
+        myVouchers = myVouchers.filter(({ h }) => window.isDateInPeriod(h.timestamp || h.date, filterVal));
+    } else if (filterVal !== 'all') {
+        // Fallback filtering
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        myVouchers = myVouchers.filter(({ h }) => {
+            let d = new Date(h.timestamp || h.date);
+            if(isNaN(d)) return true;
+            if (filterVal === 'today') return d >= today;
+            if (filterVal === 'week') {
+                const weekAgo = new Date(today);
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                return d >= weekAgo;
+            }
+            if (filterVal === 'month') return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+            if (filterVal === 'last_month') {
+                const lm = new Date(today.getFullYear(), today.getMonth()-1, 1);
+                const lme = new Date(today.getFullYear(), today.getMonth(), 0);
+                return d >= lm && d <= lme;
+            }
+            return true;
+        });
+    }
+
     const tbody = document.getElementById('pro-finances-body');
+    const tfoot = document.getElementById('pro-finances-tfoot');
     if(!tbody) return;
+    
+    // Set Print Header Info
+    const printEmpName = document.getElementById('pro-print-emp-name');
+    const printPeriod = document.getElementById('pro-print-period-text');
+    if (printEmpName) printEmpName.textContent = empName;
+    if (printPeriod) {
+        let periodText = 'عن جميع الأوقات المتاحة';
+        if (filterVal === 'today') periodText = 'حركات اليوم';
+        else if (filterVal === 'week') periodText = 'حركات هذا الأسبوع';
+        else if (filterVal === 'month') periodText = 'حركات هذا الشهر';
+        else if (filterVal === 'last_month') periodText = 'حركات الشهر الماضي';
+        else if (filterVal === 'custom') {
+            const f = document.getElementById('pro-finances-from')?.value;
+            const t = document.getElementById('pro-finances-to')?.value;
+            if (f && t) periodText = `الفترة: من ${f} إلى ${t}`;
+            else if (f) periodText = `ابتداءً من: ${f}`;
+            else if (t) periodText = `حتى تاريخ: ${t}`;
+        }
+        printPeriod.textContent = periodText;
+    }
+
     if(myVouchers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px;">لا توجد حركات مالية مسجلة.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px;">لا توجد حركات مالية مسجلة في هذه الفترة.</td></tr>';
+        if(tfoot) tfoot.innerHTML = '';
         return;
     }
-    tbody.innerHTML = [...myVouchers].reverse().map(({ h, idx }) => `
+    
+    let totalDeductions = 0; // خصم/سلفة
+    let totalPayments = 0;   // صرف راتب/مكافأة
+    
+    tbody.innerHTML = [...myVouchers].reverse().map(({ h, idx }) => {
+        const amt = Number(h.amount) || 0;
+        const isDeduction = h.type.includes('سلفة') || h.type.includes('عليه');
+        if(isDeduction) totalDeductions += amt;
+        else totalPayments += amt;
+        
+        return `
         <tr>
             <td dir="ltr" style="text-align:right">${h.date}</td>
-            <td style="color:${h.type.includes('سلفة')||h.type.includes('عليه')?'#f87171':'#34d399'}; font-weight:700;">${h.type}</td>
-            <td style="font-weight:800; font-size:16px;">${xf(h.amount)}</td>
+            <td style="color:${isDeduction ? '#ef4444' : '#10b981'}; font-weight:700;">${h.type}</td>
+            <td style="font-weight:800; font-size:16px;">${xf(amt)}</td>
             <td>${h.reason || '—'}</td>
-            <td>
+            <td class="no-print">
                 <button onclick="editHrVoucher(${idx})" style="background:none; border:none; color:var(--accent-blue); font-size:16px; cursor:pointer;" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
                 <button onclick="deleteHrVoucher(${idx})" style="background:none; border:none; color:#ef4444; font-size:16px; cursor:pointer; margin-right:8px;" title="حذف"><i class="ph ph-trash"></i></button>
             </td>
-        </tr>`).join('');
+        </tr>`;
+    }).join('');
+    
+    // Render Tfoot summary
+    if(tfoot) {
+        const sym = window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س';
+        const netAmount = totalPayments - totalDeductions;
+        tfoot.innerHTML = `
+            <tr style="background:rgba(255,255,255,0.02); font-weight:700; border-top:3px solid var(--border-color);">
+                <td colspan="2" style="padding:12px 14px; font-size:13px; border-top:3px solid #94a3b8;">
+                    إجمالي المدفوع للموظف (رواتب/مكافآت)
+                </td>
+                <td style="padding:12px 14px; font-size:15px; font-weight:800; color:#10b981; border-top:3px solid #94a3b8;">
+                    ${xf(totalPayments)}
+                </td>
+                <td colspan="2" class="no-print" style="border-top:3px solid #94a3b8;"></td>
+                <td colspan="2" class="print-only-cell" style="display:none; border-top:3px solid #94a3b8;"></td>
+            </tr>
+            <tr style="background:rgba(239,68,68,0.05);">
+                <td colspan="2" style="padding:9px 14px; font-size:13px;">
+                    إجمالي المخصوم (سلف/جزاءات)
+                </td>
+                <td style="padding:9px 14px; font-size:14px; font-weight:800; color:#ef4444;">
+                    ${xf(totalDeductions)}
+                </td>
+                <td colspan="2" class="no-print"></td>
+                <td colspan="2" class="print-only-cell" style="display:none;"></td>
+            </tr>
+            <tr style="background:rgba(59,130,246,0.05);">
+                <td colspan="2" style="padding:9px 14px; font-size:14px; font-weight:800; color:var(--text-primary);">
+                    الصافي (المدفوع - المخصوم)
+                </td>
+                <td style="padding:9px 14px; font-size:15px; font-weight:900; color:${netAmount >= 0 ? '#3b82f6' : '#ef4444'};">
+                    ${xf(netAmount)}
+                </td>
+                <td colspan="2" class="no-print"></td>
+                <td colspan="2" class="print-only-cell" style="display:none;"></td>
+            </tr>
+        `;
+        
+        // CSS trick to handle colspan mismatch in print vs screen because of .no-print column
+        const styleId = 'pro-finances-print-style';
+        let styleEl = document.getElementById(styleId);
+        if(!styleEl) {
+            styleEl = document.createElement('style');
+            styleEl.id = styleId;
+            document.head.appendChild(styleEl);
+        }
+        styleEl.innerHTML = `
+            @media print {
+                .pro-finances-table tfoot .print-only-cell { display: table-cell !important; padding: 9px 14px !important; }
+            }
+        `;
+    }
 }
 
 function renderProfileAttendance(empId) {
@@ -680,20 +858,64 @@ window.markAttendanceQuick = async function(empId, status) {
             if(absenceRule) {
                 setTimeout(async () => {
                     if(confirm(`هل تريد تطبيق خصم آلي (جزاء غياب) بقيمة ${xf(absenceRule.amount)} على الموظف؟`)) {
-                        emp.loans = (emp.loans || 0) + absenceRule.amount;
-                        if(!db.hrExpenses) db.hrExpenses = [];
-                        db.hrExpenses.push({
-                            employee: emp.name,
-                            amount: absenceRule.amount,
-                            type: 'خصم / جزاء',
-                            reason: absenceRule.name + ` (تسجيل آلي بتاريخ ${dateStr})`,
-                            date: dateStr,
-                            timestamp: Date.now()
-                        });
-                        await persistDb();
-                        updateKPIs();
-                        renderEmployees();
-                        if(document.getElementById('view-deductions').style.display==='block') await renderDeductions();
+                        // استخدام دالة generateVoucher لإنشاء السند وإرسال الواتساب
+                        try {
+                            // فتح النموذج أولاً
+                            const modal = document.getElementById('advance-modal');
+                            if (modal) delete modal.dataset.editIndex;
+                            
+                            // ملء قائمة الموظفين
+                            const empSelect = document.getElementById('voucher-employee');
+                            if (empSelect) {
+                                empSelect.innerHTML = '<option value="" disabled>اختر الموظف</option>';
+                                db.employees.filter(e => e.status !== 'end').forEach(emp => {
+                                    empSelect.innerHTML += `<option value="${emp.name}">${emp.name} (${emp.role})</option>`;
+                                });
+                                empSelect.value = emp.name;
+                            }
+                            
+                            // ملء المبلغ
+                            const amountInput = document.getElementById('voucher-amount');
+                            if (amountInput) {
+                                amountInput.value = absenceRule.amount;
+                            }
+                            
+                            // ملء السبب
+                            const reasonInput = document.getElementById('voucher-reason');
+                            if (reasonInput) {
+                                reasonInput.value = absenceRule.name + ` (تسجيل آلي بتاريخ ${dateStr})`;
+                            }
+                            
+                            // اختيار النوع (عليه خصم)
+                            const typeSelect = document.getElementById('voucher-type');
+                            if (typeSelect) {
+                                typeSelect.value = 'advance';
+                            }
+                            
+                            // فتح النموذج
+                            openHrModal('advance-modal');
+                            
+                            // انتظار بسيط ثم استدعاء دالة إنشاء السند
+                            await new Promise(r => setTimeout(r, 300));
+                            await window.generateVoucher('خصم / جزاء');
+                        } catch (err) {
+                            console.error('Error generating absence penalty voucher:', err);
+                            // Fallback: حفظ يدوي في حالة الخطأ
+                            emp.loans = (emp.loans || 0) + absenceRule.amount;
+                            if(!db.hrExpenses) db.hrExpenses = [];
+                            db.hrExpenses.push({
+                                employee: emp.name,
+                                amount: absenceRule.amount,
+                                type: 'خصم / جزاء',
+                                reason: absenceRule.name + ` (تسجيل آلي بتاريخ ${dateStr})`,
+                                date: dateStr,
+                                timestamp: Date.now()
+                            });
+                            await persistDb();
+                            updateKPIs();
+                            renderEmployees();
+                            if(document.getElementById('view-deductions').style.display==='block') await renderDeductions();
+                        }
                         alert('تم خصم الجزاء على الموظف بنجاح!');
                     }
                 }, 300);
@@ -1080,30 +1302,70 @@ document.getElementById('form-penalty-trx')?.addEventListener('submit', async (e
 
     if (!employee || !amount || !reason) return alert('الرجاء إكمال البيانات');
 
-    // Subtract from employee effectively by increasing their loans liability
-    const emp = db.employees.find(e => e.name === employee);
-    if(emp) emp.loans = (emp.loans || 0) + amount;
-
-    // Save as hrExpense but type 'خصم / جزاء' so acc-banks doesn't deduct cash!
-    if(!db.hrExpenses) db.hrExpenses = [];
-    db.hrExpenses.push({
-        employee: employee,
-        amount: amount,
-        type: 'خصم / جزاء',
-        reason: reason,
-        date: new Date().toLocaleDateString('ar-SA'),
-        timestamp: Date.now()
-    });
-
-    await persistDb();
+    // إغلاق نموذج الجزاءات
     closeHrModal('penalty-modal');
     e.target.reset();
-    
-    updateKPIs();
-    renderEmployees();
-    if(document.getElementById('view-deductions').style.display==='block') await renderDeductions();
-    
-    alert('تم تطبيق الخصم على الموظف وتسجيله في حسابه بنجاح!');
+
+    // استخدام دالة generateVoucher لإنشاء السند وإرسال الواتساب
+    try {
+        // ملء نموذج السندات بالبيانات
+        const modal = document.getElementById('advance-modal');
+        if (modal) delete modal.dataset.editIndex;
+        
+        // ملء قائمة الموظفين
+        const empSelect = document.getElementById('voucher-employee');
+        if (empSelect) {
+            empSelect.innerHTML = '<option value="" disabled>اختر الموظف</option>';
+            db.employees.filter(e => e.status !== 'end').forEach(emp => {
+                empSelect.innerHTML += `<option value="${emp.name}">${emp.name} (${emp.role})</option>`;
+            });
+            empSelect.value = employee;
+        }
+        
+        // ملء المبلغ
+        const amountInput = document.getElementById('voucher-amount');
+        if (amountInput) {
+            amountInput.value = amount;
+        }
+        
+        // ملء السبب
+        const reasonInput = document.getElementById('voucher-reason');
+        if (reasonInput) {
+            reasonInput.value = reason;
+        }
+        
+        // اختيار النوع (عليه خصم)
+        const typeSelect = document.getElementById('voucher-type');
+        if (typeSelect) {
+            typeSelect.value = 'advance';
+        }
+        
+        // فتح نموذج السندات
+        openHrModal('advance-modal');
+        
+        // انتظار بسيط ثم إنشاء السند
+        await new Promise(r => setTimeout(r, 300));
+        await window.generateVoucher('خصم / جزاء');
+    } catch (err) {
+        console.error('Error generating penalty voucher:', err);
+        // Fallback: حفظ يدوي عند الخطأ
+        const emp = db.employees.find(e => e.name === employee);
+        if(emp) emp.loans = (emp.loans || 0) + amount;
+        if(!db.hrExpenses) db.hrExpenses = [];
+        db.hrExpenses.push({
+            employee: employee,
+            amount: amount,
+            type: 'خصم / جزاء',
+            reason: reason,
+            date: new Date().toLocaleDateString('ar-SA'),
+            timestamp: Date.now()
+        });
+        await persistDb();
+        updateKPIs();
+        renderEmployees();
+        if(document.getElementById('view-deductions').style.display==='block') await renderDeductions();
+        alert('تم حفظ الخصم (بدون سند)');
+    }
 });
 
 // ── Rule Modal Submit ────────────────────────────────────────
@@ -1216,7 +1478,24 @@ window.generateVoucher = async function(typeStr) {
         const salary = Number(emp?.salary) || 0;
         const loans = Number(emp?.loans) || 0;
         const amtNum = Number(amount);
-        const netRemaining = Math.max(0, salary - loans - amtNum);
+        let netRemaining;
+        
+        // حساب الرصيد حسب نوع السند
+        if (typeStr.includes('خصم') || typeStr.includes('جزاء')) {
+            // للخصم: الرصيد المتبقي بعد الخصم من الراتب
+            // loans هنا تشمل الخصومات السابقة، ونضيف الخصم الجديد
+            netRemaining = Math.max(0, salary - (loans + amtNum));
+        } else if (typeStr.includes('سلفة') || typeStr.includes('عليه')) {
+            // للسلفة: الرصيد المتبقي بعد السلفة
+            netRemaining = Math.max(0, salary - (loans + amtNum));
+        } else if (typeStr.includes('راتب') || typeStr.includes('مكافأة') || typeStr.includes('له')) {
+            // للراتب/المكافأة: الرصيد الصافي بعد الصرف
+            netRemaining = Math.max(0, salary - loans);
+        } else {
+            // افتراضي
+            netRemaining = Math.max(0, salary - loans - amtNum);
+        }
+        
         const netFmt = netRemaining.toLocaleString('en-US', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
@@ -1228,7 +1507,42 @@ window.generateVoucher = async function(typeStr) {
     if (docTitle) {
         if (typeStr.includes('راتب')) docTitle.textContent = 'سند راتب';
         else if (typeStr.includes('مستحقات')) docTitle.textContent = 'سند صرف مستحقات';
+        else if (typeStr.includes('خصم') || typeStr.includes('جزاء')) docTitle.textContent = 'سند خصم / جزاء';
+        else if (typeStr.includes('سلفة') || typeStr.includes('عليه')) docTitle.textContent = 'سند سلفة';
+        else if (typeStr.includes('مكافأة') || typeStr.includes('له')) docTitle.textContent = 'سند مكافأة';
         else docTitle.textContent = 'سند صرف';
+    }
+
+    // تحديث النصوص حسب نوع السند
+    const labelRecipient = document.getElementById('v-label-recipient');
+    const labelAmount = document.getElementById('v-label-amount');
+    const labelBalance = document.getElementById('v-label-balance');
+    
+    if (typeStr.includes('خصم') || typeStr.includes('جزاء')) {
+        // للخصم/الجزاء
+        if (labelRecipient) labelRecipient.textContent = 'يُخصم من الأخ :';
+        if (labelAmount) labelAmount.textContent = 'مبلغ وقدره :';
+        if (labelBalance) labelBalance.textContent = 'صافي الرصيد :';
+    } else if (typeStr.includes('سلفة') || typeStr.includes('عليه')) {
+        // للسلفة
+        if (labelRecipient) labelRecipient.textContent = 'تم صرف للأخ :';
+        if (labelAmount) labelAmount.textContent = 'سلفة بقيمة :';
+        if (labelBalance) labelBalance.textContent = 'الرصيد المتبقي :';
+    } else if (typeStr.includes('مكافأة') || typeStr.includes('له')) {
+        // للمكافأة
+        if (labelRecipient) labelRecipient.textContent = 'يُصرف للأخ :';
+        if (labelAmount) labelAmount.textContent = 'مكافأة بقيمة :';
+        if (labelBalance) labelBalance.textContent = 'الرصيد لكم :';
+    } else if (typeStr.includes('راتب')) {
+        // للراتب
+        if (labelRecipient) labelRecipient.textContent = 'راتب الأخ :';
+        if (labelAmount) labelAmount.textContent = 'مبلغ وقدره :';
+        if (labelBalance) labelBalance.textContent = 'صافي الراتب :';
+    } else {
+        // افتراضي
+        if (labelRecipient) labelRecipient.textContent = 'تم صرف للأخ :';
+        if (labelAmount) labelAmount.textContent = 'مبلغ وقدره :';
+        if (labelBalance) labelBalance.textContent = 'الرصيد لكم :';
     }
 
     const paySel = document.getElementById('voucher-pay-method');
@@ -1621,6 +1935,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderVouchers();
     });
 
+    // ── HR History Feature ──────────────────────────────────────
+    document.getElementById('btn-open-history')?.addEventListener('click', () => {
+        showView('view-history', null);
+    });
+
+    // Date filter change handler
+    document.getElementById('history-date-filter')?.addEventListener('change', (e) => {
+        const customDateDiv = document.getElementById('history-custom-date');
+        if (e.target.value === 'custom') {
+            customDateDiv.style.display = 'block';
+        } else {
+            customDateDiv.style.display = 'none';
+        }
+    });
+
     renderEmployees();
 
     if (typeof window.registerPosDatabaseRefresh === 'function') {
@@ -1637,6 +1966,63 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderVouchers();
             await renderDeductions();
             populateEmpSelect();
+            loadHistoryData();
         });
     }
+
+    // ── Enhanced Modal Touch/Scroll Support for Mobile ──────────────────────────────────────
+    // Prevent body scroll when modal is open
+    const modalObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.attributeName === 'class') {
+                const modal = mutation.target;
+                if (modal.classList.contains('modal-overlay')) {
+                    if (modal.classList.contains('active')) {
+                        document.body.style.overflow = 'hidden';
+                    } else {
+                        document.body.style.overflow = '';
+                    }
+                }
+            }
+        });
+    });
+
+    // Observe all modal overlays
+    document.querySelectorAll('.modal-overlay').forEach((modal) => {
+        modalObserver.observe(modal, { attributes: true });
+    });
+
+    // Add touch-friendly scroll behavior for modal content
+    document.querySelectorAll('.modal-content').forEach((modalContent) => {
+        // Enable smooth scrolling
+        modalContent.style.scrollBehavior = 'smooth';
+        
+        // Prevent zoom on double tap for iOS
+        let lastTouchEnd = 0;
+        modalContent.addEventListener('touchend', (e) => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+    });
+
+    // Close modal when clicking outside (on overlay)
+    document.querySelectorAll('.modal-overlay').forEach((overlay) => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                closeHrModal(overlay);
+            }
+        });
+    });
+
+    // Keyboard support - Escape to close modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal-overlay.active').forEach((modal) => {
+                closeHrModal(modal);
+            });
+        }
+    });
 });

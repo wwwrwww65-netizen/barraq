@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>هـــش HASH - شؤون الموظفين (HR)</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="light-theme-fixes.css">
     <link rel="stylesheet" href="staff.css">
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
@@ -97,6 +98,54 @@
             background:rgba(16,185,129,0.35); border-color:rgba(16,185,129,0.5);
         }
         .toggle-switch input:checked + .toggle-slider::before { right:27px; }
+
+        /* Profile Finances Print Styles */
+        @media print {
+            .no-print { display: none !important; }
+            
+            /* Hide all other views explicitly to avoid blank pages/cards */
+            .hr-view:not(#view-emp-profile) { display: none !important; }
+            
+            #view-emp-profile {
+                position: static !important;
+                background: white !important;
+                display: block !important;
+                width: 100% !important;
+                height: auto !important;
+                overflow: visible !important;
+            }
+            .profile-layout {
+                display: block !important;
+                gap: 0 !important;
+            }
+            .profile-sidebar { display: none !important; }
+            .profile-tabs { display: none !important; }
+            .ptab-content { 
+                display: none !important; 
+                padding: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+            }
+            #tab-finances.ptab-content {
+                display: block !important;
+            }
+            .pro-finances-table-wrapper {
+                overflow: visible !important;
+                border: 2px solid #94a3b8 !important;
+                border-radius: 0 !important;
+            }
+            .pro-finances-table { width: 100% !important; }
+            .pro-finances-table tfoot { display: table-row-group !important; }
+            .pro-finances-table tfoot tr td {
+                border: 1px solid #94a3b8 !important;
+                padding: 10px 8px !important;
+                font-size: 13px !important;
+            }
+            .print-only { display: block !important; }
+            body { background: white !important; }
+            .sidebar { display: none !important; }
+            .main-content { margin: 0 !important; padding: 20px !important; display: block !important; }
+        }
     </style>
 </head>
 <body class="dark-theme">
@@ -148,6 +197,7 @@
                 <p id="page-subtitle">نظرة عامة على الطاقم وحالتهم</p>
             </div>
             <div class="header-actions" style="display:flex; gap:10px; align-items:center;">
+                <button class="hr-btn-solid bg-purple" id="btn-open-history" style="background:linear-gradient(135deg, #8b5cf6, #6366f1);"><i class="ph ph-clock-counter-clockwise"></i> السجل الكامل</button>
                 <button class="hr-btn-solid bg-red" id="btn-open-penalty-modal" style="background:rgba(239,68,68,0.2) !important; color:#ef4444; border:1px solid #ef4444;"><i class="ph ph-warning-octagon"></i> خصم / جزاء</button>
                 <button class="hr-btn-solid bg-indigo" id="btn-open-advance-modal"><i class="ph ph-hand-coins"></i> صرف راتب / سلفة سريع</button>
                 
@@ -384,14 +434,41 @@
             </div>
 
             <div id="tab-finances" class="ptab-content card" style="padding:24px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                    <h3>السندات المالية الصادرة</h3>
-                    <button class="hr-btn-solid bg-pink" onclick="openAdvanceModalForCurrent()"><i class="ph ph-plus"></i> إصدار سند جديد</button>
+                <div class="pro-finances-header no-print" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <h3 style="margin:0;">السندات المالية</h3>
+                        <div style="width:1px;height:24px;background:var(--border-color);margin:0 5px;"></div>
+                        <select id="pro-finances-period" class="filter-select" onchange="window.toggleProFinancesCustomDate(); renderProfileFinances();">
+                            <option value="all">كل الأوقات</option>
+                            <option value="today">اليوم</option>
+                            <option value="week">هذا الأسبوع</option>
+                            <option value="month" selected>هذا الشهر</option>
+                            <option value="last_month">الشهر الماضي</option>
+                            <option value="custom">تاريخ مخصص</option>
+                        </select>
+                        <div id="pro-finances-custom-date" style="display:none; gap:10px; align-items:center; margin-right:10px;">
+                            <input type="date" id="pro-finances-from" class="filter-select" onchange="renderProfileFinances()">
+                            <span style="color:var(--text-muted);">إلى</span>
+                            <input type="date" id="pro-finances-to" class="filter-select" onchange="renderProfileFinances()">
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="hr-btn-outline" style="font-size:13px; border-color:#e11d48; color:#e11d48;" onclick="exportProFinancesPDF()"><i class="ph ph-file-pdf"></i> تصدير (PDF)</button>
+                        <button class="hr-btn-solid bg-pink" onclick="openAdvanceModalForCurrent()"><i class="ph ph-plus"></i> إصدار سند جديد</button>
+                    </div>
                 </div>
-                <table class="data-table">
-                    <thead><tr><th>التاريخ</th><th>نوع السند</th><th>المبلغ</th><th>البيان</th><th>إجراء</th></tr></thead>
-                    <tbody id="pro-finances-body"></tbody>
-                </table>
+                <!-- Print only header to show report period -->
+                <div id="pro-finances-print-info" class="print-only" style="display:none; text-align:center; margin-bottom:20px;">
+                    <h2 style="margin:0; font-size:18px; color:#000;">كشف حساب الموظف: <span id="pro-print-emp-name"></span></h2>
+                    <p style="margin:5px 0 0 0; font-size:14px; color:#333;" id="pro-print-period-text"></p>
+                </div>
+                <div class="pro-finances-table-wrapper">
+                    <table class="data-table pro-finances-table">
+                        <thead><tr><th>التاريخ</th><th>نوع السند</th><th>المبلغ</th><th>البيان</th><th class="no-print">إجراء</th></tr></thead>
+                        <tbody id="pro-finances-body"></tbody>
+                        <tfoot id="pro-finances-tfoot"></tfoot>
+                    </table>
+                </div>
             </div>
 
             <!-- Sales Tab -->
@@ -466,6 +543,158 @@
                     <thead><tr><th>رقم السند</th><th>التاريخ</th><th>الموظف</th><th>النوع</th><th>المبلغ</th><th>السبب</th><th>إجراء</th></tr></thead>
                     <tbody id="vouchers-tbody"></tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- View: HR History (Full Operations Log) -->
+        <div id="view-history" class="hr-view" style="padding:24px; display:none;">
+            <div class="card" style="padding:24px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+                    <div>
+                        <h2 style="color:var(--text-primary); margin:0; display:flex; align-items:center; gap:12px;">
+                            <i class="ph-fill ph-clock-counter-clockwise" style="color:#8b5cf6; font-size:28px;"></i>
+                            السجل الكامل لعمليات الموظفين
+                        </h2>
+                        <p style="color:var(--text-muted); margin:4px 0 0; font-size:13px;">عرض وتتبع جميع العمليات: الرواتب، السلف، الخصومات، الجزاءات، والمكافآت</p>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="hr-btn-solid" onclick="showView('view-employees', 'nav-employees')" style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-primary);"><i class="ph ph-arrow-right"></i> العودة</button>
+                        <button class="hr-btn-solid bg-purple" onclick="exportHistoryToExcel()" style="background:linear-gradient(135deg, #10b981, #059669);"><i class="ph ph-file-xls"></i> تصدير Excel</button>
+                    </div>
+                </div>
+
+                <!-- Filters Section -->
+                <div style="background:rgba(139, 92, 246, 0.05); border:1px solid rgba(139, 92, 246, 0.2); border-radius:16px; padding:20px; margin-bottom:24px;">
+                    <h4 style="margin:0 0 16px; color:var(--text-primary); display:flex; align-items:center; gap:8px; font-size:14px;">
+                        <i class="ph ph-faders" style="color:#8b5cf6;"></i> الفلاتر والبحث المتقدم
+                    </h4>
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px;">
+                        <!-- Date Filter -->
+                        <div class="fm-group" style="margin:0;">
+                            <label style="font-size:12px;"><i class="ph ph-calendar"></i> الفترة الزمنية</label>
+                            <select id="history-date-filter" class="fm-input" style="height:40px; font-size:13px;">
+                                <option value="all">كل الفترات</option>
+                                <option value="today">اليوم</option>
+                                <option value="week">هذا الأسبوع</option>
+                                <option value="month">هذا الشهر</option>
+                                <option value="custom">تاريخ مخصص</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Custom Date Range (hidden by default) -->
+                        <div id="history-custom-date" style="display:none; grid-column:span 2;">
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                                <div class="fm-group" style="margin:0;">
+                                    <label style="font-size:12px;">من تاريخ</label>
+                                    <input type="date" id="history-date-from" class="fm-input" style="height:40px;">
+                                </div>
+                                <div class="fm-group" style="margin:0;">
+                                    <label style="font-size:12px;">إلى تاريخ</label>
+                                    <input type="date" id="history-date-to" class="fm-input" style="height:40px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Operation Type Filter -->
+                        <div class="fm-group" style="margin:0;">
+                            <label style="font-size:12px;"><i class="ph ph-tag"></i> نوع العملية</label>
+                            <select id="history-type-filter" class="fm-input" style="height:40px; font-size:13px;">
+                                <option value="all">جميع العمليات</option>
+                                <option value="salary">راتب</option>
+                                <option value="advance">سلفة</option>
+                                <option value="bonus">مكافأة</option>
+                                <option value="خصم / جزاء">خصم / جزاء</option>
+                            </select>
+                        </div>
+
+                        <!-- Employee Filter -->
+                        <div class="fm-group" style="margin:0;">
+                            <label style="font-size:12px;"><i class="ph ph-user"></i> الموظف</label>
+                            <select id="history-employee-filter" class="fm-input" style="height:40px; font-size:13px;">
+                                <option value="all">كل الموظفين</option>
+                            </select>
+                        </div>
+
+                        <!-- Search Input -->
+                        <div class="fm-group" style="margin:0;">
+                            <label style="font-size:12px;"><i class="ph ph-magnifying-glass"></i> بحث</label>
+                            <input type="text" id="history-search" class="fm-input" style="height:40px;" placeholder="رقم السند، البيان...">
+                        </div>
+                    </div>
+
+                    <!-- Filter Actions -->
+                    <div style="display:flex; gap:10px; margin-top:16px; justify-content:flex-end;">
+                        <button class="hr-btn-solid" onclick="resetHistoryFilters()" style="background:transparent; border:1px solid var(--text-muted); color:var(--text-primary); padding:8px 16px; font-size:12px;"><i class="ph ph-arrow-counter-clockwise"></i> إعادة تعيين</button>
+                        <button class="hr-btn-solid bg-purple" onclick="applyHistoryFilters()" style="background:linear-gradient(135deg, #8b5cf6, #6366f1); padding:8px 20px; font-size:12px;"><i class="ph ph-check"></i> تطبيق الفلاتر</button>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="kpi-cards hr-kpis" style="margin-bottom:24px;">
+                    <div class="card kpi-card hr-kpi-pink">
+                        <div class="kpi-icon pink"><i class="ph-fill ph-list-dashes"></i></div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">إجمالي العمليات</p>
+                            <h3 class="kpi-value hr-glow-pink" id="history-total-count">0</h3>
+                        </div>
+                    </div>
+                    <div class="card kpi-card hr-kpi-indigo">
+                        <div class="kpi-icon indigo"><i class="ph-fill ph-money"></i></div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">إجمالي الرواتب</p>
+                            <h3 class="kpi-value hr-glow-indigo" id="history-total-salary">0 <span class="js-cur-sym" style="font-size:14px">ر.س</span></h3>
+                        </div>
+                    </div>
+                    <div class="card kpi-card hr-kpi-orange">
+                        <div class="kpi-icon orange"><i class="ph-fill ph-hand-coins"></i></div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">إجمالي السلف</p>
+                            <h3 class="kpi-value text-orange" id="history-total-advance">0 <span class="js-cur-sym" style="font-size:14px">ر.س</span></h3>
+                        </div>
+                    </div>
+                    <div class="card kpi-card" style="border-top:3px solid #10b981;">
+                        <div class="kpi-icon" style="background:rgba(16,185,129,0.1);"><i class="ph-fill ph-gift" style="color:#10b981;"></i></div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">إجمالي المكافآت</p>
+                            <h3 class="kpi-value" style="color:#10b981;" id="history-total-bonus">0 <span class="js-cur-sym" style="font-size:14px">ر.س</span></h3>
+                        </div>
+                    </div>
+                    <div class="card kpi-card" style="border-top:3px solid #ef4444;">
+                        <div class="kpi-icon" style="background:rgba(239,68,68,0.1);"><i class="ph-fill ph-warning-octagon" style="color:#ef4444;"></i></div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">إجمالي الخصومات</p>
+                            <h3 class="kpi-value" style="color:#ef4444;" id="history-total-deduction">0 <span class="js-cur-sym" style="font-size:14px">ر.س</span></h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Table -->
+                <div class="table-responsive" style="max-height:600px; overflow-y:auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>رقم السند</th>
+                                <th>التاريخ</th>
+                                <th>الموظف</th>
+                                <th>نوع العملية</th>
+                                <th>المبلغ</th>
+                                <th>طريقة الصرف</th>
+                                <th>البيان / السبب</th>
+                                <th>إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-tbody">
+                            <!-- JS Populated -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                <div id="history-empty-state" style="display:none; text-align:center; padding:60px 20px;">
+                    <i class="ph ph-clock-counter-clockwise" style="font-size:64px; color:var(--text-muted); opacity:0.3;"></i>
+                    <h3 style="color:var(--text-muted); margin-top:16px;">لا توجد عمليات مطابقة</h3>
+                    <p style="color:var(--text-muted); font-size:13px;">جرب تغيير الفلاتر أو البحث عن شيء آخر</p>
+                </div>
             </div>
         </div>
 
@@ -592,13 +821,13 @@
                     <div class="v-row"><span>التاريخ :</span><strong id="v-date"></strong></div>
                     <div class="v-row"><span>الرقم :</span><strong id="v-number"></strong></div>
                 </div>
-                <div class="v-balance-box v-balance-under-date"><span>الرصيد لكم :</span><strong id="v-balance-text"></strong></div>
+                <div class="v-balance-box v-balance-under-date"><span id="v-label-balance">الرصيد لكم :</span><strong id="v-balance-text"></strong></div>
             </div>
         </div>
         <div class="v-body-box">
             <div class="v-body-inner">
-                <div class="v-line"><span class="v-line-label">تم صرف للأخ :</span> <span class="v-line-val"><strong id="v-name"></strong></span></div>
-                <div class="v-line"><span class="v-line-label">مبلغ وقدره :</span> <span class="v-line-val"><strong id="v-amt"></strong> <span class="v-sub">(<span id="v-amt-text"></span> <span class="js-cur-label">ريال سعودي</span>)</span></span></div>
+                <div class="v-line"><span class="v-line-label" id="v-label-recipient">تم صرف للأخ :</span> <span class="v-line-val"><strong id="v-name"></strong></span></div>
+                <div class="v-line"><span class="v-line-label" id="v-label-amount">مبلغ وقدره :</span> <span class="v-line-val"><strong id="v-amt"></strong> <span class="v-sub">(<span id="v-amt-text"></span> <span class="js-cur-label">ريال سعودي</span>)</span></span></div>
                 <div class="v-line"><span class="v-line-label">وذلك مقابل :</span> <span class="v-line-val"><strong id="v-reason-text"></strong></span></div>
             </div>
             <div class="v-notes-strip">
@@ -683,8 +912,10 @@
 <script src="node_modules/html2canvas/dist/html2canvas.min.js"></script>
     <script src="db-helper.js"></script>
     <script src="currency-helper.js"></script>
+    <script src="wa-notification.js"></script>
     <script src="script.js"></script>
 <script src="staff.js"></script>
+<script src="staff-history.js"></script>
 </body>
 </html>
 

@@ -4,6 +4,139 @@
     padding: 20px;
 }
 
+/* Light Theme Fixes for Orders */
+body.light-theme .orders-toolbar {
+    background: #fff !important;
+    border-color: rgba(0,0,0,0.08) !important;
+}
+
+body.light-theme .search-box {
+    background: rgba(0,0,0,0.03) !important;
+}
+
+body.light-theme .search-box i {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .search-box input {
+    color: #0f172a !important;
+}
+
+body.light-theme .search-box input::placeholder {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .filter-box select,
+body.light-theme .filter-box input[type="date"] {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.light-theme .filter-box input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: none !important;
+    opacity: 0.6 !important;
+}
+
+body.light-theme .order-card {
+    background: #fff !important;
+    border-color: rgba(0,0,0,0.08) !important;
+}
+
+body.light-theme .order-card:hover {
+    box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+    border-color: var(--accent-blue) !important;
+}
+
+body.light-theme .oc-header {
+    border-bottom-color: rgba(0,0,0,0.08) !important;
+}
+
+body.light-theme .oc-body p {
+    color: #64748b !important;
+}
+
+body.light-theme .oc-body p span.price {
+    color: #0f172a !important;
+}
+
+body.light-theme .oc-items img {
+    background: #f1f5f9 !important;
+}
+
+body.light-theme .oc-footer {
+    border-top-color: rgba(0,0,0,0.08) !important;
+}
+
+body.light-theme .order-modal {
+    background: rgba(0,0,0,0.5) !important;
+}
+
+body.light-theme .order-modal-content {
+    background: #fff !important;
+    border-color: rgba(0,0,0,0.08) !important;
+}
+
+body.light-theme .order-modal-header {
+    border-bottom-color: rgba(0,0,0,0.08) !important;
+}
+
+body.light-theme .order-modal-header h2 {
+    color: #0f172a !important;
+}
+
+body.light-theme .order-modal-header .close-btn {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .order-modal-header .close-btn:hover {
+    color: var(--accent-red) !important;
+}
+
+body.light-theme .om-status-bar {
+    background: rgba(0,0,0,0.02) !important;
+    border-color: rgba(0,0,0,0.08) !important;
+}
+
+body.light-theme .om-status-item p {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .om-status-item h4 {
+    color: #0f172a !important;
+}
+
+body.light-theme .om-item-row {
+    background: rgba(0,0,0,0.02) !important;
+    border-bottom-color: rgba(0,0,0,0.08) !important;
+}
+
+body.light-theme .om-item-info p {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .om-item-price {
+    color: #0f172a !important;
+}
+
+body.light-theme .om-summary {
+    background: rgba(0,0,0,0.02) !important;
+    border-color: rgba(0,0,0,0.08) !important;
+}
+
+body.light-theme .om-summary .summary-row {
+    color: #64748b !important;
+}
+
+body.light-theme .om-summary .summary-row.total {
+    border-top-color: rgba(0,0,0,0.08) !important;
+    color: var(--accent-green) !important;
+}
+
+body.light-theme .order-modal-actions {
+    border-top-color: rgba(0,0,0,0.08) !important;
+}
+
 .orders-toolbar {
     display: flex;
     justify-content: space-between;

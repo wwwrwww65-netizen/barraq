@@ -80,6 +80,14 @@ module.exports = {
     saveOrder: (orderData) => {
         try {
             let db = loadDB();
+            
+            // PREVENT DUPLICATE: Check if order with same ID already exists
+            const existingIndex = db.orders.findIndex(o => o.orderId === orderData.orderId);
+            if (existingIndex !== -1) {
+                console.warn(`[DB] Order ${orderData.orderId} already exists, preventing duplicate save`);
+                return { success: false, duplicate: true, message: 'Order already exists' };
+            }
+            
             db.orders.push(orderData);
 
             const wh = orderData.inventoryDeductWarehouse;
@@ -91,6 +99,7 @@ module.exports = {
             }
 
             saveDB(db);
+            console.log(`[DB] Order ${orderData.orderId} saved successfully`);
             return { success: true };
         } catch(e) {
             console.error('DB transaction failed:', e);

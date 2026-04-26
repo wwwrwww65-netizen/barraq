@@ -254,12 +254,86 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    window.printOrder = function() {
+    window.printOrder = async function() {
         if(!currentModalOrder) return;
-        alert('جاري تجهيز الفاتورة للطباعة برقم: ' + currentModalOrder.orderId);
-        // Can integrate with electron print-to-pdf or window.print here specifically for older receipts
-        // A simple window.print wrapper could work if setup dynamically
+        
+        try {
+            // Load thermal receipt module
+            const thermalReceipt = require('./thermal-receipt-updated.js');
+            const printCustomerReceipt = thermalReceipt.printCustomerReceipt;
+            
+            // Calculate totals
+            const items = currentModalOrder.items || [];
+            const subtotal = items.reduce((sum, item) => sum + ((item.qty || 0) * (item.price || 0)), 0);
+            const discount = currentModalOrder.discount || 0;
+            
+            // Get tax rate from settings
+            let taxRate = 0.15; // default 15%
+            try {
+                const s = JSON.parse(localStorage.getItem('restaurant_settings') || '{}');
+                const rate = parseFloat(s.taxRate);
+                taxRate = isNaN(rate) ? 0.15 : rate / 100;
+            } catch(e) {}
+            
+            const taxAmount = (subtotal - discount) * taxRate;
+            const total = currentModalOrder.total || (subtotal - discount + taxAmount);
+            
+            // Get payment method
+            const paymentMethod = currentModalOrder.paymentMethod || 'نقدي';
+            const paymentLabel = paymentMethod === 'cash' || paymentMethod === 'نقدي' ? 'نقدي (كاش)' : 
+                                paymentMethod === 'card' || paymentMethod === 'شبكة' ? 'بطاقة (شبكة)' : paymentMethod;
+            
+            // Build items HTML
+            let itemsHtml = '';
+            items.forEach(item => {
+                const itemTotal = (item.qty || 0) * (item.price || 0);
+                itemsHtml += `
+                    <tr style="border-bottom: 1px dashed #ddd;">
+                        <td style="padding: 2mm 0; text-align: right; max-width: 35mm; word-wrap: break-word;">${item.name || ''}</td>
+                        <td style="padding: 2mm 0; text-align: center; width: 12mm; font-weight: 700;">${item.qty || 0}</td>
+                        <td style="padding: 2mm 0; text-align: left; width: 18mm; font-weight: 600;">${formatCurrency(itemTotal)}</td>
+                    </tr>
+                `;
+            });
+            
+            // Build receipt snap
+            const receiptSnap = {
+                orderType: currentModalOrder.type || 'محلي',
+                tableText: currentModalOrder.table ? 'لـ: ' + currentModalOrder.table : '',
+                orderId: '#' + (currentModalOrder.orderId || ''),
+                date: currentModalOrder.date || new Date(currentModalOrder.timestamp || Date.now()).toLocaleString('ar-SA'),
+                itemsHtml: itemsHtml,
+                subtotalText: formatCurrency(subtotal),
+                totalText: formatCurrency(total),
+                discountText: discount > 0 ? formatCurrency(discount) : formatCurrency(0),
+                taxLabel: `قيمة الضريبة المضافة ${Math.round(taxRate * 100 * 100) / 100}%:`,
+                taxText: formatCurrency(taxAmount),
+                paymentText: paymentLabel,
+                qrSrc: '',
+                notesText: currentModalOrder.notes || ''
+            };
+            
+            console.log('🖨️  Reprinting thermal receipt for order:', currentModalOrder.orderId);
+            
+            // Print using the same function as POS
+            await printCustomerReceipt(receiptSnap);
+            
+        } catch(e) {
+            console.error('❌ Reprint failed:', e);
+            alert('حدث خطأ أثناء إعادة الطباعة: ' + e.message);
+        }
     };
+    
+    // Helper function to format currency
+    function formatCurrency(amount) {
+        if (window.HashCurrency) {
+            return HashCurrency.format(amount || 0);
+        }
+        return Number(amount || 0).toLocaleString('en-US', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+        }) + ' ر.س';
+    }
 
     // Events — debounce 300ms على البحث، reset page عند تغيير الفلتر
     let _ordersSearchTimer;

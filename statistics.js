@@ -106,6 +106,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         function splitOrderAmounts(o) {
             const pm = String(o.paymentMethod || '').trim();
             const total = Number(o.total) || 0;
+            const isHS = o.hungerStation === true || o.orderType === 'هنقرستيشن';
+            const isHSPaid = o.hsPaymentStatus === 'paid';
+            
+            // HungerStation unpaid - exclude
+            if (isHS && !isHSPaid) {
+                return { cash: 0, card: 0 };
+            }
+            
+            // HungerStation paid - check method
+            if (isHS && isHSPaid) {
+                const hsMethod = (o.hsPaymentMethod || '').trim();
+                if (hsMethod.includes('كاش') || hsMethod === 'cash') {
+                    return { cash: total, card: 0 };
+                } else {
+                    return { cash: 0, card: total };
+                }
+            }
+            
             if (pm === 'مجزأ') {
                 const c = Number(o.splitCash) || 0;
                 const n = Number(o.splitNetwork) || 0;

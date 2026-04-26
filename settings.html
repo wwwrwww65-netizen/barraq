@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>إعدادات النظام - هـــش HASH</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="light-theme-fixes.css">
     <link rel="stylesheet" href="settings.css">
     <!-- Google Fonts -->
     
@@ -212,63 +213,41 @@
                                     اختر طريقة إرسال الواتساب المناسبة لجهازك.
                                 </p>
 
-                                <!-- اختيار الوضع -->
-                                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
-
-                                    <!-- الوضع 1: المتصفح -->
-                                    <label id="wa-mode-browser-card" style="cursor:pointer; display:flex; align-items:flex-start; gap:12px; padding:14px; border-radius:12px; border:2px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.03); transition:all 0.2s;">
-                                        <input type="radio" name="wa_mode_select" id="wa-mode-browser" value="browser" style="margin-top:3px; accent-color:#25D366; width:18px; height:18px; flex-shrink:0;">
-                                        <div>
-                                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px; flex-wrap:wrap;">
-                                                <i class="ph-fill ph-globe" style="color:#3b82f6; font-size:18px;"></i>
-                                                <strong style="color:white; font-size:14px;">وضع المتصفح (Chrome)</strong>
-                                                <span style="background:rgba(59,130,246,0.15); color:#3b82f6; font-size:10px; padding:2px 7px; border-radius:20px;">لا يستهلك رام</span>
-                                            </div>
-                                            <p style="color:var(--text-secondary); font-size:12px; margin:0; line-height:1.7;">يفتح رابط الواتساب في كروم ويضغط إرسال تلقائياً. يتطلب كروم مربوطاً بواتساب.</p>
-                                        </div>
-                                    </label>
-
-                                    <!-- الوضع 2: التطبيق المثبت -->
-                                    <label id="wa-mode-desktop-card" style="cursor:pointer; display:flex; align-items:flex-start; gap:12px; padding:14px; border-radius:12px; border:2px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.03); transition:all 0.2s;">
-                                        <input type="radio" name="wa_mode_select" id="wa-mode-desktop" value="desktop" style="margin-top:3px; accent-color:#25D366; width:18px; height:18px; flex-shrink:0;">
-                                        <div>
-                                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px; flex-wrap:wrap;">
-                                                <i class="ph-fill ph-desktop" style="color:#a855f7; font-size:18px;"></i>
-                                                <strong style="color:white; font-size:14px;">وضع التطبيق المثبت (WhatsApp Desktop)</strong>
-                                                <span style="background:rgba(168,85,247,0.15); color:#a855f7; font-size:10px; padding:2px 7px; border-radius:20px;">لا يستهلك رام</span>
-                                            </div>
-                                            <p style="color:var(--text-secondary); font-size:12px; margin:0; line-height:1.7;">يفتح تطبيق واتساب الرسمي المثبت في الجهاز ويرسل تلقائياً. الأسرع والأخف.</p>
-                                        </div>
-                                    </label>
-
-                                    <!-- الوضع 3: النافذة المخفية -->
-                                    <label id="wa-mode-bot-card" style="cursor:pointer; display:flex; align-items:flex-start; gap:12px; padding:14px; border-radius:12px; border:2px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.03); transition:all 0.2s;">
-                                        <input type="radio" name="wa_mode_select" id="wa-mode-bot" value="bot" style="margin-top:3px; accent-color:#25D366; width:18px; height:18px; flex-shrink:0;">
-                                        <div>
-                                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px; flex-wrap:wrap;">
-                                                <i class="ph-fill ph-app-window" style="color:#25D366; font-size:18px;"></i>
-                                                <strong style="color:white; font-size:14px;">وضع النافذة المخفية (داخل الكاشير)</strong>
-                                                <span style="background:rgba(37,211,102,0.15); color:#25D366; font-size:10px; padding:2px 7px; border-radius:20px;">يرسل الصور</span>
-                                            </div>
-                                            <p style="color:var(--text-secondary); font-size:12px; margin:0; line-height:1.7;">واتساب ويب مخفي داخل البرنامج. يرسل النصوص والصور تلقائياً. يتطلب مسح QR مرة واحدة.</p>
-                                        </div>
-                                    </label>
+                                <!-- WhatsApp Connection Info -->
+                                <div style="background:rgba(37,211,102,0.05); border:1px solid rgba(37,211,102,0.2); border-radius:12px; padding:16px; margin-bottom:16px; display:flex; align-items:center; gap:14px;">
+                                    <div style="width:48px; height:48px; border-radius:50%; background:rgba(37,211,102,0.1); display:flex; justify-content:center; align-items:center; flex-shrink:0;">
+                                        <i class="ph-fill ph-app-window" style="color:#25D366; font-size:24px;"></i>
+                                    </div>
+                                    <div style="flex:1;">
+                                        <h4 style="margin:0 0 4px; color:white; font-size:15px; display:flex; align-items:center; gap:8px;">
+                                            واتساب (النافذة المتخفية)
+                                            <span id="wa-connection-badge" style="background:rgba(239,68,68,0.15); color:#ef4444; font-size:11px; padding:3px 8px; border-radius:20px; font-weight:bold; display:inline-flex; align-items:center; gap:4px; transition: all 0.3s;">
+                                                <span id="wa-connection-dot" style="width:6px; height:6px; border-radius:50%; background:#ef4444; display:inline-block; transition: all 0.3s; box-shadow: 0 0 5px #ef4444;"></span>
+                                                <span id="wa-connection-status-text">غير متصل</span>
+                                            </span>
+                                        </h4>
+                                        <p style="color:var(--text-secondary); font-size:12px; margin:0; line-height:1.6;">
+                                            واتساب ويب يعمل في الخلفية تلقائياً لإرسال الرسائل والصور. يتطلب مسح QR مرة واحدة.
+                                        </p>
+                                    </div>
                                 </div>
 
                                 <!-- لوحة الحالة والأزرار -->
-                                <div id="wa-status-panel" style="background: var(--bg-card); padding:16px; border-radius:12px; border:1px solid var(--border-color); text-align:center;">
-                                    <div id="wa-qr-container" style="display:none; margin-bottom:12px;"></div>
-                                    <h4 id="wa-status-text" style="color:var(--text-muted); margin-bottom:15px; font-size:14px;">اختر الوضع أعلاه لتفعيله</h4>
-                                    <button type="button" class="btn btn-primary" id="btn-wa-link" style="background: #25D366; border: none; width: 100%; display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom:10px;">
-                                        <i class="ph-bold ph-link" id="btn-wa-link-icon"></i>
-                                        <span id="btn-wa-link-text">تفعيل الوضع المختار</span>
+                                <div id="wa-status-panel" style="background: var(--bg-card); padding:16px; border-radius:12px; border:1px solid var(--border-color); text-align:center; position: relative; overflow: hidden;">
+                                    <div id="wa-qr-container" style="display:none; margin-bottom:12px; justify-content: center;"></div>
+                                    <h4 id="wa-status-text" style="color:var(--text-muted); margin-bottom:15px; font-size:14px;">جاري التحقق من حالة الاتصال...</h4>
+                                    
+                                    <button type="button" class="btn btn-primary" id="btn-wa-link" style="background: #25D366; border: none; width: 100%; display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom:10px; transition: all 0.2s; box-shadow: 0 4px 12px rgba(37,211,102,0.2);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(37,211,102,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(37,211,102,0.2)';">
+                                        <i class="ph-bold ph-app-window" id="btn-wa-link-icon"></i>
+                                        <span id="btn-wa-link-text">فتح نافذة واتساب</span>
                                     </button>
+                                    
                                     <div style="display:flex; gap:8px;">
-                                        <button type="button" id="btn-wa-refresh" style="flex:1; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.4); color:#f59e0b; border-radius:8px; padding:8px; font-family:Cairo,sans-serif; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+                                        <button type="button" id="btn-wa-refresh" style="flex:1; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.4); color:#f59e0b; border-radius:8px; padding:8px; font-family:Cairo,sans-serif; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition: all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.2)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.background='rgba(245,158,11,0.1)'; this.style.transform='translateY(0)';">
                                             <i class="ph ph-arrows-clockwise"></i> تحديث
                                         </button>
-                                        <button type="button" id="btn-wa-disconnect" style="flex:1; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.4); color:#ef4444; border-radius:8px; padding:8px; font-family:Cairo,sans-serif; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
-                                            <i class="ph ph-plugs-connected"></i> إلغاء الربط
+                                        <button type="button" id="btn-wa-disconnect" style="flex:1; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.4); color:#ef4444; border-radius:8px; padding:8px; font-family:Cairo,sans-serif; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.2)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.background='rgba(239,68,68,0.1)'; this.style.transform='translateY(0)';">
+                                            <i class="ph ph-plugs-connected"></i> الغاء الربط
                                         </button>
                                     </div>
                                 </div>

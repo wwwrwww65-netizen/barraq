@@ -104,6 +104,91 @@
     color: white;
 }
 
+/* Light Theme Fixes for Sales */
+body.light-theme .sales-header h2 {
+    color: #0f172a !important;
+}
+
+body.light-theme .sales-header p {
+    color: #475569 !important;
+}
+
+body.light-theme .sales-filters {
+    background: rgba(255,255,255,0.8) !important;
+    border-color: rgba(0,0,0,0.1) !important;
+}
+
+body.light-theme .sales-filters .input-modern {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.light-theme .sales-kpi-card {
+    background: #fff !important;
+    border-color: rgba(0,0,0,0.08) !important;
+}
+
+body.light-theme .sales-kpi-card:hover {
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important;
+    border-color: rgba(0,0,0,0.12) !important;
+}
+
+body.light-theme .sk-title {
+    color: #64748b !important;
+}
+
+body.light-theme .sk-value {
+    color: #0f172a !important;
+}
+
+body.light-theme .sk-icon {
+    background: #fff !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05) !important;
+}
+
+body.light-theme .sales-table-card {
+    background: #fff !important;
+    border-color: rgba(0,0,0,0.08) !important;
+}
+
+body.light-theme .sales-list-header h3 {
+    color: #0f172a !important;
+}
+
+body.light-theme .sales-table th {
+    color: #64748b !important;
+    border-bottom-color: #e2e8f0 !important;
+}
+
+body.light-theme .sales-table td {
+    color: #334155 !important;
+    border-bottom-color: #e2e8f0 !important;
+}
+
+body.light-theme .sales-table tbody tr:hover {
+    background: rgba(0,0,0,0.02) !important;
+}
+
+body.light-theme .sales-action-btn {
+    border-color: #cbd5e1 !important;
+    color: #64748b !important;
+}
+
+body.light-theme .sales-action-btn:hover {
+    background: rgba(59, 130, 246, 0.05) !important;
+    border-color: var(--accent-blue) !important;
+    color: var(--accent-blue) !important;
+}
+
+body.light-theme .empty-sales {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .empty-sales i {
+    color: #cbd5e1 !important;
+}
+
 /* Sales Data Table */
 .sales-table-card {
     background: var(--bg-card);

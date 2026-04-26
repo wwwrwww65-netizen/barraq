@@ -231,5 +231,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         alert('تم إرجاع المبلغ وإلغاء الطلب نهائياً بنجاح.');
     });
 
+    // Check for orderId in URL parameters on page load
+    function checkUrlForOrderId() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderIdFromUrl = urlParams.get('orderId');
+        if (orderIdFromUrl) {
+            searchInput.value = orderIdFromUrl;
+            doSearch();
+            // Clean the URL to prevent re-searching on refresh
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+
+    // Run after initial UI refresh
     await refreshUi();
+    checkUrlForOrderId();
 });

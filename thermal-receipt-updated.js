@@ -154,6 +154,7 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
         );
     const el = (id) => (typeof document !== 'undefined' ? document.getElementById(id) : null);
     const rType = snap ? snap.orderType : (el('r-type') ? el('r-type').innerText : '');
+    const rTable = snap ? snap.tableText : (el('r-table') ? el('r-table').innerText : '');
     const rOrderId = snap ? snap.orderId : (el('r-order-id') ? el('r-order-id').innerText : '');
     const rDate = snap ? snap.date : (el('r-date') ? el('r-date').innerText : '');
     const rItemsHtml = snap ? snap.itemsHtml : (el('r-items') ? el('r-items').innerHTML : '');
@@ -493,6 +494,7 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
         <div class="divider"></div>
         
         <div class="order-type">${rType}</div>
+        ${rTable ? `<div class="order-number">${rTable}</div>` : ''}
         <div class="order-number">رقم الطلب: ${rOrderId}</div>
         <div class="order-date">${rDate}</div>
         

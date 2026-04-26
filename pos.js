@@ -313,6 +313,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderCart();
     });
 
+    function toggleSectionAndTableVisibility(orderType) {
+        const sectionRow = document.getElementById('section-type-row');
+        const tableSelector = document.querySelector('.table-selector');
+        
+        if (orderType === 'محلي') {
+            if (sectionRow) sectionRow.style.display = 'flex';
+            if (tableSelector) tableSelector.style.display = 'block';
+        } else {
+            if (sectionRow) sectionRow.style.display = 'none';
+            if (tableSelector) tableSelector.style.display = 'none';
+        }
+    }
+
     // Order Type Tabs
     const typeBtns = document.querySelectorAll('.type-btn');
     typeBtns.forEach(btn => {
@@ -321,8 +334,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const targetBtn = e.target.closest('.type-btn');
             targetBtn.classList.add('active');
             currentOrderType = targetBtn.dataset.type;
+            toggleSectionAndTableVisibility(currentOrderType);
         });
     });
+    
+    // Initialize visibility based on default state
+    toggleSectionAndTableVisibility(currentOrderType);
 
     window.updateItemQty = function(id, delta) {
         const item = cart.find(i => i.id === id.toString());
@@ -421,6 +438,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (hit) {
             hit.classList.add('active');
             currentOrderType = target;
+            if (typeof toggleSectionAndTableVisibility === 'function') {
+                toggleSectionAndTableVisibility(currentOrderType);
+            }
         }
     }
 
@@ -505,6 +525,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('cash-calculator').style.display = pt === 'كاش' ? 'flex' : 'none';
             document.getElementById('split-calculator').style.display = pt === 'مجزأ' ? 'flex' : 'none';
             
+            // Show notes field for HungerStation, Network, and Bank Transfer
+            const showNotes = (pt === 'هنقرستيشن' || pt === 'شبكة / بطاقة');
+            document.getElementById('order-notes-field').style.display = showNotes ? 'flex' : 'none';
+            
+            // HungerStation doesn't need calculator
+            if (pt === 'هنقرستيشن') {
+                document.getElementById('cash-calculator').style.display = 'none';
+                document.getElementById('split-calculator').style.display = 'none';
+            }
+            
             // Re-calculate to show full amount in split if needed
             calculateChange();
         });
@@ -529,11 +559,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         const splitCash = parseFloat(splitCashVal) || 0;
         
         let splitNet = total - splitCash;
-        if(splitNet < 0) splitNet = 0;
-        
-        // Final update for split network display
         const splitNetEl = document.getElementById('split-network-amount');
-        if(splitNetEl) splitNetEl.innerText = formatCurrency(splitNet);
+        
+        if(splitNet < 0) {
+            splitNet = 0;
+            if(splitNetEl) {
+                splitNetEl.innerText = '0.00';
+                splitNetEl.style.color = 'var(--accent-red)';
+                splitNetEl.title = 'المبلغ الكاش أكبر من الإجمالي!';
+            }
+        } else {
+            if(splitNetEl) {
+                splitNetEl.innerText = formatCurrency(splitNet);
+                splitNetEl.style.color = 'var(--accent-blue)';
+                splitNetEl.title = '';
+            }
+        }
     }
 
     cashReceivedInput.addEventListener('input', calculateChange);
@@ -547,25 +588,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnConfirmPay = document.getElementById('btn-confirm-payment');
 
     btnConfirmPay.addEventListener('click', async () => {
-        await preparePrintTemplates();
-
-        btnConfirmPay.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري توليد الفواتير...';
+        // DISABLE BUTTON IMMEDIATELY to prevent double-clicks
+        if (btnConfirmPay.disabled) return; // Already processing
         btnConfirmPay.disabled = true;
+        btnConfirmPay.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري توليد الفواتير...';
+        
+        await preparePrintTemplates();
 
         try {
             // Save to LocalStorage for Sales page FIRST
             const now = new Date();
             const selectedPay = document.querySelector('.payment-method.selected input').value;
             const _ct = document.getElementById('cart-total').innerText;
-            const totalOrder =
-                window.HashCurrency && HashCurrency.parseLoose
-                    ? HashCurrency.parseLoose(_ct) || 0
-                    : parseFloat(String(_ct).replace(/[^\d.]/g, '')) || 0;
+            let totalOrder = 0;
+            
+            // Use HashCurrency.parseLoose if available, otherwise parse manually
+            if (window.HashCurrency && HashCurrency.parseLoose) {
+                totalOrder = HashCurrency.parseLoose(_ct);
+                if (isNaN(totalOrder)) totalOrder = 0;
+            } else {
+                // Fallback: remove all non-numeric chars except dots and minus
+                const cleaned = String(_ct).replace(/[^\d.-]/g, '');
+                totalOrder = parseFloat(cleaned) || 0;
+            }
+            
+            // Debug: Log the parsed value
+            console.log('[POS] Cart total text:', _ct);
+            console.log('[POS] Parsed totalOrder:', totalOrder);
+            
             let finalSplitCash = 0, finalSplitNet = 0;
 
             if(selectedPay === 'مجزأ') {
                 finalSplitCash = parseFloat(document.getElementById('split-cash-amount').value) || 0;
+                // Validate: cash amount should not exceed total
+                if (finalSplitCash > totalOrder) {
+                    finalSplitCash = totalOrder;
+                    console.warn(`[POS] Split cash (${finalSplitCash}) exceeded total (${totalOrder}), corrected to total`);
+                }
                 finalSplitNet = totalOrder - finalSplitCash;
+                // Ensure network is never negative
+                if (finalSplitNet < 0) {
+                    finalSplitNet = 0;
+                    finalSplitCash = totalOrder;
+                    console.warn(`[POS] Split network was negative, corrected: cash=${finalSplitCash}, net=${finalSplitNet}`);
+                }
             } else if (selectedPay === 'كاش') {
                 finalSplitCash = totalOrder;
             } else {
@@ -589,12 +655,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 date: now.toLocaleDateString('ar-u-nu-latn') + " " + now.toLocaleTimeString('ar-u-nu-latn'),
                 timestamp: now.getTime(),
                 type: currentOrderType,
+                orderType: currentOrderType,
                 paymentMethod: selectedPay,
                 total: totalOrder,
                 splitCash: finalSplitCash,
                 splitNetwork: finalSplitNet,
                 itemsCount: cart.length,
-                items: [...cart]
+                items: [...cart],
+                // Order notes
+                orderNotes: document.getElementById('checkout-order-notes').value || '',
+                // HungerStation specific fields
+                hungerStation: selectedPay === 'هنقرستيشن',
+                hsStatus: selectedPay === 'هنقرستيشن' ? 'delivered' : undefined,
+                hsPaymentStatus: selectedPay === 'هنقرستيشن' ? 'unpaid' : undefined,
+                customerName: selectedPay === 'هنقرستيشن' ? 'هنقرستيشن' : undefined
             };
 
             try {
@@ -628,7 +702,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await window.dbWrite(dbNow);
             } else {
                 // Securely save via IPC to backend SQLite (Atomic Transaction)
-                await ipcRenderer.invoke('db-save-order', orderData);
+                const saveResult = await ipcRenderer.invoke('db-save-order', orderData);
+                
+                // Check if duplicate was prevented
+                if (saveResult && saveResult.duplicate) {
+                    console.error(`[POS] Duplicate order detected: ${orderData.orderId}`);
+                    alert('هذا الطلب تم حفظه بالفعل!');
+                    btnConfirmPay.innerHTML = '<i class="ph ph-check-circle"></i> تأكيد الدفع وطباعة الفواتير';
+                    btnConfirmPay.disabled = false;
+                    return; // Stop execution
+                }
             }
             
             // Fatora Integration Hook
@@ -665,6 +748,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const thermalReceiptSnap = {
                 orderType: document.getElementById('r-type').innerText,
+                tableText: document.getElementById('r-table') ? document.getElementById('r-table').innerText : '',
                 orderId: document.getElementById('r-order-id').innerText,
                 date: document.getElementById('r-date').innerText,
                 itemsHtml: document.getElementById('r-items').innerHTML,
@@ -685,6 +769,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             discountAmount = 0;
             if (discountInput) discountInput.value = '';
             if (cashReceivedInput) cashReceivedInput.value = '';
+            const orderNotesField = document.getElementById('checkout-order-notes');
+            if (orderNotesField) orderNotesField.value = '';
             renderCart();
             modalCheckout.classList.remove('active');
 
@@ -729,13 +815,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // Print Receipt directly without checkout
-    document.getElementById('btn-print-receipt').addEventListener('click', async () => {
+    const btnPrintReceipt = document.getElementById('btn-print-receipt');
+    btnPrintReceipt.addEventListener('click', async () => {
         if(cart.length === 0) return alert('السلة فارغة!');
-        document.getElementById('btn-print-receipt').innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
+        // DISABLE BUTTON to prevent double-clicks
+        if (btnPrintReceipt.disabled) return;
+        btnPrintReceipt.disabled = true;
+        btnPrintReceipt.innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
         await preparePrintTemplates();
         openCashDrawer();
         await printCustomerReceipt();
-        document.getElementById('btn-print-receipt').innerHTML = '<i class="ph ph-printer"></i> طباعة للحفظ';
+        btnPrintReceipt.innerHTML = '<i class="ph ph-printer"></i> طباعة للحفظ';
+        btnPrintReceipt.disabled = false;
     });
 
     async function preparePrintTemplates() {
@@ -748,16 +839,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('k-date').innerText = dateStr;
         document.getElementById('r-order-id').innerText = orderId;
         document.getElementById('k-order-id').innerText = orderId;
-        document.getElementById('r-type').innerText = "طلب " + currentOrderType;
-        document.getElementById('k-type').innerText = "طلب " + currentOrderType;
+        const tableLabel = (typeof getSelectedTableLabel === 'function') ? getSelectedTableLabel() : '';
+        // For طلب محلي: include section in type label
+        const sectionLabel = (currentOrderType === 'محلي' && currentSection) ? ` (${currentSection})` : '';
+        const fullTypeLabel = 'طلب ' + currentOrderType + sectionLabel;
+        document.getElementById('r-type').innerText = fullTypeLabel;
+        document.getElementById('k-type').innerText = fullTypeLabel;
 
-        const tableVal = document.getElementById('cart-table-select').value;
-        document.getElementById('k-table').innerText = tableVal ? 'لـ: ' + tableVal : '';
-        document.getElementById('k-table').style.display = tableVal ? 'block' : 'none';
+        document.getElementById('k-table').innerText = tableLabel ? 'طاولة: ' + tableLabel : '';
+        document.getElementById('k-table').style.display = tableLabel ? 'block' : 'none';
+        
+        if (document.getElementById('r-table')) {
+            document.getElementById('r-table').innerText = tableLabel ? 'لـ: ' + tableLabel : '';
+            document.getElementById('r-table').style.display = tableLabel ? 'block' : 'none';
+        }
 
         // Payment Method from selected modal option
         const selectedPay = document.querySelector('.payment-method.selected input').value;
         if(document.getElementById('r-payment-method')) document.getElementById('r-payment-method').innerText = selectedPay;
+
+        // Order notes
+        const orderNotes = document.getElementById('checkout-order-notes').value || '';
+        const notesRow = document.getElementById('r-notes-row');
+        const notesSpan = document.getElementById('r-order-notes');
+        if (orderNotes && notesRow && notesSpan) {
+            notesRow.style.display = 'flex';
+            notesSpan.innerText = orderNotes;
+        } else if (notesRow) {
+            notesRow.style.display = 'none';
+        }
+
+        // If HungerStation, add special marker
+        if (selectedPay === 'هنقرستيشن') {
+            const rType = document.getElementById('r-type');
+            const kType = document.getElementById('k-type');
+            if (rType) rType.innerText = 'طلب هنقرستيشن 🏍️';
+            if (kType) kType.innerText = 'هنقرستيشن 🏍️';
+        }
 
         // Fill Items
         const rItems = document.getElementById('r-items');
@@ -1162,6 +1280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="kitchen-title">طلب تجهيز (KDS)</div>
             <div class="order-id">رقم الطلب: ${order.orderId}</div>
             <div class="order-type">طريقة التقديم: <strong>${order.type}</strong></div>
+            ${document.getElementById('k-table') && document.getElementById('k-table').innerText ? `<div class="order-type" style="font-weight: 900; font-size: 13pt; margin-top: 2mm;">${document.getElementById('k-table').innerText}</div>` : ''}
             <div class="order-date">${order.date}</div>
         </div>
         
@@ -1195,6 +1314,291 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
     }
+
+    // ----------------------------------------------------
+    // Tables Customization & Management
+    // ----------------------------------------------------
+    const cartTableSelect = document.getElementById('cart-table-select');
+    const tablesModal = document.getElementById('tables-modal');
+    const btnCloseTablesModal = document.getElementById('btn-close-tables-modal');
+    const manageTablesList = document.getElementById('manage-tables-list');
+    const statusTablesList = document.getElementById('status-tables-list');
+    const btnAddTable = document.getElementById('btn-add-table');
+    const newTableNameInput = document.getElementById('new-table-name');
+    const newTableSection = document.getElementById('new-table-section');
+    const sectionTypeRow = document.getElementById('section-type-row');
+
+    // Current active section (أفراد or عوائل)
+    let currentSection = 'أفراد';
+
+    // Default tables — objects: { name, section }
+    const defaultTables = [
+        { name: '01', section: 'أفراد' },
+        { name: '02', section: 'أفراد' },
+        { name: '03', section: 'أفراد' },
+        { name: 'A1', section: 'عوائل' },
+        { name: 'A2', section: 'عوائل' },
+    ];
+
+    function getTables() {
+        try {
+            const stored = localStorage.getItem('pos_custom_tables');
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                // Migrate old string format to object format
+                if (parsed.length > 0 && typeof parsed[0] === 'string') {
+                    const migrated = parsed.map(t => ({
+                        name: t,
+                        section: t.includes('عائل') || t.includes('عوائل') ? 'عوائل' : 'أفراد'
+                    }));
+                    saveTables(migrated);
+                    return migrated;
+                }
+                return parsed;
+            }
+        } catch(e) {}
+        return [...defaultTables];
+    }
+
+    function saveTables(tables) {
+        localStorage.setItem('pos_custom_tables', JSON.stringify(tables));
+    }
+
+    function getTableStatus() {
+        try {
+            const stored = localStorage.getItem('pos_tables_status');
+            if (stored) return JSON.parse(stored);
+        } catch(e) {}
+        return {};
+    }
+
+    function saveTableStatus(statusObj) {
+        localStorage.setItem('pos_tables_status', JSON.stringify(statusObj));
+    }
+
+    function getTableKey(t) { return `${t.section}::${t.name}`; }
+
+    // Populate the dropdown — filtered by currentSection (only when محلي)
+    function populateTablesDropdown() {
+        const currentVal = cartTableSelect.value;
+        const tables = getTables();
+        const statusObj = getTableStatus();
+
+        let filtered = tables;
+        if (currentOrderType === 'محلي') {
+            filtered = tables.filter(t => t.section === currentSection);
+        }
+
+        let html = '<option value="">اختر الطاولة (اختياري)...</option>';
+        filtered.forEach(t => {
+            const key = getTableKey(t);
+            const isBusy = statusObj[key] === 'busy';
+            const mark = isBusy ? '🔴 ' : '🟢 ';
+            html += `<option value="${key}">${mark}${t.name}</option>`;
+        });
+        html += '<option value="customize" style="font-weight:bold;">⚙️ تخصيص الطاولات...</option>';
+
+        cartTableSelect.innerHTML = html;
+        // restore selection if still valid
+        const stillValid = filtered.some(t => getTableKey(t) === currentVal);
+        cartTableSelect.value = stillValid ? currentVal : '';
+    }
+
+    // Helper to get display label for receipt (section + name)
+    window.getSelectedTableLabel = function() {
+        const val = cartTableSelect.value;
+        if (!val || val === 'customize') return '';
+        const tables = getTables();
+        const found = tables.find(t => getTableKey(t) === val);
+        if (!found) return val;
+        return `${found.section} - ${found.name}`;
+    };
+
+    // ── Section sub-tabs ──────────────────────────────────────
+    const sectionBtns = document.querySelectorAll('.section-btn');
+    sectionBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            sectionBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentSection = btn.dataset.section;
+            cartTableSelect.value = '';
+            populateTablesDropdown();
+        });
+    });
+
+    // Show/hide section row based on order type
+    function updateSectionRowVisibility() {
+        if (sectionTypeRow) {
+            sectionTypeRow.style.display = currentOrderType === 'محلي' ? 'flex' : 'none';
+        }
+        if (currentOrderType !== 'محلي') {
+            cartTableSelect.value = '';
+        }
+        populateTablesDropdown();
+    }
+
+    // ── Render Manage Tab ────────────────────────────────────
+    function renderManageTables() {
+        const tables = getTables();
+        manageTablesList.innerHTML = '';
+        if (tables.length === 0) {
+            manageTablesList.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:24px; color:#64748b;">لا توجد طاولات مضافة</td></tr>`;
+            return;
+        }
+        // Group by section
+        const sections = ['أفراد', 'عوائل'];
+        sections.forEach(sec => {
+            const secTables = tables.filter(t => t.section === sec);
+            if (secTables.length === 0) return;
+            // Section header row
+            manageTablesList.innerHTML += `
+                <tr>
+                    <td colspan="3" style="padding: 8px 15px 6px; font-size:11px; font-weight:800; letter-spacing:1px; color:#64748b; text-transform:uppercase; background:rgba(255,255,255,0.02);">
+                        ${sec === 'أفراد' ? '👤' : '👨‍👩‍👧'} قسم ${sec}
+                    </td>
+                </tr>`;
+            secTables.forEach(t => {
+                const key = getTableKey(t);
+                manageTablesList.innerHTML += `
+                    <tr class="table-item-row" style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+                        <td style="padding: 12px 15px; font-weight: 700; color: #e2e8f0;">
+                            <i class="ph ph-squares-four" style="color:#4b5563; margin-left:8px;"></i>${t.name}
+                        </td>
+                        <td style="padding: 12px 15px; text-align:center;">
+                            <span style="padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700; background:${sec === 'أفراد' ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)'}; color:${sec === 'أفراد' ? '#60a5fa' : '#34d399'};">
+                                ${sec}
+                            </span>
+                        </td>
+                        <td style="padding: 12px 15px; text-align: center;">
+                            <button onclick="deleteTable('${key}')" style="color:#ef4444; background:rgba(239,68,68,0.1); border-radius:6px; padding:5px 10px; border:none; cursor:pointer; font-size:14px;">
+                                <i class="ph ph-trash"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+        });
+    }
+
+    // ── Render Status Tab ────────────────────────────────────
+    function renderStatusTables() {
+        const tables = getTables();
+        const statusObj = getTableStatus();
+        statusTablesList.innerHTML = '';
+        if (tables.length === 0) {
+            statusTablesList.innerHTML = `<div style="grid-column:1/-1; text-align:center; color:#64748b; padding:24px;">لا توجد طاولات</div>`;
+            return;
+        }
+        const sections = ['أفراد', 'عوائل'];
+        sections.forEach(sec => {
+            const secTables = tables.filter(t => t.section === sec);
+            if (secTables.length === 0) return;
+            // Section label
+            statusTablesList.innerHTML += `
+                <div style="grid-column:1/-1; font-size:12px; font-weight:800; letter-spacing:1px; color:#64748b; text-transform:uppercase; padding:4px 0 6px;">
+                    ${sec === 'أفراد' ? '👤' : '👨‍👩‍👧'} قسم ${sec}
+                </div>`;
+            secTables.forEach(t => {
+                const key = getTableKey(t);
+                const isBusy = statusObj[key] === 'busy';
+                const cls = isBusy ? 'busy' : 'empty';
+                const txt = isBusy ? 'مشغولة' : 'فارغة';
+                statusTablesList.innerHTML += `
+                    <div class="table-status-card ${cls}" onclick="toggleTableStatus('${key}')" title="انقر لتغيير الحالة">
+                        <div class="ts-icon"><i class="ph ${isBusy ? 'ph-prohibit' : 'ph-check-circle'}"></i></div>
+                        <div class="ts-name">${t.name}</div>
+                        <div class="ts-badge">${txt}</div>
+                    </div>`;
+            });
+        });
+    }
+
+    window.deleteTable = function(key) {
+        const tables = getTables();
+        const found = tables.find(t => getTableKey(t) === key);
+        if (!found) return;
+        if (!confirm(`هل تريد حذف ${found.section} - ${found.name}؟`)) return;
+        const updated = tables.filter(t => getTableKey(t) !== key);
+        saveTables(updated);
+        const statusObj = getTableStatus();
+        delete statusObj[key];
+        saveTableStatus(statusObj);
+        renderManageTables();
+        renderStatusTables();
+        populateTablesDropdown();
+    };
+
+    window.toggleTableStatus = function(key) {
+        const statusObj = getTableStatus();
+        statusObj[key] = statusObj[key] === 'busy' ? 'empty' : 'busy';
+        saveTableStatus(statusObj);
+        renderStatusTables();
+        populateTablesDropdown();
+    };
+
+    btnAddTable.addEventListener('click', () => {
+        const val = (newTableNameInput.value || '').trim();
+        const sec = newTableSection ? newTableSection.value : 'أفراد';
+        if (!val) {
+            newTableNameInput.focus();
+            newTableNameInput.style.borderColor = '#ef4444';
+            setTimeout(() => { newTableNameInput.style.borderColor = ''; }, 1500);
+            return;
+        }
+        const tables = getTables();
+        if (tables.some(t => t.name === val && t.section === sec)) {
+            alert(`الطاولة "${val}" موجودة بالفعل في قسم ${sec}`);
+            return;
+        }
+        tables.push({ name: val, section: sec });
+        saveTables(tables);
+        newTableNameInput.value = '';
+        newTableNameInput.focus();
+        renderManageTables();
+        renderStatusTables();
+        populateTablesDropdown();
+    });
+
+    // Enter key support for adding table
+    newTableNameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') btnAddTable.click();
+    });
+
+    // Handle dropdown selection (customize option)
+    let previousTableSelectValue = '';
+    cartTableSelect.addEventListener('mousedown', () => {
+        previousTableSelectValue = cartTableSelect.value;
+    });
+    cartTableSelect.addEventListener('change', () => {
+        if (cartTableSelect.value === 'customize') {
+            cartTableSelect.value = previousTableSelectValue;
+            tablesModal.classList.add('active');
+            renderManageTables();
+            renderStatusTables();
+        } else {
+            previousTableSelectValue = cartTableSelect.value;
+        }
+    });
+
+    // Handle Tabs
+    const tableTabs = document.querySelectorAll('.table-tab');
+    const tableTabContents = document.querySelectorAll('.table-tab-content');
+    tableTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tableTabs.forEach(t => t.classList.remove('active'));
+            tableTabContents.forEach(c => c.style.display = 'none');
+            
+            tab.classList.add('active');
+            document.getElementById(tab.dataset.target).style.display = 'block';
+        });
+    });
+
+    btnCloseTablesModal.addEventListener('click', () => {
+        tablesModal.classList.remove('active');
+    });
+
+    // Initialize tables on load
+    populateTablesDropdown();
+
 
     async function reloadPosCatalogFromNetwork() {
         if (cart.length > 0) return;

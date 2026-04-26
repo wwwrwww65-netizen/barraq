@@ -6,6 +6,117 @@ const SALES_PAGE_SIZE = 25;
 let salesCurrentPage = 1;
 let _salesSearchTimer;
 
+// Auto-fix negative split values in database
+async function autoFixNegativeSplitValues() {
+    try {
+        const db = await window.dbRead();
+        const orders = db.orders || [];
+        
+        console.log(`\n🔍 [Auto-Fix] Scanning ${orders.length} orders...`);
+        
+        let fixedCount = 0;
+        let negativeFound = [];
+        
+        orders.forEach(order => {
+            const total = Number(order.total) || 0;
+            const splitCash = Number(order.splitCash) || 0;
+            const splitNetwork = Number(order.splitNetwork) || 0;
+            const pm = (order.paymentMethod || '').trim();
+            
+            if (pm === 'مجزأ') {
+                let needsFix = false;
+                let newCash = splitCash;
+                let newNetwork = splitNetwork;
+                
+                // Fix negative network
+                if (splitNetwork < 0) {
+                    negativeFound.push({
+                        orderId: order.orderId,
+                        total: total,
+                        oldCash: splitCash,
+                        oldNetwork: splitNetwork
+                    });
+                    
+                    newNetwork = 0;
+                    newCash = total;
+                    needsFix = true;
+                    console.warn(`❌ ${order.orderId}: Network ${splitNetwork.toFixed(2)} → 0, Cash ${splitCash.toFixed(2)} → ${total.toFixed(2)}`);
+                }
+                
+                // Fix negative cash
+                if (splitCash < 0) {
+                    negativeFound.push({
+                        orderId: order.orderId,
+                        total: total,
+                        oldCash: splitCash,
+                        oldNetwork: splitNetwork
+                    });
+                    
+                    newCash = 0;
+                    newNetwork = total;
+                    needsFix = true;
+                    console.warn(`❌ ${order.orderId}: Cash ${splitCash.toFixed(2)} → 0, Network ${splitNetwork.toFixed(2)} → ${total.toFixed(2)}`);
+                }
+                
+                // Fix sum mismatch
+                if (Math.abs((newCash + newNetwork) - total) > 0.01) {
+                    console.warn(`⚠️ ${order.orderId}: Sum mismatch ${newCash.toFixed(2)} + ${newNetwork.toFixed(2)} ≠ ${total.toFixed(2)}`);
+                    newNetwork = total - newCash;
+                    if (newNetwork < 0) {
+                        newNetwork = 0;
+                        newCash = total;
+                    }
+                    needsFix = true;
+                }
+                
+                // Fix missing values
+                if (splitCash === 0 && splitNetwork === 0 && total > 0) {
+                    console.warn(`⚠️ ${order.orderId}: Missing split values, assuming all cash`);
+                    newCash = total;
+                    newNetwork = 0;
+                    needsFix = true;
+                }
+                
+                if (needsFix) {
+                    order.splitCash = Math.round(newCash * 100) / 100;
+                    order.splitNetwork = Math.round(newNetwork * 100) / 100;
+                    fixedCount++;
+                }
+            }
+        });
+        
+        if (negativeFound.length > 0) {
+            console.log('\n📋 Negative values found:');
+            console.table(negativeFound);
+        }
+        
+        if (fixedCount > 0) {
+            console.log(`\n✅ [Auto-Fix] Fixed ${fixedCount} orders`);
+            await window.dbWrite(db);
+            console.log('💾 Database saved. Please refresh the page.');
+        } else {
+            console.log('\n✅ [Auto-Fix] No issues found. All split values are correct.');
+            
+            // Show summary of all split payment orders
+            let splitOrders = orders.filter(o => (o.paymentMethod || '').trim() === 'مجزأ');
+            console.log(`\n💰 Split Payment Summary: ${splitOrders.length} orders`);
+            
+            let totalCash = 0;
+            let totalNetwork = 0;
+            splitOrders.forEach(o => {
+                totalCash += Number(o.splitCash) || 0;
+                totalNetwork += Number(o.splitNetwork) || 0;
+            });
+            
+            console.log(`   Total Cash: ${totalCash.toFixed(2)}`);
+            console.log(`   Total Network: ${totalNetwork.toFixed(2)}`);
+            console.log(`   Grand Total: ${(totalCash + totalNetwork).toFixed(2)}`);
+        }
+    } catch (error) {
+        console.error('[Auto-Fix] Error:', error);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     await loadSales();
 
@@ -41,9 +152,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadSales() {
+    // Auto-fix negative split values before loading
+    await autoFixNegativeSplitValues();
+    
     // Read from SQLite JSON database via IPC
     allSalesOrders = await ipcRenderer.invoke('db-get-orders');
     if (!allSalesOrders) allSalesOrders = [];
+
+    // Filter out returned orders to match closing reports
+    allSalesOrders = allSalesOrders.filter(o => o.status !== 'returned');
 
     const period = document.getElementById('sales-period-filter')?.value || 'today';
     let filteredList = [];
@@ -119,6 +236,17 @@ function renderSalesTable(query = '') {
         let typeClass = (order.type||'').includes('محلي') ? 'badge-dinein' : 'badge-takeout';
         let methodClass = (order.paymentMethod||'').includes('كاش') ? 'badge-cash' : 'badge-card';
         const itemsCount = Array.isArray(order.items) ? order.items.length : (order.itemsCount || 0);
+        
+        // Debug: Log order data
+        if (order.paymentMethod === 'مجزأ') {
+            console.log('[Sales] Split order:', {
+                orderId: order.orderId,
+                total: order.total,
+                splitCash: order.splitCash,
+                splitNetwork: order.splitNetwork,
+                paymentMethod: order.paymentMethod
+            });
+        }
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -130,8 +258,7 @@ function renderSalesTable(query = '') {
             <td style="color:var(--accent-green); font-weight:800;">${xf(order.total)}</td>
             <td style="text-align:center;">
                 <button class="sales-action-btn" title="طباعة الفاتورة مرة أخرى" onclick="reprintOrder('${order.orderId}')"><i class="ph ph-printer"></i></button>
-                <button class="sales-action-btn" title="عرض الفاتورة HTML" style="color:#8b5cf6" onclick="viewInvoiceHTML('${order.orderId}')"><i class="ph ph-file-html"></i></button>
-                <button class="sales-action-btn" title="تفاصيل الطلب" style="color:var(--accent-blue)"><i class="ph ph-eye"></i></button>
+                <button class="sales-action-btn" title="تفاصيل الطلب" style="color:var(--accent-blue)" onclick="viewOrderDetails('${order.orderId}')"><i class="ph ph-eye"></i></button>
             </td>
         `;
         fragment.appendChild(tr);
@@ -185,15 +312,60 @@ function updateKPIs(orders) {
     let cardRev = 0;
     let orderCount = orders.length;
 
+    console.log('\n💰 [Sales KPIs] Processing', orderCount, 'orders...');
+    console.log('[Sales KPIs] Payment methods found:', [...new Set(orders.map(o => o.paymentMethod))]);
+
     orders.forEach(o => {
         totalRev += o.total;
-        if ((o.paymentMethod||'').includes('كاش')) {
+        
+        // Handle split payment correctly
+        const pm = (o.paymentMethod || '').trim();
+        
+        if (pm === 'مجزأ') {
+            // For split payment, use the stored split values
+            const cashPart = Number(o.splitCash) || 0;
+            const netPart = Number(o.splitNetwork) || 0;
+            
+            console.log(`[Sales] Split order ${o.orderId}: total=${o.total}, cash=${cashPart}, net=${netPart}`);
+            
+            // ALWAYS use split values for split payment orders
+            cashRev += cashPart;
+            cardRev += netPart;
+            
+            if (netPart < 0) {
+                console.error(`[Sales] ERROR: ${o.orderId} has NEGATIVE network ${netPart}!`);
+            }
+        } else if (pm.includes('كاش') || pm === 'cash') {
             cashRev += o.total;
+        } else if (pm.includes('شبكة') || pm === 'network' || pm.includes('بطاقة') || pm === 'card') {
+            cardRev += o.total;
+            console.log(`[Sales] Network order ${o.orderId}: total=${o.total}`);
+        } else if (pm === 'هنقرستيشن') {
+            // HungerStation - check if paid
+            if (o.hsPaymentStatus === 'paid' && o.hsPaymentMethod) {
+                if (o.hsPaymentMethod.includes('كاش') || o.hsPaymentMethod === 'cash') {
+                    cashRev += o.total;
+                } else {
+                    cardRev += o.total;
+                    console.log(`[Sales] HS paid order ${o.orderId}: total=${o.total}, method=${o.hsPaymentMethod}`);
+                }
+            } else {
+                console.log(`[Sales] HS unpaid order ${o.orderId}: EXCLUDED from totals`);
+            }
         } else {
+            // Default: treat as network for safety
+            console.warn(`[Sales] Order ${o.orderId}: Unknown payment method "${pm}", treating as network`);
             cardRev += o.total;
         }
     });
 
+    console.log('\n💰 Sales KPIs Calculated:');
+    console.log(`   - Total Revenue: ${totalRev.toFixed(2)} ر.س`);
+    console.log(`   - Cash Revenue: ${cashRev.toFixed(2)} ر.س`);
+    console.log(`   - Card Revenue: ${cardRev.toFixed(2)} ر.س`);
+    console.log(`   - Order Count: ${orderCount}`);
+    console.log(`   - Check: ${cashRev.toFixed(2)} + ${cardRev.toFixed(2)} = ${(cashRev + cardRev).toFixed(2)}`);
+    
     const el = (id) => document.getElementById(id);
     if(el('kpi-total-revenue')) el('kpi-total-revenue').innerText = xf(totalRev);
     if(el('kpi-total-orders')) el('kpi-total-orders').innerText = orderCount;
@@ -277,6 +449,66 @@ async function clearSales() {
     }
 }
 
+// Fix negative balances button
+async function fixNegativeBalances() {
+    alert('جاري فحص البيانات...');
+    
+    try {
+        const db = await window.dbRead();
+        const allOrders = db.orders || [];
+        
+        // Show ALL orders with dates
+        let todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        
+        let todayOrders = [];
+        let otherOrders = [];
+        
+        allOrders.forEach(o => {
+            const ts = o.timestamp || 0;
+            const date = new Date(ts);
+            
+            let info = `${o.orderId} | ${o.paymentMethod} | ${o.total.toFixed(2)} ر.س | ${date.toLocaleString('ar-SA')}`;
+            
+            // Add split payment details
+            if (o.paymentMethod === 'مجزأ') {
+                info += ` [كاش: ${(o.splitCash || 0).toFixed(2)} | شبكة: ${(o.splitNetwork || 0).toFixed(2)}]`;
+            }
+            
+            // Add HungerStation payment status
+            if (o.paymentMethod === 'هنقرستيشن') {
+                const payStatus = o.hsPaymentStatus || 'unknown';
+                const payMethod = o.hsPaymentMethod || 'not set';
+                info += ` [الحالة: ${payStatus} | الطريقة: ${payMethod}]`;
+            }
+            
+            if (ts >= todayStart.getTime()) {
+                todayOrders.push(info);
+            } else {
+                otherOrders.push(info);
+            }
+        });
+        
+        let msg = `📊 إجمالي الطلبات: ${allOrders.length}\n`;
+        msg += `━━━━━━━━━━━━━━━\n\n`;
+        msg += `✅ طلبات اليوم (${todayOrders.length}):\n`;
+        msg += todayOrders.join('\n');
+        
+        if (otherOrders.length > 0) {
+            msg += `\n\n📅 طلبات أخرى (${otherOrders.length}):\n`;
+            msg += otherOrders.slice(0, 5).join('\n');
+            if (otherOrders.length > 5) {
+                msg += `\n... و ${otherOrders.length - 5} طلب آخر`;
+            }
+        }
+        
+        alert(msg);
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ حدث خطأ: ' + error.message);
+    }
+}
+
 // Open invoices folder
 function openInvoicesFolder() {
     const { ipcRenderer } = require('electron');
@@ -298,57 +530,266 @@ function openInvoicesFolder() {
     });
 }
 
-// View specific invoice HTML file
-async function viewInvoiceHTML(orderId) {
-    const fs = require('fs');
-    const path = require('path');
-    const { ipcRenderer } = require('electron');
-    
-    const invoicesDir = path.join(__dirname, 'invoices');
-    
-    if (!fs.existsSync(invoicesDir)) {
-        alert('لا توجد فواتير محفوظة بعد.');
-        return;
-    }
-    
-    // Find invoice file for this order ID
-    const files = fs.readdirSync(invoicesDir);
-    const invoiceFile = files.find(f => f.includes(orderId.replace('#', '')) && f.endsWith('.html'));
-    
-    if (!invoiceFile) {
-        alert(`لم يتم العثور على فاتورة HTML للطلب ${orderId}`);
-        return;
-    }
-    
-    const filePath = path.join(invoicesDir, invoiceFile);
-    
-    // Open the HTML file in default browser
+// View order details in modal
+async function viewOrderDetails(orderId) {
     try {
-        await ipcRenderer.invoke('open-folder', filePath);
+        const { ipcRenderer } = require('electron');
+        const orders = await ipcRenderer.invoke('db-get-orders');
+        const order = orders.find(o => o.orderId === orderId);
+        
+        if (!order) {
+            alert('لم يتم العثور على الطلب!');
+            return;
+        }
+        
+        // Build items list
+        const items = order.items || [];
+        console.log('[viewOrderDetails] Order:', order.orderId);
+        console.log('[viewOrderDetails] Items:', items);
+        console.log('[viewOrderDetails] Items length:', items.length);
+        
+        let itemsHtml = '';
+        if (items.length === 0) {
+            itemsHtml = '<tr><td colspan="4" style="padding: 20px; text-align: center; color: #9ca3af;">لا توجد أصناف</td></tr>';
+        } else {
+            items.forEach((item, index) => {
+                console.log(`[viewOrderDetails] Item ${index}:`, item);
+                const itemName = item.name || item.productName || item.itemName || '-';
+                const itemQty = item.qty || item.quantity || 0;
+                const itemPrice = item.price || item.unitPrice || 0;
+                const itemTotal = itemQty * itemPrice;
+                
+                itemsHtml += `
+                    <tr>
+                        <td style="padding: 12px 8px; border-bottom: 1px solid var(--border-color, #e5e7eb);">${itemName}</td>
+                        <td style="padding: 12px 8px; border-bottom: 1px solid var(--border-color, #e5e7eb); text-align: center; font-weight: 600;">${itemQty}</td>
+                        <td style="padding: 12px 8px; border-bottom: 1px solid var(--border-color, #e5e7eb); text-align: left;">${formatCurrency(itemPrice)}</td>
+                        <td style="padding: 12px 8px; border-bottom: 1px solid var(--border-color, #e5e7eb); text-align: left; font-weight: 600; color: var(--accent-green, #10b981);">${formatCurrency(itemTotal)}</td>
+                    </tr>
+                `;
+            });
+        }
+        
+        // Calculate totals
+        const subtotal = items.reduce((sum, item) => sum + ((item.qty || 0) * (item.price || 0)), 0);
+        const discount = order.discount || 0;
+        const total = order.total || subtotal;
+        
+        // Check if dark theme
+        const isDark = document.body.classList.contains('dark-theme');
+        
+        // Create modal
+        const modalHtml = `
+            <div id="order-details-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px;">
+                <div style="background: ${isDark ? '#1f2937' : 'white'}; border-radius: 16px; max-width: 700px; width: 100%; max-height: 85vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); display: flex; flex-direction: column;">
+                    <!-- Header -->
+                    <div style="padding: 24px; border-bottom: 2px solid ${isDark ? '#374151' : '#f3f4f6'}; display: flex; justify-content: space-between; align-items: center;">
+                        <h2 style="margin: 0; color: ${isDark ? '#f9fafb' : '#111827'}; font-size: 24px; font-weight: 700;">تفاصيل الطلب</h2>
+                        <button onclick="closeOrderDetailsModal()" style="background: ${isDark ? '#374151' : '#f3f4f6'}; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; color: ${isDark ? '#d1d5db' : '#6b7280'}; font-size: 20px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;" onmouseover="this.style.background='#ef4444'; this.style.color='white'" onmouseout="this.style.background='${isDark ? '#374151' : '#f3f4f6'}'; this.style.color='${isDark ? '#d1d5db' : '#6b7280'}'">&times;</button>
+                    </div>
+                    
+                    <!-- Content (Scrollable) -->
+                    <div style="padding: 24px; overflow-y: auto; flex: 1;">
+                        <!-- Order Info Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                            <div style="background: ${isDark ? '#111827' : '#f9fafb'}; padding: 16px; border-radius: 12px; border: 1px solid ${isDark ? '#374151' : '#e5e7eb'};">
+                                <div style="font-size: 12px; color: ${isDark ? '#9ca3af' : '#6b7280'}; margin-bottom: 6px; font-weight: 500;">رقم الطلب</div>
+                                <div style="font-weight: 700; color: ${isDark ? '#f9fafb' : '#111827'}; font-size: 16px;">${order.orderId || '-'}</div>
+                            </div>
+                            <div style="background: ${isDark ? '#111827' : '#f9fafb'}; padding: 16px; border-radius: 12px; border: 1px solid ${isDark ? '#374151' : '#e5e7eb'};">
+                                <div style="font-size: 12px; color: ${isDark ? '#9ca3af' : '#6b7280'}; margin-bottom: 6px; font-weight: 500;">التاريخ والوقت</div>
+                                <div style="font-weight: 600; color: ${isDark ? '#e5e7eb' : '#374151'}; font-size: 14px;">${order.date || new Date(order.timestamp || Date.now()).toLocaleString('ar-SA')}</div>
+                            </div>
+                            <div style="background: ${isDark ? '#111827' : '#f9fafb'}; padding: 16px; border-radius: 12px; border: 1px solid ${isDark ? '#374151' : '#e5e7eb'};">
+                                <div style="font-size: 12px; color: ${isDark ? '#9ca3af' : '#6b7280'}; margin-bottom: 6px; font-weight: 500;">نوع الطلب</div>
+                                <div style="font-weight: 600; color: ${isDark ? '#e5e7eb' : '#374151'}; font-size: 14px;">${order.type || 'محلي'}</div>
+                            </div>
+                            <div style="background: ${isDark ? '#111827' : '#f9fafb'}; padding: 16px; border-radius: 12px; border: 1px solid ${isDark ? '#374151' : '#e5e7eb'};">
+                                <div style="font-size: 12px; color: ${isDark ? '#9ca3af' : '#6b7280'}; margin-bottom: 6px; font-weight: 500;">طريقة الدفع</div>
+                                <div style="font-weight: 600; color: ${isDark ? '#e5e7eb' : '#374151'}; font-size: 14px;">${order.paymentMethod || 'نقدي'}</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Items Table -->
+                        <h3 style="margin: 0 0 16px 0; color: ${isDark ? '#f9fafb' : '#111827'}; font-size: 18px; font-weight: 700;">الأصناف (${items.length})</h3>
+                        <div style="background: ${isDark ? '#111827' : '#ffffff'}; border-radius: 12px; border: 1px solid ${isDark ? '#374151' : '#e5e7eb'}; overflow: hidden; margin-bottom: 24px;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: ${isDark ? '#1f2937' : '#f9fafb'}; border-bottom: 2px solid ${isDark ? '#374151' : '#e5e7eb'};">
+                                        <th style="padding: 14px 12px; text-align: right; font-size: 13px; color: ${isDark ? '#9ca3af' : '#6b7280'}; font-weight: 600;">الصنف</th>
+                                        <th style="padding: 14px 12px; text-align: center; font-size: 13px; color: ${isDark ? '#9ca3af' : '#6b7280'}; font-weight: 600; width: 80px;">الكمية</th>
+                                        <th style="padding: 14px 12px; text-align: left; font-size: 13px; color: ${isDark ? '#9ca3af' : '#6b7280'}; font-weight: 600; width: 120px;">السعر</th>
+                                        <th style="padding: 14px 12px; text-align: left; font-size: 13px; color: ${isDark ? '#9ca3af' : '#6b7280'}; font-weight: 600; width: 120px;">الإجمالي</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${itemsHtml}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Totals Section -->
+                        <div style="background: ${isDark ? '#111827' : '#f9fafb'}; border-radius: 12px; border: 1px solid ${isDark ? '#374151' : '#e5e7eb'}; padding: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid ${isDark ? '#374151' : '#e5e7eb'};">
+                                <span style="color: ${isDark ? '#9ca3af' : '#6b7280'}; font-weight: 500;">المجموع الفرعي:</span>
+                                <span style="font-weight: 600; color: ${isDark ? '#e5e7eb' : '#374151'}; font-size: 16px;">${formatCurrency(subtotal)}</span>
+                            </div>
+                            ${discount > 0 ? `
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid ${isDark ? '#374151' : '#e5e7eb'};">
+                                <span style="color: #ef4444; font-weight: 500;">الخصم:</span>
+                                <span style="font-weight: 600; color: #ef4444; font-size: 16px;">- ${formatCurrency(discount)}</span>
+                            </div>
+                            ` : ''}
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 2px solid ${isDark ? '#374151' : '#e5e7eb'};">
+                                <span style="color: ${isDark ? '#f9fafb' : '#111827'}; font-size: 18px; font-weight: 700;">الإجمالي النهائي:</span>
+                                <span style="color: #10b981; font-size: 24px; font-weight: 800;">${formatCurrency(total)}</span>
+                            </div>
+                        </div>
+                        
+                        ${order.notes ? `
+                        <div style="margin-top: 20px; padding: 16px; background: ${isDark ? '#422006' : '#fef3c7'}; border-radius: 12px; border-right: 4px solid #f59e0b;">
+                            <div style="font-size: 12px; color: ${isDark ? '#fbbf24' : '#92400e'}; margin-bottom: 6px; font-weight: 600;">ملاحظات:</div>
+                            <div style="color: ${isDark ? '#fef3c7' : '#78350f'}; font-weight: 500; line-height: 1.6;">${order.notes}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div style="padding: 20px 24px; border-top: 2px solid ${isDark ? '#374151' : '#f3f4f6'}; display: flex; gap: 12px; justify-content: flex-end; background: ${isDark ? '#111827' : '#ffffff'};">
+                        <button onclick="closeOrderDetailsModal()" style="padding: 12px 24px; background: ${isDark ? '#374151' : '#f3f4f6'}; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; color: ${isDark ? '#e5e7eb' : '#374151'}; font-size: 14px; transition: all 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">إغلاق</button>
+                        <button onclick="reprintOrder('${order.orderId}'); closeOrderDetailsModal();" style="padding: 12px 24px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border: none; border-radius: 8px; cursor: pointer; font-weight: 600; color: white; font-size: 14px; display: flex; align-items: center; gap: 8px; transition: all 0.2s; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(59, 130, 246, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.3)'"><i class="ph ph-printer"></i> طباعة الفاتورة</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add modal to body
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = modalHtml;
+        document.body.appendChild(modalContainer);
+        
+        // Close on backdrop click
+        modalContainer.querySelector('#order-details-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'order-details-modal') {
+                closeOrderDetailsModal();
+            }
+        });
+        
+        // Close on Escape key
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeOrderDetailsModal();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+        
     } catch(e) {
-        console.error('Failed to open invoice:', e);
-        alert(`مسار الفاتورة:\n${filePath}`);
+        console.error('Failed to view order details:', e);
+        console.error('Error stack:', e.stack);
+        alert('حدث خطأ أثناء عرض تفاصيل الطلب: ' + e.message);
+    }
+}
+
+function closeOrderDetailsModal() {
+    const modal = document.getElementById('order-details-modal');
+    if (modal) {
+        modal.parentElement.remove();
     }
 }
 
 // Reprint order
 async function reprintOrder(orderId) {
-    const { ipcRenderer } = require('electron');
-    
-    // Get orders from database
-    const orders = await ipcRenderer.invoke('db-get-orders');
-    const order = orders.find(o => o.orderId === orderId);
-    
-    if (!order) {
-        alert('لم يتم العثور على الطلب!');
-        return;
+    try {
+        // Load thermal receipt module
+        const thermalReceipt = require('./thermal-receipt-updated.js');
+        const printCustomerReceipt = thermalReceipt.printCustomerReceipt;
+        
+        // Get orders from database
+        const { ipcRenderer } = require('electron');
+        const orders = await ipcRenderer.invoke('db-get-orders');
+        const order = orders.find(o => o.orderId === orderId);
+        
+        if (!order) {
+            alert('لم يتم العثور على الطلب!');
+            return;
+        }
+        
+        if (!confirm(`هل تريد إعادة طباعة فاتورة ${orderId}؟`)) {
+            return;
+        }
+        
+        // Calculate totals
+        const items = order.items || [];
+        const subtotal = items.reduce((sum, item) => sum + ((item.qty || 0) * (item.price || 0)), 0);
+        const discount = order.discount || 0;
+        
+        // Get tax rate from settings
+        let taxRate = 0.15; // default 15%
+        try {
+            const s = JSON.parse(localStorage.getItem('restaurant_settings') || '{}');
+            const rate = parseFloat(s.taxRate);
+            taxRate = isNaN(rate) ? 0.15 : rate / 100;
+        } catch(e) {}
+        
+        const taxAmount = (subtotal - discount) * taxRate;
+        const total = order.total || (subtotal - discount + taxAmount);
+        
+        // Get payment method
+        const paymentMethod = order.paymentMethod || 'نقدي';
+        const paymentLabel = paymentMethod === 'cash' || paymentMethod === 'نقدي' ? 'نقدي (كاش)' : 
+                            paymentMethod === 'card' || paymentMethod === 'شبكة' ? 'بطاقة (شبكة)' : paymentMethod;
+        
+        // Build items HTML
+        let itemsHtml = '';
+        items.forEach(item => {
+            const itemTotal = (item.qty || 0) * (item.price || 0);
+            itemsHtml += `
+                <tr style="border-bottom: 1px dashed #ddd;">
+                    <td style="padding: 2mm 0; text-align: right; max-width: 35mm; word-wrap: break-word;">${item.name || ''}</td>
+                    <td style="padding: 2mm 0; text-align: center; width: 12mm; font-weight: 700;">${item.qty || 0}</td>
+                    <td style="padding: 2mm 0; text-align: left; width: 18mm; font-weight: 600;">${formatCurrency(itemTotal)}</td>
+                </tr>
+            `;
+        });
+        
+        // Build receipt snap
+        const receiptSnap = {
+            orderType: order.type || 'محلي',
+            tableText: order.table ? 'لـ: ' + order.table : '',
+            orderId: '#' + (order.orderId || ''),
+            date: order.date || new Date(order.timestamp || Date.now()).toLocaleString('ar-SA'),
+            itemsHtml: itemsHtml,
+            subtotalText: formatCurrency(subtotal),
+            totalText: formatCurrency(total),
+            discountText: discount > 0 ? formatCurrency(discount) : formatCurrency(0),
+            taxLabel: `قيمة الضريبة المضافة ${Math.round(taxRate * 100 * 100) / 100}%:`,
+            taxText: formatCurrency(taxAmount),
+            paymentText: paymentLabel,
+            qrSrc: '',
+            notesText: order.notes || ''
+        };
+        
+        console.log('🖨️  Reprinting thermal receipt for order:', order.orderId);
+        
+        // Print using the same function as POS
+        await printCustomerReceipt(receiptSnap);
+        
+    } catch(e) {
+        console.error('❌ Reprint failed:', e);
+        alert('حدث خطأ أثناء إعادة الطباعة: ' + e.message);
     }
-    
-    if (confirm(`هل تريد إعادة طباعة فاتورة ${orderId}؟`)) {
-        // Trigger print via IPC - you can implement this based on your printing logic
-        alert('جاري إرسال أمر الطباعة...');
-        // You can call the same print logic used in pos.js here
+}
+
+// Helper function to format currency
+function formatCurrency(amount) {
+    if (window.HashCurrency) {
+        return HashCurrency.format(amount || 0);
     }
+    return Number(amount || 0).toLocaleString('en-US', { 
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2 
+    }) + ' ر.س';
 }
 
 function exportSalesPDF() {

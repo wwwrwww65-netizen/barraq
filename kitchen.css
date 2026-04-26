@@ -8,6 +8,64 @@
     background: var(--bg-dark);
 }
 
+/* Light Theme Fixes for Kitchen */
+body.light-theme .kds-sidebar {
+    background: #fff !important;
+    border-left-color: rgba(0,0,0,0.08) !important;
+}
+
+body.light-theme .kds-nav-btn {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .kds-nav-btn:hover {
+    background: rgba(59, 130, 246, 0.05) !important;
+    color: var(--accent-blue) !important;
+}
+
+body.light-theme .kds-nav-btn.active {
+    color: white !important;
+}
+
+body.light-theme .kds-header {
+    background: #fff !important;
+    border-color: rgba(0,0,0,0.08) !important;
+}
+
+body.light-theme .kds-header-left h1 {
+    color: #0f172a !important;
+}
+
+body.light-theme .kds-time {
+    color: #0f172a !important;
+}
+
+body.light-theme .kds-col {
+    background: rgba(0,0,0,0.02) !important;
+    border-color: rgba(0,0,0,0.08) !important;
+}
+
+body.light-theme .kds-col.new .kds-col-header {
+    background: linear-gradient(180deg, rgba(239, 68, 68, 0.05), transparent) !important;
+    color: #dc2626 !important;
+}
+
+body.light-theme .kds-col.prep .kds-col-header {
+    background: linear-gradient(180deg, rgba(249, 115, 22, 0.05), transparent) !important;
+    color: #ea580c !important;
+}
+
+body.light-theme .kds-col.ready .kds-col-header {
+    background: linear-gradient(180deg, rgba(16, 185, 129, 0.05), transparent) !important;
+    color: #059669 !important;
+}
+
+body.light-theme .kds-ticket {
+    background: #fff !important;
+    border-color: rgba(0,0,0,0.08) !important;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.05) !important;
+}
+
 .kds-sidebar {
     background: var(--bg-card);
     border-left: 1px solid var(--border-light);

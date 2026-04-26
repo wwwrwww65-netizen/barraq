@@ -607,82 +607,62 @@ document.addEventListener('DOMContentLoaded', () => {
         const { ipcRenderer } = require('electron');
         const QRCode = require('qrcode');
 
-        // ── تحميل الوضع المحفوظ ──────────────────────────────────────────────
-        const savedMode = localStorage.getItem('wa_mode') || 'browser';
+        // ── تهيئة الوضع الافتراضي (النافذة المتخفية دائماً) ─────────────────────────────────
+        localStorage.setItem('wa_mode', 'bot');
 
-        const modeCards = {
-            browser: document.getElementById('wa-mode-browser-card'),
-            desktop: document.getElementById('wa-mode-desktop-card'),
-            bot:     document.getElementById('wa-mode-bot-card'),
-        };
-        const modeRadios = {
-            browser: document.getElementById('wa-mode-browser'),
-            desktop: document.getElementById('wa-mode-desktop'),
-            bot:     document.getElementById('wa-mode-bot'),
-        };
+        const waBadge = document.getElementById('wa-connection-badge');
+        const waDot = document.getElementById('wa-connection-dot');
+        const waStatusTextBadge = document.getElementById('wa-connection-status-text');
 
-        function applyModeUI(mode) {
-            // أزل التحديد من كل البطاقات
-            Object.values(modeCards).forEach(c => { if(c) c.style.borderColor = 'rgba(255,255,255,0.1)'; });
-            // حدد البطاقة المختارة
-            if (modeCards[mode]) modeCards[mode].style.borderColor = '#25D366';
-            // حدد الـ radio
-            if (modeRadios[mode]) modeRadios[mode].checked = true;
-
-            // غيّر نص الزر حسب الوضع
-            const icon = document.getElementById('btn-wa-link-icon');
-            const txt  = document.getElementById('btn-wa-link-text');
-            if (mode === 'browser') {
-                if(icon) icon.className = 'ph-bold ph-globe';
-                if(txt)  txt.textContent = 'تفعيل (كروم جاهز — لا يحتاج إعداد)';
-                if(waQrContainer) waQrContainer.style.display = 'none';
-                waStatusText.innerText = 'وضع المتصفح: يرسل عبر كروم تلقائياً عند كل فاتورة';
-                waStatusText.style.color = '#3b82f6';
-                btnWaLink.disabled = false;
-                btnWaLink.style.background = '#3b82f6';
-            } else if (mode === 'desktop') {
-                if(icon) icon.className = 'ph-bold ph-desktop';
-                if(txt)  txt.textContent = 'تفعيل (واتساب Desktop جاهز — لا يحتاج إعداد)';
-                if(waQrContainer) waQrContainer.style.display = 'none';
-                waStatusText.innerText = 'وضع التطبيق المثبت: يرسل عبر واتساب Desktop تلقائياً';
-                waStatusText.style.color = '#a855f7';
-                btnWaLink.disabled = false;
-                btnWaLink.style.background = '#a855f7';
-            } else if (mode === 'bot') {
-                if(icon) icon.className = 'ph-bold ph-app-window';
-                if(txt)  txt.textContent = 'فتح نافذة واتساب للربط/مسح QR';
-                if(waQrContainer) waQrContainer.style.display = 'none';
-                waStatusText.innerText = 'وضع النافذة المخفية: اضغط الزر لفتح نافذة واتساب ومسح QR';
-                waStatusText.style.color = '#25D366';
-                btnWaLink.disabled = false;
-                btnWaLink.style.background = '#25D366';
-            }
-        }
-
-        applyModeUI(savedMode);
-
-        // تغيير الوضع عند اختيار radio
-        ['browser', 'desktop', 'bot'].forEach(mode => {
-            if (modeRadios[mode]) {
-                modeRadios[mode].addEventListener('change', () => {
-                    localStorage.setItem('wa_mode', mode);
-                    applyModeUI(mode);
-                });
-            }
-        });
-
-        // زر التفعيل الرئيسي
-        btnWaLink.addEventListener('click', () => {
-            const currentMode = localStorage.getItem('wa_mode') || 'browser';
-            if (currentMode === 'bot') {
-                // افتح النافذة المخفية للمسح
-                ipcRenderer.send('wa-show-window');
-                waStatusText.innerText = 'تم فتح نافذة واتساب — امسح الكود ثم أغلق النافذة';
-                waStatusText.style.color = '#25D366';
+        window.setWaStatus = function(status) {
+            if (!waBadge) return;
+            if (status === 'connected') {
+                waBadge.style.background = 'rgba(37,211,102,0.15)';
+                waBadge.style.color = '#10b981';
+                if (waDot) {
+                    waDot.style.background = '#10b981';
+                    waDot.style.boxShadow = '0 0 5px #10b981';
+                }
+                if (waStatusTextBadge) waStatusTextBadge.textContent = 'متصل نشط';
+                waStatusText.innerText = 'الواتساب متصل ويعمل بشكل سليم';
+                waStatusText.style.color = '#10b981';
+                if (waQrContainer) waQrContainer.style.display = 'none';
+                localStorage.setItem('wa_connected', 'true');
+            } else if (status === 'loading') {
+                waBadge.style.background = 'rgba(245,158,11,0.15)';
+                waBadge.style.color = '#f59e0b';
+                if (waDot) {
+                    waDot.style.background = '#f59e0b';
+                    waDot.style.boxShadow = '0 0 5px #f59e0b';
+                }
+                if (waStatusTextBadge) waStatusTextBadge.textContent = 'جاري الاتصال...';
+                waStatusText.innerText = 'جاري التحقق من الاتصال...';
+                waStatusText.style.color = '#f59e0b';
             } else {
-                // للأوضاع الأخرى لا يحتاج ضغط — فقط تأكيد بصري
-                waStatusText.innerText = `✓ الوضع "${currentMode === 'browser' ? 'المتصفح' : 'التطبيق المثبت'}" مفعّل. سيعمل تلقائياً عند الإرسال.`;
+                waBadge.style.background = 'rgba(239,68,68,0.15)';
+                waBadge.style.color = '#ef4444';
+                if (waDot) {
+                    waDot.style.background = '#ef4444';
+                    waDot.style.boxShadow = '0 0 5px #ef4444';
+                }
+                if (waStatusTextBadge) waStatusTextBadge.textContent = 'غير متصل';
+                waStatusText.innerText = 'غير متصل. يرجى مسح الرمز أو التحقق من الاتصال.';
+                waStatusText.style.color = '#ef4444';
+                localStorage.setItem('wa_connected', 'false');
             }
+        };
+
+        // التحقق المبدئي من الاتصال عند تحميل الإعدادات
+        setTimeout(() => {
+            setWaStatus('loading');
+            ipcRenderer.send('wa-check-status');
+        }, 1000);
+
+        // زر التفعيل الرئيسي (فتح نافذة واتساب)
+        btnWaLink.addEventListener('click', () => {
+            ipcRenderer.send('wa-show-window');
+            waStatusText.innerText = 'تم فتح نافذة واتساب — امسح الكود ثم أغلق النافذة (أو تصفح الواتساب)';
+            waStatusText.style.color = '#25D366';
         });
 
         // زر التحديث - يعيد الاتصال بدون مسح الجلسة

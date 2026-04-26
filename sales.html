@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>هـــش HASH - سجل المبيعات والطلبات</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="light-theme-fixes.css">
     <link rel="stylesheet" href="sales.css">
     <!-- Google Fonts -->
     
@@ -96,6 +97,7 @@
                             <p style="color:var(--text-secondary); font-size:13px;">تتم مزامنة ومتابعة المبيعات الصادرة من الكاشير هنا لحظياً</p>
                         </div>
                         <div style="display:flex; gap:10px; align-items:center;">
+                            <button class="btn" style="background: rgba(34, 197, 94, 0.1); color: #22c55e; border: 1px solid #22c55e; font-size:13px;" onclick="fixNegativeBalances()"><i class="ph ph-wrench"></i> إصلاح الأرصدة</button>
                             <button class="btn" style="background: rgba(239, 68, 68, 0.1); color: var(--accent-red); border: 1px solid var(--accent-red); font-size:13px;" onclick="clearSales()"><i class="ph ph-trash"></i> مسح السجل</button>
                             <select id="sales-period-filter" class="input-modern" style="width:160px; font-size:13px; padding:6px 10px;">
                                 <option value="all">كل الفترات</option>

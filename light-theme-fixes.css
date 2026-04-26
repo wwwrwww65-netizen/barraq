@@ -1,0 +1,252 @@
+/* ============================================
+   UNIVERSAL LIGHT THEME FIXES
+   إصلاحات شاملة للوضع النهاري - جميع الشاشات
+   ============================================ */
+
+/* General Text Visibility */
+body.light-theme h1,
+body.light-theme h2,
+body.light-theme h3,
+body.light-theme h4,
+body.light-theme h5,
+body.light-theme h6 {
+    color: #0f172a !important;
+}
+
+body.light-theme p,
+body.light-theme span,
+body.light-theme div,
+body.light-theme label {
+    color: inherit;
+}
+
+/* Icon Visibility */
+body.light-theme .ph,
+body.light-theme [class^="ph-"],
+body.light-theme [class*="ph-"],
+body.light-theme i {
+    color: inherit;
+}
+
+/* Button Text & Icons */
+body.light-theme button,
+body.light-theme .btn {
+    color: inherit;
+}
+
+body.light-theme button i,
+body.light-theme .btn i {
+    color: inherit;
+}
+
+/* Input Fields */
+body.light-theme input,
+body.light-theme textarea,
+body.light-theme select {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.light-theme input::placeholder,
+body.light-theme textarea::placeholder {
+    color: #94a3b8 !important;
+}
+
+/* Table Headers & Cells */
+body.light-theme table th {
+    color: #64748b !important;
+}
+
+body.light-theme table td {
+    color: #334155 !important;
+}
+
+/* Links */
+body.light-theme a {
+    color: var(--accent-blue);
+}
+
+body.light-theme a:hover {
+    color: #2563eb;
+}
+
+/* Badges & Tags */
+body.light-theme .badge,
+body.light-theme .tag {
+    color: inherit;
+}
+
+/* Modal Elements */
+body.light-theme .modal-overlay {
+    background: rgba(0, 0, 0, 0.5) !important;
+}
+
+body.light-theme .modal-content,
+body.light-theme .modal-box {
+    background: #ffffff !important;
+    color: #0f172a !important;
+}
+
+body.light-theme .modal-header {
+    border-bottom-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+body.light-theme .modal-header h3 {
+    color: #0f172a !important;
+}
+
+body.light-theme .close-modal,
+body.light-theme .btn-close-modal {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .close-modal:hover,
+body.light-theme .btn-close-modal:hover {
+    color: #ef4444 !important;
+}
+
+/* Card Elements */
+body.light-theme .card,
+body.light-theme .kpi-card {
+    background: #ffffff !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+body.light-theme .card:hover,
+body.light-theme .kpi-card:hover {
+    border-color: rgba(0, 0, 0, 0.12) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Sidebar & Navigation */
+body.light-theme .sidebar {
+    background: #ffffff !important;
+    border-left-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+body.light-theme .nav-item {
+    color: #64748b !important;
+}
+
+body.light-theme .nav-item:hover {
+    background: rgba(0, 0, 0, 0.03) !important;
+    color: #0f172a !important;
+}
+
+body.light-theme .nav-item.active {
+    background: rgba(59, 130, 246, 0.08) !important;
+    color: var(--accent-blue) !important;
+}
+
+body.light-theme .nav-label {
+    color: #94a3b8 !important;
+}
+
+/* Header */
+body.light-theme .top-header {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-bottom-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+body.light-theme .search-bar {
+    background: rgba(0, 0, 0, 0.03) !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+body.light-theme .search-bar input {
+    color: #0f172a !important;
+}
+
+body.light-theme .search-bar input::placeholder {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .search-bar i {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .icon-btn {
+    background: rgba(0, 0, 0, 0.03) !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+    color: #475569 !important;
+}
+
+body.light-theme .icon-btn:hover {
+    background: rgba(0, 0, 0, 0.06) !important;
+    color: #0f172a !important;
+}
+
+body.light-theme .datetime {
+    color: #64748b !important;
+}
+
+body.light-theme .user-name {
+    color: #0f172a !important;
+}
+
+body.light-theme .user-role {
+    color: #64748b !important;
+}
+
+/* Scrollbar */
+body.light-theme ::-webkit-scrollbar-thumb {
+    background: #cbd5e1 !important;
+}
+
+body.light-theme ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8 !important;
+}
+
+/* Empty States */
+body.light-theme .empty-state,
+body.light-theme .empty-cart-msg,
+body.light-theme .empty-sales,
+body.light-theme [class*="empty"] {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .empty-state i,
+body.light-theme .empty-cart-msg i,
+body.light-theme .empty-sales i {
+    color: #cbd5e1 !important;
+}
+
+/* Form Labels */
+body.light-theme label,
+body.light-theme .form-label {
+    color: #475569 !important;
+}
+
+/* Help Text */
+body.light-theme .help-text,
+body.light-theme .form-text,
+body.light-theme small {
+    color: #94a3b8 !important;
+}
+
+/* Dividers */
+body.light-theme hr,
+body.light-theme .divider {
+    border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Tooltip & Notifications */
+body.light-theme .tooltip {
+    background: #1e293b !important;
+    color: #ffffff !important;
+}
+
+body.light-theme .notification {
+    background: #ffffff !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+    color: #0f172a !important;
+}
+
+/* Print Area Fix */
+@media print {
+    body.light-theme * {
+        color: #000000 !important;
+        background: transparent !important;
+    }
+}

@@ -326,6 +326,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td>
                     <div class="tbl-actions">
                         <button type="button" class="action-btn btn-edit-item" data-sku="${item.sku}" data-wh="${wh}" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
+                        <button type="button" class="action-btn btn-delete-item" data-sku="${item.sku}" data-wh="${wh}" title="حذف"><i class="ph ph-trash" style="color:var(--accent-red)"></i></button>
                         <button type="button" class="action-btn text-green btn-quick-in" data-sku="${item.sku}" title="إصدار استلام"><i class="ph ph-plus-circle"></i></button>
                     </div>
                 </td>
@@ -408,6 +409,59 @@ document.addEventListener('DOMContentLoaded', async () => {
                 openItemModalEdit(sku, wh);
             });
         });
+        container.querySelectorAll('.btn-delete-item:not([data-bound])').forEach((btn) => {
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', (e) => {
+                const sku = e.currentTarget.dataset.sku;
+                const wh  = e.currentTarget.dataset.wh || currentWH;
+                deleteItem(sku, wh);
+            });
+        });
+    }
+
+    /** تحديث قائمة الفئات المقترحة */
+    function updateCategorySuggestions() {
+        const datalist = document.getElementById('cat-list');
+        if (!datalist) return;
+        const cats = new Set();
+        erpItems.forEach((it) => {
+            if (it.category) cats.add(it.category);
+        });
+        // إضافة الفئات الافتراضية إذا لم تكن موجودة
+        const defaultCats = ['المواد التموينية', 'اللحوم والدواجن', 'الخضروات والفاكهة', 'الزيوت والصلصات', 'البهارات والمكسرات', 'مواد تعبئة وتغليف'];
+        defaultCats.forEach(c => cats.add(c));
+        
+        datalist.innerHTML = '';
+        [...cats].sort().forEach((c) => {
+            const option = document.createElement('option');
+            option.value = c;
+            datalist.appendChild(option);
+        });
+    }
+
+    /** حذف صنف من المخزون */
+    async function deleteItem(sku, wh) {
+        const idx = findItemIndex(sku, wh);
+        if (idx === -1) {
+            alert('تعذر العثور على الصنف!');
+            return;
+        }
+        const item = erpItems[idx];
+        const confirmed = confirm(`⚠️ هل أنت متأكد من حذف الصنف التالي؟\n\nرمز الصنف: ${item.sku}\nاسم الصنف: ${item.name}\nالكمية الحالية: ${item.qty} ${item.unit || ''}\n\nسيتم حذف الصنف نهائياً من المخزون!`);
+        if (!confirmed) return;
+
+        // حذف الصنف من المصفوفة
+        erpItems.splice(idx, 1);
+
+        // حفظ التغييرات في قاعدة البيانات
+        db.inventory = erpItems;
+        await saveDB(db);
+
+        // إعادة عرض الجدول وتحديث المؤشرات
+        _patchedRender();
+        renderKPIs();
+
+        alert(`✅ تم حذف الصنف "${item.name}" بنجاح!`);
     }
 
     // ── Intersection Observer: تحميل المزيد عند الوصول لآخر صف ────────────
@@ -489,6 +543,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('item-qty-label').textContent = 'الرصيد الافتتاحي (الكمية)';
         document.getElementById('item-submit-btn').textContent = 'حفظ المنتج';
         document.getElementById('form-item').reset();
+        updateCategorySuggestions();
     }
 
     function openItemModalEdit(sku, wh) {
@@ -507,6 +562,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('item-cost').value = it.cost ?? '';
         document.getElementById('item-qty').value = it.qty ?? '';
         document.getElementById('item-min').value = it.minQty ?? '';
+        updateCategorySuggestions();
         openModal('itemModal');
     }
 

@@ -48,12 +48,32 @@
   /** استخراج رقم من نص معروض (يعمل مع أي رمز عملة) */
   function parseLoose(text) {
     if (text == null) return NaN;
-    const s = String(text).replace(/\s+/g, ' ');
-    const m = s.match(/-?\d+(?:[.,]\d+)?/);
+    const s = String(text).replace(/\s+/g, ' ').trim();
+    
+    // Extract the first number pattern (handles 1,234.56 or 1234.56 or 1234,56)
+    const m = s.match(/-?[\d,]+(?:\.\d+)?/);
     if (!m) return NaN;
-    let t = m[0].replace(',', '.');
-    if ((t.match(/\./g) || []).length > 1) t = t.replace(/\./g, '');
-    return parseFloat(t);
+    
+    let t = m[0];
+    
+    // Handle different number formats
+    if (t.includes(',') && t.includes('.')) {
+      // Format: 1,234.56 (thousands separator is comma)
+      t = t.replace(/,/g, '');
+    } else if (t.includes(',') && !t.includes('.')) {
+      // Could be 1234,56 (European) or 1,234 (thousands)
+      const parts = t.split(',');
+      if (parts.length === 2 && parts[1].length === 2) {
+        // Likely decimal: 1234,56 → 1234.56
+        t = t.replace(',', '.');
+      } else {
+        // Likely thousands: 1,234 → 1234
+        t = t.replace(/,/g, '');
+      }
+    }
+    
+    const result = parseFloat(t);
+    return isNaN(result) ? NaN : result;
   }
 
   function applySymToDom() {

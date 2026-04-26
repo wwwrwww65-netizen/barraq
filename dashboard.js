@@ -12,14 +12,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     function splitOrderAmountsGlobal(o) {
         const pm = String(o?.paymentMethod || '').trim();
         const total = Number(o?.total) || 0;
+        const isHS = o?.hungerStation === true || o?.orderType === 'هنقرستيشن';
+        const isHSPaid = o?.hsPaymentStatus === 'paid';
+        
+        // HungerStation unpaid orders should NOT affect drawer balance
+        if (isHS && !isHSPaid) {
+            return { cash: 0, network: 0, hungerStation: total };
+        }
+        
+        // HungerStation paid - check payment method
+        if (isHS && isHSPaid) {
+            const hsMethod = (o?.hsPaymentMethod || '').trim();
+            if (hsMethod.includes('كاش') || hsMethod === 'cash') {
+                return { cash: total, network: 0, hungerStation: 0 };
+            } else {
+                return { cash: 0, network: total, hungerStation: 0 };
+            }
+        }
+        
         if (pm === 'مجزأ') {
             const c = Number(o?.splitCash) || 0;
             const n = Number(o?.splitNetwork) || 0;
-            if (c || n) return { cash: c, network: n };
-            return { cash: 0, network: total };
+            
+            // Validation: if split values are invalid, use total as cash
+            if (c < 0 || n < 0) {
+                console.warn(`[Dashboard Global] Order ${o?.orderId}: Invalid split values (cash=${c}, net=${n}), using total as cash`);
+                return { cash: total, network: 0, hungerStation: 0 };
+            }
+            
+            if (c || n) return { cash: c, network: n, hungerStation: 0 };
+            // If no split values stored, assume all cash
+            return { cash: total, network: 0, hungerStation: 0 };
         }
-        if (pm.includes('كاش') || pm === 'cash') return { cash: total, network: 0 };
-        return { cash: 0, network: total };
+        if (pm.includes('كاش') || pm === 'cash') return { cash: total, network: 0, hungerStation: 0 };
+        return { cash: 0, network: total, hungerStation: 0 };
     }
     function splitReturnAmountsGlobal(r) {
         const pm = String(r?.method || '').trim();
@@ -55,6 +81,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Apply global date filter and Z-report session cutoff
         if(window.isDateInPeriod) {
             orders = orders.filter(o => 
+                o.status !== 'returned' &&
                 window.isDateInPeriod(o.timestamp || o.dateStr || o.date, period) && 
                 ((o.timestamp || o.createdAt || Date.now()) >= lastZReport)
             );
@@ -93,14 +120,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     function splitOrderAmounts(o) {
         const pm = String(o.paymentMethod || '').trim();
         const total = Number(o.total) || 0;
+        const isHS = o.hungerStation === true || o.orderType === 'هنقرستيشن';
+        const isHSPaid = o.hsPaymentStatus === 'paid';
+        
+        // HungerStation unpaid orders should NOT affect drawer balance
+        if (isHS && !isHSPaid) {
+            return { cash: 0, network: 0, hungerStation: total };
+        }
+        
+        // HungerStation paid - check payment method
+        if (isHS && isHSPaid) {
+            const hsMethod = (o.hsPaymentMethod || '').trim();
+            if (hsMethod.includes('كاش') || hsMethod === 'cash') {
+                return { cash: total, network: 0, hungerStation: 0 };
+            } else {
+                return { cash: 0, network: total, hungerStation: 0 };
+            }
+        }
+        
         if (pm === 'مجزأ') {
             const c = Number(o.splitCash) || 0;
             const n = Number(o.splitNetwork) || 0;
-            if (c || n) return { cash: c, network: n };
-            return { cash: 0, network: total };
+            
+            // Validation: if split values are invalid, use total as cash
+            if (c < 0 || n < 0) {
+                console.warn(`[Dashboard] Order ${o.orderId}: Invalid split values (cash=${c}, net=${n}), using total as cash`);
+                return { cash: total, network: 0, hungerStation: 0 };
+            }
+            
+            if (c || n) return { cash: c, network: n, hungerStation: 0 };
+            // If no split values stored, assume all cash
+            return { cash: total, network: 0, hungerStation: 0 };
         }
-        if (pm.includes('كاش') || pm === 'cash') return { cash: total, network: 0 };
-        return { cash: 0, network: total };
+        if (pm.includes('كاش') || pm === 'cash') return { cash: total, network: 0, hungerStation: 0 };
+        return { cash: 0, network: total, hungerStation: 0 };
     }
     function splitReturnAmounts(r) {
         const pm = String(r.method || '').trim();
@@ -138,12 +191,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    // Returns are only tracked for reporting (not subtracted since orders are already excluded)
     returns.forEach(r => {
-        dailySales -= r.amount;
         totalReturnsAmt += r.amount;
-        const back = splitReturnAmounts(r);
-        cashSales -= back.cash;
-        networkSales -= back.network;
     });
 
     let totalExp = 0;
@@ -151,7 +201,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Drawer balance must always be shift-based (today + after last Z), independent from current dashboard filter.
     const shiftCashFloat = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
+    // Filter out returned orders to avoid double counting
     const shiftOrders = (db.orders || []).filter(o =>
+        o.status !== 'returned' &&
         window.isDateInPeriod(o.timestamp || o.dateStr || o.date, 'today') &&
         ((o.timestamp || o.createdAt || Date.now()) >= lastZReport)
     );
@@ -165,22 +217,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     );
 
     let shiftCashSales = 0;
+    let shiftHungerStationUnpaid = 0;
     shiftOrders.forEach(o => {
         const pay = splitOrderAmounts(o);
         shiftCashSales += pay.cash;
+        shiftHungerStationUnpaid += (pay.hungerStation || 0);
     });
-    shiftReturns.forEach(r => {
-        const back = splitReturnAmounts(r);
-        shiftCashSales -= back.cash;
-    });
+    // NOTE: Returns are NOT subtracted here because returned orders are already excluded from shiftOrders
 
     let shiftTotalExp = 0;
     shiftExpenses.forEach(h => { shiftTotalExp += Number(h.amount) || 0; });
 
-    // Keep same accounting rule used in expenses page summary.
+    // Drawer balance: opening float + cash sales - expenses (DO NOT RESET on closure)
     const drawerBalance = shiftCashFloat + shiftCashSales - shiftTotalExp;
 
-    window.__dashboardData = { dailySales, cashSales, networkSales, totalTax, totalReturnsAmt, totalExp, shiftCashFloat, drawerBalance };
+    // Debug: Log dashboard calculations
+    console.log('\n📊 Dashboard Calculations:');
+    console.log(`   - Opening Float: ${shiftCashFloat.toFixed(2)} ر.س`);
+    console.log(`   - Cash Sales: ${shiftCashSales.toFixed(2)} ر.س`);
+    console.log(`   - Network Sales: ${(shiftOrders.reduce((sum, o) => {
+        const pay = splitOrderAmounts(o);
+        return sum + pay.network;
+    }, 0)).toFixed(2)} ر.س`);
+    console.log(`   - HungerStation Unpaid: ${shiftHungerStationUnpaid.toFixed(2)} ر.س`);
+    console.log(`   - Expenses: ${shiftTotalExp.toFixed(2)} ر.س`);
+    console.log(`   - Drawer Balance: ${drawerBalance.toFixed(2)} ر.س`);
+    console.log(`   - Check: ${shiftCashFloat} + ${shiftCashSales} - ${shiftTotalExp} = ${drawerBalance.toFixed(2)}`);
+
+    window.__dashboardData = { dailySales, cashSales, networkSales, totalTax, totalReturnsAmt, totalExp, shiftCashFloat, drawerBalance, shiftHungerStationUnpaid };
 
     // Apply to UI
     kpiValues[0].innerHTML = `${curNum(dailySales)}<span class="currency">${curSym()}</span>`;
@@ -504,6 +568,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         document.getElementById('shift-grand-total').innerText = curPlain(d.dailySales);
 
+        // Add HS unpaid info if exists
+        if (d.shiftHungerStationUnpaid > 0) {
+            const hsRow = document.createElement('div');
+            hsRow.className = 'receipt-row';
+            hsRow.style.cssText = 'background:rgba(255,107,0,0.1); padding:8px; border-radius:4px; margin:8px 0;';
+            hsRow.innerHTML = `<span style="color:#ff6b00;"><i class="ph ph-warning"></i> هنقرستيشن غير مدفوع:</span><span style="color:#ff6b00; font-weight:700;">${curPlain(d.shiftHungerStationUnpaid)}</span>`;
+            const drawerRow = document.getElementById('shift-drawer').parentNode.parentNode;
+            drawerRow.parentNode.insertBefore(hsRow, drawerRow.nextSibling);
+        }
+
         modal.style.display = 'flex';
     };
 
@@ -513,7 +587,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.confirmCloseShift = async function() {
-        if(!confirm('هل أنت متأكد من إغلاق الوردية وبدء وردية جديدة بـ 0.00؟')) return;
+        if(!confirm('هل أنت متأكد من إغلاق الوردية وبدء وردية جديدة؟\nملاحظة: رصيد الدرج لن يتم تصفيره، سيتم الاحتفاظ به.')) return;
 
         const closeTime = Date.now();
 
@@ -522,19 +596,69 @@ document.addEventListener('DOMContentLoaded', async () => {
         try { zTimestamps = JSON.parse(localStorage.getItem('z_report_timestamps') || '[]'); } catch(e){}
         const lastZTime = parseInt(localStorage.getItem('last_z_report_time')) || 0;
 
-        // اجمع بيانات الكاشير
+        // اجمع بيانات الكاشير والمبيعات للوردية الحالية
         const currentUserConf = localStorage.getItem('currentUser');
         let cashierName = 'موظف';
         if (currentUserConf) { try { const p = JSON.parse(currentUserConf); if (p.username || p.name) cashierName = p.username || p.name; } catch(e){} }
+        
+        // احصل على بيانات الوردية الحالية من قاعدة البيانات لحفظها في السجل
+        const db = await window.dbRead();
+        const allOrders = db.orders || [];
+        const allReturns = db.returns || [];
+        const allExpenses = (db.hrExpenses || []).concat(db.expenses || []);
+        
+        // Filter out returned orders to avoid double counting (they're handled via returns)
+        const shiftOrders = allOrders.filter(o => o.status !== 'returned' && (o.timestamp || o.createdAt || 0) >= lastZTime);
+        const shiftReturns = allReturns.filter(r => (r.timestamp || 0) >= lastZTime);
+        const shiftExpenses = allExpenses.filter(e => (e.timestamp || 0) >= lastZTime);
+        
+        // احسب ملخص الوردية للحفظ في السجل التاريخي
+        let shiftCash = 0, shiftNetwork = 0, shiftTotal = 0, shiftHSUnpaid = 0;
+        shiftOrders.forEach(o => {
+            const pay = splitOrderAmountsGlobal(o);
+            shiftCash += pay.cash;
+            shiftNetwork += pay.network;
+            shiftTotal += o.total || 0;
+            shiftHSUnpaid += (pay.hungerStation || 0);
+        });
+        // NOTE: Returns are NOT subtracted here because returned orders are already excluded from shiftOrders
+        // Returns are only tracked for reporting purposes in the returns field below
+        let shiftExp = 0;
+        shiftExpenses.forEach(e => { shiftExp += e.amount || 0; });
+        
+        const currentFloat = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
+        const shiftDrawerBalance = currentFloat + shiftCash - shiftExp;
+
+        // حفظ سجل الوردية في قاعدة البيانات (للتاريخ والتقارير المستقبلية)
+        if (!db.shift_history) db.shift_history = [];
+        db.shift_history.push({
+            id: 'SHIFT-' + closeTime,
+            startTime: lastZTime,
+            endTime: closeTime,
+            cashierName: cashierName,
+            openingFloat: currentFloat,
+            cashSales: shiftCash,
+            networkSales: shiftNetwork,
+            totalSales: shiftTotal,
+            expenses: shiftExp,
+            returns: shiftReturns.reduce((sum, r) => sum + (r.amount || 0), 0),
+            hungerStationUnpaid: shiftHSUnpaid,
+            drawerBalance: shiftDrawerBalance,
+            ordersCount: shiftOrders.length,
+            closedAt: closeTime
+        });
+        
+        await window.dbWrite(db);
 
         zTimestamps.push({ startTime: lastZTime || closeTime - 3600000, endTime: closeTime, cashierName });
         localStorage.setItem('z_report_timestamps', JSON.stringify(zTimestamps));
 
-        // Mark current time as start of new shift
+        // Mark current time as start of new shift - DO NOT RESET FLOAT
         localStorage.setItem('last_z_report_time', closeTime);
-        localStorage.setItem('shift_cash_float', 0);
+        // Keep the drawer balance as opening float for next shift
+        localStorage.setItem('shift_cash_float', shiftDrawerBalance);
 
-        alert('تم إغلاق الوردية وتصفير الدرج بنجاح. أي مبيعات قادمة ستحسب للوردية الجديدة.');
+        alert(`تم إغلاق الوردية بنجاح.\n\nملخص الوردية:\n- المبيعات: ${curPlain(shiftTotal)}\n- كاش: ${curPlain(shiftCash)}\n- شبكة: ${curPlain(shiftNetwork)}\n- المصروفات: ${curPlain(shiftExp)}\n- رصيد الدرج المحفوظ: ${curPlain(shiftDrawerBalance)}\n\nسيتم استخدام هذا الرصيد كرصيد افتتاحي للوردية الجديدة.`);
         window.location.reload();
     };
 
@@ -643,22 +767,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // ---- احتساب بيانات كل وردية من قاعدة البيانات الفعلية ----
         const allDayShifts = shiftRanges.map(range => {
+            // Filter out returned orders to avoid double counting
             const rOrders   = todayOrders.filter(o   => { const t = o.timestamp || o.createdAt || 0; return t >= range.startTime && t < range.endTime; });
             const rReturns  = todayReturns.filter(r  => { const t = r.timestamp || new Date(r.date||0).getTime() || 0; return t >= range.startTime && t < range.endTime; });
             const rExpenses = todayExpenses.filter(e => { const t = e.timestamp || new Date(e.date||0).getTime() || 0; return t >= range.startTime && t < range.endTime; });
 
-            let cash = 0, net = 0, tax = 0, ret = 0, exp = 0;
+            let cash = 0, net = 0, tax = 0, ret = 0, exp = 0, hsUnpaid = 0;
+            
+            // Only include non-returned orders in totals
             rOrders.forEach(o => {
+                // Skip returned orders - they're tracked via returns instead
+                if (o.status === 'returned') return;
+                
                 tax += o.total - (o.total / (1 + TAX_RATE));
                 const pay = splitOrderAmountsGlobal(o);
                 cash += pay.cash;
                 net += pay.network;
+                hsUnpaid += (pay.hungerStation || 0);
             });
+            
+            // Returns are only tracked for reporting (not subtracted since orders are already excluded)
             rReturns.forEach(r => {
                 ret += r.amount;
-                const back = splitReturnAmountsGlobal(r);
-                cash -= back.cash;
-                net -= back.network;
             });
             rExpenses.forEach(ex => exp += ex.amount);
 
@@ -672,12 +802,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 totalTax: tax,
                 totalReturns: ret,
                 totalExpenses: exp,
+                hungerStationUnpaid: hsUnpaid,
                 drawerBalance: floatAmt + cash - exp
             };
         });
 
         // ---- Grand Day Totals ----
-        let dayTotalCash = 0, dayTotalNet = 0, dayTotalTax = 0, dayTotalRet = 0, dayTotalExp = 0, dayTotalOrders = 0;
+        let dayTotalCash = 0, dayTotalNet = 0, dayTotalTax = 0, dayTotalRet = 0, dayTotalExp = 0, dayTotalOrders = 0, dayTotalHSUnpaid = 0;
         allDayShifts.forEach(s => {
             dayTotalCash    += s.cashSales    || 0;
             dayTotalNet     += s.networkSales || 0;
@@ -685,6 +816,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             dayTotalRet     += s.totalReturns || 0;
             dayTotalExp     += s.totalExpenses|| 0;
             dayTotalOrders  += s.ordersCount  || 0;
+            dayTotalHSUnpaid += s.hungerStationUnpaid || 0;
         });
         const dayTotalIncome = dayTotalCash + dayTotalNet;
         const dayNetTotal    = dayTotalIncome - dayTotalRet - dayTotalExp;
@@ -701,6 +833,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('day-total-expenses').innerText= curPlain(dayTotalExp);
         document.getElementById('day-total-sales').innerText   = curPlain(dayTotalIncome);
         document.getElementById('day-drawer-total').innerText  = curPlain(dayDrawerTotal);
+        
+        // Remove HS unpaid warning
+        const existing = document.getElementById('day-hs-warning');
+        if (existing) existing.remove();
 
         // ---- Render Per-Shift Breakdown ----
         const breakdownEl = document.getElementById('day-shifts-breakdown');
@@ -721,6 +857,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="receipt-row"><span>عدد الطلبات:</span><span>${s.ordersCount || 0} طلب</span></div>
                     <div class="receipt-row"><span>مبيعات كاش:</span><span>${curPlain(s.cashSales||0)}</span></div>
                     <div class="receipt-row"><span>مبيعات شبكة:</span><span>${curPlain(s.networkSales||0)}</span></div>
+                    ${s.hungerStationUnpaid > 0 ? `<div class="receipt-row"><span>هنقرستيشن غير مدفوع:</span><span style="color:#ff6b00;">${curPlain(s.hungerStationUnpaid||0)}</span></div>` : ''}
                     <div class="receipt-row"><span>إجمالي الدخل:</span><span style="font-weight:800;">${curPlain(parseFloat(sIncome)||0)}</span></div>
                     <div class="receipt-row"><span>المرتجعات:</span><span style="color:#c00;">${curPlain(s.totalReturns||0)}</span></div>
                     <div class="receipt-row"><span>المصروفات:</span><span style="color:#c00;">${curPlain(s.totalExpenses||0)}</span></div>
@@ -730,7 +867,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         // Store snapshot for confirmCloseDay
-        window.__dayCloseSnapshot = { allDayShifts, dayTotalCash, dayTotalNet, dayTotalTax, dayTotalRet, dayTotalExp, dayTotalIncome, dayNetTotal, dayDrawerTotal, dayTotalOrders, dayDate: todayStr, closedAt: now.getTime() };
+        window.__dayCloseSnapshot = { allDayShifts, dayTotalCash, dayTotalNet, dayTotalTax, dayTotalRet, dayTotalExp, dayTotalIncome, dayNetTotal, dayDrawerTotal, dayTotalOrders, dayDate: todayStr, closedAt: now.getTime(), dayTotalHSUnpaid };
 
         modal.style.display = 'flex';
         } catch (error) {
@@ -745,12 +882,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (modal) modal.style.display = 'none';
     };
 
-    window.confirmCloseDay = function() {
-        if (!confirm('هل أنت متأكد من إقفال اليوم بالكامل؟\nسيتم حفظ سجل كامل لكل الورديات وإعادة تعيين النظام ليوم جديد.')) return;
+    window.confirmCloseDay = async function() {
+        if (!confirm('هل أنت متأكد من إقفال اليوم بالكامل؟\nسيتم حفظ سجل كامل لكل الورديات والرصيد الحالي للانتقال لليوم الجديد.')) return;
 
         const snap = window.__dayCloseSnapshot || {};
 
-        // Save day summary to day_history in localStorage
+        // Save day summary to day_history in localStorage AND database
         let dayHistory = [];
         try { dayHistory = JSON.parse(localStorage.getItem('day_history') || '[]'); } catch(e){}
 
@@ -766,20 +903,46 @@ document.addEventListener('DOMContentLoaded', async () => {
             totalReturns: snap.dayTotalRet || 0,
             totalExpenses: snap.dayTotalExp || 0,
             netTotal: snap.dayNetTotal || 0,
+            hungerStationUnpaid: snap.dayTotalHSUnpaid || 0,
+            drawerTotal: snap.dayDrawerTotal || 0,
             shifts: snap.allDayShifts || []
         });
         localStorage.setItem('day_history', JSON.stringify(dayHistory));
 
-        // Close all shifts — reset shift time to NOW and zero the drawer
+        // حفظ في قاعدة البيانات أيضًا للتقارير المستقبلية
+        const db = await window.dbRead();
+        if (!db.day_closures) db.day_closures = [];
+        db.day_closures.push({
+            id: 'DAY-' + (snap.closedAt || Date.now()),
+            date: snap.dayDate,
+            closedAt: snap.closedAt || Date.now(),
+            shiftsCount: (snap.allDayShifts || []).length,
+            ordersCount: snap.dayTotalOrders || 0,
+            totalCash: snap.dayTotalCash || 0,
+            totalNetwork: snap.dayTotalNet || 0,
+            totalIncome: snap.dayTotalIncome || 0,
+            totalTax: snap.dayTotalTax || 0,
+            totalReturns: snap.dayTotalRet || 0,
+            totalExpenses: snap.dayTotalExp || 0,
+            netTotal: snap.dayNetTotal || 0,
+            hungerStationUnpaid: snap.dayTotalHSUnpaid || 0,
+            drawerTotal: snap.dayDrawerTotal || 0,
+            shifts: snap.allDayShifts || []
+        });
+        await window.dbWrite(db);
+
+        // DO NOT RESET DRAWER BALANCE - carry forward to next day
+        const currentDrawerBalance = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
+        
+        // Close all shifts — reset shift time to NOW but KEEP drawer balance
         localStorage.setItem('last_z_report_time', Date.now());
-        localStorage.setItem('shift_cash_float', 0);
+        // Keep drawer balance as opening balance for next day
+        localStorage.setItem('shift_cash_float', currentDrawerBalance);
 
         // Also clear z_report_timestamps (day closed, fresh start)
         localStorage.setItem('z_report_timestamps', '[]');
-        // Also clear shift_history (legacy)
-        localStorage.setItem('shift_history', '[]');
 
-        alert('✅ تم إقفال اليوم بالكامل بنجاح!\nبيانات اليوم محفوظة. أي مبيعات جديدة ستحسب لليوم الجديد.');
+        alert(`✅ تم إقفال اليوم بالكامل بنجاح!\n\nملخص اليوم:\n- عدد الورديات: ${(snap.allDayShifts || []).length}\n- المبيعات: ${curPlain(snap.dayTotalIncome || 0)}\n- المصروفات: ${curPlain(snap.dayTotalExp || 0)}\n- رصيد الدرج المحفوظ: ${curPlain(currentDrawerBalance)}\n\nبيانات اليوم محفوظة في النظام. أي مبيعات جديدة ستحسب لليوم الجديد.`);
         window.location.reload();
     };
 

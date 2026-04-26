@@ -534,7 +534,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const shiftFloat = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
 
             // Dashboard logic: Filter by Today AND last Z-report
-            let dOrders = (db.orders || []).filter(o => 
+            // Exclude returned orders to match dashboard calculation
+            let dOrders = (db.orders || []).filter(o =>
+                o.status !== 'returned' &&
                 window.isDateInPeriod(o.timestamp || o.dateStr || o.date, 'today') && 
                 ((o.timestamp || o.createdAt || Date.now()) >= lastZTimeNum)
             );
@@ -550,14 +552,39 @@ document.addEventListener('DOMContentLoaded', async () => {
             function splitShiftOrder(o) {
                 const pm = String(o.paymentMethod || '').trim();
                 const total = Number(o.total) || 0;
+                const isHS = o.hungerStation === true || o.orderType === 'هنقرستيشن';
+                const isHSPaid = o.hsPaymentStatus === 'paid';
+                
+                // HungerStation unpaid should NOT affect drawer balance
+                if (isHS && !isHSPaid) {
+                    return { cash: 0, network: 0, hungerStation: total };
+                }
+                
+                // HungerStation paid - check payment method
+                if (isHS && isHSPaid) {
+                    const hsMethod = (o.hsPaymentMethod || '').trim();
+                    if (hsMethod.includes('كاش') || hsMethod === 'cash') {
+                        return { cash: total, network: 0, hungerStation: 0 };
+                    } else {
+                        return { cash: 0, network: total, hungerStation: 0 };
+                    }
+                }
+                
                 if (pm === 'مجزأ') {
                     const c = Number(o.splitCash) || 0;
                     const n = Number(o.splitNetwork) || 0;
-                    if (c || n) return { cash: c, network: n };
-                    return { cash: 0, network: total };
+                    
+                    // Validation: if split values are invalid, use total as cash
+                    if (c < 0 || n < 0) {
+                        return { cash: total, network: 0, hungerStation: 0 };
+                    }
+                    
+                    if (c || n) return { cash: c, network: n, hungerStation: 0 };
+                    // If no split values stored, assume all cash
+                    return { cash: total, network: 0, hungerStation: 0 };
                 }
-                if (pm.includes('كاش') || pm === 'cash') return { cash: total, network: 0 };
-                return { cash: 0, network: total };
+                if (pm.includes('كاش') || pm === 'cash') return { cash: total, network: 0, hungerStation: 0 };
+                return { cash: 0, network: total, hungerStation: 0 };
             }
             function splitShiftReturn(r) {
                 const pm = String(r.method || '').trim();
@@ -573,29 +600,50 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             let dCashSales = 0;
+            let dHungerStationUnpaid = 0;
             dOrders.forEach(o => {
                 const pay = splitShiftOrder(o);
                 dCashSales += pay.cash;
+                dHungerStationUnpaid += (pay.hungerStation || 0);
             });
-            dReturns.forEach(r => {
-                const back = splitShiftReturn(r);
-                dCashSales -= back.cash;
-            });
+            // NOTE: Returns are NOT subtracted here because returned orders are already excluded from dOrders
+            // This matches the dashboard calculation exactly
 
             let dTotalExp = 0;
             dExpenses.forEach(h => dTotalExp += (Number(h.amount) || 0));
 
             let drawerBalanceNow = shiftFloat + dCashSales - dTotalExp;
             
+            // Debug: Log the calculation
+            console.log('\n💵 Expenses Page - Drawer Balance Calculation:');
+            console.log(`   - Shift Float: ${shiftFloat.toFixed(2)} ر.س`);
+            console.log(`   - Cash Sales: ${dCashSales.toFixed(2)} ر.س`);
+            console.log(`   - HungerStation Unpaid: ${dHungerStationUnpaid.toFixed(2)} ر.س`);
+            console.log(`   - Expenses: ${dTotalExp.toFixed(2)} ر.س`);
+            console.log(`   - Drawer Balance: ${drawerBalanceNow.toFixed(2)} ر.س`);
+            console.log(`   - Check: ${shiftFloat} + ${dCashSales} - ${dTotalExp} = ${drawerBalanceNow.toFixed(2)}`);
+            
+            // Compare with Dashboard if available
+            if (window.__dashboardData) {
+                const dashDrawer = window.__dashboardData.drawerBalance || 0;
+                const diff = Math.abs(drawerBalanceNow - dashDrawer);
+                console.log('\n🔍 Comparison with Dashboard:');
+                console.log(`   - Expenses Page Drawer: ${drawerBalanceNow.toFixed(2)} ر.س`);
+                console.log(`   - Dashboard Drawer: ${dashDrawer.toFixed(2)} ر.س`);
+                console.log(`   - Difference: ${diff.toFixed(2)} ر.س`);
+                if (diff > 0.01) {
+                    console.warn(`   ⚠️ رصيد الدرج مختلف! الفرق: ${diff.toFixed(2)} ر.س`);
+                } else {
+                    console.log(`   ✅ رصيد الدرج متطابق!`);
+                }
+            }
+            
             let dNetworkSales = 0;
             dOrders.forEach(o => {
                 const pay = splitShiftOrder(o);
                 dNetworkSales += pay.network;
             });
-            dReturns.forEach(r => {
-                const back = splitShiftReturn(r);
-                dNetworkSales -= back.network;
-            });
+            // NOTE: Returns are NOT subtracted here because returned orders are already excluded from dOrders
             let networkBalanceNow = dNetworkSales;
 
             // Accounting Balances (Historical/Lifetime)

@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>هـــش HASH - نظام إدارة المخازن</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="light-theme-fixes.css">
     <link rel="stylesheet" href="inventory.css">
     <!-- Google Fonts -->
     
@@ -240,14 +241,10 @@
                     </div>
                     <div class="form-group">
                         <label>الفئة</label>
-                        <select id="item-cat" class="input-modern" required>
-                            <option value="المواد التموينية">المواد التموينية</option>
-                            <option value="اللحوم والدواجن">اللحوم والدواجن</option>
-                            <option value="الخضروات والفاكهة">الخضروات والفاكهة</option>
-                            <option value="الزيوت والصلصات">الزيوت والصلصات</option>
-                            <option value="البهارات والمكسرات">البهارات</option>
-                            <option value="مواد تعبئة وتغليف">تعبئة وتغليف</option>
-                        </select>
+                        <input type="text" id="item-cat" class="input-modern" list="cat-list" placeholder="اختر أو اكتب فئة جديدة" required>
+                        <datalist id="cat-list">
+                            <!-- Will be populated dynamically -->
+                        </datalist>
                     </div>
                 </div>
                 <div class="form-group-row">
