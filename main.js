@@ -1670,6 +1670,12 @@ function startNativeWaWindow() {
   waNativeWin.setMenu(null);
   waNativeWin.loadURL('https://web.whatsapp.com', { userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" });
   waNativeWin.on('close', (e) => { e.preventDefault(); waNativeWin.setOpacity(0); waNativeWin.hide(); });
+  
+  // ── التجاوز الإجباري لأي نافذة تأكيد "هل تريد المغادرة؟" لمنع ERR_ABORTED (-3) ──
+  waNativeWin.webContents.on('will-prevent-unload', (event) => {
+    event.preventDefault(); // السماح بالخروج دون عرض النافذة
+  });
+
   waNativeWin.webContents.on('did-finish-load', () => {
     waNativeReady = true;
     BrowserWindow.getAllWindows().forEach(w => { if(w !== waNativeWin) w.webContents.send('wa-ready'); });
@@ -1812,13 +1818,40 @@ async function handleWaSendMessage(event, data) {
       const wasHidden = !waNativeWin.isVisible();
       if (wasHidden) { 
         waNativeWin.setOpacity(0); 
-        waNativeWin.showInactive(); 
+        waNativeWin.showInactive();
+        // انتظر قصير للتأكد من أن النافذة أصبحت مرئية قبل التحميل
+        await new Promise(r => setTimeout(r, 500));
       }
       // إبقاء النافذة الرئيسية في المقدمة
       const mainWins = BrowserWindow.getAllWindows().filter(w => w !== waNativeWin);
       if (mainWins.length > 0) mainWins[0].focus();
 
-      await waNativeWin.loadURL(url, { userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" });
+      let loadSuccess = false;
+      let loadAttempts = 0;
+      while (!loadSuccess && loadAttempts < 3) {
+        loadAttempts++;
+        try {
+          // محاولة مسح أحداث beforeunload من داخل الصفحة
+          await waNativeWin.webContents.executeJavaScript(`
+            window.onbeforeunload = null;
+            if (window.__beforeUnloadOverrides) window.__beforeUnloadOverrides = null;
+          `).catch(() => {});
+
+          await waNativeWin.loadURL(url, { userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" });
+          loadSuccess = true;
+        } catch(e) {
+          if (String(e).includes('ERR_ABORTED')) {
+            console.warn(`[WA][NATIVE] loadURL ERR_ABORTED (attempt ${loadAttempts}/3), retrying in 1.5s...`);
+            await new Promise(r => setTimeout(r, 1500));
+          } else {
+            throw e;
+          }
+        }
+      }
+      if (!loadSuccess) {
+        throw new Error(`Failed to load WhatsApp URL after 3 attempts for ${phone}. Aborting to prevent sending to wrong chat.`);
+      }
+
       const chatLoaded = await waNativeWin.webContents.executeJavaScript(
         'new Promise(r=>{let n=0;const t=setInterval(()=>{n++;const m=document.querySelector("#main, footer, div[contenteditable=\\"true\\"]");if(m){clearInterval(t);r(true);}else if(n>120){clearInterval(t);r(false);}},500);});'
       );
@@ -1866,42 +1899,67 @@ async function handleWaSendMessage(event, data) {
               }, 250);
             })
           `);
-          // انتظار إضافي قصير للتأكد من استقرار DOM
-          await new Promise(r => setTimeout(r, 500));
+          // انتظار إضافي لاستقرار DOM بعد اكتمال النص
+          await new Promise(r => setTimeout(r, 1500));
         } else {
-          await new Promise(r=>setTimeout(r, 1000));
+          await new Promise(r=>setTimeout(r, 1500));
         }
 
         // التركيز على حقل الإدخال قبل لصق الصورة
         await waNativeWin.webContents.executeJavaScript(
           '(function(){ var b = document.querySelector(\'footer div[contenteditable="true"]\') || document.querySelector(\'div[contenteditable="true"]\'); if(b){ b.click(); b.focus(); } })();'
         );
-        await new Promise(r=>setTimeout(r, 1000)); // زيادة وقت الانتظار من 600 إلى 1000
+        await new Promise(r=>setTimeout(r, 1500)); // وقت كافٍ للتأكد من أن الحقل نشط
         
-        console.log('[WA][NATIVE] Pasting image into WhatsApp...');
+        console.log('[WA][NATIVE] Writing image to clipboard and pasting...');
         clipboard.writeImage(nativeImage.createFromDataURL(data.image));
+        await new Promise(r=>setTimeout(r, 400)); // تأخير قصير بين كتابة الكليبورد واللصق
         waNativeWin.webContents.paste();
         
-        // انتظار أطول للتأكد من ظهور معاينة الصورة قبل الإرسال
-        await new Promise(r=>setTimeout(r, 3000)); // زيادة من 2000 إلى 3000
-        
-        // التحقق من وجود معاينة الصورة قبل الإرسال
+        // انتظار ذكي: تحقق من ظهور نافذة رفع الصورة (حتى 8 ثوانٍ)
+        // نستهدف فقط عناصر منطقة الرفع — يتجنب الإيجابيات الكاذبة من صور المحادثة
         const imagePreviewCheck = await waNativeWin.webContents.executeJavaScript(`
-          (function(){
-            const imgPreview = document.querySelector('div[data-testid="image-preview"]') || 
-                               document.querySelector('img[src^="blob:"]');
-            return imgPreview ? 'IMAGE_PREVIEW_FOUND' : 'NO_IMAGE_PREVIEW';
-          })();
+          new Promise(resolve => {
+            let attempts = 0;
+            const maxAttempts = 32; // 32 x 250ms = 8 ثوانٍ
+            const t = setInterval(() => {
+              attempts++;
+              const overlay =
+                document.querySelector('div[data-testid="media-upload-dialog"]') ||
+                document.querySelector('div[aria-label="View or edit media"]') ||
+                document.querySelector('span[data-icon="x"]') || // زر الإغلاق في شاشة المعاينة
+                Array.from(document.querySelectorAll('img[src^="blob:"]')).some(img => !img.closest('[data-testid^="msg-"]')) || // صورة لم تُرسل بعد (خارج المحادثة)
+                document.querySelector('div[class*="upload"] canvas');
+              if (overlay) {
+                clearInterval(t);
+                resolve('IMAGE_PREVIEW_FOUND');
+              } else if (attempts >= maxAttempts) {
+                clearInterval(t);
+                resolve('NO_IMAGE_PREVIEW');
+              }
+            }, 250);
+          })
         `);
         console.log('[WA][NATIVE] Image preview check:', imagePreviewCheck);
-        
+
+        // إذا لم تظهر معاينة الصورة، أعد اللصق مرة أخرى
+        if (imagePreviewCheck === 'NO_IMAGE_PREVIEW') {
+          console.warn('[WA][NATIVE] No overlay found — retrying paste...');
+          clipboard.writeImage(nativeImage.createFromDataURL(data.image));
+          await new Promise(r=>setTimeout(r, 500));
+          waNativeWin.webContents.paste();
+          await new Promise(r=>setTimeout(r, 4000));
+          console.warn('[WA][NATIVE] Retry complete — proceeding to send.');
+        }
+
+        // إرسال: Enter أولاً ثم النقر على زر الإرسال
         waNativeWin.webContents.sendInputEvent({type:'keyDown',keyCode:'Enter'});
         waNativeWin.webContents.sendInputEvent({type:'char',keyCode:'Enter'});
         waNativeWin.webContents.sendInputEvent({type:'keyUp',keyCode:'Enter'});
+        await new Promise(r=>setTimeout(r, 800));
 
         const clickResult = await waNativeWin.webContents.executeJavaScript(`
           (function(){
-            // زر الإرسال في معاينة الصورة أو في الدردشة العادية
             var icon = document.querySelector('span[data-icon="send"]') ||
                        document.querySelector('[data-testid="send"]') ||
                        document.querySelector('span[data-icon="send-white"]') ||
@@ -1965,27 +2023,15 @@ async function handleWaSendMessage(event, data) {
           }, 500);
         });
       `);
-      await new Promise(r=>setTimeout(r,1500));
-      // ─── أخفِ النافذة دائماً بعد الإرسال ───
-      waNativeWin.hide();
+      // لا نستخدم hide() هنا لأن إخفاء النافذة يجعل Chromium يُلغي أي loadURL تالي بـ ERR_ABORTED
+      // النافذة بالفعل شفافة (Opacity = 0) وموجودة خلف النافذة الرئيسية
+      
       // أعد تركيز النافذة الرئيسية
       const mWins = BrowserWindow.getAllWindows().filter(w => w !== waNativeWin);
       if (mWins.length > 0) mWins[0].focus();
       console.log(`[WA][NATIVE] sent for ${phone}`);
-      
-      // ─── إعادة تحميل الصفحة لضمان نظافة الحالة للرسالة التالية ───
-      // هذا مهم جداً عند إرسال رسائل متعددة لتجنب مشاكل Race Condition
-      try {
-        console.log('[WA][NATIVE] Resetting WhatsApp page for next message...');
-        await waNativeWin.loadURL('https://web.whatsapp.com', { 
-          userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" 
-        });
-        // انتظار حتى يتم تحميل الصفحة بالكامل
-        await new Promise(r => setTimeout(r, 2000));
-        console.log('[WA][NATIVE] Page reset complete');
-      } catch(e) {
-        console.warn('[WA][NATIVE] Page reset failed:', e?.message);
-      }
+      // لا نعيد تحميل الصفحة — كل رسالة تالية تفتح URL جديداً بنفسها
+      // loadURL على نافذة مخفية يسبب ERR_ABORTED ويكسر قائمة الرسائل
       
       sendResult.success = true;
     } catch(e) { 
