@@ -1399,10 +1399,13 @@ function startWhatsApp() {
     // Heartbeat: detect "zombie" sessions (connected but not working) and recover automatically.
     // If getState fails/returns null repeatedly, reinitialize.
     let _hbFailures = 0;
+    let _hbStuckCount = 0;
+    let _lastState = null;
     const _hbTimer = setInterval(async () => {
       try {
         if (!waClient) return;
         const st = await waClient.getState().catch(() => null);
+        
         if (!st) {
           _hbFailures += 1;
           if (_hbFailures >= 3) {
@@ -1413,7 +1416,43 @@ function startWhatsApp() {
           }
           return;
         }
+        
         _hbFailures = 0;
+        
+        // كشف الجلسات العالقة: نفس الحالة تتكرر بدون تغيير
+        if (st === _lastState) {
+          _hbStuckCount++;
+          if (_hbStuckCount >= 6) { // بعد 90 ثانية (6 * 15) من نفس الحالة
+            console.warn('[WA] Session appears stuck on state:', st, '- Force refreshing...');
+            
+            // محاولة إعادة تنشيط الجلسة أولاً
+            try {
+              // إرسال حدث فارغ لإجبار واتساب على التحديث
+              await waClient.pupPage.evaluate(() => {
+                window.dispatchEvent(new Event('resize'));
+              }).catch(() => {});
+              
+              console.log('[WA] Force refresh triggered, waiting for recovery...');
+              _hbStuckCount = 0;
+            } catch (e) {
+              // إذا فشل التنشيط، إعادة تشغيل كاملة
+              console.warn('[WA] Force refresh failed, restarting session...');
+              clearInterval(_hbTimer);
+              await teardownWaClient();
+              scheduleWhatsAppRestart('stuck_session', 2000);
+            }
+          }
+        } else {
+          _hbStuckCount = 0;
+          _lastState = st;
+        }
+        
+        // تحديث waReady إذا كانت الحالة CONNECTED
+        if (st === 'CONNECTED' && !waReady) {
+          console.log('[WA] Heartbeat detected CONNECTED state, updating ready flag');
+          waReady = true;
+          BrowserWindow.getAllWindows().forEach(win => win.webContents.send('wa-ready'));
+        }
       } catch (e) {
         _hbFailures += 1;
       }
@@ -1483,6 +1522,37 @@ ipcMain.on('wa-check-status', (event) => {
     // Not started yet - tell renderer it's disconnected instead of force-starting
     event.sender.send('wa-disconnected');
   }
+});
+
+// New: Explicit wait for WA ready state (useful before sending)
+ipcMain.handle('wa-wait-ready', async (event, timeout = 30000) => {
+  if (waReady && waClient) {
+    return { ready: true, state: 'CONNECTED' };
+  }
+  
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    if (waReady && waClient) {
+      return { ready: true, state: 'CONNECTED' };
+    }
+    
+    // تحقق من الحالة الفعلية
+    if (waClient) {
+      try {
+        const state = await waClient.getState().catch(() => null);
+        if (state === 'CONNECTED') {
+          waReady = true;
+          return { ready: true, state: 'CONNECTED' };
+        }
+      } catch (e) {
+        // تجاهل
+      }
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  
+  return { ready: false, state: waClient ? 'LOADING' : 'NOT_INITIALIZED' };
 });
 
 // Manual trigger from renderer (button press)
@@ -1565,7 +1635,39 @@ ipcMain.on('wa-refresh', async () => {
 
 /** إرسال فعلي عبر جلسة واتساب على هذا الجهاز */
 async function deliverWhatsAppMessage(data) {
+  // تحقق ديناميكي من جاهزية واتساب قبل الإرسال
   if (!waClient) return { ok: false, error: 'no_client', code: 'NO_CLIENT' };
+  
+  // انتظار ذكي حتى يصبح واتساب جاهزاً (بدلاً من المهلة الزمنية الثابتة)
+  if (!waReady) {
+    console.log('[WA] Not ready yet, waiting for ready state...');
+    const maxWait = 60000; // حد أقصى 60 ثانية
+    const checkInterval = 500; // تحقق كل نصف ثانية
+    let waited = 0;
+    
+    while (!waReady && waited < maxWait) {
+      await new Promise(resolve => setTimeout(resolve, checkInterval));
+      waited += checkInterval;
+      
+      // تحقق إضافي من حالة الجلسة
+      try {
+        const state = await waClient.getState().catch(() => null);
+        if (state === 'CONNECTED' && !waReady) {
+          console.log('[WA] State is CONNECTED, marking as ready');
+          waReady = true;
+          break;
+        }
+      } catch (e) {
+        // تجاهل الأخطاء أثناء الانتظار
+      }
+    }
+    
+    if (!waReady) {
+      console.warn('[WA] Timeout waiting for ready state after', maxWait, 'ms');
+      return { ok: false, error: 'not_ready_timeout', code: 'NOT_READY_TIMEOUT' };
+    }
+    console.log('[WA] Ready state achieved after', waited, 'ms');
+  }
   try {
     const { MessageMedia } = require('whatsapp-web.js');
     const number = data.number;
@@ -2030,6 +2132,46 @@ async function handleWaSendMessage(event, data) {
   const targetRaw = String(data.number || '');
   const hasImage = isValidImageData(data.image);
   let sendResult = { success: false, number: targetRaw, image: hasImage };
+
+  // ── تحقق ديناميكي من جاهزية واتساب (Bot mode) ──
+  if (data.wa_mode === 'bot' && waClient && !waReady) {
+    console.log('[WA][NATIVE] Not ready, waiting for connection...');
+    const maxWait = 60000;
+    const checkInterval = 500;
+    let waited = 0;
+    
+    while (!waReady && waited < maxWait) {
+      await new Promise(resolve => setTimeout(resolve, checkInterval));
+      waited += checkInterval;
+      
+      // تحقق من الحالة الفعلية
+      try {
+        const state = await waClient.getState().catch(() => null);
+        if (state === 'CONNECTED' && !waReady) {
+          console.log('[WA][NATIVE] State CONNECTED detected during wait');
+          waReady = true;
+          break;
+        }
+      } catch (e) {
+        // تجاهل
+      }
+      
+      // تحقق من وجود النافذة
+      if (waNativeWin && waNativeWin.webContents && !waNativeWin.webContents.isLoading()) {
+        console.log('[WA][NATIVE] Native window ready');
+        break;
+      }
+    }
+    
+    if (!waReady && !waNativeWin) {
+      console.warn('[WA][NATIVE] Timeout waiting for ready state');
+      sendResult.error = 'WhatsApp not ready after 60s';
+      if (event && event.sender) {
+        event.sender.send('wa-send-result', sendResult);
+      }
+      return;
+    }
+  }
 
   // ── وضع المتصفح (Browser Mode) ─────────────────────────────────────────
   if (data.wa_mode === 'browser') {

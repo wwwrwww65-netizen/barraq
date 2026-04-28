@@ -1,6 +1,6 @@
 {
   "name": "baraaq",
-  "version": "1.0.19",
+  "version": "1.0.20",
   "main": "main.js",
   "description": "Hash POS Desktop — نظام نقاط البيع المتكامل للمطاعم (Techier)",
   "scripts": {
