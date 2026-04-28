@@ -231,19 +231,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Drawer balance: opening float + cash sales - expenses (DO NOT RESET on closure)
     const drawerBalance = shiftCashFloat + shiftCashSales - shiftTotalExp;
 
-    // Debug: Log dashboard calculations
-    console.log('\n📊 Dashboard Calculations:');
-    console.log(`   - Opening Float: ${shiftCashFloat.toFixed(2)} ر.س`);
-    console.log(`   - Cash Sales: ${shiftCashSales.toFixed(2)} ر.س`);
-    console.log(`   - Network Sales: ${(shiftOrders.reduce((sum, o) => {
-        const pay = splitOrderAmounts(o);
-        return sum + pay.network;
-    }, 0)).toFixed(2)} ر.س`);
-    console.log(`   - HungerStation Unpaid: ${shiftHungerStationUnpaid.toFixed(2)} ر.س`);
-    console.log(`   - Expenses: ${shiftTotalExp.toFixed(2)} ر.س`);
-    console.log(`   - Drawer Balance: ${drawerBalance.toFixed(2)} ر.س`);
-    console.log(`   - Check: ${shiftCashFloat} + ${shiftCashSales} - ${shiftTotalExp} = ${drawerBalance.toFixed(2)}`);
-
     window.__dashboardData = { dailySales, cashSales, networkSales, totalTax, totalReturnsAmt, totalExp, shiftCashFloat, drawerBalance, shiftHungerStationUnpaid };
 
     // Apply to UI
@@ -832,6 +819,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('day-total-returns').innerText = curPlain(dayTotalRet);
         document.getElementById('day-total-expenses').innerText= curPlain(dayTotalExp);
         document.getElementById('day-total-sales').innerText   = curPlain(dayTotalIncome);
+        document.getElementById('day-total-hs-unpaid').innerText = curPlain(dayTotalHSUnpaid);
+        document.getElementById('day-total-with-hs').innerText = curPlain(dayTotalIncome + dayTotalHSUnpaid);
         document.getElementById('day-drawer-total').innerText  = curPlain(dayDrawerTotal);
         
         // Remove HS unpaid warning
@@ -1006,6 +995,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const totalReturns = document.getElementById('day-total-returns')?.innerText || curPlain(0);
         const totalExpenses = document.getElementById('day-total-expenses')?.innerText || curPlain(0);
         const totalSales = document.getElementById('day-total-sales')?.innerText || curPlain(0);
+        const totalHS = document.getElementById('day-total-hs-unpaid')?.innerText || curPlain(0);
+        const totalWithHS = document.getElementById('day-total-with-hs')?.innerText || curPlain(0);
         const drawerTotal = document.getElementById('day-drawer-total')?.innerText || curPlain(0);
 
         console.log('🖨️  Printing day closure report...');
@@ -1260,6 +1251,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             </thead>
             <tbody>
                 <tr><td>عدد الطلبات</td><td>${totalOrders}</td></tr>
+                <tr><td>إجمالي هنقرستيشن</td><td>${totalHS}</td></tr>
                 <tr><td>إجمالي الكاش</td><td>${totalCash}</td></tr>
                 <tr><td>إجمالي الشبكة</td><td>${totalNetwork}</td></tr>
                 <tr class="row-strong"><td>إجمالي الدخل</td><td>${totalIncome}</td></tr>
@@ -1282,6 +1274,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <table class="report-table">
             <tbody>
                 <tr class="grand-total"><td>إجمالي المبيعات</td><td>${totalSales}</td></tr>
+                <tr class="row-strong"><td>الإجمالي مع هنقرستيشن</td><td>${totalWithHS}</td></tr>
                 <tr class="row-strong"><td>رصيد الدرج</td><td>${drawerTotal}</td></tr>
             </tbody>
         </table>

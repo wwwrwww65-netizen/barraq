@@ -8,11 +8,9 @@ const {
   globalShortcut,
 } = require('electron');
 
-// تحسين الأداء: تفعيل GPU بشكل صحيح مع تفادي الشاشة السوداء بطريقة أفضل
-app.commandLine.appendSwitch('enable-gpu-rasterization');
-app.commandLine.appendSwitch('enable-zero-copy');
-app.commandLine.appendSwitch('ignore-gpu-blocklist');
-app.commandLine.appendSwitch('enable-hardware-overlays', 'single-fullscreen,single-on-top,underlay');
+// تحسين الأداء: إعدادات GPU آمنة لمنع الشاشة السوداء
+// ملاحظة: تم حذف ignore-gpu-blocklist و enable-hardware-overlays لأنها كانت تسبب الشاشة السوداء
+// على بعض أجهزة Windows عند التعارض مع مشغلات كروت الشاشة
 
 app.on('web-contents-created', (e, webContents) => {
   webContents.on('context-menu', (event, params) => {
@@ -316,11 +314,7 @@ function scheduleSilentPrint(html, printerName) {
           } catch (err) {
             logPrint('خطأ قياس التخطيط', err && err.message);
           }
-          try {
-            await printWin.webContents.capturePage();
-          } catch (capErr) {
-            logPrint('capturePage', capErr && capErr.message);
-          }
+          // capturePage() تم حذفه — كان يستهلك ذاكرة كبيرة في كل طباعة دون فائدة حقيقية
           await new Promise((r) => setTimeout(r, 200));
           if (!printWin || settled) return;
 
@@ -482,17 +476,21 @@ function fetchDatabaseFromPeer(ip, callback) {
       }
       try {
         const parsed = JSON.parse(body);
-        const fs = require('fs');
         const dbPath = path.join(app.getPath('userData'), 'pos_database.json');
-        fs.writeFileSync(dbPath, JSON.stringify(parsed, null, 2));
-        console.log(`[HTTP Sync] ✅ Database pulled and saved from ${ip}`);
-        probePeerWaReady(ip, (capable) => {
-          if (capable) notifyLanSyncHubCandidate(ip);
+        // async كتابة لتجنب حجب Main Process أثناء المزامنة الشبكية
+        fs.promises.writeFile(dbPath, JSON.stringify(parsed, null, 2)).then(() => {
+          console.log(`[HTTP Sync] ✅ Database pulled and saved from ${ip}`);
+          probePeerWaReady(ip, (capable) => {
+            if (capable) notifyLanSyncHubCandidate(ip);
+          });
+          BrowserWindow.getAllWindows().forEach((win) => {
+            if (!win.isDestroyed()) win.webContents.send('db-file-updated');
+          });
+          if (cb) cb(null);
+        }).catch(e => {
+          console.error('[HTTP Sync] ❌ Write error from', ip, ':', e.message);
+          if (cb) cb(e);
         });
-        BrowserWindow.getAllWindows().forEach((win) => {
-          if (!win.isDestroyed()) win.webContents.send('db-file-updated');
-        });
-        if (cb) cb(null);
       } catch (e) {
         console.error('[HTTP Sync] ❌ Failed to apply database from', ip, ':', e.message);
         if (cb) cb(e);
@@ -577,13 +575,10 @@ function setupHTTPServer() {
     }
 
     if (req.method === 'GET' && req.url === '/database') {
-      try {
-        res.writeHead(200);
-        res.end(fs.readFileSync(dbPath, 'utf8'));
-      } catch(e) {
-        res.writeHead(500);
-        res.end(JSON.stringify({ error: e.message }));
-      }
+      // تم التحويل إلى async لمنع حجب Main Process عند خدمة الأجهزة الأخرى على الشبكة
+      fs.promises.readFile(dbPath, 'utf8')
+        .then(content => { res.writeHead(200); res.end(content); })
+        .catch(e => { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); });
     } else {
       res.writeHead(200);
       res.end(
@@ -806,20 +801,8 @@ function setupNetworkSync() {
     return scheduleSilentPrint(typeof html === 'string' ? html : '', '');
   });
 
-  // Renderer saved pos_database.json → broadcast to all peers
-  ipcMain.on('notify-db-changed', () => {
-    try {
-      if (!server) return;
-      const msg = Buffer.from(JSON.stringify({
-        type: 'db_changed',
-        instanceId: myInstanceId,
-      }));
-      server.send(msg, 0, msg.length, PORT, BROADCAST_ADDR);
-      console.log('[Sync] 📢 Broadcast: pos_database.json changed');
-    } catch(e) {
-      console.error('[Sync] notify-db-changed error:', e);
-    }
-  });
+  // notify-db-changed: مُعالج على مستوى الوحدة (broadcastDBChanged) بعد setupNetworkSync
+  // لا حاجة لمعالج مكرر هنا — تم الحذف لمنع البث المزدوج
 
   // Renderer has collected all localStorage and wants to broadcast it to new devices
   ipcMain.on('broadcast-full-sync', (event, data) => {
@@ -875,16 +858,22 @@ function setupNetworkSync() {
 }
 
 // Helper: broadcast db_changed to all devices on LAN
+// مع debounce لمنع الإرسال المتكرر خلال 500ms
+let _broadcastDebounceTimer = null;
 function broadcastDBChanged() {
-  try {
-    if (!server) return;
-    const msg = Buffer.from(JSON.stringify({ type: 'db_changed', instanceId: myInstanceId }));
-    server.send(msg, 0, msg.length, PORT, BROADCAST_ADDR);
-    // Also notify all local windows immediately (same machine)
-    BrowserWindow.getAllWindows().forEach(win => {
-      win.webContents.send('db-file-updated');
-    });
-  } catch(e) {}
+  if (_broadcastDebounceTimer) clearTimeout(_broadcastDebounceTimer);
+  _broadcastDebounceTimer = setTimeout(() => {
+    _broadcastDebounceTimer = null;
+    try {
+      if (!server) return;
+      const msg = Buffer.from(JSON.stringify({ type: 'db_changed', instanceId: myInstanceId }));
+      server.send(msg, 0, msg.length, PORT, BROADCAST_ADDR);
+      // Also notify all local windows immediately (same machine)
+      BrowserWindow.getAllWindows().forEach(win => {
+        if (!win.isDestroyed()) win.webContents.send('db-file-updated');
+      });
+    } catch(e) {}
+  }, 500);
 }
 
 ipcMain.on('notify-db-changed', () => {
@@ -940,13 +929,16 @@ ipcMain.handle('db-save-inventory', async (event, item) => {
 // Async full-DB read/write — used by renderer files to avoid blocking readFileSync on UI thread
 const _dbPath = path.join(app.getPath('userData'), 'pos_database.json');
 const _emptyDB = { orders:[], products:[], categories:[], inventory:[], purchases:[], suppliers:[], inventoryTx:[], returns:[], expenses:[], bankTransfers:[], hrExpenses:[], otherIncome:[], employees:[], attendance:[], penaltyRules:[], chartOfAccounts:[], journalEntries:[], systemNotifications:[], inventoryAlertState:{} };
-ipcMain.handle('db-read-full', () => {
-  try { return JSON.parse(fs.readFileSync(_dbPath, 'utf8')); }
-  catch(e) { return _emptyDB; }
-});
-ipcMain.handle('db-write-full', (event, data, opts) => {
+// تم التحويل إلى async لتجنب حجب Event Loop عند قراءة ملفات كبيرة
+ipcMain.handle('db-read-full', async () => {
   try {
-    fs.writeFileSync(_dbPath, JSON.stringify(data, null, 2));
+    const data = await fs.promises.readFile(_dbPath, 'utf8');
+    return JSON.parse(data);
+  } catch(e) { return _emptyDB; }
+});
+ipcMain.handle('db-write-full', async (event, data, opts) => {
+  try {
+    await fs.promises.writeFile(_dbPath, JSON.stringify(data, null, 2));
     const broadcast = !opts || opts.broadcast !== false;
     if (broadcast) broadcastDBChanged();
     return true;
@@ -1237,13 +1229,20 @@ let waManualStop = false;
 let waInitializing = false;
 let waInitStartedAt = 0;
 let waInitFailures = 0;
+let waNativeWin = null;
+let waNativeReady = false;
 
 async function teardownWaClient() {
   try {
     if (waClient) {
+      if (waClient.pupBrowser) {
+        await waClient.pupBrowser.close().catch(() => {});
+      }
       await waClient.destroy().catch(() => {});
     }
   } catch (_) {}
+  // إضافة انتظار بسيط للسماح لنظام التشغيل بتحرير ملفات القفل (Lockfiles)
+  await new Promise(r => setTimeout(r, 1000));
   waClient = null;
   waReady = false;
   waCachedQR = null;
@@ -1458,13 +1457,13 @@ function startWhatsApp() {
 
 // Renderer asks: what is the current status?
 ipcMain.on('wa-check-status', (event) => {
-  if (waReady && waClient) {
+  if (waNativeReady || (waReady && waClient)) {
     // Already connected - show immediately
     event.sender.send('wa-ready');
   } else if (waCachedQR) {
     // QR already generated and cached - send it immediately!
     event.sender.send('wa-qr', waCachedQR);
-  } else if (waClient || waInitializing) {
+  } else if (waClient || waInitializing || waNativeWin) {
     // If init hangs too long, auto-recover then restart.
     if (waInitializing && waInitStartedAt && (Date.now() - waInitStartedAt) > 60000) {
       console.warn('[WA] Init appears stuck >60s. Reinitializing...');
@@ -1504,6 +1503,16 @@ ipcMain.on('wa-disconnect', async () => {
     clearTimeout(waRestartTimer);
     waRestartTimer = null;
   }
+  
+  if (waNativeWin) {
+    try {
+      await waNativeWin.webContents.session.clearStorageData();
+      waNativeWin.destroy();
+    } catch(e) {}
+    waNativeWin = null;
+    waNativeReady = false;
+  }
+
   try { if (waClient) await waClient.logout().catch(() => {}); } catch(e) {}
   await teardownWaClient();
   // Delete session folder so next start requires fresh QR
@@ -1525,12 +1534,25 @@ ipcMain.on('wa-refresh', async () => {
     clearTimeout(waRestartTimer);
     waRestartTimer = null;
   }
+  
+  if (waNativeWin) {
+    waNativeWin.reload();
+    setTimeout(() => {
+      waNativeReady = true;
+      BrowserWindow.getAllWindows().forEach(win => {
+        if(win !== waNativeWin && !win.isDestroyed()) win.webContents.send('wa-ready');
+      });
+    }, 4500);
+    return;
+  }
+
   await teardownWaClient();
-  // Restart after short delay
+  // التأخير كان 1.5 ثانية فقط، وهو غير كافٍ لنظام ويندوز لفك القفل عن مجلد userDataDir
+  // تمت زيادة الوقت إلى 4.5 ثوانٍ لضمان الإغلاق الكامل
   setTimeout(() => {
     waManualStop = false;
     startWhatsApp();
-  }, 1500);
+  }, 4500);
 });
 
 /** إرسال فعلي عبر جلسة واتساب على هذا الجهاز */
@@ -1631,8 +1653,6 @@ function relayWaHttp(host, payload) {
 
 // Handle sending messages from any renderer window (محلياً أو عبر جهاز مركزي على الشبكة)
 // ── نافذة واتساب المخفية (وضع النافذة الداخلية) ──────────────────────────
-let waNativeWin = null;
-let waNativeReady = false;
 
 ipcMain.on('wa-show-window', () => {
   if (waNativeWin) { waNativeWin.setOpacity(1); waNativeWin.show(); waNativeWin.focus(); }
@@ -1800,7 +1820,7 @@ async function handleWaSendMessage(event, data) {
 
       await waNativeWin.loadURL(url, { userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" });
       const chatLoaded = await waNativeWin.webContents.executeJavaScript(
-        'new Promise(r=>{let n=0;const t=setInterval(()=>{n++;const m=document.querySelector("#main, footer");const x=document.querySelector("div[data-animate-modal-popup=\\"true\\"]");if(m){clearInterval(t);r(true);}else if(x||n>60){clearInterval(t);r(false);}},500);});'
+        'new Promise(r=>{let n=0;const t=setInterval(()=>{n++;const m=document.querySelector("#main, footer, div[contenteditable=\\"true\\"]");if(m){clearInterval(t);r(true);}else if(n>120){clearInterval(t);r(false);}},500);});'
       );
       if (!chatLoaded) {
         console.error('[WA][NATIVE] Chat not loaded');
@@ -1813,8 +1833,6 @@ async function handleWaSendMessage(event, data) {
         return;
       }
       if (data.image) {
-        clipboard.writeImage(nativeImage.createFromDataURL(data.image));
-        
         // ─── إصلاح Race Condition: انتظر حتى يقوم واتساب بتعبئة النص من URL بالكامل ───
         // المشكلة: عند إرسال صورتين متتاليتين، يقوم النظام بلصق الصورة بينما واتساب
         // لا يزال يعالج النص من URL، مما يؤدي لمسح معاينة الصورة
@@ -1824,7 +1842,7 @@ async function handleWaSendMessage(event, data) {
           await waNativeWin.webContents.executeJavaScript(`
             new Promise(r => {
               let n = 0;
-              const maxAttempts = 40; // زيادة عدد المحاولات من 20 إلى 40
+              const maxAttempts = 60; // زيادة عدد المحاولات للانتظار طويلا
               const t = setInterval(() => {
                 n++;
                 const b = document.querySelector('footer div[contenteditable="true"]') || 
@@ -1858,11 +1876,11 @@ async function handleWaSendMessage(event, data) {
         await waNativeWin.webContents.executeJavaScript(
           '(function(){ var b = document.querySelector(\'footer div[contenteditable="true"]\') || document.querySelector(\'div[contenteditable="true"]\'); if(b){ b.click(); b.focus(); } })();'
         );
-        await new Promise(r=>setTimeout(r, 600)); // زيادة وقت الانتظار من 400 إلى 600
+        await new Promise(r=>setTimeout(r, 1000)); // زيادة وقت الانتظار من 600 إلى 1000
         
         console.log('[WA][NATIVE] Pasting image into WhatsApp...');
-        waNativeWin.webContents.sendInputEvent({type:'keyDown',keyCode:'V',modifiers:['control']});
-        waNativeWin.webContents.sendInputEvent({type:'keyUp',keyCode:'V',modifiers:['control']});
+        clipboard.writeImage(nativeImage.createFromDataURL(data.image));
+        waNativeWin.webContents.paste();
         
         // انتظار أطول للتأكد من ظهور معاينة الصورة قبل الإرسال
         await new Promise(r=>setTimeout(r, 3000)); // زيادة من 2000 إلى 3000
@@ -1871,8 +1889,7 @@ async function handleWaSendMessage(event, data) {
         const imagePreviewCheck = await waNativeWin.webContents.executeJavaScript(`
           (function(){
             const imgPreview = document.querySelector('div[data-testid="image-preview"]') || 
-                               document.querySelector('img[src^="blob:"]') ||
-                               document.querySelector('span[data-icon="image"]');
+                               document.querySelector('img[src^="blob:"]');
             return imgPreview ? 'IMAGE_PREVIEW_FOUND' : 'NO_IMAGE_PREVIEW';
           })();
         `);
@@ -1929,6 +1946,25 @@ async function handleWaSendMessage(event, data) {
         `);
         console.log('[WA][NATIVE] Text Click Result:', clickResultText);
       }
+
+      console.log('[WA][NATIVE] Waiting for message to finish uploading (clock icon check)...');
+      await waNativeWin.webContents.executeJavaScript(`
+        new Promise(resolve => {
+          let n = 0;
+          const check = setInterval(() => {
+            n++;
+            const clock = document.querySelector('span[data-icon="msg-time"]');
+            const preview = document.querySelector('div[data-testid="image-preview"]');
+            if (!clock && !preview) {
+              clearInterval(check);
+              resolve(true);
+            } else if (n > 60) { // wait up to 30 seconds
+              clearInterval(check);
+              resolve(false);
+            }
+          }, 500);
+        });
+      `);
       await new Promise(r=>setTimeout(r,1500));
       // ─── أخفِ النافذة دائماً بعد الإرسال ───
       waNativeWin.hide();

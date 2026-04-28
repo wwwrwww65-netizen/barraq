@@ -570,7 +570,8 @@ try {
         }
 
         setTimeout(() => setSyncState('connected'), 3500);
-        setInterval(refreshConnectedLabel, 10000);
+        // تم تغيير التحديث من كل 10 ثوانٍ إلى كل 30 ثانية لتقليل استهلاك المعالج
+        setInterval(refreshConnectedLabel, 30000);
     } catch (e) {
         if (refreshBtn) refreshBtn.style.display = 'none';
         setSyncState('error', 'الشبكة: التطبيق الكامل فقط (.exe)');
