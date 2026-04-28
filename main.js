@@ -754,10 +754,18 @@ function setupNetworkSync() {
         });
         
         if (filePath) {
+            // A4 standard dimensions: 210mm x 297mm (8.26" x 11.69")
             const pdfData = await event.sender.printToPDF({
                 printBackground: true,
-                landscape: false,
-                margin: { marginType: 'default' }
+                landscape: false,  // Portrait (vertical)
+                marginsType: 0, // Custom margins
+                margins: {
+                    top: 0.04,      // 1mm
+                    bottom: 0.04,   // 1mm
+                    left: 0.08,     // 2mm
+                    right: 0.08     // 2mm
+                },
+                pageSize: 'A4'
             });
             fs.writeFileSync(filePath, pdfData);
             return { success: true, path: filePath };
@@ -1650,35 +1658,69 @@ function relayWaHttp(host, payload) {
     req.end();
   });
 }
-
 // Handle sending messages from any renderer window (محلياً أو عبر جهاز مركزي على الشبكة)
 // ── نافذة واتساب المخفية (وضع النافذة الداخلية) ──────────────────────────
 
 ipcMain.on('wa-show-window', () => {
-  if (waNativeWin) { waNativeWin.setOpacity(1); waNativeWin.show(); waNativeWin.focus(); }
-  else { startNativeWaWindow(); waNativeWin.setOpacity(1); waNativeWin.show(); }
+  if (waNativeWin) {
+    waNativeWin.setOpacity(1);
+    waNativeWin.show();
+    waNativeWin.focus();
+  } else {
+    startNativeWaWindow();
+    if (waNativeWin) {
+      waNativeWin.setOpacity(1);
+      waNativeWin.show();
+      waNativeWin.focus();
+    }
+  }
 });
 
 function startNativeWaWindow() {
-  if (waNativeWin) { waNativeWin.show(); return; }
+  if (waNativeWin) {
+    waNativeWin.show();
+    return;
+  }
+
+  waNativeReady = false;
+
   waNativeWin = new BrowserWindow({
-    width: 1024, height: 768, show: false, opacity: 0,
+    width: 1024,
+    height: 768,
+    show: false,
+    opacity: 0,
     title: 'واتساب - نافذة الإرسال',
-    webPreferences: { partition: 'persist:whatsapp', nodeIntegration: false, contextIsolation: true, backgroundThrottling: false }
+    webPreferences: {
+      partition: 'persist:whatsapp',
+      nodeIntegration: false,
+      contextIsolation: true,
+      backgroundThrottling: false
+    }
   });
+
   waNativeWin.setSkipTaskbar(true);
   waNativeWin.setMenu(null);
-  waNativeWin.loadURL('https://web.whatsapp.com', { userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" });
-  waNativeWin.on('close', (e) => { e.preventDefault(); waNativeWin.setOpacity(0); waNativeWin.hide(); });
-  
+
+  waNativeWin.loadURL('https://web.whatsapp.com', {
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  });
+
+  waNativeWin.on('close', (e) => {
+    e.preventDefault();
+    waNativeWin.setOpacity(0);
+    waNativeWin.hide();
+  });
+
   // ── التجاوز الإجباري لأي نافذة تأكيد "هل تريد المغادرة؟" لمنع ERR_ABORTED (-3) ──
   waNativeWin.webContents.on('will-prevent-unload', (event) => {
-    event.preventDefault(); // السماح بالخروج دون عرض النافذة
+    event.preventDefault();
   });
 
   waNativeWin.webContents.on('did-finish-load', () => {
     waNativeReady = true;
-    BrowserWindow.getAllWindows().forEach(w => { if(w !== waNativeWin) w.webContents.send('wa-ready'); });
+    BrowserWindow.getAllWindows().forEach(w => {
+      if (w !== waNativeWin) w.webContents.send('wa-ready');
+    });
   });
 }
 // ───────────────────────────────────────────────────────────────────────────
@@ -1689,19 +1731,20 @@ let isWaProcessing = false;
 async function processWaQueue() {
   if (isWaProcessing || waMessageQueue.length === 0) return;
   isWaProcessing = true;
-  
-  while (waMessageQueue.length > 0) {
-    const { event, data } = waMessageQueue.shift();
-    await handleWaSendMessage(event, data);
-    // ─── زيادة وقت الانتظار بين الرسائل لمنع Race Condition ───
-    // عند إرسال صورتين متتاليتين (موظف + مدير)، نحتاج انتظار أطول
-    // للتأكد من أن واتساب أكمل معالجة الرسالة الأولى بالكامل
-    const waitTime = data.image ? 6000 : 4000; // 6 ثواني للصور، 4 ثواني للنص فقط
-    console.log(`[WA][QUEUE] Waiting ${waitTime}ms before next message...`);
-    await new Promise(r => setTimeout(r, waitTime));
+
+  try {
+    while (waMessageQueue.length > 0) {
+      const { event, data } = waMessageQueue.shift();
+      await handleWaSendMessage(event, data);
+
+      // ─── زيادة وقت الانتظار بين الرسائل لمنع Race Condition ───
+      const waitTime = data && data.image ? 6000 : 4000;
+      console.log(`[WA][QUEUE] Waiting ${waitTime}ms before next message...`);
+      await new Promise(r => setTimeout(r, waitTime));
+    }
+  } finally {
+    isWaProcessing = false;
   }
-  
-  isWaProcessing = false;
 }
 
 ipcMain.on('wa-send-message', (event, data) => {
@@ -1709,42 +1752,314 @@ ipcMain.on('wa-send-message', (event, data) => {
   processWaQueue();
 });
 
+function normalizePhoneNumber(input) {
+  const toEn = (v) => String(v || '')
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+
+  let phone = toEn(input).replace(/[^0-9]/g, '');
+  if (phone.startsWith('00966')) phone = phone.substring(2);
+  if (phone.startsWith('9660')) phone = '966' + phone.substring(4);
+  if (phone.startsWith('05')) phone = '966' + phone.substring(1);
+  if (phone.startsWith('5') && phone.length === 9) phone = '966' + phone;
+  return phone;
+}
+
+function isValidImageData(dataImage) {
+  return (
+    typeof dataImage === 'string' &&
+    dataImage.startsWith('data:image/') &&
+    dataImage.includes('base64,') &&
+    dataImage.length > 200
+  );
+}
+
+async function waitForChatLoaded(win) {
+  return await win.webContents.executeJavaScript(`
+    new Promise(r => {
+      let n = 0;
+      const t = setInterval(() => {
+        n++;
+        const m = document.querySelector("#main, footer, div[contenteditable='true']");
+        if (m) {
+          clearInterval(t);
+          r(true);
+        } else if (n > 120) {
+          clearInterval(t);
+          r(false);
+        }
+      }, 500);
+    })
+  `);
+}
+
+async function waitForTextToStabilize(win) {
+  return await win.webContents.executeJavaScript(`
+    new Promise(r => {
+      let n = 0;
+      const maxAttempts = 60;
+      const t = setInterval(() => {
+        n++;
+        const b = document.querySelector('footer div[contenteditable="true"]') ||
+                  document.querySelector('div[contenteditable="true"]');
+        if (b && b.innerText && b.innerText.trim().length > 0) {
+          const initialText = b.innerText.trim();
+          setTimeout(() => {
+            const currentText = b.innerText ? b.innerText.trim() : '';
+            if (currentText === initialText && currentText.length > 0) {
+              clearInterval(t);
+              r(true);
+            }
+          }, 300);
+        } else if (n >= maxAttempts) {
+          clearInterval(t);
+          r(false);
+        }
+      }, 250);
+    })
+  `);
+}
+
+async function waitForActualImagePreview(win) {
+  return await win.webContents.executeJavaScript(`
+    new Promise(resolve => {
+      let attempts = 0;
+      const maxAttempts = 40; // 10 seconds
+
+      const interval = setInterval(() => {
+        attempts++;
+
+        const images = Array.from(document.querySelectorAll('img[src^="blob:"]'));
+
+        const validImage = images.find(img => {
+          const rect = img.getBoundingClientRect();
+
+          // تجاهل الصور الصغيرة أو القديمة
+          return (
+            rect.width > 150 &&
+            rect.height > 150 &&
+            img.draggable === true &&
+            !img.closest('[data-testid^="msg-"]') // ليست رسالة قديمة
+          );
+        });
+
+        if (validImage) {
+          clearInterval(interval);
+          resolve('IMAGE_PREVIEW_FOUND');
+        }
+
+        if (attempts >= maxAttempts) {
+          clearInterval(interval);
+          resolve('NO_IMAGE_PREVIEW');
+        }
+      }, 250);
+    })
+  `);
+}
+
+async function clickSendButtonForImage(win) {
+  return await win.webContents.executeJavaScript(`
+    new Promise(resolve => {
+      let attempts = 0;
+      const maxAttempts = 48; // 12 seconds
+
+      const isVisible = (el) => {
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        const s = window.getComputedStyle(el);
+        return (
+          r.width > 40 &&
+          r.height > 40 &&
+          s.display !== 'none' &&
+          s.visibility !== 'hidden' &&
+          s.opacity !== '0'
+        );
+      };
+
+      const hasRealPreview = () => {
+        // ✅ التحقق الصحيح: البحث عن blob image و ::after على نفس الحاوية
+        
+        // البحث عن حاويات المعاينة المحتملة
+        var previewContainers = Array.from(
+          document.querySelectorAll(
+            'footer, footer[role="contentinfo"], ' +
+            'div[role="dialog"], div[aria-modal="true"], ' +
+            '[data-lexical-editor], [data-testid="compose-panel"], ' +
+            '[data-testid="media-editor"]'
+          )
+        );
+
+        for (var container of previewContainers) {
+          // 1️⃣ التحقق من وجود صورة blob داخل الحاوية
+          var hasBlobImage = !!container.querySelector('img[src^="blob:"]');
+          
+          // 2️⃣ التحقق من وجود ::after ظاهر على الحاوية نفسها
+          var afterStyle = window.getComputedStyle(container, '::after');
+          var hasAfterPseudo = (
+            afterStyle &&
+            afterStyle.content &&
+            afterStyle.content !== 'none' &&
+            afterStyle.content !== 'normal' &&
+            afterStyle.display !== 'none' &&
+            afterStyle.visibility !== 'hidden' &&
+            afterStyle.opacity !== '0'
+          );
+          
+          // 3️⃣ التحقق من وجود صور data URI
+          var hasDataImage = !!container.querySelector('img[src^="data:"]');
+          
+          // 4️⃣ التحقق من canvas
+          var hasCanvas = Array.from(container.querySelectorAll('canvas')).some(isVisible);
+          
+          // ✅ إذا وجد أي من هذه العلامات → المعاينة موجودة
+          if (hasBlobImage || hasAfterPseudo || hasDataImage || hasCanvas) {
+            return true;
+          }
+        }
+
+        // ── fallback: البحث عن صور مرئية كبيرة في منطقة المحرر ──
+        var composer = document.querySelector('div[contenteditable="true"]')?.closest('[data-lexical-editor]');
+        if (composer) {
+          var allImages = Array.from(composer.querySelectorAll('img'));
+          for (var img of allImages) {
+            var rect = img.getBoundingClientRect();
+            // إذا وجدت صورة كبيرة (>80x80) في المحرر → هي المعاينة
+            if (rect.width > 80 && rect.height > 80) {
+              return true;
+            }
+          }
+        }
+
+        return false;
+      };
+
+      var t = setInterval(() => {
+        attempts++;
+        if (hasRealPreview()) {
+          clearInterval(t);
+          resolve('IMAGE_PREVIEW_FOUND');
+        } else if (attempts >= maxAttempts) {
+          clearInterval(t);
+          resolve('NO_IMAGE_PREVIEW');
+        }
+      }, 250);
+    })
+  `);
+}
+
+async function clickSendButtonForImage(win) {
+  return await win.webContents.executeJavaScript(`
+    (function(){
+      // ✅ البحث عن زر الإرسال بالـ selectors الحديثة
+      var sendBtn =
+        // الطريقة 1: الوسم الجديد wds-ic-send-filled
+        document.querySelector('[data-icon="wds-ic-send-filled"]')?.closest('div[role="button"]') ||
+        document.querySelector('[data-testid="wds-ic-send-filled"]')?.closest('div[role="button"]') ||
+        // الطريقة 2: الأيقونة القديمة
+        document.querySelector('span[data-icon="send"]')?.closest('button') ||
+        document.querySelector('span[data-icon="send"]')?.closest('div[role="button"]') ||
+        // الطريقة 3: data-testid
+        document.querySelector('[data-testid="send"]') ||
+        // الطريقة 4: aria-label
+        document.querySelector('[aria-label="إرسال"]') ||
+        document.querySelector('[aria-label="Send"]');
+      
+      if (sendBtn) {
+        var rect = sendBtn.getBoundingClientRect();
+        console.log('[WA][WEB] Send button found at:', rect.left, rect.top);
+        
+        // الضغط على الزر
+        sendBtn.dispatchEvent(new MouseEvent('mousedown', {bubbles: true, cancelable: true, view: window}));
+        sendBtn.dispatchEvent(new MouseEvent('mouseup', {bubbles: true, cancelable: true, view: window}));
+        sendBtn.click();
+        return "CLICKED_SEND_BUTTON";
+      }
+      
+      return "SEND_BUTTON_NOT_FOUND";
+    })();
+  `);
+}
+
+async function clickSendButtonForText(win) {
+  return await win.webContents.executeJavaScript(`
+    (function(){
+      // البحث عن زر الإرسال بالـ selectors الحديثة
+      var icon = 
+        document.querySelector('[data-icon="wds-ic-send-filled"]') ||
+        document.querySelector('[data-testid="wds-ic-send-filled"]') ||
+        document.querySelector('span[data-icon="send"]');
+      
+      if (icon) {
+        var btn = icon.closest('button') || icon.closest('div[role="button"]') || icon.parentElement;
+        if (btn) {
+          btn.dispatchEvent(new MouseEvent('mousedown', {bubbles: true, cancelable: true, view: window}));
+          btn.dispatchEvent(new MouseEvent('mouseup', {bubbles: true, cancelable: true, view: window}));
+          btn.click();
+          return "CLICKED_SEND_BUTTON";
+        }
+        return "ICON_FOUND_BUT_NO_BUTTON_PARENT";
+      }
+      return "ICON_NOT_FOUND";
+    })();
+  `);
+}
+
+async function waitForUploadToFinish(win) {
+  return await win.webContents.executeJavaScript(`
+    new Promise(resolve => {
+      let n = 0;
+      const check = setInterval(() => {
+        n++;
+        const clock = document.querySelector('span[data-icon="msg-time"]');
+        const preview = document.querySelector('div[data-testid="image-preview"]');
+        if (!clock && !preview) {
+          clearInterval(check);
+          resolve(true);
+        } else if (n > 60) {
+          clearInterval(check);
+          resolve(false);
+        }
+      }, 500);
+    });
+  `);
+}
+
 async function handleWaSendMessage(event, data) {
   if (!data || typeof data !== 'object') return;
 
   const targetRaw = String(data.number || '');
-  let sendResult = { success: false, number: targetRaw, image: data.image };
+  const hasImage = isValidImageData(data.image);
+  let sendResult = { success: false, number: targetRaw, image: hasImage };
 
   // ── وضع المتصفح (Browser Mode) ─────────────────────────────────────────
   if (data.wa_mode === 'browser') {
     try {
       const { clipboard, nativeImage } = require('electron');
-      const toEn = (v) => String(v||'').replace(/[٠-٩]/g,(d)=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,(d)=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
-      let phone = toEn(data.number||'').replace(/[^0-9]/g,'');
-      if(phone.startsWith('00966')) phone=phone.substring(2);
-      if(phone.startsWith('9660')) phone='966'+phone.substring(4);
-      if(phone.startsWith('05')) phone='966'+phone.substring(1);
-      if(phone.startsWith('5')&&phone.length===9) phone='966'+phone;
-      const url = `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(data.text||'')}`;
+      let phone = normalizePhoneNumber(data.number || '');
+      const url = `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(data.text || '')}`;
       const vbsPath = path.join(os.tmpdir(), `wa_br_${Date.now()}.vbs`);
-      
+
       let vbs = `Set S=WScript.CreateObject("WScript.Shell")\nS.Run "chrome.exe """&"${url}"&""""\nWScript.Sleep 8000\n`;
-      if (data.image) {
+      if (hasImage) {
         clipboard.writeImage(nativeImage.createFromDataURL(data.image));
         vbs += `S.SendKeys "^v"\nWScript.Sleep 2000\nS.SendKeys "~"\nWScript.Sleep 1500\nS.SendKeys "^{w}"`;
       } else {
         vbs += `S.SendKeys "~"\nWScript.Sleep 1500\nS.SendKeys "^{w}"`;
       }
-      
+
       fs.writeFileSync(vbsPath, vbs, 'utf8');
-      require('child_process').exec(`cscript //nologo "${vbsPath}"`, ()=>{ try{fs.unlinkSync(vbsPath);}catch(e){} });
+      require('child_process').exec(`cscript //nologo "${vbsPath}"`, () => {
+        try { fs.unlinkSync(vbsPath); } catch (e) {}
+      });
+
       console.log(`[WA][BROWSER] macro sent for ${phone}`);
       sendResult.success = true;
-    } catch(e) { 
-      console.error('[WA][BROWSER]', e?.message); 
+    } catch (e) {
+      console.error('[WA][BROWSER]', e?.message);
       sendResult.success = false;
       sendResult.error = e?.message || 'Unknown error';
     }
+
     if (event && event.sender) {
       event.sender.send('wa-send-result', sendResult);
     }
@@ -1755,30 +2070,41 @@ async function handleWaSendMessage(event, data) {
   if (data.wa_mode === 'desktop') {
     try {
       const { shell, clipboard, nativeImage } = require('electron');
-      const toEn = (v) => String(v||'').replace(/[٠-٩]/g,(d)=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,(d)=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
-      let phone = toEn(data.number||'').replace(/[^0-9]/g,'');
-      if(phone.startsWith('00966')) phone=phone.substring(2);
-      if(phone.startsWith('9660')) phone='966'+phone.substring(4);
-      if(phone.startsWith('05')) phone='966'+phone.substring(1);
-      if(phone.startsWith('5')&&phone.length===9) phone='966'+phone;
-      await shell.openExternal(`whatsapp://send?phone=${phone}&text=${encodeURIComponent(data.text||'')}`);
-      if (data.image) {
+      let phone = normalizePhoneNumber(data.number || '');
+
+      await shell.openExternal(`whatsapp://send?phone=${phone}&text=${encodeURIComponent(data.text || '')}`);
+
+      if (hasImage) {
         clipboard.writeImage(nativeImage.createFromDataURL(data.image));
         const vbsPath = path.join(os.tmpdir(), `wa_dt_${Date.now()}.vbs`);
-        fs.writeFileSync(vbsPath, `WScript.Sleep 8000\nSet S=WScript.CreateObject("WScript.Shell")\nS.AppActivate "WhatsApp"\nWScript.Sleep 1000\nS.SendKeys "+{INS}"\nWScript.Sleep 2000\nS.SendKeys "~"\nWScript.Sleep 500\nS.SendKeys "~"`, 'utf8');
-        require('child_process').exec(`cscript //nologo "${vbsPath}"`, ()=>{ try{fs.unlinkSync(vbsPath);}catch(e){} });
+        fs.writeFileSync(
+          vbsPath,
+          `WScript.Sleep 8000\nSet S=WScript.CreateObject("WScript.Shell")\nS.AppActivate "WhatsApp"\nWScript.Sleep 1000\nS.SendKeys "+{INS}"\nWScript.Sleep 2000\nS.SendKeys "~"\nWScript.Sleep 500\nS.SendKeys "~"`,
+          'utf8'
+        );
+        require('child_process').exec(`cscript //nologo "${vbsPath}"`, () => {
+          try { fs.unlinkSync(vbsPath); } catch (e) {}
+        });
       } else {
         const vbsPath = path.join(os.tmpdir(), `wa_dt_${Date.now()}.vbs`);
-        fs.writeFileSync(vbsPath, `WScript.Sleep 5500\nSet S=WScript.CreateObject("WScript.Shell")\nS.AppActivate "WhatsApp"\nWScript.Sleep 500\nS.SendKeys "~"`, 'utf8');
-        require('child_process').exec(`cscript //nologo "${vbsPath}"`, ()=>{ try{fs.unlinkSync(vbsPath);}catch(e){} });
+        fs.writeFileSync(
+          vbsPath,
+          `WScript.Sleep 5500\nSet S=WScript.CreateObject("WScript.Shell")\nS.AppActivate "WhatsApp"\nWScript.Sleep 500\nS.SendKeys "~"`,
+          'utf8'
+        );
+        require('child_process').exec(`cscript //nologo "${vbsPath}"`, () => {
+          try { fs.unlinkSync(vbsPath); } catch (e) {}
+        });
       }
+
       console.log(`[WA][DESKTOP] sent for ${phone}`);
       sendResult.success = true;
-    } catch(e) { 
-      console.error('[WA][DESKTOP]', e?.message); 
+    } catch (e) {
+      console.error('[WA][DESKTOP]', e?.message);
       sendResult.success = false;
       sendResult.error = e?.message || 'Unknown error';
     }
+
     if (event && event.sender) {
       event.sender.send('wa-send-result', sendResult);
     }
@@ -1787,59 +2113,77 @@ async function handleWaSendMessage(event, data) {
 
   // ── وضع النافذة المخفية (Hidden Native Window Mode) ────────────────────
   if (data.wa_mode === 'bot') {
-    // إذا لم تكن النافذة مهيأة، افتحها تلقائياً وانتظر حتى تجهز
     if (!waNativeWin) {
       console.log('[WA][NATIVE] Auto-starting native window...');
       startNativeWaWindow();
-      // انتظر حتى يتم تحميل الصفحة (did-finish-load) أو 15 ثانية كحد أقصى
+
       await new Promise((resolve) => {
         const timeout = setTimeout(resolve, 15000);
-        waNativeWin.webContents.once('did-finish-load', () => {
+        if (waNativeWin && waNativeWin.webContents) {
+          waNativeWin.webContents.once('did-finish-load', () => {
+            clearTimeout(timeout);
+            setTimeout(resolve, 1000);
+          });
+        } else {
           clearTimeout(timeout);
-          setTimeout(resolve, 1000); // انتظر ثانية إضافية للتأكد
-        });
+          resolve();
+        }
       });
     }
+
     if (!waNativeWin) {
       console.error('[WA][NATIVE] Failed to initialize window');
+      sendResult.error = 'Failed to initialize WhatsApp window';
+      if (event && event.sender) event.sender.send('wa-send-result', sendResult);
       return;
     }
+
     try {
       const { clipboard, nativeImage } = require('electron');
-      const toEn = (v) => String(v||'').replace(/[٠-٩]/g,(d)=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,(d)=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
-      let phone = toEn(data.number||'').replace(/[^0-9]/g,'');
-      if(phone.startsWith('00966')) phone=phone.substring(2);
-      if(phone.startsWith('9660')) phone='966'+phone.substring(4);
-      if(phone.startsWith('05')) phone='966'+phone.substring(1);
-      if(phone.startsWith('5')&&phone.length===9) phone='966'+phone;
-      const url = `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(data.text||'')}`;
+      let phone = normalizePhoneNumber(data.number || '');
+      
+      // ✅ إذا كانت هناك صورة، لا نضع النص في URL (سنكتبه كـ caption لاحقاً)
+      const url = hasImage 
+        ? `https://web.whatsapp.com/send?phone=${phone}`
+        : `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(data.text || '')}`;
 
-      // ─── إظهار النافذة كشفافة بالكامل (Opacity 0) خلف النافذة الرئيسية لمنع الوميض ───
+      console.log('[WA][NATIVE] Loading URL (hasImage:', hasImage, ')');
+
       const wasHidden = !waNativeWin.isVisible();
-      if (wasHidden) { 
-        waNativeWin.setOpacity(0); 
-        waNativeWin.showInactive();
-        // انتظر قصير للتأكد من أن النافذة أصبحت مرئية قبل التحميل
-        await new Promise(r => setTimeout(r, 500));
+      if (wasHidden) {
+        // إظهار النافذة والتركيز عليها فعليًا قبل أي تفاعل
+        waNativeWin.show();
+        waNativeWin.focus();
+        await new Promise(r => setTimeout(r, 800));
+      } else {
+        // حتى لو كانت ظاهرة، نحتاج للتركيز عليها
+        waNativeWin.focus();
+        await new Promise(r => setTimeout(r, 300));
       }
-      // إبقاء النافذة الرئيسية في المقدمة
-      const mainWins = BrowserWindow.getAllWindows().filter(w => w !== waNativeWin);
-      if (mainWins.length > 0) mainWins[0].focus();
+
+      // لا تسحب التركيز من واتساب الآن - سنحتاجه للـ paste
+      // const mainWins = BrowserWindow.getAllWindows().filter(w => w !== waNativeWin);
+      // if (mainWins.length > 0) mainWins[0].focus();
 
       let loadSuccess = false;
       let loadAttempts = 0;
+
       while (!loadSuccess && loadAttempts < 3) {
         loadAttempts++;
         try {
-          // محاولة مسح أحداث beforeunload من داخل الصفحة
           await waNativeWin.webContents.executeJavaScript(`
-            window.onbeforeunload = null;
-            if (window.__beforeUnloadOverrides) window.__beforeUnloadOverrides = null;
+            try {
+              window.onbeforeunload = null;
+              if (window.__beforeUnloadOverrides) window.__beforeUnloadOverrides = null;
+            } catch (e) {}
           `).catch(() => {});
 
-          await waNativeWin.loadURL(url, { userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" });
+          await waNativeWin.loadURL(url, {
+            userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+          });
+
           loadSuccess = true;
-        } catch(e) {
+        } catch (e) {
           if (String(e).includes('ERR_ABORTED')) {
             console.warn(`[WA][NATIVE] loadURL ERR_ABORTED (attempt ${loadAttempts}/3), retrying in 1.5s...`);
             await new Promise(r => setTimeout(r, 1500));
@@ -1848,203 +2192,379 @@ async function handleWaSendMessage(event, data) {
           }
         }
       }
+
       if (!loadSuccess) {
         throw new Error(`Failed to load WhatsApp URL after 3 attempts for ${phone}. Aborting to prevent sending to wrong chat.`);
       }
 
-      const chatLoaded = await waNativeWin.webContents.executeJavaScript(
-        'new Promise(r=>{let n=0;const t=setInterval(()=>{n++;const m=document.querySelector("#main, footer, div[contenteditable=\\"true\\"]");if(m){clearInterval(t);r(true);}else if(n>120){clearInterval(t);r(false);}},500);});'
-      );
+      const chatLoaded = await waitForChatLoaded(waNativeWin);
       if (!chatLoaded) {
         console.error('[WA][NATIVE] Chat not loaded');
         try {
           const img = await waNativeWin.webContents.capturePage();
           require('fs').writeFileSync('e:\\baraaq\\wa_error.png', img.toPNG());
           console.log('[WA][NATIVE] Screenshot saved to', 'e:\\baraaq\\wa_error.png');
-        } catch(e){}
+        } catch (e) {}
         if (wasHidden) waNativeWin.hide();
+
+        sendResult.error = 'Chat not loaded';
+        if (event && event.sender) event.sender.send('wa-send-result', sendResult);
         return;
       }
-      if (data.image) {
-        // ─── إصلاح Race Condition: انتظر حتى يقوم واتساب بتعبئة النص من URL بالكامل ───
-        // المشكلة: عند إرسال صورتين متتاليتين، يقوم النظام بلصق الصورة بينما واتساب
-        // لا يزال يعالج النص من URL، مما يؤدي لمسح معاينة الصورة
-        // الحل: انتظار ذكي يتحقق من ظهور النص فعلياً في حقل الإدخال
-        if (data.text) {
-          console.log('[WA][NATIVE] Waiting for WhatsApp to populate text from URL...');
-          await waNativeWin.webContents.executeJavaScript(`
-            new Promise(r => {
-              let n = 0;
-              const maxAttempts = 60; // زيادة عدد المحاولات للانتظار طويلا
-              const t = setInterval(() => {
-                n++;
-                const b = document.querySelector('footer div[contenteditable="true"]') || 
-                          document.querySelector('div[contenteditable="true"]');
-                if (b && b.innerText && b.innerText.trim().length > 0) {
-                  // تأكد أن النص مستقر (لا يتغير) لمدة 300ms إضافية
-                  const initialText = b.innerText.trim();
-                  setTimeout(() => {
-                    const currentText = b.innerText ? b.innerText.trim() : '';
-                    if (currentText === initialText && currentText.length > 0) {
-                      clearInterval(t);
-                      console.log('[WA][WEB] Text stabilized: "' + currentText.substring(0, 50) + '..."');
-                      r(true);
-                    }
-                  }, 300);
-                } else if (n >= maxAttempts) {
-                  clearInterval(t);
-                  console.warn('[WA][WEB] Text population timeout after ' + maxAttempts + ' attempts');
-                  r(false);
-                }
-              }, 250);
-            })
-          `);
-          // انتظار إضافي لاستقرار DOM بعد اكتمال النص
-          await new Promise(r => setTimeout(r, 1500));
-        } else {
-          await new Promise(r=>setTimeout(r, 1500));
-        }
 
-        // التركيز على حقل الإدخال قبل لصق الصورة
-        await waNativeWin.webContents.executeJavaScript(
-          '(function(){ var b = document.querySelector(\'footer div[contenteditable="true"]\') || document.querySelector(\'div[contenteditable="true"]\'); if(b){ b.click(); b.focus(); } })();'
-        );
-        await new Promise(r=>setTimeout(r, 1500)); // وقت كافٍ للتأكد من أن الحقل نشط
-        
-        console.log('[WA][NATIVE] Writing image to clipboard and pasting...');
-        clipboard.writeImage(nativeImage.createFromDataURL(data.image));
-        await new Promise(r=>setTimeout(r, 400)); // تأخير قصير بين كتابة الكليبورد واللصق
-        waNativeWin.webContents.paste();
-        
-        // انتظار ذكي: تحقق من ظهور نافذة رفع الصورة (حتى 8 ثوانٍ)
-        // نستهدف فقط عناصر منطقة الرفع — يتجنب الإيجابيات الكاذبة من صور المحادثة
-        const imagePreviewCheck = await waNativeWin.webContents.executeJavaScript(`
-          new Promise(resolve => {
-            let attempts = 0;
-            const maxAttempts = 32; // 32 x 250ms = 8 ثوانٍ
-            const t = setInterval(() => {
-              attempts++;
-              const overlay =
-                document.querySelector('div[data-testid="media-upload-dialog"]') ||
-                document.querySelector('div[aria-label="View or edit media"]') ||
-                document.querySelector('span[data-icon="x"]') || // زر الإغلاق في شاشة المعاينة
-                Array.from(document.querySelectorAll('img[src^="blob:"]')).some(img => !img.closest('[data-testid^="msg-"]')) || // صورة لم تُرسل بعد (خارج المحادثة)
-                document.querySelector('div[class*="upload"] canvas');
-              if (overlay) {
-                clearInterval(t);
-                resolve('IMAGE_PREVIEW_FOUND');
-              } else if (attempts >= maxAttempts) {
-                clearInterval(t);
-                resolve('NO_IMAGE_PREVIEW');
-              }
-            }, 250);
-          })
+      if (hasImage) {
+        console.log('[WA][NATIVE] Image mode: Will paste image + write caption');
+        // ✅ لا نحتاج لانتظار استقرار النص لأننا لم نضعه في URL
+        // التركيز مباشرة على حقل الإدخال قبل اللصق (ضروري لـ paste)
+
+        // التركيز على حقل الإدخال قبل اللصق (ضروري لـ paste)
+        await waNativeWin.webContents.executeJavaScript(`
+          (function(){
+            var b = document.querySelector('footer div[contenteditable="true"]') ||
+                    document.querySelector('div[contenteditable="true"]');
+            if (b) { b.click(); b.focus(); }
+          })();
         `);
-        console.log('[WA][NATIVE] Image preview check:', imagePreviewCheck);
+        await new Promise(r => setTimeout(r, 800));
 
-        // إذا لم تظهر معاينة الصورة، أعد اللصق مرة أخرى
-        if (imagePreviewCheck === 'NO_IMAGE_PREVIEW') {
-          console.warn('[WA][NATIVE] No overlay found — retrying paste...');
+        // ✅ التأكد من أن النافذة مرئية ومركزة فعلياً قبل اللصق
+        if (!waNativeWin.isVisible()) {
+          console.log('[WA][NATIVE] Window not visible, calling show()...');
+          waNativeWin.show();
+          await new Promise(r => setTimeout(r, 300));
+        }
+        
+        if (!waNativeWin.isFocused()) {
+          console.log('[WA][NATIVE] Window not focused, calling focus()...');
+          waNativeWin.focus();
+          await new Promise(r => setTimeout(r, 500));
+        }
+        
+        // تأكيد نهائي
+        console.log('[WA][NATIVE] Window state - Visible:', waNativeWin.isVisible(), 'Focused:', waNativeWin.isFocused());
+
+        let imagePreviewCheck = 'NO_IMAGE_PREVIEW';
+
+        // محاولة اللصق حتى 3 مرات مع إعادة التركيز
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          console.log(`[WA][NATIVE] Writing image to clipboard and pasting... attempt ${attempt}/3`);
+
+          // كتابة الصورة في الحافظة
           clipboard.writeImage(nativeImage.createFromDataURL(data.image));
-          await new Promise(r=>setTimeout(r, 500));
-          waNativeWin.webContents.paste();
-          await new Promise(r=>setTimeout(r, 4000));
-          console.warn('[WA][NATIVE] Retry complete — proceeding to send.');
+          await new Promise(r => setTimeout(r, 300));
+          
+          // ✅ لصق الصورة باستخدام Ctrl+V (أكثر موثوقية)
+          waNativeWin.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'V', modifiers: ['control'] });
+          waNativeWin.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'V', modifiers: ['control'] });
+          await new Promise(r => setTimeout(r, 2000));
+
+          // ─── DEBUG: التحقق من الحالة بعد اللصق مباشرة ───
+          const debugInfo = await waNativeWin.webContents.executeJavaScript(`
+            (function() {
+              var active = document.activeElement;
+              var activeTag = active ? active.tagName : 'none';
+              var activeClass = active ? (active.className || '').toString().slice(0, 50) : '';
+              
+              // البحث عن blob imgs داخل footer فقط
+              var footer = document.querySelector('footer');
+              var footerBlobs = footer ? Array.from(footer.querySelectorAll('img[src^="blob:"]')).length : 0;
+              
+              // البحث عن blob imgs داخل dialogs
+              var dialogs = document.querySelectorAll('div[role="dialog"], div[aria-modal="true"]');
+              var dialogBlobs = 0;
+              dialogs.forEach(function(d) {
+                dialogBlobs += d.querySelectorAll('img[src^="blob:"]').length;
+              });
+              
+              // إجمالي blob imgs في الصفحة
+              var allBlobs = document.querySelectorAll('img[src^="blob:"]').length;
+              
+              // ── معلومات جديدة للهيكل الحديث ───
+              // البحث عن صور في منطقة المحرر
+              var composer = document.querySelector('div[contenteditable="true"]')?.closest('div[data-lexical-editor="true"]')?.parentElement?.parentElement;
+              var composerImages = composer ? Array.from(composer.querySelectorAll('img')).length : 0;
+              
+              // إجمالي الصور المرئية (>40x40)
+              var allImages = Array.from(document.querySelectorAll('img'));
+              var visibleImages = allImages.filter(function(img) {
+                var r = img.getBoundingClientRect();
+                return r.width > 40 && r.height > 40;
+              }).length;
+              
+              // التحقق من زر الإرسال
+              var sendBtn = document.querySelector('[data-icon="wds-ic-send-filled"]') ||
+                            document.querySelector('[data-testid="wds-ic-send-filled"]') ||
+                            document.querySelector('span[data-icon="send"]') ||
+                            document.querySelector('[data-testid="send"]');
+              var sendBtnVisible = sendBtn ? sendBtn.getBoundingClientRect().width > 0 : false;
+              
+              // ── التحقق من ::after على حاويات المعاينة ──
+              var previewContainers = document.querySelectorAll(
+                'footer, footer[role="contentinfo"], ' +
+                'div[role="dialog"], div[aria-modal="true"], ' +
+                '[data-lexical-editor]'
+              );
+              var afterInfo = [];
+              Array.from(previewContainers).forEach(function(container, idx) {
+                var afterStyle = window.getComputedStyle(container, '::after');
+                if (afterStyle && afterStyle.content && 
+                    afterStyle.content !== 'none' && afterStyle.content !== 'normal') {
+                  afterInfo.push({
+                    container: container.tagName + '.' + (container.className || '').slice(0, 30),
+                    hasAfter: true,
+                    content: afterStyle.content.slice(0, 20)
+                  });
+                }
+              });
+              
+              return {
+                activeElement: activeTag,
+                activeClass: activeClass,
+                activeHTML: active ? active.outerHTML.slice(0, 300) : 'none',
+                footerBlobCount: footerBlobs,
+                dialogBlobCount: dialogBlobs,
+                totalBlobCount: allBlobs,
+                // معلومات جديدة
+                composerImageCount: composerImages,
+                visibleLargeImages: visibleImages,
+                sendButtonVisible: sendBtnVisible,
+                afterPseudoElements: afterInfo,
+                // HTML كامل للـ debug
+                blobImgsHTML: Array.from(document.querySelectorAll('img[src^="blob:"]')).map(img => img.outerHTML.slice(0, 200)),
+                containersHTML: Array.from(document.querySelectorAll('div[role="dialog"], div[aria-modal="true"], footer')).map(el => el.outerHTML.slice(0, 300))
+              };
+            })()
+          `);
+          console.log('[WA][NATIVE] DEBUG after paste:', JSON.stringify(debugInfo, null, 2));
+          
+          // screenshot للـ debug
+          try {
+            const debugScreenshot = await waNativeWin.webContents.capturePage();
+            const debugPath = `e:\\baraaq\\wa_debug_paste_attempt_${attempt}.png`;
+            require('fs').writeFileSync(debugPath, debugScreenshot.toPNG());
+            console.log('[WA][NATIVE] DEBUG screenshot saved to', debugPath);
+          } catch (e) {
+            console.warn('[WA][NATIVE] Failed to capture debug screenshot:', e.message);
+          }
+          // ─── END DEBUG ───
+
+          // التحقق من ظهور الصورة في المعاينة
+          imagePreviewCheck = await waitForActualImagePreview(waNativeWin);
+          console.log('[WA][NATIVE] Image preview check:', imagePreviewCheck);
+
+          // ✅ FALLBACK: إذا كان زر الإرسال ظاهر والنص موجود، افترض نجاح اللصق
+          if (imagePreviewCheck !== 'IMAGE_PREVIEW_FOUND') {
+            const visualCheck = await waNativeWin.webContents.executeJavaScript(`
+              (function() {
+                // التحقق من وجود زر الإرسال الأخضر
+                var sendBtn = document.querySelector('[data-icon="wds-ic-send-filled"]') ||
+                              document.querySelector('[data-testid="wds-ic-send-filled"]') ||
+                              document.querySelector('span[data-icon="send"]') ||
+                              document.querySelector('[data-testid="send"]');
+                if (!sendBtn) return false;
+                
+                var rect = sendBtn.getBoundingClientRect();
+                if (rect.width === 0 || rect.height === 0) return false;
+                
+                var style = window.getComputedStyle(sendBtn);
+                if (style.opacity === '0' || style.visibility === 'hidden') return false;
+                
+                // التحقق من أن الزر نشط (أخضر)
+                var color = style.color || style.fill || '';
+                var isActive = color.includes('rgb(37, 211, 102)') || 
+                               color.includes('rgb(255, 255, 255)') ||
+                               color.includes('#25D366') ||
+                               color.includes('25D366');
+                
+                // التحقق من وجود نص في المحرر
+                var editor = document.querySelector('div[contenteditable="true"]');
+                var hasText = editor && editor.textContent.trim().length > 0;
+                
+                return isActive && hasText;
+              })()
+            `);
+            
+            if (visualCheck) {
+              console.log('[WA][NATIVE] Visual check PASSED - assuming paste succeeded');
+              imagePreviewCheck = 'IMAGE_PREVIEW_FOUND';
+            } else {
+              console.log('[WA][NATIVE] Visual check FAILED');
+            }
+          }
+
+          if (imagePreviewCheck === 'IMAGE_PREVIEW_FOUND') break;
+
+          if (attempt < 3) {
+            console.warn(`[WA][NATIVE] No preview yet (attempt ${attempt}), refocusing composer and retrying...`);
+            // إعادة التركيز على حقل الإدخال
+            await waNativeWin.webContents.executeJavaScript(`
+              (function(){
+                var b = document.querySelector('footer div[contenteditable="true"]') ||
+                        document.querySelector('div[contenteditable="true"]');
+                if (b) { b.click(); b.focus(); }
+              })();
+            `);
+            await new Promise(r => setTimeout(r, 600));
+          }
         }
 
-        // إرسال: Enter أولاً ثم النقر على زر الإرسال
-        waNativeWin.webContents.sendInputEvent({type:'keyDown',keyCode:'Enter'});
-        waNativeWin.webContents.sendInputEvent({type:'char',keyCode:'Enter'});
-        waNativeWin.webContents.sendInputEvent({type:'keyUp',keyCode:'Enter'});
-        await new Promise(r=>setTimeout(r, 800));
+        // إذا لم تظهر الصورة بعد 3 محاولات، إيقاف الإرسال
+        if (imagePreviewCheck !== 'IMAGE_PREVIEW_FOUND') {
+          console.error('[WA][NATIVE] No real image preview found after 3 paste attempts. Abort sending.');
+          sendResult.success = false;
+          sendResult.error = 'Image preview not found after paste - focus or paste failed';
 
-        const clickResult = await waNativeWin.webContents.executeJavaScript(`
-          (function(){
-            var icon = document.querySelector('span[data-icon="send"]') ||
-                       document.querySelector('[data-testid="send"]') ||
-                       document.querySelector('span[data-icon="send-white"]') ||
-                       document.querySelector('[aria-label="Send"]') ||
-                       document.querySelector('[data-tab="11"]');
-            if(icon) {
-              var btn = icon.closest('div[role="button"]') || icon.closest('button') || icon.parentElement;
-              if(btn) {
-                btn.dispatchEvent(new MouseEvent('mousedown', {bubbles: true, cancelable: true, view: window}));
-                btn.dispatchEvent(new MouseEvent('mouseup', {bubbles: true, cancelable: true, view: window}));
-                btn.click();
-                return "CLICKED_SEND_BUTTON";
-              }
-              return "ICON_FOUND_BUT_NO_BUTTON_PARENT";
-            }
-            return "ICON_NOT_FOUND";
-          })();
+          // إخفاء النافذة إذا كانت مخفية أصلاً
+          if (wasHidden) {
+            waNativeWin.hide();
+          }
+          if (event && event.sender) event.sender.send('wa-send-result', sendResult);
+          return;
+        }
+
+        console.log('[WA][NATIVE] Image preview confirmed, waiting before click...');
+        await new Promise(r => setTimeout(r, 600));
+
+        // ✅ التحقق من أننا في وضع الصورة (media mode)
+        const isMediaMode = await waNativeWin.webContents.executeJavaScript(`
+          !!document.querySelector('[data-testid="media-caption-input-container"]') ||
+          !!document.querySelector('img[src^="blob:"][draggable="true"]')
         `);
+        
+        if (!isMediaMode) {
+          console.error('[WA][NATIVE] Not in media mode - aborting send');
+          sendResult.success = false;
+          sendResult.error = 'Not in media mode after paste';
+          if (wasHidden) waNativeWin.hide();
+          if (event && event.sender) event.sender.send('wa-send-result', sendResult);
+          return;
+        }
+        
+        console.log('[WA][NATIVE] Media mode confirmed ✓');
+
+        // ✅ كتابة النص كـ caption للصورة إذا كان هناك نص
+        if (data.text && data.text.trim()) {
+          console.log('[WA][NATIVE] Writing text as image caption...');
+          await new Promise(r => setTimeout(r, 500));
+          
+          // البحث عن حقل caption في وضع الوسائط
+          const captionWritten = await waNativeWin.webContents.executeJavaScript(`
+            (function() {
+              return new Promise(function(resolve) {
+                // البحث عن حقل caption في وضع الوسائط
+                var captionInput = document.querySelector('[data-testid="media-caption-input"]') ||
+                                  document.querySelector('div[contenteditable="true"][data-lexical-editor="true"]');
+                
+                if (!captionInput) {
+                  console.log('[WA][WEB] No caption input found');
+                  resolve(false);
+                  return;
+                }
+                
+                // التركيز على الحقل
+                captionInput.focus();
+                captionInput.click();
+                
+                setTimeout(function() {
+                  // كتابة النص باستخدام execCommand للتوافق الأفضل
+                  var text = ${JSON.stringify(data.text)};
+                  
+                  // تحديد كل النص الموجود أولاً
+                  document.execCommand('selectAll', false, null);
+                  
+                  setTimeout(function() {
+                    // حذف النص القديم وكتابة الجديد
+                    document.execCommand('delete', false, null);
+                    
+                    setTimeout(function() {
+                      // كتابة النص الجديد
+                      document.execCommand('insertText', false, text);
+                      
+                      // إطلاق الأحداث اللازمة
+                      var inputEvent = new InputEvent('input', { bubbles: true, cancelable: true });
+                      captionInput.dispatchEvent(inputEvent);
+                      
+                      console.log('[WA][WEB] Caption written:', text.substring(0, 50));
+                      resolve(true);
+                    }, 100);
+                  }, 100);
+                }, 200);
+              });
+            })()
+          `);
+          
+          if (captionWritten) {
+            console.log('[WA][NATIVE] Caption written successfully ✓');
+            await new Promise(r => setTimeout(r, 500));
+          } else {
+            console.warn('[WA][NATIVE] Failed to write caption, but continuing with send');
+          }
+        }
+
+        // ✅ انتظار بسيط ثم النقر مباشرة على زر الإرسال
+        console.log('[WA][NATIVE] Waiting before clicking send...');
+        await new Promise(r => setTimeout(r, 1000));
+
+        // الضغط على زر الإرسال مرة واحدة فقط
+        const clickResult = await clickSendButtonForImage(waNativeWin);
         console.log('[WA][NATIVE] Image Click Result:', clickResult);
-      } else {
-        await new Promise(r=>setTimeout(r,1000));
-        waNativeWin.webContents.sendInputEvent({type:'keyDown',keyCode:'Enter'});
-        waNativeWin.webContents.sendInputEvent({type:'char',keyCode:'Enter'});
-        waNativeWin.webContents.sendInputEvent({type:'keyUp',keyCode:'Enter'});
 
-        await new Promise(r=>setTimeout(r,1000));
-        const clickResultText = await waNativeWin.webContents.executeJavaScript(`
-          (function(){
-            var icon = document.querySelector('span[data-icon="send"]');
-            if(icon) {
-              var btn = icon.closest('button') || icon.closest('div[role="button"]') || icon.parentElement;
-              if(btn) {
-                btn.dispatchEvent(new MouseEvent('mousedown', {bubbles: true, cancelable: true, view: window}));
-                btn.dispatchEvent(new MouseEvent('mouseup', {bubbles: true, cancelable: true, view: window}));
-                btn.click();
-                return "CLICKED_SEND_BUTTON";
-              }
-              return "ICON_FOUND_BUT_NO_BUTTON_PARENT";
-            }
-            return "ICON_NOT_FOUND";
-          })();
-        `);
+        if (clickResult !== 'CLICKED_SEND_BUTTON') {
+          sendResult.success = false;
+          sendResult.error = `Send button click failed: ${clickResult}`;
+          if (wasHidden) waNativeWin.hide();
+          if (event && event.sender) event.sender.send('wa-send-result', sendResult);
+          return;
+        }
+
+        console.log('[WA][NATIVE] Waiting for message to finish uploading (clock icon check)...');
+        await waitForUploadToFinish(waNativeWin);
+      } else {
+        // مسار النص فقط - استخدام زر الإرسال بدلاً من sendInputEvent
+        await new Promise(r => setTimeout(r, 800));
+
+        const clickResultText = await clickSendButtonForText(waNativeWin);
         console.log('[WA][NATIVE] Text Click Result:', clickResultText);
+
+        if (clickResultText !== 'CLICKED_SEND_BUTTON') {
+          console.warn('[WA][NATIVE] Text send button click failed, falling back to Enter key...');
+          // fallback: استخدام Enter إذا فشل النقر
+          waNativeWin.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' });
+          waNativeWin.webContents.sendInputEvent({ type: 'char', keyCode: 'Enter' });
+          waNativeWin.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
+          await new Promise(r => setTimeout(r, 1000));
+        }
       }
 
-      console.log('[WA][NATIVE] Waiting for message to finish uploading (clock icon check)...');
-      await waNativeWin.webContents.executeJavaScript(`
-        new Promise(resolve => {
-          let n = 0;
-          const check = setInterval(() => {
-            n++;
-            const clock = document.querySelector('span[data-icon="msg-time"]');
-            const preview = document.querySelector('div[data-testid="image-preview"]');
-            if (!clock && !preview) {
-              clearInterval(check);
-              resolve(true);
-            } else if (n > 60) { // wait up to 30 seconds
-              clearInterval(check);
-              resolve(false);
-            }
-          }, 500);
-        });
-      `);
-      // لا نستخدم hide() هنا لأن إخفاء النافذة يجعل Chromium يُلغي أي loadURL تالي بـ ERR_ABORTED
-      // النافذة بالفعل شفافة (Opacity = 0) وموجودة خلف النافذة الرئيسية
-      
-      // أعد تركيز النافذة الرئيسية
       const mWins = BrowserWindow.getAllWindows().filter(w => w !== waNativeWin);
-      if (mWins.length > 0) mWins[0].focus();
+      if (mWins.length > 0) {
+        // إعادة التركيز على النافذة الرئيسية بعد انتهاء الإرسال
+        mWins[0].focus();
+      }
+
       console.log(`[WA][NATIVE] sent for ${phone}`);
-      // لا نعيد تحميل الصفحة — كل رسالة تالية تفتح URL جديداً بنفسها
-      // loadURL على نافذة مخفية يسبب ERR_ABORTED ويكسر قائمة الرسائل
-      
+
       sendResult.success = true;
-    } catch(e) { 
-      console.error('[WA][NATIVE]', e?.message); 
+      
+      // إخفاء النافذة إذا كانت مخفية أصلاً
+      if (wasHidden) {
+        waNativeWin.hide();
+      }
+    } catch (e) {
+      console.error('[WA][NATIVE]', e?.message);
       sendResult.success = false;
       sendResult.error = e?.message || 'Unknown error';
     }
+
     if (event && event.sender) {
       event.sender.send('wa-send-result', sendResult);
     }
     return;
   }
 
+  if (event && event.sender) {
+    event.sender.send('wa-send-result', sendResult);
+  }
   // ─── إذا كان الوضع غير معروف أو غير محدد وتوجد نافذة مخفية، استخدمها ───
   if (data.wa_mode === 'bot' && !waNativeWin) {
     console.warn('[WA][NATIVE] Bot mode selected but native window not initialized, falling through.');

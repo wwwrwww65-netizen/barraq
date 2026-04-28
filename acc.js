@@ -402,23 +402,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 _displayDesc: String(e.desc || '—'),
                 _displayPMethod: String(e.pMethod || 'cash'),
                 _displayId: String(e.id || 'EXP'),
+                _dateRef: e.timestamp || e.date,
             }));
             const normalizeHrTypeLabel = (type) => {
                 const t = String(type || '').trim();
                 if (t === 'عليه (سلفة/خصم)') return 'عليه (سلفة)';
                 return t || 'سند موظف';
             };
-            const hrAsExpenses = (db.hrExpenses || []).filter(hrAffectsLiquidity).map((h, hrIdx) => ({
-                ...h,
+            const hrAsExpenses = (db.hrExpenses || []).map((h, origIdx) => ({ h, origIdx })).filter(item => hrAffectsLiquidity(item.h)).map(item => ({
+                ...item.h,
                 _source: 'hr',
-                _hrIndex: hrIdx,
-                _textDesc: String(h.reason || h.type || ''),
-                _textCat: String(h.type || 'سند موظف'),
-                _displayCat: normalizeHrTypeLabel(h.type),
-                _displayDesc: (h.employee ? `الموظف: ${h.employee} — ` : '') + String(h.reason || 'سند صرف موظف'),
-                _displayPMethod: String(h.pMethod || 'cash'),
-                _displayId: String(h.id || ('HR-' + (h.timestamp || ''))),
-                _dateRef: h.timestamp || h.date,
+                _hrIndex: item.origIdx,
+                _textDesc: String(item.h.reason || item.h.type || ''),
+                _textCat: String(item.h.type || 'سند موظف'),
+                _displayCat: normalizeHrTypeLabel(item.h.type),
+                _displayDesc: (item.h.employee ? `الموظف: ${item.h.employee} — ` : '') + String(item.h.reason || 'سند صرف موظف'),
+                _displayPMethod: String(item.h.pMethod || 'cash'),
+                _displayId: String(item.h.voucherNo || item.h.id || ('HR-' + (item.h.timestamp || ''))),
+                _dateRef: item.h.timestamp || item.h.date,
             }));
             let filt = baseExpenses.concat(hrAsExpenses);
             filt = filt.filter(e => {
@@ -686,7 +687,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <td dir="ltr" style="text-align:right; font-weight:800; color:var(--accent-amber);">${rbStr}</td>
                             <td class="no-print">
                                 <div style="display:flex;gap:5px;align-items:center;">
-                                    ${e._source === 'expense' ? `<button class="btn-print-exp" data-id="${e.id}" title="طباعة السند" style="background:none;border:none;color:var(--accent-blue);font-size:18px;cursor:pointer;"><i class="ph ph-printer"></i></button>` : '<span style="font-size:11px;color:var(--text-muted);padding:2px 6px;border:1px solid var(--border-color);border-radius:6px;">سند موظف</span>'}
+                                    <button class="btn-download-exp" data-id="${e.id || ''}" data-source="${e._source}" data-hr-index="${e._source === 'hr' ? e._hrIndex : ''}" title="تحميل صورة السند" style="background:none;border:none;color:var(--accent-blue);font-size:18px;cursor:pointer;"><i class="ph ph-download-simple"></i></button>
+                                    ${e._source === 'hr' ? '<span style="font-size:11px;color:var(--text-muted);padding:2px 6px;border:1px solid var(--border-color);border-radius:6px;">سند موظف</span>' : ''}
                                     ${isEditable ? `<button class="btn-edit-exp" data-id="${e.id || ''}" data-source="${e._source}" data-hr-index="${e._source === 'hr' ? e._hrIndex : ''}" title="تعديل السند" style="background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:12px;"><i class="ph ph-pencil"></i> تعديل</button>` : ''}
                                     ${isEditable ? `<button class="btn-delete-exp" data-id="${e.id || ''}" data-source="${e._source}" data-hr-index="${e._source === 'hr' ? e._hrIndex : ''}" title="حذف السند" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:12px;"><i class="ph ph-trash"></i> حذف</button>` : ''}
                                 </div>
@@ -722,6 +724,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                             const expId = ev.currentTarget.dataset.id;
                             const expRec = (db.expenses || []).find(x => x.id === expId);
                             if (expRec) await deleteExpense(expRec);
+                        });
+                    });
+                    document.querySelectorAll('.btn-download-exp').forEach(btn => {
+                        btn.addEventListener('click', async (ev) => {
+                            const src = ev.currentTarget.dataset.source;
+                            if (src === 'hr') {
+                                const hrIdx = Number(ev.currentTarget.dataset.hrIndex);
+                                const hrRec = (db.hrExpenses || [])[hrIdx];
+                                if (hrRec) await downloadExpenseVoucherImage(hrRec, 'hr');
+                            } else {
+                                const expId = ev.currentTarget.dataset.id;
+                                const expRec = (db.expenses || []).find(x => x.id === expId);
+                                if (expRec) await downloadExpenseVoucherImage(expRec, 'expense');
+                            }
                         });
                     });
                 }, 0);
@@ -815,111 +831,140 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.getElementById('form-expense')?.addEventListener('submit', async (ev) => {
             ev.preventDefault();
+            
+            // منع الإرسال المزدوج - تعطيل الزر أثناء الحفظ
+            const submitBtn = ev.target.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري الحفظ...';
+            }
+            
             const newExp = {
                 id: 'EXP-' + Math.floor(Math.random()*9000+1000),
                 cat: document.getElementById('exp-category').value,
                 desc: document.getElementById('exp-desc').value,
                 amount: Number(document.getElementById('exp-amount').value),
                 date: document.getElementById('exp-date').value,
+                timestamp: Date.now(),
                 pMethod: document.getElementById('exp-payment').value
             };
-            const dbNow = await window.dbRead();
-            if(!dbNow.expenses) dbNow.expenses = [];
-            dbNow.expenses.push(newExp);
-            await window.dbWrite(dbNow);
+            
+            try {
+                const dbNow = await window.dbRead();
+                if(!dbNow.expenses) dbNow.expenses = [];
+                
+                // التأكد من عدم التكرار قبل الإضافة
+                const exists = dbNow.expenses.find(e => e.id === newExp.id);
+                if (!exists) {
+                    dbNow.expenses.push(newExp);
+                    await window.dbWrite(dbNow);
+                }
 
-            erpExpenses.push(newExp);
-            totalExp += newExp.amount;
-            if(kpiExp) kpiExp.innerText = xf(totalExp);
-
-            closeExpenseModal();
-            const formExp = document.getElementById('form-expense');
-            if (formExp) formExp.reset();
-            const expDateInput = document.getElementById('exp-date');
-            if (expDateInput) {
-                const tzD = new Date();
-                expDateInput.value = tzD.getFullYear() + '-' + String(tzD.getMonth() + 1).padStart(2, '0') + '-' + String(tzD.getDate()).padStart(2, '0');
-            }
-            renderExp();
-
-            // تأجيل التقاط الصورة والواتساب إلى إطار لاحق حتى تُغلق الواجهة ولا يتداخل html2canvas مع التركيز
-            setTimeout(() => {
-                (async () => {
-                    try {
-                        const waRaw = localStorage.getItem('wa_settings');
-                        if (!waRaw) return;
-                        const waSettings = JSON.parse(waRaw);
-                        if (!waSettings.expenses || !waSettings.admin) return;
-                        const adminPhone = String(waSettings.admin);
-
-                        const sysRaw = localStorage.getItem('restaurant_settings');
-                        const sysSet = sysRaw ? JSON.parse(sysRaw) : {};
-                        const todayStr = newExp.date || new Date().toISOString().split('T')[0];
-                        const displayDate = String(todayStr).replace(/-/g, '/');
-
-                        if(document.getElementById('ev-date')) document.getElementById('ev-date').innerText = displayDate;
-                        if(document.getElementById('ev-foot-date')) document.getElementById('ev-foot-date').innerText = displayDate;
-                        if(document.getElementById('ev-number')) document.getElementById('ev-number').innerText = newExp.id;
-                        if(document.getElementById('ev-cat')) document.getElementById('ev-cat').innerText = newExp.cat;
-                        if(document.getElementById('ev-amt')) document.getElementById('ev-amt').innerText = xf(newExp.amount);
-                        if(document.getElementById('ev-amt-balance')) document.getElementById('ev-amt-balance').innerText = xf(newExp.amount);
-                        if(document.getElementById('ev-desc')) document.getElementById('ev-desc').innerText = newExp.desc;
-                        if(document.getElementById('ev-pay')) document.getElementById('ev-pay').innerText = newExp.pMethod === 'cash' ? 'كاش' : 'حوالة بنكية';
-                        if(document.getElementById('ev-notes')) document.getElementById('ev-notes').innerText = newExp.desc || 'سند مصروف معتمد من النظام';
-                        if(document.getElementById('ev-rest-name')) document.getElementById('ev-rest-name').innerText = sysSet.name || '';
-                        if(document.getElementById('ev-branch')) document.getElementById('ev-branch').innerText = sysSet.branch || '';
-                        if(document.getElementById('ev-phone')) document.getElementById('ev-phone').innerText = sysSet.phone || '';
-                        const logoEl = document.getElementById('ev-logo');
-                        if(logoEl && sysSet.logo && sysSet.logo !== '1111.png') logoEl.src = sysSet.logo;
-
-                        const voucherEl = document.getElementById('exp-voucher-template');
-                        const container = document.getElementById('exp-voucher-container');
-                        if (!voucherEl || !container) return;
+                // إغلاق النافذة أولاً
+                closeExpenseModal();
+                const formExp = document.getElementById('form-expense');
+                if (formExp) formExp.reset();
+                const expDateInput = document.getElementById('exp-date');
+                if (expDateInput) {
+                    const tzD = new Date();
+                    expDateInput.value = tzD.getFullYear() + '-' + String(tzD.getMonth() + 1).padStart(2, '0') + '-' + String(tzD.getDate()).padStart(2, '0');
+                }
+                
+                // تأجيل إعادة التحميل لمنع الشاشة السوداء - إعطاء المتصفح وقت للتحديث
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        renderExp();
+                    });
+                });
+                
+                // واتساب - تأجيل أكثر لعدم التداخل مع renderExp
+                setTimeout(() => {
+                    (async () => {
                         try {
-                            container.style.position = 'fixed';
-                            container.style.top = '-9999px';
-                            container.style.left = '0';
-                            container.style.width = '840px';
-                            voucherEl.style.width = '800px';
-                            await new Promise(r => setTimeout(r, 150));
+                            const waRaw = localStorage.getItem('wa_settings');
+                            if (!waRaw) return;
+                            const waSettings = JSON.parse(waRaw);
+                            if (!waSettings.expenses || !waSettings.admin) return;
+                            const adminPhone = String(waSettings.admin);
 
-                            const canvas = await html2canvas(voucherEl, { scale:2, useCORS:true, backgroundColor:'#fff', width:800, windowWidth:1200, logging:false });
+                            const sysRaw = localStorage.getItem('restaurant_settings');
+                            const sysSet = sysRaw ? JSON.parse(sysRaw) : {};
+                            const todayStr = newExp.date || new Date().toISOString().split('T')[0];
+                            const displayDate = String(todayStr).replace(/-/g, '/');
 
-                            const fc = document.createElement('canvas'); fc.width=1600; fc.height=1132;
-                            const ctx2 = fc.getContext('2d');
-                            ctx2.fillStyle='#fff'; ctx2.fillRect(0,0,1600,1132);
-                            ctx2.drawImage(canvas, 0, 0, 1600, 1132);
-                            const imgData = fc.toDataURL('image/jpeg', 0.95);
+                            if(document.getElementById('ev-date')) document.getElementById('ev-date').innerText = displayDate;
+                            if(document.getElementById('ev-foot-date')) document.getElementById('ev-foot-date').innerText = displayDate;
+                            if(document.getElementById('ev-number')) document.getElementById('ev-number').innerText = newExp.id;
+                            if(document.getElementById('ev-cat')) document.getElementById('ev-cat').innerText = newExp.cat;
+                            if(document.getElementById('ev-amt')) document.getElementById('ev-amt').innerText = xf(newExp.amount);
+                            if(document.getElementById('ev-amt-balance')) document.getElementById('ev-amt-balance').innerText = xf(newExp.amount);
+                            if(document.getElementById('ev-desc')) document.getElementById('ev-desc').innerText = newExp.desc;
+                            if(document.getElementById('ev-pay')) document.getElementById('ev-pay').innerText = newExp.pMethod === 'cash' ? 'كاش' : 'حوالة بنكية';
+                            if(document.getElementById('ev-notes')) document.getElementById('ev-notes').innerText = newExp.desc || 'سند مصروف معتمد من النظام';
+                            if(document.getElementById('ev-rest-name')) document.getElementById('ev-rest-name').innerText = sysSet.name || '';
+                            if(document.getElementById('ev-branch')) document.getElementById('ev-branch').innerText = sysSet.branch || '';
+                            if(document.getElementById('ev-phone')) document.getElementById('ev-phone').innerText = sysSet.phone || '';
+                            const logoEl = document.getElementById('ev-logo');
+                            if(logoEl && sysSet.logo && sysSet.logo !== '1111.png') logoEl.src = sysSet.logo;
 
-                            const captionMsg = `سند مصروف — ${newExp.cat}\nالمبلغ: ${xf(newExp.amount)}\n${newExp.desc}`;
-                            const { ipcRenderer } = require('electron');
-                            const hubIp =
-                                typeof window.resolveWaHubIp === 'function'
-                                    ? window.resolveWaHubIp(waSettings)
-                                    : (waSettings.hubIp && String(waSettings.hubIp).trim()) || '';
-                            ipcRenderer.send('wa-send-message', {
-                                number: adminPhone,
-                                text: captionMsg,
-                                image: imgData,
-                                waHubIp: hubIp,
-                                wa_mode: localStorage.getItem('wa_mode') || 'browser'
-                            });
-                            console.log('Sent expense voucher image to admin:', adminPhone);
-                        } finally {
-                            container.style.position = 'absolute';
-                            container.style.top = '-9999px';
-                            container.style.left = '-9999px';
-                            container.style.width = '';
-                            voucherEl.style.width = '';
-                            document.querySelectorAll('iframe.html2canvas-container').forEach((f) => {
-                                try {
-                                    f.remove();
-                                } catch (_) { /* ignore */ }
-                            });
-                        }
-                    } catch (sqError) { console.error('Error sending expense WA voucher', sqError); }
-                })();
-            }, 0);
+                            const voucherEl = document.getElementById('exp-voucher-template');
+                            const container = document.getElementById('exp-voucher-container');
+                            if (!voucherEl || !container) return;
+                            try {
+                                container.style.position = 'fixed';
+                                container.style.top = '-9999px';
+                                container.style.left = '0';
+                                container.style.width = '840px';
+                                voucherEl.style.width = '800px';
+                                await new Promise(r => setTimeout(r, 150));
+
+                                const canvas = await html2canvas(voucherEl, { scale:2, useCORS:true, backgroundColor:'#fff', width:800, windowWidth:1200, logging:false });
+
+                                const fc = document.createElement('canvas'); fc.width=1600; fc.height=1132;
+                                const ctx2 = fc.getContext('2d');
+                                ctx2.fillStyle='#fff'; ctx2.fillRect(0,0,1600,1132);
+                                ctx2.drawImage(canvas, 0, 0, 1600, 1132);
+                                const imgData = fc.toDataURL('image/jpeg', 0.95);
+
+                                const captionMsg = `سند مصروف — ${newExp.cat}\nالمبلغ: ${xf(newExp.amount)}\n${newExp.desc}`;
+                                const { ipcRenderer } = require('electron');
+                                const hubIp =
+                                    typeof window.resolveWaHubIp === 'function'
+                                        ? window.resolveWaHubIp(waSettings)
+                                        : (waSettings.hubIp && String(waSettings.hubIp).trim()) || '';
+                                ipcRenderer.send('wa-send-message', {
+                                    number: adminPhone,
+                                    text: captionMsg,
+                                    image: imgData,
+                                    waHubIp: hubIp,
+                                    wa_mode: localStorage.getItem('wa_mode') || 'browser'
+                                });
+                                console.log('Sent expense voucher image to admin:', adminPhone);
+                            } finally {
+                                container.style.position = 'absolute';
+                                container.style.top = '-9999px';
+                                container.style.left = '-9999px';
+                                container.style.width = '';
+                                voucherEl.style.width = '';
+                                document.querySelectorAll('iframe.html2canvas-container').forEach((f) => {
+                                    try {
+                                        f.remove();
+                                    } catch (_) { /* ignore */ }
+                                });
+                            }
+                        } catch (sqError) { console.error('Error sending expense WA voucher', sqError); }
+                    })();
+                }, 300);
+            } catch (error) {
+                console.error('Error saving expense:', error);
+                alert('حدث خطأ أثناء حفظ سند الصرف');
+            } finally {
+                // إعادة تفعيل الزر
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="ph ph-check-circle"></i> اعتماد سند الصرف وحفظه';
+                }
+            }
         });
 
         document.getElementById('search-exp')?.addEventListener('input', renderExp);
@@ -927,6 +972,170 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('exp-date-from')?.addEventListener('change', renderExp);
         document.getElementById('exp-date-to')?.addEventListener('change', renderExp);
         renderExp();
+
+        // ═══════════════════════════════════════════════════
+        // 📥 DOWNLOAD EXPENSE IMAGE - تحميل صورة السند
+        // ═══════════════════════════════════════════════════
+        async function downloadExpenseVoucherImage(rec, source = 'expense') {
+            try {
+                const sysRaw = localStorage.getItem('restaurant_settings');
+                const sysSet = sysRaw ? JSON.parse(sysRaw) : {};
+                const todayStr = rec.date || new Date().toISOString().split('T')[0];
+                const displayDate = String(todayStr).replace(/-/g, '/');
+
+                let voucherEl, container;
+
+                if (source === 'hr') {
+                    voucherEl = document.getElementById('hr-voucher-template');
+                    container = document.getElementById('hr-voucher-container');
+                    
+                    const d = rec.timestamp ? new Date(rec.timestamp) : new Date();
+                    const displayDateHR = d.toISOString().split('T')[0].replace(/-/g, '/');
+                    
+                    if(document.getElementById('hr-v-date')) document.getElementById('hr-v-date').innerText = displayDateHR;
+                    if(document.getElementById('hr-v-bottom-date')) document.getElementById('hr-v-bottom-date').innerText = displayDateHR;
+                    if(document.getElementById('hr-v-number')) document.getElementById('hr-v-number').innerText = rec.voucherNo || ('HR-' + (rec.timestamp || ''));
+                    if(document.getElementById('hr-v-name')) document.getElementById('hr-v-name').innerText = rec.employee || '';
+                    
+                    const amtFmt = Number(rec.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    if(document.getElementById('hr-v-amt')) document.getElementById('hr-v-amt').innerText = amtFmt;
+                    if(document.getElementById('hr-v-amt-text')) document.getElementById('hr-v-amt-text').innerText = amtFmt;
+                    if(document.getElementById('hr-v-reason-text')) document.getElementById('hr-v-reason-text').innerText = rec.reason || '';
+                    if(document.getElementById('hr-v-notes')) document.getElementById('hr-v-notes').innerText = rec.reason || '';
+                    
+                    const typeStr = String(rec.type || '');
+                    const docTitle = document.getElementById('hr-v-doc-title');
+                    if (docTitle) {
+                        if (typeStr.includes('راتب')) docTitle.textContent = 'سند راتب';
+                        else if (typeStr.includes('مستحقات')) docTitle.textContent = 'سند صرف مستحقات';
+                        else if (typeStr.includes('خصم') || typeStr.includes('جزاء')) docTitle.textContent = 'سند خصم / جزاء';
+                        else if (typeStr.includes('سلفة') || typeStr.includes('عليه')) docTitle.textContent = 'سند سلفة';
+                        else if (typeStr.includes('مكافأة') || typeStr.includes('له')) docTitle.textContent = 'سند مكافأة';
+                        else docTitle.textContent = 'سند صرف';
+                    }
+
+                    const labelRecipient = document.getElementById('hr-v-label-recipient');
+                    const labelAmount = document.getElementById('hr-v-label-amount');
+                    const labelBalance = document.getElementById('hr-v-label-balance');
+                    
+                    if (typeStr.includes('خصم') || typeStr.includes('جزاء')) {
+                        if (labelRecipient) labelRecipient.textContent = 'يُخصم من الأخ :';
+                        if (labelAmount) labelAmount.textContent = 'مبلغ وقدره :';
+                        if (labelBalance) labelBalance.textContent = 'صافي الرصيد :';
+                    } else if (typeStr.includes('سلفة') || typeStr.includes('عليه')) {
+                        if (labelRecipient) labelRecipient.textContent = 'تم صرف للأخ :';
+                        if (labelAmount) labelAmount.textContent = 'سلفة بقيمة :';
+                        if (labelBalance) labelBalance.textContent = 'الرصيد المتبقي :';
+                    } else if (typeStr.includes('مكافأة') || typeStr.includes('له')) {
+                        if (labelRecipient) labelRecipient.textContent = 'يُصرف للأخ :';
+                        if (labelAmount) labelAmount.textContent = 'مكافأة بقيمة :';
+                        if (labelBalance) labelBalance.textContent = 'الرصيد لكم :';
+                    } else if (typeStr.includes('راتب')) {
+                        if (labelRecipient) labelRecipient.textContent = 'راتب الأخ :';
+                        if (labelAmount) labelAmount.textContent = 'مبلغ وقدره :';
+                        if (labelBalance) labelBalance.textContent = 'صافي الراتب :';
+                    } else {
+                        if (labelRecipient) labelRecipient.textContent = 'تم صرف للأخ :';
+                        if (labelAmount) labelAmount.textContent = 'مبلغ وقدره :';
+                        if (labelBalance) labelBalance.textContent = 'الرصيد لكم :';
+                    }
+
+                    // Balance calculation logic for UI
+                    let empBal = 0;
+                    if (typeof db !== 'undefined' && db.employees && rec.employee) {
+                        const emp = db.employees.find(e => e.name === rec.employee);
+                        const salary = Number(emp?.salary) || 0;
+                        const loans = Number(emp?.loans) || 0;
+                        empBal = Math.max(0, salary - loans);
+                    }
+                    const netFmt = empBal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    if(document.getElementById('hr-v-balance-text')) document.getElementById('hr-v-balance-text').innerText = netFmt;
+
+                    if(document.getElementById('hr-v-rest-name') && sysSet.name) document.getElementById('hr-v-rest-name').innerText = sysSet.name;
+                    if(document.getElementById('hr-v-branch') && sysSet.branch) document.getElementById('hr-v-branch').innerText = sysSet.branch;
+                    if(document.getElementById('hr-v-phone') && sysSet.phone) document.getElementById('hr-v-phone').innerText = sysSet.phone;
+                    const logoEl = document.getElementById('hr-v-logo');
+                    if(logoEl && sysSet.logo && sysSet.logo !== '1111.png') logoEl.src = sysSet.logo;
+
+                } else {
+                    voucherEl = document.getElementById('exp-voucher-template');
+                    container = document.getElementById('exp-voucher-container');
+
+                    if(document.getElementById('ev-date')) document.getElementById('ev-date').innerText = displayDate;
+                    if(document.getElementById('ev-foot-date')) document.getElementById('ev-foot-date').innerText = displayDate;
+                    if(document.getElementById('ev-number')) document.getElementById('ev-number').innerText = rec.id;
+                    if(document.getElementById('ev-cat')) document.getElementById('ev-cat').innerText = rec.cat;
+                    if(document.getElementById('ev-amt')) document.getElementById('ev-amt').innerText = window.xf ? window.xf(rec.amount) : rec.amount;
+                    if(document.getElementById('ev-amt-balance')) document.getElementById('ev-amt-balance').innerText = window.xf ? window.xf(rec.amount) : rec.amount;
+                    if(document.getElementById('ev-desc')) document.getElementById('ev-desc').innerText = rec.desc;
+                    if(document.getElementById('ev-pay')) document.getElementById('ev-pay').innerText = rec.pMethod === 'cash' ? 'كاش' : 'حوالة بنكية';
+                    if(document.getElementById('ev-notes')) document.getElementById('ev-notes').innerText = rec.desc || 'سند مصروف معتمد من النظام';
+                    
+                    if(document.getElementById('ev-rest-name') && sysSet.name) document.getElementById('ev-rest-name').innerText = sysSet.name;
+                    if(document.getElementById('ev-branch') && sysSet.branch) document.getElementById('ev-branch').innerText = sysSet.branch;
+                    if(document.getElementById('ev-phone') && sysSet.phone) document.getElementById('ev-phone').innerText = sysSet.phone;
+                    const logoEl = document.getElementById('ev-logo');
+                    if(logoEl && sysSet.logo && sysSet.logo !== '1111.png') logoEl.src = sysSet.logo;
+                }
+                if (!voucherEl || !container) {
+                    alert('قالب السند غير موجود!');
+                    return;
+                }
+
+                container.style.position = 'fixed';
+                container.style.top = '-9999px';
+                container.style.left = '0';
+                container.style.width = '840px';
+                voucherEl.style.width = '800px';
+                await new Promise(r => setTimeout(r, 150));
+
+                const canvas = await html2canvas(voucherEl, { scale:2, useCORS:true, backgroundColor:'#fff', width:800, windowWidth:1200, logging:false });
+
+                const fc = document.createElement('canvas'); 
+                fc.width = 1600; 
+                fc.height = 1132;
+                const ctx2 = fc.getContext('2d');
+                ctx2.fillStyle = '#fff'; 
+                ctx2.fillRect(0,0,1600,1132);
+                ctx2.drawImage(canvas, 0, 0, 1600, 1132);
+                
+                const imgData = fc.toDataURL('image/jpeg', 0.95);
+                
+                const link = document.createElement('a');
+                const safeId = source === 'hr' ? (rec.id || ('HR-' + (rec.timestamp || ''))) : rec.id;
+                link.download = `سند_صرف_${safeId}.jpg`;
+                link.href = imgData;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+            } catch (err) {
+                console.error('Error downloading voucher image', err);
+                alert('حدث خطأ أثناء تحميل صورة السند.');
+            } finally {
+                const expContainer = document.getElementById('exp-voucher-container');
+                const expVoucherEl = document.getElementById('exp-voucher-template');
+                const hrContainer = document.getElementById('hr-voucher-container');
+                const hrVoucherEl = document.getElementById('hr-voucher-template');
+                
+                [expContainer, hrContainer].forEach(c => {
+                    if (c) {
+                        c.style.position = 'absolute';
+                        c.style.top = '-9999px';
+                        c.style.left = '-9999px';
+                        c.style.width = '';
+                    }
+                });
+                
+                [expVoucherEl, hrVoucherEl].forEach(v => {
+                    if (v) v.style.width = '';
+                });
+                
+                document.querySelectorAll('iframe.html2canvas-container').forEach((f) => {
+                    try { f.remove(); } catch (_) { }
+                });
+            }
+        }
 
         // ═══════════════════════════════════════════════════
         // ❌ DELETE EXPENSE - حذف سند المصروف
@@ -937,19 +1146,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             );
             if (!confirmed) return;
 
-            const dbNow = await window.dbRead();
-            if (!dbNow.expenses) dbNow.expenses = [];
-            const idx = dbNow.expenses.findIndex(x => x.id === expRec.id);
-            if (idx > -1) dbNow.expenses.splice(idx, 1);
-            await window.dbWrite(dbNow);
-            db.expenses = dbNow.expenses;
+            try {
+                const dbNow = await window.dbRead();
+                if (!dbNow.expenses) dbNow.expenses = [];
+                const idx = dbNow.expenses.findIndex(x => x.id === expRec.id);
+                if (idx > -1) dbNow.expenses.splice(idx, 1);
+                await window.dbWrite(dbNow);
+                db.expenses = dbNow.expenses;
 
-            // Update local totals
-            totalExp -= (Number(expRec.amount) || 0);
-            if (kpiExp) kpiExp.innerText = xf(totalExp);
+                // Update local totals
+                totalExp -= (Number(expRec.amount) || 0);
+                if (kpiExp) kpiExp.innerText = xf(totalExp);
 
-            renderExp();
-            alert(`✅ تم حذف السند ${expRec.id} بنجاح.\nالمبلغ ${xf(expRec.amount)} تم عكسه من الرصيد.`);
+                // تأجيل إعادة التحميل لمنع الشاشة السوداء
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        renderExp();
+                        alert(`✅ تم حذف السند ${expRec.id} بنجاح.\nالمبلغ ${xf(expRec.amount)} تم عكسه من الرصيد.`);
+                    });
+                });
+            } catch (error) {
+                console.error('Error deleting expense:', error);
+                alert('حدث خطأ أثناء حذف السند');
+            }
         }
 
         function hrAffectsLoans(type) {
@@ -965,17 +1184,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         async function deleteHrExpense(hrRec, hrIdx) {
             const ok = confirm(`هل أنت متأكد من حذف سند الموظف؟\n\nالموظف: ${hrRec.employee}\nالنوع: ${hrRec.type}\nالمبلغ: ${xf(hrRec.amount)}`);
             if (!ok) return;
-            const dbNow = await window.dbRead();
-            if (!dbNow.hrExpenses) dbNow.hrExpenses = [];
-            if (hrIdx < 0 || hrIdx >= dbNow.hrExpenses.length) return;
-            const oldRec = dbNow.hrExpenses[hrIdx];
-            adjustHrEmployeeLoans(oldRec, -1);
-            dbNow.hrExpenses.splice(hrIdx, 1);
-            await window.dbWrite(dbNow);
-            db.hrExpenses = dbNow.hrExpenses;
-            db.employees = dbNow.employees || db.employees || [];
-            renderExp();
-            alert('✅ تم حذف سند الموظف بنجاح.');
+            
+            try {
+                const dbNow = await window.dbRead();
+                if (!dbNow.hrExpenses) dbNow.hrExpenses = [];
+                if (hrIdx < 0 || hrIdx >= dbNow.hrExpenses.length) return;
+                const oldRec = dbNow.hrExpenses[hrIdx];
+                adjustHrEmployeeLoans(oldRec, -1);
+                dbNow.hrExpenses.splice(hrIdx, 1);
+                await window.dbWrite(dbNow);
+                db.hrExpenses = dbNow.hrExpenses;
+                db.employees = dbNow.employees || db.employees || [];
+                
+                // تأجيل إعادة التحميل لمنع الشاشة السوداء
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        renderExp();
+                        alert('✅ تم حذف سند الموظف بنجاح.');
+                    });
+                });
+            } catch (error) {
+                console.error('Error deleting HR expense:', error);
+                alert('حدث خطأ أثناء حذف سند الموظف');
+            }
         }
 
         // ═══════════════════════════════════════════════════
@@ -1027,61 +1258,85 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('form-edit-expense')?.addEventListener('submit', async (ev) => {
             ev.preventDefault();
             if (!_editingExpense && _editingHrIndex === null) return;
-
-            const newCat = document.getElementById('edit-exp-category').value.trim();
-            const newDesc = document.getElementById('edit-exp-desc').value.trim();
-            const newAmount = Number(document.getElementById('edit-exp-amount').value);
-            const newDate = document.getElementById('edit-exp-date').value;
-            const newPMethod = document.getElementById('edit-exp-payment').value;
-
-            if (!newCat || !newDesc || newAmount <= 0 || !newDate) {
-                alert('يرجى ملء جميع الحقول بشكل صحيح!');
-                return;
+            
+            // منع الإرسال المزدوج
+            const submitBtn = ev.target.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري الحفظ...';
             }
 
-            const dbNow = await window.dbRead();
-            if (!dbNow.expenses) dbNow.expenses = [];
-            if (!dbNow.hrExpenses) dbNow.hrExpenses = [];
+            try {
+                const newCat = document.getElementById('edit-exp-category').value.trim();
+                const newDesc = document.getElementById('edit-exp-desc').value.trim();
+                const newAmount = Number(document.getElementById('edit-exp-amount').value);
+                const newDate = document.getElementById('edit-exp-date').value;
+                const newPMethod = document.getElementById('edit-exp-payment').value;
 
-            if (_editingExpense) {
-                const recInDb = dbNow.expenses.find(x => x.id === _editingExpense.id);
-                if (!recInDb) { alert('لم يُعثر على السند في قاعدة البيانات!'); return; }
-                const oldAmount = Number(recInDb.amount) || 0;
-                totalExp = totalExp - oldAmount + newAmount;
-                if (kpiExp) kpiExp.innerText = xf(totalExp);
-                recInDb.cat = newCat;
-                recInDb.desc = newDesc;
-                recInDb.amount = newAmount;
-                recInDb.date = newDate;
-                recInDb.pMethod = newPMethod;
-                recInDb.lastModified = new Date().toISOString();
-            } else {
-                const hrRec = dbNow.hrExpenses[_editingHrIndex];
-                if (!hrRec) { alert('لم يُعثر على سند الموظف!'); return; }
-                const oldHr = { ...hrRec };
-                adjustHrEmployeeLoans(oldHr, -1);
-                hrRec.type = newCat;
-                hrRec.reason = newDesc;
-                hrRec.amount = newAmount;
-                hrRec.date = newDate;
-                hrRec.pMethod = newPMethod;
-                hrRec.lastModified = new Date().toISOString();
-                adjustHrEmployeeLoans(hrRec, 1);
+                if (!newCat || !newDesc || newAmount <= 0 || !newDate) {
+                    alert('يرجى ملء جميع الحقول بشكل صحيح!');
+                    return;
+                }
+
+                const dbNow = await window.dbRead();
+                if (!dbNow.expenses) dbNow.expenses = [];
+                if (!dbNow.hrExpenses) dbNow.hrExpenses = [];
+
+                if (_editingExpense) {
+                    const recInDb = dbNow.expenses.find(x => x.id === _editingExpense.id);
+                    if (!recInDb) { alert('لم يُعثر على السند في قاعدة البيانات!'); return; }
+                    const oldAmount = Number(recInDb.amount) || 0;
+                    totalExp = totalExp - oldAmount + newAmount;
+                    if (kpiExp) kpiExp.innerText = xf(totalExp);
+                    recInDb.cat = newCat;
+                    recInDb.desc = newDesc;
+                    recInDb.amount = newAmount;
+                    recInDb.date = newDate;
+                    recInDb.pMethod = newPMethod;
+                    recInDb.lastModified = new Date().toISOString();
+                } else {
+                    const hrRec = dbNow.hrExpenses[_editingHrIndex];
+                    if (!hrRec) { alert('لم يُعثر على سند الموظف!'); return; }
+                    const oldHr = { ...hrRec };
+                    adjustHrEmployeeLoans(oldHr, -1);
+                    hrRec.type = newCat;
+                    hrRec.reason = newDesc;
+                    hrRec.amount = newAmount;
+                    hrRec.date = newDate;
+                    hrRec.pMethod = newPMethod;
+                    hrRec.lastModified = new Date().toISOString();
+                    adjustHrEmployeeLoans(hrRec, 1);
+                }
+
+                await window.dbWrite(dbNow);
+                db.expenses = dbNow.expenses;
+                db.hrExpenses = dbNow.hrExpenses;
+                db.employees = dbNow.employees || db.employees || [];
+
+                // Close modal
+                const m = document.getElementById('editExpenseModal');
+                if (m) { m.classList.remove('active'); m.setAttribute('inert', ''); }
+                _editingExpense = null;
+                _editingHrIndex = null;
+
+                // تأجيل إعادة التحميل لمنع الشاشة السوداء
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        renderExp();
+                        const recId = _editingExpense ? _editingExpense.id : ('HR-' + _editingHrIndex);
+                        alert(`✅ تم تعديل السند بنجاح وتحديث جميع البيانات المرتبطة.`);
+                    });
+                });
+            } catch (error) {
+                console.error('Error editing expense:', error);
+                alert('حدث خطأ أثناء تعديل السند');
+            } finally {
+                // إعادة تفعيل الزر
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="ph ph-check-circle"></i> حفظ التعديلات';
+                }
             }
-
-            await window.dbWrite(dbNow);
-            db.expenses = dbNow.expenses;
-            db.hrExpenses = dbNow.hrExpenses;
-            db.employees = dbNow.employees || db.employees || [];
-
-            // Close modal
-            const m = document.getElementById('editExpenseModal');
-            if (m) { m.classList.remove('active'); m.setAttribute('inert', ''); }
-            _editingExpense = null;
-            _editingHrIndex = null;
-
-            renderExp();
-            alert(`✅ تم تعديل السند ${recInDb.id} بنجاح وتحديث جميع البيانات المرتبطة.`);
         });
     }
 

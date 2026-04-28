@@ -232,50 +232,98 @@
 
         document.getElementById('form-bank-trx')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            let type = document.getElementById('bm-type').value;
-            if (type === 'transfer') type = document.getElementById('bm-transfer-dir').value;
+            
+            // منع الإرسال المزدوج
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري الحفظ...';
+            }
+            
+            try {
+                let type = document.getElementById('bm-type').value;
+                if (type === 'transfer') type = document.getElementById('bm-transfer-dir').value;
 
-            const trx = {
-                id: 'TRX-' + Math.floor(Math.random() * 90000 + 10000),
-                type,
-                amount: Number(document.getElementById('bm-amount').value),
-                desc: document.getElementById('bm-desc').value,
-                date: new Date().toISOString(),
-            };
+                const trx = {
+                    id: 'TRX-' + Math.floor(Math.random() * 90000 + 10000),
+                    type,
+                    amount: Number(document.getElementById('bm-amount').value),
+                    desc: document.getElementById('bm-desc').value,
+                    date: new Date().toISOString(),
+                };
 
-            const db = await window.dbRead();
-            if (!db.bankTransfers) db.bankTransfers = [];
-            db.bankTransfers.push(trx);
-            await window.dbWrite(db);
-            document.getElementById('bank-modal').classList.remove('active');
-            await refreshLiquidity();
+                const db = await window.dbRead();
+                if (!db.bankTransfers) db.bankTransfers = [];
+                db.bankTransfers.push(trx);
+                await window.dbWrite(db);
+                document.getElementById('bank-modal').classList.remove('active');
+                
+                // تأجيل إعادة التحميل لمنع الشاشة السوداء
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        refreshLiquidity();
+                    });
+                });
+            } catch (error) {
+                console.error('Error saving bank transaction:', error);
+                alert('حدث خطأ أثناء حفظ العملية');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="ph ph-check-circle"></i> حفظ العملية';
+                }
+            }
         });
 
         document.getElementById('form-other-income')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const amount = Number(document.getElementById('oi-amount').value);
-            const desc = document.getElementById('oi-desc').value.trim();
-            const pMethod = document.getElementById('oi-pmethod').value === 'bank' ? 'bank' : 'cash';
-            if (!amount || amount <= 0 || !desc) {
-                alert('أدخل مبلاً صحيحاً ووصفاً');
-                return;
+            
+            // منع الإرسال المزدوج
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري الحفظ...';
             }
-            const now = new Date();
-            const row = {
-                id: 'OI-' + Math.floor(Math.random() * 90000 + 10000),
-                amount,
-                desc,
-                pMethod,
-                date: now.toISOString().split('T')[0],
-                timestamp: now.getTime(),
-            };
-            const db = await window.dbRead();
-            if (!db.otherIncome) db.otherIncome = [];
-            db.otherIncome.push(row);
-            await window.dbWrite(db);
-            document.getElementById('other-income-modal').classList.remove('active');
-            e.target.reset();
-            await refreshLiquidity();
+            
+            try {
+                const amount = Number(document.getElementById('oi-amount').value);
+                const desc = document.getElementById('oi-desc').value.trim();
+                const pMethod = document.getElementById('oi-pmethod').value === 'bank' ? 'bank' : 'cash';
+                if (!amount || amount <= 0 || !desc) {
+                    alert('أدخل مبلاً صحيحاً ووصفاً');
+                    return;
+                }
+                const now = new Date();
+                const row = {
+                    id: 'OI-' + Math.floor(Math.random() * 90000 + 10000),
+                    amount,
+                    desc,
+                    pMethod,
+                    date: now.toISOString().split('T')[0],
+                    timestamp: now.getTime(),
+                };
+                const db = await window.dbRead();
+                if (!db.otherIncome) db.otherIncome = [];
+                db.otherIncome.push(row);
+                await window.dbWrite(db);
+                document.getElementById('other-income-modal').classList.remove('active');
+                e.target.reset();
+                
+                // تأجيل إعادة التحميل لمنع الشاشة السوداء
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        refreshLiquidity();
+                    });
+                });
+            } catch (error) {
+                console.error('Error saving other income:', error);
+                alert('حدث خطأ أثناء حفظ الإيراد');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="ph ph-check-circle"></i> حفظ الإيراد';
+                }
+            }
         });
 
         document.getElementById('btn-open-other-income')?.addEventListener('click', () => {

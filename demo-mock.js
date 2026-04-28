@@ -116,7 +116,7 @@ window.exportPageToPDF = async function(filename = 'تقرير.pdf') {
         const { ipcRenderer } = require('electron');
         if (ipcRenderer && ipcRenderer.invoke) {
             try {
-                // Trigger CSS print layout logic
+                // Trigger CSS print layout logic (handles white background via @media print)
                 window.dispatchEvent(new Event('beforeprint'));
                 
                 const res = await ipcRenderer.invoke('export-pdf', filename);
@@ -124,7 +124,7 @@ window.exportPageToPDF = async function(filename = 'تقرير.pdf') {
                 // Cleanup CSS print layout logic
                 const header = document.getElementById('global-print-header');
                 if(header) {
-                    header.remove(); // or window.dispatchEvent(new Event('afterprint')); but simple remove is fine
+                    header.remove();
                 }
                 
                 if (res && res.success) {
@@ -192,28 +192,35 @@ window.addEventListener('beforeprint', () => {
     });
     
     header.innerHTML = `
-        <div style="width:100%; display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #0f172a !important; padding-bottom:20px; margin-bottom:25px; background:#fff !important; font-family: 'Cairo', sans-serif;">
+        <div style="width:100%; display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #0f172a !important; padding:15px 30px 20px 30px; margin-bottom:25px; background:#fff !important; font-family: 'Cairo', sans-serif;">
             
-            <div style="text-align:right; width:33%;">
-                <h1 style="margin:0; font-size:28px; font-weight:900; color:#0f172a !important; line-height:1.2;">${sys.name || 'هـــش HASH'}</h1>
-                <div style="margin-top:8px; display:flex; flex-direction:column; gap:2px;">
-                    <p style="margin:0; font-size:16px; font-weight:700; color:#475569 !important;">${sys.branch || 'الفرع الرئيسي'}</p>
-                    <p style="margin:0; font-size:16px; font-weight:700; color:#475569 !important;" dir="ltr">${sys.phone || ''}</p>
+            <!-- Left Section: Restaurant Info -->
+            <div style="text-align:right; width:35%; padding-right:15px;">
+                <h1 style="margin:0 0 10px 0; font-size:26px; font-weight:900; color:#0f172a !important; line-height:1.2;">${sys.name || 'هـــش HASH'}</h1>
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                    ${sys.branch ? `<p style="margin:0; font-size:14px; font-weight:600; color:#475569 !important;"><i class="ph ph-map-pin" style="font-size:14px;"></i> ${sys.branch}</p>` : ''}
+                    ${sys.phone ? `<p style="margin:0; font-size:14px; font-weight:600; color:#475569 !important;" dir="ltr"><i class="ph ph-phone" style="font-size:14px;"></i> ${sys.phone}</p>` : ''}
+                    ${sys.tax ? `<p style="margin:0; font-size:13px; font-weight:600; color:#64748b !important;">الرقم الضريبي: <span dir="ltr">${sys.tax}</span></p>` : ''}
+                    ${sys.whatsapp ? `<p style="margin:0; font-size:13px; font-weight:600; color:#64748b !important;" dir="ltr"><i class="ph ph-whatsapp-logo" style="font-size:14px;"></i> ${sys.whatsapp}</p>` : ''}
+                    ${sys.footer ? `<p style="margin:5px 0 0 0; font-size:12px; font-weight:500; color:#94a3b8 !important; font-style:italic;">${sys.footer}</p>` : ''}
                 </div>
             </div>
             
-            <div style="text-align:center; width:33%; display:flex; flex-direction:column; justify-content:center; align-items:center;">
-                <img src="${logoSrc}" style="width:auto;height:auto;max-height:120px;max-width:280px;object-fit:contain;margin-bottom:12px;" onerror="this.src='placeholder.svg'">
-                <div style="background:#f8fafc !important; padding:6px 20px; border:2px solid #cbd5e1 !important; border-radius:25px;">
-                    <span style="font-size:17px; font-weight:800; color:#0f172a !important;">${pageTitle}</span>
+            <!-- Center Section: Logo & Report Title -->
+            <div style="text-align:center; width:30%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:0 10px;">
+                <img src="${logoSrc}" style="width:auto;height:auto;max-height:110px;max-width:250px;object-fit:contain;margin-bottom:10px;" onerror="this.src='placeholder.svg'">
+                <div style="background:#f8fafc !important; padding:8px 24px; border:2px solid #cbd5e1 !important; border-radius:25px; box-shadow:0 2px 8px rgba(0,0,0,0.05) !important;">
+                    <span style="font-size:16px; font-weight:800; color:#0f172a !important;">${pageTitle}</span>
                     ${periodInfo}
                 </div>
             </div>
             
-            <div style="text-align:left; width:33%;">
-                <div style="border:2px solid #cbd5e1 !important; padding:12px 16px; border-radius:8px; display:inline-block; text-align:right; background:#f8fafc !important;">
-                    <p style="margin:0 0 6px; font-size:13px; font-weight:800; color:#475569 !important;">Date & Time / تاريخ التصدير:</p>
-                    <p style="margin:0; font-weight:900; font-size:16px; color:#0f172a !important;" dir="ltr">${dateStr}</p>
+            <!-- Right Section: Export Date/Time -->
+            <div style="text-align:left; width:35%; padding-left:15px;">
+                <div style="border:2px solid #cbd5e1 !important; padding:14px 18px; border-radius:10px; display:inline-block; text-align:right; background:#f8fafc !important; box-shadow:0 2px 8px rgba(0,0,0,0.05) !important;">
+                    <p style="margin:0 0 8px; font-size:12px; font-weight:700; color:#64748b !important; text-transform:uppercase; letter-spacing:0.5px;">تاريخ ووقت التصدير</p>
+                    <p style="margin:0; font-weight:900; font-size:15px; color:#0f172a !important;" dir="ltr">${dateStr}</p>
+                    ${sys.taxRate ? `<p style="margin:6px 0 0 0; font-size:12px; font-weight:600; color:#64748b !important;">نسبة الضريبة: ${sys.taxRate}%</p>` : ''}
                 </div>
             </div>
             

@@ -361,9 +361,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             await window.dbWrite(dbData);
             modal.remove();
-            loadData();
             
-            showNotification(`تم استلام ${formatCurrency(order.total)} - تم إنشاء سند قبض`, 'success');
+            // تأجيل إعادة التحميل لمنع الشاشة السوداء
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    loadData();
+                    showNotification(`تم استلام ${formatCurrency(order.total)} - تم إنشاء سند قبض`, 'success');
+                });
+            });
             
             setTimeout(() => {
                 if (typeof generateAndDownloadVoucher === 'function') {
@@ -541,9 +546,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             await window.dbWrite(dbData);
             closeBulkReceiveModal();
-            loadData();
             
-            showNotification(`تم استلام ${formatCurrency(amount)} - تم إنشاء سند قبض`, 'success');
+            // تأجيل إعادة التحميل لمنع الشاشة السوداء
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    loadData();
+                    showNotification(`تم استلام ${formatCurrency(amount)} - تم إنشاء سند قبض`, 'success');
+                });
+            });
             
             setTimeout(() => {
                 if (typeof generateAndDownloadVoucher === 'function') {

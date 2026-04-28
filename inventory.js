@@ -734,56 +734,80 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (formTransfer) {
         formTransfer.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const fromWh = document.getElementById('trans-from').value;
-            const toWh = document.getElementById('trans-to').value;
-            const tSku = document.getElementById('trans-sku').value;
-            const tQty = Number(document.getElementById('trans-qty').value);
-
-            if (fromWh === toWh) {
-                alert('لا يمكن التحويل لنفس المستودع!');
-                return;
+            
+            // منع الإرسال المزدوج
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري التحويل...';
             }
+            
+            try {
+                const fromWh = document.getElementById('trans-from').value;
+                const toWh = document.getElementById('trans-to').value;
+                const tSku = document.getElementById('trans-sku').value;
+                const tQty = Number(document.getElementById('trans-qty').value);
 
-            const srcIdx = erpItems.findIndex((it) => it.sku === tSku && whNorm(it.warehouseId) === fromWh);
-            if (srcIdx === -1) return;
+                if (fromWh === toWh) {
+                    alert('لا يمكن التحويل لنفس المستودع!');
+                    return;
+                }
 
-            if (erpItems[srcIdx].qty < tQty) {
-                alert('الكمية في المصدر لا تكفي للتحويل!');
-                return;
+                const srcIdx = erpItems.findIndex((it) => it.sku === tSku && whNorm(it.warehouseId) === fromWh);
+                if (srcIdx === -1) return;
+
+                if (erpItems[srcIdx].qty < tQty) {
+                    alert('الكمية في المصدر لا تكفي للتحويل!');
+                    return;
+                }
+
+                erpItems[srcIdx].qty -= tQty;
+
+                const dstIdx = erpItems.findIndex((it) => it.sku === tSku && whNorm(it.warehouseId) === toWh);
+                if (dstIdx !== -1) {
+                    erpItems[dstIdx].qty += tQty;
+                } else {
+                    const newItem = { ...erpItems[srcIdx] };
+                    newItem.warehouseId = toWh;
+                    newItem.qty = tQty;
+                    erpItems.push(newItem);
+                }
+
+                const newTxId = 'TRF-' + Math.floor(Math.random() * 10000);
+                erpTx.push({
+                    id: newTxId,
+                    type: 'transfer',
+                    total: tQty * erpItems[srcIdx].cost,
+                    date: Date.now(),
+                    fromWh,
+                    toWh,
+                    sku: tSku
+                });
+
+                db.inventory = erpItems;
+                db.inventoryTx = erpTx;
+                await saveDB(db);
+
+                closeModal('transferModal');
+                formTransfer.reset();
+                
+                // تأجيل إعادة التحميل لمنع الشاشة السوداء
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        renderTable();
+                        renderKPIs();
+                        alert('تم تحويل البضاعة بنجاح وتسجيل سند التحويل!');
+                    });
+                });
+            } catch (error) {
+                console.error('Error transferring inventory:', error);
+                alert('حدث خطأ أثناء التحويل');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="ph ph-check-circle"></i> تأكيد التحويل';
+                }
             }
-
-            erpItems[srcIdx].qty -= tQty;
-
-            const dstIdx = erpItems.findIndex((it) => it.sku === tSku && whNorm(it.warehouseId) === toWh);
-            if (dstIdx !== -1) {
-                erpItems[dstIdx].qty += tQty;
-            } else {
-                const newItem = { ...erpItems[srcIdx] };
-                newItem.warehouseId = toWh;
-                newItem.qty = tQty;
-                erpItems.push(newItem);
-            }
-
-            const newTxId = 'TRF-' + Math.floor(Math.random() * 10000);
-            erpTx.push({
-                id: newTxId,
-                type: 'transfer',
-                total: tQty * erpItems[srcIdx].cost,
-                date: Date.now(),
-                fromWh,
-                toWh,
-                sku: tSku
-            });
-
-            db.inventory = erpItems;
-            db.inventoryTx = erpTx;
-            await saveDB(db);
-
-            closeModal('transferModal');
-            renderTable();
-            renderKPIs();
-            formTransfer.reset();
-            alert('تم تحويل البضاعة بنجاح وتسجيل سند التحويل!');
         });
     }
 
@@ -791,42 +815,66 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (formItem) {
         formItem.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const editSku = document.getElementById('item-edit-sku').value.trim();
-            const editWh = document.getElementById('item-edit-wh').value.trim();
-
-            if (editSku) {
-                const idx = findItemIndex(editSku, editWh || currentWH);
-                if (idx === -1) {
-                    alert('تعذر العثور على الصنف للتعديل.');
-                    return;
-                }
-                erpItems[idx].name = document.getElementById('item-name').value;
-                erpItems[idx].category = document.getElementById('item-cat').value;
-                erpItems[idx].unit = document.getElementById('item-unit').value;
-                erpItems[idx].cost = Number(document.getElementById('item-cost').value);
-                erpItems[idx].qty = Number(document.getElementById('item-qty').value);
-                erpItems[idx].minQty = Number(document.getElementById('item-min').value);
-            } else {
-                const newItem = {
-                    sku: 'SKU-' + Math.floor(1000 + Math.random() * 9000),
-                    name: document.getElementById('item-name').value,
-                    category: document.getElementById('item-cat').value,
-                    unit: document.getElementById('item-unit').value,
-                    cost: Number(document.getElementById('item-cost').value),
-                    qty: Number(document.getElementById('item-qty').value),
-                    minQty: Number(document.getElementById('item-min').value),
-                    warehouseId: currentWH
-                };
-                erpItems.push(newItem);
+            
+            // منع الإرسال المزدوج
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري الحفظ...';
             }
+            
+            try {
+                const editSku = document.getElementById('item-edit-sku').value.trim();
+                const editWh = document.getElementById('item-edit-wh').value.trim();
 
-            db.inventory = erpItems;
-            await saveDB(db);
+                if (editSku) {
+                    const idx = findItemIndex(editSku, editWh || currentWH);
+                    if (idx === -1) {
+                        alert('تعذر العثور على الصنف للتعديل.');
+                        return;
+                    }
+                    erpItems[idx].name = document.getElementById('item-name').value;
+                    erpItems[idx].category = document.getElementById('item-cat').value;
+                    erpItems[idx].unit = document.getElementById('item-unit').value;
+                    erpItems[idx].cost = Number(document.getElementById('item-cost').value);
+                    erpItems[idx].qty = Number(document.getElementById('item-qty').value);
+                    erpItems[idx].minQty = Number(document.getElementById('item-min').value);
+                } else {
+                    const newItem = {
+                        sku: 'SKU-' + Math.floor(1000 + Math.random() * 9000),
+                        name: document.getElementById('item-name').value,
+                        category: document.getElementById('item-cat').value,
+                        unit: document.getElementById('item-unit').value,
+                        cost: Number(document.getElementById('item-cost').value),
+                        qty: Number(document.getElementById('item-qty').value),
+                        minQty: Number(document.getElementById('item-min').value),
+                        warehouseId: currentWH
+                    };
+                    erpItems.push(newItem);
+                }
 
-            resetItemModal();
-            closeModal('itemModal');
-            renderTable();
-            renderKPIs();
+                db.inventory = erpItems;
+                await saveDB(db);
+
+                resetItemModal();
+                closeModal('itemModal');
+                
+                // تأجيل إعادة التحميل لمنع الشاشة السوداء
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        renderTable();
+                        renderKPIs();
+                    });
+                });
+            } catch (error) {
+                console.error('Error saving inventory item:', error);
+                alert('حدث خطأ أثناء حفظ الصنف');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="ph ph-check-circle"></i> حفظ الصنف';
+                }
+            }
         });
     }
 
@@ -872,94 +920,129 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (formTx) {
         formTx.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const bSku  = document.getElementById('tx-sku').value;
-            const bType = document.getElementById('tx-type').value;
-            const bQty  = Number(document.getElementById('tx-qty').value);
-
-            const idx = erpItems.findIndex((it) => it.sku === bSku && whNorm(it.warehouseId) === currentWH);
-            if (idx === -1) {
-                alert('الصنف غير موجود في المخزن الحالي.');
-                return;
+            
+            // منع الإرسال المزدوج
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري الحفظ...';
             }
+            
+            try {
+                const bSku  = document.getElementById('tx-sku').value;
+                const bType = document.getElementById('tx-type').value;
+                const bQty  = Number(document.getElementById('tx-qty').value);
 
-            if (bType === 'in') {
-                // ── Simple IN: add to stock directly ──
-                erpItems[idx].qty += bQty;
-
-                const newTxId = 'TX-' + Math.floor(Math.random() * 90000 + 10000);
-                const totalCost = bQty * erpItems[idx].cost;
-                const newTx = { id: newTxId, type: 'in', total: totalCost, date: Date.now(), wh: currentWH, sku: bSku, toWh: currentWH };
-                erpTx.push(newTx);
-
-                db.inventory = erpItems;
-                db.inventoryTx = erpTx;
-                await saveDB(db);
-
-                closeModal('txModal');
-                renderTable(); renderKPIs(); formTx.reset(); updateTxModalUI();
-                printInventoryReceipt(newTx, erpItems[idx], bQty, 'in');
-
-            } else {
-                // ── OUT: issue order flow ──
-                if (erpItems[idx].qty < bQty) {
-                    alert(`الكمية المتوفرة (${erpItems[idx].qty}) لا تكفي للصرف (مطلوب: ${bQty})!`);
+                const idx = erpItems.findIndex((it) => it.sku === bSku && whNorm(it.warehouseId) === currentWH);
+                if (idx === -1) {
+                    alert('الصنف غير موجود في المخزن الحالي.');
                     return;
                 }
 
-                const destKey  = document.getElementById('tx-dest').value;
-                const destName = destLabels[destKey] || destKey;
-                const notes    = document.getElementById('tx-notes').value;
-                const item     = erpItems[idx];
+                if (bType === 'in') {
+                    // ── Simple IN: add to stock directly ──
+                    erpItems[idx].qty += bQty;
 
-                // Deduct from warehouse immediately
-                erpItems[idx].qty -= bQty;
+                    const newTxId = 'TX-' + Math.floor(Math.random() * 90000 + 10000);
+                    const totalCost = bQty * erpItems[idx].cost;
+                    const newTx = { id: newTxId, type: 'in', total: totalCost, date: Date.now(), wh: currentWH, sku: bSku, toWh: currentWH };
+                    erpTx.push(newTx);
 
-                const issueId   = 'ISS-' + Math.floor(Math.random() * 90000 + 10000);
-                const totalCost = bQty * item.cost;
+                    db.inventory = erpItems;
+                    db.inventoryTx = erpTx;
+                    await saveDB(db);
 
-                // Log in inventoryTx (out)
-                erpTx.push({
-                    id: issueId,
-                    type: 'out',
-                    total: totalCost,
-                    date: Date.now(),
-                    fromWh: currentWH,
-                    sku: bSku,
-                    destKey,
-                    destName
-                });
+                    closeModal('txModal');
+                    formTx.reset();
+                    updateTxModalUI();
+                    
+                    // تأجيل إعادة التحميل لمنع الشاشة السوداء
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            renderTable();
+                            renderKPIs();
+                            printInventoryReceipt(newTx, erpItems[idx], bQty, 'in');
+                        });
+                    });
 
-                // Create issue order record (to be confirmed by kitchen)
-                if (!db.issueOrders) db.issueOrders = [];
-                const issueOrder = {
-                    id: issueId,
-                    status: 'قيد الاستلام',
-                    date: new Date().toISOString().split('T')[0],
-                    dateTs: Date.now(),
-                    fromWh: currentWH,
-                    fromWhName: whNames[currentWH] || currentWH,
-                    destKey,
-                    destName,
-                    sku: bSku,
-                    itemName: item.name,
-                    unit: item.unit || '',
-                    qty: bQty,
-                    cost: item.cost,
-                    total: totalCost,
-                    notes
-                };
-                db.issueOrders.push(issueOrder);
+                } else {
+                    // ── OUT: issue order flow ──
+                    if (erpItems[idx].qty < bQty) {
+                        alert(`الكمية المتوفرة (${erpItems[idx].qty}) لا تكفي للصرف (مطلوب: ${bQty})!`);
+                        return;
+                    }
 
-                db.inventory   = erpItems;
-                db.inventoryTx = erpTx;
-                await saveDB(db);
+                    const destKey  = document.getElementById('tx-dest').value;
+                    const destName = destLabels[destKey] || destKey;
+                    const notes    = document.getElementById('tx-notes').value;
+                    const item     = erpItems[idx];
 
-                closeModal('txModal');
-                renderTable(); renderKPIs(); renderPendingReceipts(); formTx.reset(); updateTxModalUI();
+                    // Deduct from warehouse immediately
+                    erpItems[idx].qty -= bQty;
 
-                // Auto-print the issue order document
-                printIssueOrder(issueOrder);
-                alert(`✅ تم إصدار أمر الصرف ${issueId}\nالصنف: ${item.name} — ${bQty} ${item.unit||''}\nالوجهة: ${destName}\n\nتم خصم الكمية من المخزون فوراً. ينتظر تأكيد الاستلام من ${destName}.`);
+                    const issueId   = 'ISS-' + Math.floor(Math.random() * 90000 + 10000);
+                    const totalCost = bQty * item.cost;
+
+                    // Log in inventoryTx (out)
+                    erpTx.push({
+                        id: issueId,
+                        type: 'out',
+                        total: totalCost,
+                        date: Date.now(),
+                        fromWh: currentWH,
+                        sku: bSku,
+                        destKey,
+                        destName
+                    });
+
+                    // Create issue order record (to be confirmed by kitchen)
+                    if (!db.issueOrders) db.issueOrders = [];
+                    const issueOrder = {
+                        id: issueId,
+                        status: 'قيد الاستلام',
+                        date: new Date().toISOString().split('T')[0],
+                        dateTs: Date.now(),
+                        fromWh: currentWH,
+                        fromWhName: whNames[currentWH] || currentWH,
+                        destKey,
+                        destName,
+                        sku: bSku,
+                        itemName: item.name,
+                        unit: item.unit || '',
+                        qty: bQty,
+                        cost: item.cost,
+                        total: totalCost,
+                        notes
+                    };
+                    db.issueOrders.push(issueOrder);
+
+                    db.inventory   = erpItems;
+                    db.inventoryTx = erpTx;
+                    await saveDB(db);
+
+                    closeModal('txModal');
+                    formTx.reset();
+                    updateTxModalUI();
+                    
+                    // تأجيل إعادة التحميل لمنع الشاشة السوداء
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            renderTable();
+                            renderKPIs();
+                            renderPendingReceipts();
+                            printIssueOrder(issueOrder);
+                            alert(`✅ تم إصدار أمر الصرف ${issueId}\nالصنف: ${item.name} — ${bQty} ${item.unit||''}\nالوجهة: ${destName}\n\nتم خصم الكمية من المخزون فوراً. ينتظر تأكيد الاستلام من ${destName}.`);
+                        });
+                    });
+                }
+            } catch (error) {
+                console.error('Error processing inventory transaction:', error);
+                alert('حدث خطأ أثناء العملية');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = bType === 'in' ? 'تأكيد الاستلام' : 'إصدار أمر الصرف';
+                }
             }
         });
     }

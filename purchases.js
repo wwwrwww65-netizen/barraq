@@ -310,89 +310,106 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Save Logic (The Core ERP Integration) ---
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        // منع الإرسال المزدوج
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري الحفظ...';
+        }
+        
+        try {
+            // 1. Gather Items
+            const purItems = [];
+            const rows = document.querySelectorAll('.item-row');
+            if(rows.length === 0) { alert('يجب إضافة صنف واحد على الأقل للفاتورة!'); return; }
 
-        // 1. Gather Items
-        const purItems = [];
-        const rows = document.querySelectorAll('.item-row');
-        if(rows.length === 0) { alert('يجب إضافة صنف واحد على الأقل للفاتورة!'); return; }
+            let badLine = false;
+            let isQtyMissing = false;
+            rows.forEach(r => {
+                const skuSelect = r.querySelector('.item-sku');
+                const sku = skuSelect.value;
+                const opt = skuSelect.options[skuSelect.selectedIndex];
+                const name = opt && opt.dataset ? opt.dataset.name : '';
+                if (!sku || !name) {
+                    badLine = true;
+                    return;
+                }
+                const qty = Number(r.querySelector('.item-qty').value);
+                const price = Number(r.querySelector('.item-price').value);
+                if (qty <= 0) isQtyMissing = true;
 
-        let badLine = false;
-        let isQtyMissing = false;
-        rows.forEach(r => {
-            const skuSelect = r.querySelector('.item-sku');
-            const sku = skuSelect.value;
-            const opt = skuSelect.options[skuSelect.selectedIndex];
-            const name = opt && opt.dataset ? opt.dataset.name : '';
-            if (!sku || !name) {
-                badLine = true;
+                purItems.push({ sku, name, qty, price });
+            });
+
+            if (badLine) {
+                alert('يرجى اختيار صنف صالح في كل السطور. عرّف الأصناف أولاً من صفحة المخازن إن لم تكن موجودة.');
                 return;
             }
-            const qty = Number(r.querySelector('.item-qty').value);
-            const price = Number(r.querySelector('.item-price').value);
-            if (qty <= 0) isQtyMissing = true;
+            if (isQtyMissing) {
+                alert('يرجى التحقق من صحة الكميات والأسعار!');
+                return;
+            }
 
-            purItems.push({ sku, name, qty, price });
-        });
+            // 2. Build Purchase Record
+            const supId = document.getElementById('inv-supplier').value;
+            const supObj = suppliers.find(s => s.id === supId);
+            const pMethod = document.getElementById('inv-payment').value;
+            const destWh = document.getElementById('inv-warehouse').value;
+            const grandTotalRaw = document.getElementById('grandtotal').innerText;
+            const grandTot =
+                window.HashCurrency && HashCurrency.parseLoose
+                    ? HashCurrency.parseLoose(grandTotalRaw) || 0
+                    : Number(String(grandTotalRaw).replace(/[^\d.]/g, '')) || 0;
 
-        if (badLine) {
-            alert('يرجى اختيار صنف صالح في كل السطور. عرّف الأصناف أولاً من صفحة المخازن إن لم تكن موجودة.');
-            return;
+            const newPurchase = {
+                id: 'PUR-' + Math.floor(Math.random() * 90000 + 10000),
+                ref: document.getElementById('inv-ref').value,
+                supId: supId,
+                supName: supObj ? supObj.name : 'مورد غير معروف',
+                date: document.getElementById('inv-date').value,
+                total: grandTot,
+                payMethod: pMethod,
+                items: purItems,
+                status: 'قيد الاستلام',
+                destWh: document.getElementById('inv-warehouse').value
+            };
+
+            // 3. Integrate with Database
+            if(pMethod === 'credit' && supObj) {
+                supObj.balance = (supObj.balance || 0) + grandTot;
+            }
+
+            // 4. Save purchase to DB only
+            purchases.push(newPurchase);
+            db.purchases = purchases;
+            db.suppliers = suppliers;
+            db.inventory = inventory;
+            db.inventoryTx = inventoryTx;
+            await saveDB(db);
+
+            // 5. Cleanup
+            modal.classList.remove('active');
+            form.reset();
+            
+            // تأجيل إعادة التحميل لمنع الشاشة السوداء
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    renderKPIs();
+                    renderTable();
+                    printPurchaseInvoice(newPurchase);
+                    alert('✅ تم حفظ فاتورة المشتريات بنجاح.\n\nملاحظة: الكميات لم تُضف للمخزون بعد. اضغط زر "استلام" بجانب الفاتورة عند استلام البضاعة فعلياً.');
+                });
+            });
+        } catch (error) {
+            console.error('Error saving purchase:', error);
+            alert('حدث خطأ أثناء حفظ الفاتورة');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="ph ph-check-circle"></i> حفظ الفاتورة';
+            }
         }
-        if (isQtyMissing) {
-            alert('يرجى التحقق من صحة الكميات والأسعار!');
-            return;
-        }
-
-        // 2. Build Purchase Record
-        const supId = document.getElementById('inv-supplier').value;
-        const supObj = suppliers.find(s => s.id === supId);
-        const pMethod = document.getElementById('inv-payment').value;
-        const destWh = document.getElementById('inv-warehouse').value;
-        const grandTotalRaw = document.getElementById('grandtotal').innerText;
-        const grandTot =
-            window.HashCurrency && HashCurrency.parseLoose
-                ? HashCurrency.parseLoose(grandTotalRaw) || 0
-                : Number(String(grandTotalRaw).replace(/[^\d.]/g, '')) || 0;
-
-        const newPurchase = {
-            id: 'PUR-' + Math.floor(Math.random() * 90000 + 10000), // Random 5-digit
-            ref: document.getElementById('inv-ref').value,
-            supId: supId,
-            supName: supObj ? supObj.name : 'مورد غير معروف',
-            date: document.getElementById('inv-date').value,
-            total: grandTot,
-            payMethod: pMethod,
-            items: purItems,
-            status: 'قيد الاستلام',
-            destWh: document.getElementById('inv-warehouse').value
-        };
-
-        // 3. Integrate with Database
-
-        // A. Add to Suppliers Balance if Credit
-        if(pMethod === 'credit' && supObj) {
-            supObj.balance = (supObj.balance || 0) + grandTot;
-        }
-
-        // B. Save purchase record with status "pending receive" - do NOT touch inventory yet
-        // Status and destWh are already set in the newPurchase object above
-
-        // 4. Save purchase to DB only (no inventory change yet)
-        purchases.push(newPurchase);
-        db.purchases = purchases;
-        db.suppliers = suppliers;
-        db.inventory = inventory;
-        db.inventoryTx = inventoryTx;
-        await saveDB(db);
-
-        // 5. Cleanup
-        modal.classList.remove('active');
-        renderKPIs();
-        renderTable();
-        
-        printPurchaseInvoice(newPurchase);
-        alert('✅ تم حفظ فاتورة المشتريات بنجاح.\n\nملاحظة: الكميات لم تُضف للمخزون بعد. اضغط زر "استلام" بجانب الفاتورة عند استلام البضاعة فعلياً.');
-        form.reset();
     });
 
     // --- Receive Purchase: Add to Inventory (called when clicking Receive button) ---

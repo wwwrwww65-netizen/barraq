@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const { getReceiptFooterLine, escapeHtmlPrint } = require('./thermal-receipt-updated.js');
 
     const kpiValues = document.querySelectorAll('.kpi-card .kpi-value');
-    if(!kpiValues || kpiValues.length < 5) return; // Not on index page
+    if(!kpiValues || kpiValues.length < 7) return; // Not on index page
 
     let dashboardChart = null;
     /** الفترة المعروضة حالياً — تُحدَّث عند تغيير أزرار اليوم/الأسبوع ليعاد التحميل بعد المزامنة */
@@ -251,6 +251,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dBalEl = kpiValues[4];
     dBalEl.innerHTML = `${curNum(drawerBalance)}<span class="currency">${curSym()}</span>`;
     if(drawerBalance < 0) dBalEl.style.color = 'var(--accent-red)';
+
+    // Network Balance Card (kpiValues[5])
+    const networkEl = kpiValues[5];
+    networkEl.innerHTML = `${curNum(networkSales)}<span class="currency">${curSym()}</span>`;
+    
+    // HungerStation Total Card (kpiValues[6])
+    const hsEl = kpiValues[6];
+    hsEl.innerHTML = `${curNum(shiftHungerStationUnpaid)}<span class="currency">${curSym()}</span>`;
+    if(shiftHungerStationUnpaid > 0) {
+        hsEl.style.color = 'var(--accent-orange)';
+        hsEl.style.textShadow = '0 0 10px rgba(245, 158, 11, 0.5)';
+    }
 
 
     // --- 2. POPULATE RECENT ORDERS TABLE (Latest 5) ---
@@ -545,6 +557,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('shift-float-cash').innerText = curPlain(d.shiftCashFloat);
         document.getElementById('shift-cash').innerText = curPlain(d.cashSales);
         document.getElementById('shift-network').innerText = curPlain(d.networkSales);
+        document.getElementById('shift-hungerstation').innerText = curPlain(d.shiftHungerStationUnpaid || 0);
         document.getElementById('shift-total-income').innerText = curPlain(d.cashSales + d.networkSales);
         
         document.getElementById('shift-tax').innerText = curPlain(d.totalTax);
@@ -554,16 +567,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('shift-drawer').innerText = curPlain(d.drawerBalance);
         
         document.getElementById('shift-grand-total').innerText = curPlain(d.dailySales);
-
-        // Add HS unpaid info if exists
-        if (d.shiftHungerStationUnpaid > 0) {
-            const hsRow = document.createElement('div');
-            hsRow.className = 'receipt-row';
-            hsRow.style.cssText = 'background:rgba(255,107,0,0.1); padding:8px; border-radius:4px; margin:8px 0;';
-            hsRow.innerHTML = `<span style="color:#ff6b00;"><i class="ph ph-warning"></i> هنقرستيشن غير مدفوع:</span><span style="color:#ff6b00; font-weight:700;">${curPlain(d.shiftHungerStationUnpaid)}</span>`;
-            const drawerRow = document.getElementById('shift-drawer').parentNode.parentNode;
-            drawerRow.parentNode.insertBefore(hsRow, drawerRow.nextSibling);
-        }
 
         modal.style.display = 'flex';
     };
@@ -807,7 +810,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         const dayTotalIncome = dayTotalCash + dayTotalNet;
         const dayNetTotal    = dayTotalIncome - dayTotalRet - dayTotalExp;
-        const dayDrawerTotal = allDayShifts.reduce((sum, s) => sum + (Number(s.drawerBalance) || 0), 0);
+        // خذ رصيد الوردية الأخيرة فقط - لأنه الرصيد الفعلي الحالي في الدرج
+        const dayDrawerTotal = allDayShifts.length > 0 ? (allDayShifts[allDayShifts.length - 1].drawerBalance || 0) : 0;
 
         // Populate summary
         document.getElementById('day-shifts-count').innerText  = allDayShifts.length + ' وردية';
@@ -1358,6 +1362,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const floatCash = document.getElementById('shift-float-cash').innerText;
         const cashSales = document.getElementById('shift-cash').innerText;
         const networkSales = document.getElementById('shift-network').innerText;
+        const hungerStation = document.getElementById('shift-hungerstation').innerText;
         const totalIncome = document.getElementById('shift-total-income').innerText;
         const tax = document.getElementById('shift-tax').innerText;
         const returns = document.getElementById('shift-returns').innerText;
@@ -1607,6 +1612,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <tr><td>الرصيد الافتتاحي</td><td>${floatCash}</td></tr>
                 <tr><td>إجمالي الكاش</td><td>${cashSales}</td></tr>
                 <tr><td>إجمالي الشبكة</td><td>${networkSales}</td></tr>
+                <tr><td style="color:#ff6b00;">إجمالي هنقرستيشن</td><td style="color:#ff6b00;">${hungerStation}</td></tr>
                 <tr class="row-strong"><td>إجمالي الدخل</td><td>${totalIncome}</td></tr>
             </tbody>
         </table>

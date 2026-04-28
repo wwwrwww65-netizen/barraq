@@ -352,3 +352,44 @@ body.light-theme .acc-panel-title {
 body.light-theme .exp-balance-cell {
     background: #f1f5f9 !important;
 }
+
+/* =========================================
+   PRINT & PDF OPTIMIZATIONS - EXPENSES
+   ========================================= */
+@media print {
+    /* Remove all margins from expense containers */
+    .acc-panel,
+    .table-responsive,
+    .data-table-expenses {
+        margin-bottom: 0 !important;
+        padding: 3px 8px !important;
+    }
+
+    /* Compact table rows for expenses */
+    .data-table-expenses th,
+    .data-table-expenses td {
+        padding: 4px 5px !important;
+        font-size: 11px !important;
+    }
+
+    /* Reduce footer spacing */
+    .data-table-expenses tfoot tr td {
+        padding: 5px 8px !important;
+    }
+
+    /* Ensure no page breaks inside table */
+    .data-table-expenses tbody {
+        page-break-inside: auto !important;
+    }
+
+    /* Allow rows to split across pages if needed */
+    .data-table-expenses tr {
+        page-break-inside: auto !important;
+    }
+
+    /* Remove margin from main content wrapper */
+    .main-content > div {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+}

@@ -137,21 +137,46 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('form-sup').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const newSup = {
-            id: 'SUP-' + Date.now(),
-            name: document.getElementById('sup-name').value.trim(),
-            cat: document.getElementById('sup-cat').value.trim(),
-            phone: document.getElementById('sup-phone').value.trim(),
-            balance: Number(document.getElementById('sup-balance').value) || 0,
-            active: true,
-            createdAt: new Date().toISOString()
-        };
-        suppliers.push(newSup);
-        db.suppliers = suppliers;
-        await saveDB(db);
-        modal.classList.remove('active');
-        e.target.reset();
-        await render();
-        alert(`تم حفظ المورد "${newSup.name}" في قاعدة البيانات!`);
+        
+        // منع الإرسال المزدوج
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري الحفظ...';
+        }
+        
+        try {
+            const newSup = {
+                id: 'SUP-' + Date.now(),
+                name: document.getElementById('sup-name').value.trim(),
+                cat: document.getElementById('sup-cat').value.trim(),
+                phone: document.getElementById('sup-phone').value.trim(),
+                balance: Number(document.getElementById('sup-balance').value) || 0,
+                active: true,
+                createdAt: new Date().toISOString()
+            };
+            suppliers.push(newSup);
+            db.suppliers = suppliers;
+            await saveDB(db);
+            
+            modal.classList.remove('active');
+            e.target.reset();
+            
+            // تأجيل إعادة التحميل لمنع الشاشة السوداء
+            requestAnimationFrame(() => {
+                requestAnimationFrame(async () => {
+                    await render();
+                    alert(`تم حفظ المورد "${newSup.name}" في قاعدة البيانات!`);
+                });
+            });
+        } catch (error) {
+            console.error('Error saving supplier:', error);
+            alert('حدث خطأ أثناء حفظ المورد');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="ph ph-check-circle"></i> حفظ المورد';
+            }
+        }
     });
 });

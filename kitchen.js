@@ -116,7 +116,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Update local reference too
         const localOrder = orders.find(o => o.orderId === orderId);
         if(localOrder) localOrder.kitchenStatus = nextStatus;
-        renderBoard();
+        
+        // تأجيل إعادة التحميل لمنع الشاشة السوداء
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                renderBoard();
+            });
+        });
     };
 
     function renderBoard() {

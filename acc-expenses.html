@@ -294,6 +294,47 @@
         </div>
     </div>
 
+    <!-- سند راتب / سلفة للموظف (نسخة مطابقة لصفحة الموظفين) -->
+    <div id="hr-voucher-container" style="position:absolute; top:-9999px; left:-9999px;">
+        <div class="voucher-wrapper" id="hr-voucher-template">
+            <div class="v-header">
+                <div class="v-right-text">
+                    <h2 id="hr-v-rest-name">مطابخ ومحائذ هـــش HASH</h2>
+                    <p id="hr-v-branch">شارع المعارض جوار محطة مزايا</p>
+                    <p id="hr-v-phone">0539774699</p>
+                </div>
+                <div class="v-logo-title-block">
+                    <div class="v-center-logo">
+                        <img id="hr-v-logo" src="1111.png" alt="Logo" onerror="this.src='placeholder.svg'">
+                    </div>
+                    <h1 class="v-main-title" id="hr-v-doc-title">سند صرف</h1>
+                </div>
+                <div class="v-left-col">
+                    <div class="v-left-box">
+                        <div class="v-row"><span>التاريخ :</span><strong id="hr-v-date"></strong></div>
+                        <div class="v-row"><span>الرقم :</span><strong id="hr-v-number"></strong></div>
+                    </div>
+                    <div class="v-balance-box v-balance-under-date"><span id="hr-v-label-balance">الرصيد لكم :</span><strong id="hr-v-balance-text"></strong></div>
+                </div>
+            </div>
+            <div class="v-body-box">
+                <div class="v-body-inner">
+                    <div class="v-line"><span class="v-line-label" id="hr-v-label-recipient">تم صرف للأخ :</span> <span class="v-line-val"><strong id="hr-v-name"></strong></span></div>
+                    <div class="v-line"><span class="v-line-label" id="hr-v-label-amount">مبلغ وقدره :</span> <span class="v-line-val"><strong id="hr-v-amt"></strong> <span class="v-sub">(<span id="hr-v-amt-text"></span> <span class="js-cur-label">ريال سعودي</span>)</span></span></div>
+                    <div class="v-line"><span class="v-line-label">وذلك مقابل :</span> <span class="v-line-val"><strong id="hr-v-reason-text"></strong></span></div>
+                </div>
+                <div class="v-notes-strip">
+                    <span class="v-notes-label">ملاحظات :</span>
+                    <span class="v-notes-text" id="hr-v-notes"></span>
+                </div>
+            </div>
+            <div class="v-bottom-meta">
+                <span class="v-by">By HASH</span>
+                <span class="v-date-foot" id="hr-v-bottom-date"></span>
+            </div>
+        </div>
+    </div>
+
     <script src="node_modules/html2canvas/dist/html2canvas.min.js"></script>
     <script src="currency-helper.js"></script>
     <script src="script.js"></script>

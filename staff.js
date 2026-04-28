@@ -132,6 +132,28 @@ async function persistDb() {
     await window.dbWrite(db);
 }
 
+function getEmpPaidSalary(empName) {
+    let lastReset = db.hrCycle?.lastResetAt || 0;
+    
+    // Find the latest individual 'تصفير حساب' for this employee
+    const expenses = db.hrExpenses || [];
+    let lastIndividualReset = 0;
+    for (let i = expenses.length - 1; i >= 0; i--) {
+        if (expenses[i].employee === empName && expenses[i].type === 'تصفير حساب') {
+            lastIndividualReset = expenses[i].timestamp || 0;
+            break;
+        }
+    }
+    
+    // Use the most recent reset timestamp (global or individual)
+    lastReset = Math.max(lastReset, lastIndividualReset);
+
+    return expenses
+        .filter(h => h.employee === empName && h.type.includes('راتب') && (h.timestamp || 0) >= lastReset)
+        .reduce((sum, h) => sum + (Number(h.amount) || 0), 0);
+}
+
+
 /** يمنع بقاء التركيز داخل حقل مخفي بعد إغلاق المودال (يسبب عدم استقبال الكتابة عند إعادة الفتح). */
 function hideAdvanceVoucherError() {
     const el = document.getElementById('advance-voucher-inline-error');
@@ -175,6 +197,12 @@ function closeHrModal(modalOrId) {
 }
 
 function openHrModal(modalId) {
+    // Aggressive fix for Electron trapped focus
+    if (document.activeElement) {
+        try { document.activeElement.blur(); } catch(e) {}
+    }
+    window.focus();
+    
     const m = document.getElementById(modalId);
     if (!m) return;
     if (modalId === 'advance-modal') hideAdvanceVoucherError();
@@ -264,7 +292,10 @@ if(photoInput) {
 function updateKPIs() {
     const active    = db.employees.filter(e => e.status === 'active').length;
     const totalLoan = db.employees.reduce((s, e) => s + (e.loans || 0), 0);
-    const payroll   = db.employees.reduce((s, e) => s + (e.salary || 0), 0);
+    const payroll   = db.employees.reduce((s, e) => {
+        const paid = getEmpPaidSalary(e.name);
+        return s + Math.max(0, (e.salary || 0) - (e.loans || 0) - paid);
+    }, 0);
     
     document.getElementById('kpi-total').innerHTML     = `${db.employees.length} <span style="font-size:14px">موظف</span>`;
     document.getElementById('kpi-loans').innerHTML      = `${xfNum(totalLoan)} <span style="font-size:14px">${curSym()}</span>`;
@@ -333,7 +364,8 @@ function renderEmployees() {
             ? `<img src="${emp.avatar}" style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:3px solid ${rc.color};box-shadow:0 8px 25px rgba(0,0,0,0.5);">`
             : `<div style="width:100px;height:100px;border-radius:50%;background:var(--bg-card);display:flex;align-items:center;justify-content:center;font-size:40px;border:3px solid ${rc.color};box-shadow:0 8px 25px rgba(0,0,0,0.5);"><i class="ph ${rc.icon}" style="color:${rc.color}"></i></div>`;
 
-        const netSalary = (emp.salary || 0) - (emp.loans || 0);
+        const paidSalary = getEmpPaidSalary(emp.name);
+        const netSalary = Math.max(0, (emp.salary || 0) - (emp.loans || 0) - paidSalary);
         const card = document.createElement('div');
         card.className = 'staff-card card';
         let customStyle = sc.style ? `style="${sc.style}"` : '';
@@ -418,7 +450,8 @@ window.openFullProfile = function(id) {
     if (!emp) return;
     currentProfileId = id;
 
-    const netSalary = (emp.salary || 0) - (emp.loans || 0);
+    const paidSalary = getEmpPaidSalary(emp.name);
+    const netSalary = Math.max(0, (emp.salary || 0) - (emp.loans || 0) - paidSalary);
     const absentDays = db.attendance.filter(a => a.empId === id && a.status === 'غياب').length;
 
     // Compute Dynamic Status
@@ -556,23 +589,58 @@ window.openFullProfile = function(id) {
 
     document.getElementById('pro-btn-reset').onclick = async () => {
         const openLoans = Number(emp.loans) || 0;
-        if (openLoans <= 0) {
-            alert('لا توجد سلف/خصومات مفتوحة لهذا الموظف حالياً.');
-            return;
-        }
-        const confirmed = confirm(
-            `تصفير حساب الموظف: ${emp.name}\n\n` +
-            `سيتم تصفير الرصيد المفتوح (${xf(openLoans)}) والبدء بدورة جديدة له.\n` +
-            `هل تريد المتابعة؟`
-        );
+        
+        // استخدام confirm مخصص بدل native dialog لتجنب مشاكل Electron
+        const confirmed = await new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;';
+            
+            const dialog = document.createElement('div');
+            dialog.style.cssText = 'background:var(--bg-card);border:1px solid var(--border-color);border-radius:24px;padding:32px;max-width:400px;width:90%;';
+            dialog.innerHTML = `
+                <h3 style="color:var(--text-primary);margin:0 0 16px 0;font-size:18px;">⚠️ تصفير حساب الموظف</h3>
+                <p style="color:var(--text-muted);margin:0 0 24px 0;line-height:1.6;">
+                    سيتم تصفير الرصيد المفتوح (${xf(openLoans)}) والبدء بدورة جديدة له.<br>
+                    هل تريد المتابعة؟
+                </p>
+                <div style="display:flex;gap:12px;">
+                    <button id="confirm-reset-yes" style="flex:1;padding:12px;background:#ef4444;color:white;border:none;border-radius:12px;font-weight:700;cursor:pointer;font-size:14px;">نعم، صفّر الحساب</button>
+                    <button id="confirm-reset-no" style="flex:1;padding:12px;background:rgba(255,255,255,0.1);color:var(--text-primary);border:1px solid var(--border-color);border-radius:12px;font-weight:700;cursor:pointer;font-size:14px;">إلغاء</button>
+                </div>
+            `;
+            
+            overlay.appendChild(dialog);
+            document.body.appendChild(overlay);
+            
+            document.getElementById('confirm-reset-yes').onclick = () => {
+                document.body.removeChild(overlay);
+                resolve(true);
+            };
+            
+            document.getElementById('confirm-reset-no').onclick = () => {
+                document.body.removeChild(overlay);
+                resolve(false);
+            };
+        });
+        
         if (!confirmed) return;
+        
         emp.loans = 0;
+        if (!db.hrExpenses) db.hrExpenses = [];
+        db.hrExpenses.push({
+            employee: emp.name,
+            amount: 0,
+            type: 'تصفير حساب',
+            reason: `تصفير الرصيد المفتوح (${xf(openLoans)}) والبدء بدورة جديدة`,
+            date: new Date().toLocaleDateString('ar-SA'),
+            timestamp: Date.now(),
+            voucherNo: allocateVoucherNo()
+        });
         await persistDb();
         updateKPIs();
         renderEmployees();
         renderPayroll();
         openFullProfile(emp.id);
-        alert('تم تصفير حساب الموظف بنجاح.');
     };
 
     // Switch view
@@ -737,11 +805,34 @@ window.renderProfileFinances = function(empName) {
     let totalDeductions = 0; // خصم/سلفة
     let totalPayments = 0;   // صرف راتب/مكافأة
     
+    myVouchers.forEach(({ h }) => {
+        if (h.type === 'تصفير حساب') {
+            totalDeductions = 0;
+            totalPayments = 0;
+        } else {
+            const amt = Number(h.amount) || 0;
+            const isDeduction = h.type.includes('سلفة') || h.type.includes('عليه') || h.type.includes('خصم') || h.type.includes('جزاء');
+            if(isDeduction) totalDeductions += amt;
+            else totalPayments += amt;
+        }
+    });
+    
     tbody.innerHTML = [...myVouchers].reverse().map(({ h, idx }) => {
+        if (h.type === 'تصفير حساب') {
+             return `
+             <tr style="background:rgba(255,255,255,0.05); border-top:2px dashed var(--border-color); border-bottom:2px dashed var(--border-color);">
+                 <td dir="ltr" style="text-align:right; font-size:12px; color:var(--text-muted);">${h.date}</td>
+                 <td colspan="3" style="text-align:center; color:#f59e0b; font-weight:bold;">
+                     <i class="ph ph-arrows-counter-clockwise"></i> ${h.reason}
+                 </td>
+                 <td class="no-print">
+                     <button onclick="deleteHrVoucher(${idx})" style="background:none; border:none; color:#ef4444; font-size:16px; cursor:pointer; margin-right:8px;" title="حذف"><i class="ph ph-trash"></i></button>
+                 </td>
+             </tr>`;
+        }
+
         const amt = Number(h.amount) || 0;
-        const isDeduction = h.type.includes('سلفة') || h.type.includes('عليه');
-        if(isDeduction) totalDeductions += amt;
-        else totalPayments += amt;
+        const isDeduction = h.type.includes('سلفة') || h.type.includes('عليه') || h.type.includes('خصم') || h.type.includes('جزاء');
         
         return `
         <tr>
@@ -758,6 +849,12 @@ window.renderProfileFinances = function(empName) {
     
     // Render Tfoot summary
     if(tfoot) {
+        const empObj = db.employees.find(e => e.name === empName);
+        const currentSalary = empObj ? (empObj.salary || 0) : 0;
+        const currentLoans = empObj ? (empObj.loans || 0) : 0;
+        const paidSalary = getEmpPaidSalary(empName);
+        const netPayable = Math.max(0, currentSalary - currentLoans - paidSalary);
+        
         const sym = window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س';
         const netAmount = totalPayments - totalDeductions;
         tfoot.innerHTML = `
@@ -787,6 +884,26 @@ window.renderProfileFinances = function(empName) {
                 </td>
                 <td style="padding:9px 14px; font-size:15px; font-weight:900; color:${netAmount >= 0 ? '#3b82f6' : '#ef4444'};">
                     ${xf(netAmount)}
+                </td>
+                <td colspan="2" class="no-print"></td>
+                <td colspan="2" class="print-only-cell" style="display:none;"></td>
+            </tr>
+            <tr style="background:rgba(16, 185, 129, 0.05); border-top:3px solid var(--border-color);">
+                <td colspan="2" style="padding:12px 14px; font-size:13px; font-weight:800; color:var(--text-primary);">
+                    الراتب الأساسي للموظف
+                </td>
+                <td style="padding:12px 14px; font-size:15px; font-weight:800; color:#10b981;">
+                    ${xf(currentSalary)}
+                </td>
+                <td colspan="2" class="no-print"></td>
+                <td colspan="2" class="print-only-cell" style="display:none;"></td>
+            </tr>
+            <tr style="background:rgba(59, 130, 246, 0.1); border-top:2px solid var(--accent-blue);">
+                <td colspan="2" style="padding:12px 14px; font-size:14px; font-weight:900; color:var(--accent-blue);">
+                    المتبقي من الراتب (للدورة الحالية)
+                </td>
+                <td style="padding:12px 14px; font-size:16px; font-weight:900; color:var(--accent-blue);">
+                    ${xf(netPayable)}
                 </td>
                 <td colspan="2" class="no-print"></td>
                 <td colspan="2" class="print-only-cell" style="display:none;"></td>
@@ -936,57 +1053,81 @@ window.openAdvanceModalForCurrent = function() {
         document.getElementById('voucher-employee').value = emp.name;
         document.getElementById('voucher-employee').disabled = true;
         openHrModal('advance-modal');
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                const a = document.getElementById('voucher-amount');
-                try {
-                    a?.focus({ preventScroll: true });
-                } catch (_) {
-                    a?.focus();
+        setTimeout(() => {
+            const a = document.getElementById('voucher-amount');
+            try {
+                if(a) {
+                    a.disabled = false;
+                    a.removeAttribute('readonly');
+                    a.focus({ preventScroll: true });
+                    a.click();
                 }
-            });
-        });
+            } catch (_) {}
+        }, 150);
     }
 };
 
 // ── Save New / Edit Employee ──────────────────────────────────
 document.getElementById('form-new-emp')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const editId = e.target.dataset.editId;
-    const empData = {
-        id:          editId || 'EMP-' + Math.floor(Math.random()*90000+10000),
-        name:        document.getElementById('ne-name').value.trim(),
-        role:        document.getElementById('ne-role').value,
-        nationality: document.getElementById('ne-nationality').value.trim(),
-        phone:       document.getElementById('ne-phone').value.trim(),
-        iqama:       document.getElementById('ne-iqama').value.trim(),
-        expiry:      document.getElementById('ne-expiry').value,
-        shiftType:   document.getElementById('ne-shift').value,
-        workHours:   Number(document.getElementById('ne-hours').value) || 8,
-        salary:      Number(document.getElementById('ne-salary').value) || 0,
-        startDate:   document.getElementById('ne-start').value || new Date().toISOString().split('T')[0],
-        notes:       document.getElementById('ne-notes').value.trim(),
-        username:    document.getElementById('ne-username').value.trim() || undefined,
-        password:    document.getElementById('ne-password').value.trim() || undefined,
-        loans:       editId ? (db.employees.find(e => e.id === editId)?.loans || 0) : 0,
-        status:      'active',
-        avatar:      currentAvatarBase64
-    };
-
-    if (editId) {
-        const idx = db.employees.findIndex(e => e.id === editId);
-        if (idx !== -1) db.employees[idx] = empData;
-    } else {
-        db.employees.push(empData);
-    }
-
-    await persistDb();
-    e.target.reset();
-    currentAvatarBase64 = '';
-    delete e.target.dataset.editId;
-    alert(`✅ تم ${editId ? 'تعديل' : 'حفظ'} ملف الموظف "${empData.name}" بنجاح!`);
     
-    if(editId) { openFullProfile(editId); } else { showView('view-employees', 'nav-employees'); }
+    // منع الإرسال المزدوج
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري الحفظ...';
+    }
+    
+    try {
+        const editId = e.target.dataset.editId;
+        const empData = {
+            id:          editId || 'EMP-' + Math.floor(Math.random()*90000+10000),
+            name:        document.getElementById('ne-name').value.trim(),
+            role:        document.getElementById('ne-role').value,
+            nationality: document.getElementById('ne-nationality').value.trim(),
+            phone:       document.getElementById('ne-phone').value.trim(),
+            iqama:       document.getElementById('ne-iqama').value.trim(),
+            expiry:      document.getElementById('ne-expiry').value,
+            shiftType:   document.getElementById('ne-shift').value,
+            workHours:   Number(document.getElementById('ne-hours').value) || 8,
+            salary:      Number(document.getElementById('ne-salary').value) || 0,
+            startDate:   document.getElementById('ne-start').value || new Date().toISOString().split('T')[0],
+            notes:       document.getElementById('ne-notes').value.trim(),
+            username:    document.getElementById('ne-username').value.trim() || undefined,
+            password:    document.getElementById('ne-password').value.trim() || undefined,
+            loans:       editId ? (db.employees.find(e => e.id === editId)?.loans || 0) : 0,
+            status:      'active',
+            avatar:      currentAvatarBase64
+        };
+
+        if (editId) {
+            const idx = db.employees.findIndex(e => e.id === editId);
+            if (idx !== -1) db.employees[idx] = empData;
+        } else {
+            db.employees.push(empData);
+        }
+
+        await persistDb();
+        e.target.reset();
+        currentAvatarBase64 = '';
+        delete e.target.dataset.editId;
+        
+        // تأجيل إعادة التحميل لمنع الشاشة السوداء
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                alert(`✅ تم ${editId ? 'تعديل' : 'حفظ'} ملف الموظف "${empData.name}" بنجاح!`);
+                if(editId) { openFullProfile(editId); } else { showView('view-employees', 'nav-employees'); }
+            });
+        });
+    } catch (error) {
+        console.error('Error saving employee:', error);
+        alert('حدث خطأ أثناء حفظ بيانات الموظف');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="ph ph-check-circle"></i> حفظ بيانات الموظف';
+        }
+    }
 });
 
 
@@ -1027,20 +1168,22 @@ function openVoucherEditor(voucherIndex) {
 }
 
 document.getElementById('btn-open-advance-modal')?.addEventListener('click', () => {
+    // Prevent focus trap
+    if(document.activeElement) document.activeElement.blur();
+    
     const modal = document.getElementById('advance-modal');
     if (modal) delete modal.dataset.editIndex;
     populateEmpSelect();
     openHrModal('advance-modal');
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            const el = document.getElementById('voucher-employee');
-            try {
-                el?.focus({ preventScroll: true });
-            } catch (_) {
-                el?.focus();
+    setTimeout(() => {
+        const el = document.getElementById('voucher-employee');
+        try {
+            if(el) {
+                el.focus({ preventScroll: true });
+                el.click();
             }
-        });
-    });
+        } catch (_) {}
+    }, 150);
 });
 
 document.getElementById('btn-close-advance-modal')?.addEventListener('click', () => {
@@ -1066,7 +1209,8 @@ function renderPayroll() {
     let html = '';
     let totalPayroll = 0;
     db.employees.filter(e => e.status !== 'end').forEach(emp => {
-        const net = (emp.salary || 0) - (emp.loans || 0);
+        const paid = getEmpPaidSalary(emp.name);
+        const net = Math.max(0, (emp.salary || 0) - (emp.loans || 0) - paid);
         totalPayroll += net;
         html += `<tr>
             <td><strong>${emp.name}</strong></td>
@@ -1301,11 +1445,11 @@ document.getElementById('form-penalty-trx')?.addEventListener('submit', async (e
     const reason   = document.getElementById('penalty-reason').value;
 
     if (!employee || !amount || !reason) return alert('الرجاء إكمال البيانات');
-
+    
     // إغلاق نموذج الجزاءات
     closeHrModal('penalty-modal');
     e.target.reset();
-
+    
     // استخدام دالة generateVoucher لإنشاء السند وإرسال الواتساب
     try {
         // ملء نموذج السندات بالبيانات
@@ -1480,20 +1624,22 @@ window.generateVoucher = async function(typeStr) {
         const amtNum = Number(amount);
         let netRemaining;
         
+        const paidCurrent = getEmpPaidSalary(employee);
+        
         // حساب الرصيد حسب نوع السند
         if (typeStr.includes('خصم') || typeStr.includes('جزاء')) {
             // للخصم: الرصيد المتبقي بعد الخصم من الراتب
             // loans هنا تشمل الخصومات السابقة، ونضيف الخصم الجديد
-            netRemaining = Math.max(0, salary - (loans + amtNum));
+            netRemaining = Math.max(0, salary - (loans + amtNum) - paidCurrent);
         } else if (typeStr.includes('سلفة') || typeStr.includes('عليه')) {
             // للسلفة: الرصيد المتبقي بعد السلفة
-            netRemaining = Math.max(0, salary - (loans + amtNum));
+            netRemaining = Math.max(0, salary - (loans + amtNum) - paidCurrent);
         } else if (typeStr.includes('راتب') || typeStr.includes('مكافأة') || typeStr.includes('له')) {
             // للراتب/المكافأة: الرصيد الصافي بعد الصرف
-            netRemaining = Math.max(0, salary - loans);
+            netRemaining = Math.max(0, salary - loans - paidCurrent - amtNum);
         } else {
             // افتراضي
-            netRemaining = Math.max(0, salary - loans - amtNum);
+            netRemaining = Math.max(0, salary - loans - paidCurrent - amtNum);
         }
         
         const netFmt = netRemaining.toLocaleString('en-US', {
