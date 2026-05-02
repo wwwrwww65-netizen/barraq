@@ -477,9 +477,65 @@ function fetchDatabaseFromPeer(ip, callback) {
       try {
         const parsed = JSON.parse(body);
         const dbPath = path.join(app.getPath('userData'), 'pos_database.json');
-        // async كتابة لتجنب حجب Main Process أثناء المزامنة الشبكية
-        fs.promises.writeFile(dbPath, JSON.stringify(parsed, null, 2)).then(() => {
-          console.log(`[HTTP Sync] ✅ Database pulled and saved from ${ip}`);
+        
+        // 🔒 PROTECTION: Check if we already have local data
+        try {
+          if (fs.existsSync(dbPath)) {
+            const localDb = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+            const hasLocalOrders = localDb.orders && localDb.orders.length > 0;
+            const hasLocalProducts = localDb.products && localDb.products.length > 0;
+            
+            if (hasLocalOrders || hasLocalProducts) {
+              console.warn('[HTTP Sync] ⚠️ Local database has data - skipping automatic overwrite');
+              console.warn('[HTTP Sync] Local orders:', localDb.orders?.length || 0, ', Products:', localDb.products?.length || 0);
+              writeAuditLog('SYNC_BLOCKED_LOCAL_DATA', {
+                peerIp: ip,
+                localOrders: localDb.orders?.length || 0,
+                localProducts: localDb.products?.length || 0
+              });
+              if (cb) cb(new Error('local_data_exists'));
+              return;
+            }
+          }
+        } catch (checkErr) {
+          console.warn('[HTTP Sync] Could not check local DB:', checkErr.message);
+        }
+        
+        // 🛡️ Create backup before writing
+        try {
+          if (fs.existsSync(dbPath)) {
+            const backupPath = dbPath + `.backup.${Date.now()}`;
+            fs.copyFileSync(dbPath, backupPath);
+            console.log('[HTTP Sync] 💾 Backup created:', backupPath);
+            writeAuditLog('SYNC_BACKUP_CREATED', { peerIp: ip, backupPath });
+            
+            // Keep only last 5 backups
+            const backups = fs.readdirSync(path.dirname(dbPath))
+              .filter(f => f.startsWith('pos_database.json.backup.'))
+              .sort((a, b) => b.localeCompare(a));
+            if (backups.length > 5) {
+              backups.slice(5).forEach(old => {
+                fs.unlinkSync(path.join(path.dirname(dbPath), old));
+                console.log('[HTTP Sync] 🗑️ Removed old backup:', old);
+              });
+            }
+          }
+        } catch (backupErr) {
+          console.warn('[HTTP Sync] Backup warning:', backupErr.message);
+        }
+        
+        writeAuditLog('SYNC_FROM_PEER_START', { peerIp: ip });
+        
+        // ✍️ Atomic write: write to temp file first, then rename
+        const tempPath = dbPath + '.tmp';
+        fs.promises.writeFile(tempPath, JSON.stringify(parsed, null, 2)).then(() => {
+          fs.renameSync(tempPath, dbPath);
+          console.log(`[HTTP Sync] ✅ Database pulled and saved from ${ip} (atomic write)`);
+          writeAuditLog('SYNC_FROM_PEER_SUCCESS', { 
+            peerIp: ip,
+            orders: parsed.orders?.length || 0,
+            products: parsed.products?.length || 0
+          });
           probePeerWaReady(ip, (capable) => {
             if (capable) notifyLanSyncHubCandidate(ip);
           });
@@ -489,6 +545,9 @@ function fetchDatabaseFromPeer(ip, callback) {
           if (cb) cb(null);
         }).catch(e => {
           console.error('[HTTP Sync] ❌ Write error from', ip, ':', e.message);
+          writeAuditLog('SYNC_FROM_PEER_ERROR', { peerIp: ip, error: e.message });
+          // Clean up temp file if exists
+          try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch(e) {}
           if (cb) cb(e);
         });
       } catch (e) {
@@ -678,17 +737,71 @@ function setupNetworkSync() {
         if (!sourceIp) sendFull(false);
         else probePeerWaReady(sourceIp, sendFull);
       } else if (data.type === 'db_changed') {
-        fetchDatabaseFromPeer(rinfo.address);
-      } else if (data.type === 'lan_factory_reset_ls' && data.hubIp && typeof data.hubIp === 'string') {
-        // تصفير شبكي: سحب قاعدة الجهاز المركزي ثم إشعار الواجهات بمسح localStorage (مع الإبقاء على بيانات المدير)
-        fetchDatabaseFromPeer(data.hubIp.trim(), (err) => {
-          if (err) {
-            console.error('[Factory reset LAN] فشل سحب القاعدة من', data.hubIp, err.message || err);
-            return;
+        // Only auto-fetch if we don't have local data
+        try {
+          const dbPath = path.join(app.getPath('userData'), 'pos_database.json');
+          if (fs.existsSync(dbPath)) {
+            const localDb = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+            const hasLocalData = (localDb.orders?.length || 0) > 0 || (localDb.products?.length || 0) > 0;
+            if (!hasLocalData) {
+              writeAuditLog('DB_CHANGED_FETCH_PEER', { peerIp: rinfo.address, reason: 'no_local_data' });
+              fetchDatabaseFromPeer(rinfo.address);
+            } else {
+              console.log('[Sync] Ignoring db_changed - local data exists');
+              writeAuditLog('DB_CHANGED_IGNORED', { peerIp: rinfo.address, reason: 'has_local_data' });
+            }
+          } else {
+            writeAuditLog('DB_CHANGED_FETCH_PEER', { peerIp: rinfo.address, reason: 'no_db_file' });
+            fetchDatabaseFromPeer(rinfo.address);
           }
-          BrowserWindow.getAllWindows().forEach((win) => {
-            if (!win.isDestroyed()) win.webContents.send('lan-factory-reset-clear-localstorage');
-          });
+        } catch(e) {
+          writeAuditLog('DB_CHANGED_FETCH_PEER', { peerIp: rinfo.address, reason: 'check_error', error: e.message });
+          fetchDatabaseFromPeer(rinfo.address);
+        }
+      } else if (data.type === 'lan_factory_reset_ls' && data.hubIp && typeof data.hubIp === 'string') {
+        // 🔒 FACTORY RESET PROTECTION: Require explicit confirmation
+        console.warn('[Factory reset LAN] Received factory reset request from:', data.hubIp);
+        writeAuditLog('FACTORY_RESET_REQUEST_RECEIVED', { 
+          hubIp: data.hubIp,
+          requesterInstanceId: data.instanceId
+        });
+        
+        // Show confirmation dialog to user
+        const { dialog } = require('electron');
+        BrowserWindow.getAllWindows().forEach((win) => {
+          if (!win.isDestroyed()) {
+            dialog.showMessageBox(win, {
+              type: 'warning',
+              title: '⚠️ طلب تصفير من الشبكة',
+              message: 'جهاز آخر يطلب تصفير قاعدة البيانات!',
+              detail: `الجهاز ${data.hubIp} يريد مسح جميع بياناتك.\n\nهل توافق على هذا الإجراء؟\n\n⚠️ هذا الإجراء لا يمكن التراجع عنه!`,
+              buttons: ['✅ موافق - تصفير البيانات', '❌ رفض - الاحتفاظ ببياناتي'],
+              defaultId: 1,
+              cancelId: 1,
+              noLink: true
+            }).then((result) => {
+              if (result.response === 0) {
+                // User confirmed - proceed with reset
+                console.log('[Factory reset LAN] User confirmed factory reset');
+                writeAuditLog('FACTORY_RESET_CONFIRMED', { hubIp: data.hubIp });
+                fetchDatabaseFromPeer(data.hubIp.trim(), (err) => {
+                  if (err) {
+                    console.error('[Factory reset LAN] فشل سحب القاعدة من', data.hubIp, err.message || err);
+                    writeAuditLog('FACTORY_RESET_FAILED', { hubIp: data.hubIp, error: err.message || err });
+                    return;
+                  }
+                  writeAuditLog('FACTORY_RESET_SUCCESS', { hubIp: data.hubIp });
+                  BrowserWindow.getAllWindows().forEach((win) => {
+                    if (!win.isDestroyed()) win.webContents.send('lan-factory-reset-clear-localstorage');
+                  });
+                });
+              } else {
+                // User denied - log and ignore
+                console.log('[Factory reset LAN] User denied factory reset - keeping local data');
+                writeAuditLog('FACTORY_RESET_DENIED', { hubIp: data.hubIp });
+              }
+            });
+          }
         });
       } else {
         BrowserWindow.getAllWindows().forEach(win => {
@@ -936,22 +1049,104 @@ ipcMain.handle('db-save-inventory', async (event, item) => {
 
 // Async full-DB read/write — used by renderer files to avoid blocking readFileSync on UI thread
 const _dbPath = path.join(app.getPath('userData'), 'pos_database.json');
+const _auditLogPath = path.join(app.getPath('userData'), 'pos_database_audit.log');
 const _emptyDB = { orders:[], products:[], categories:[], inventory:[], purchases:[], suppliers:[], inventoryTx:[], returns:[], expenses:[], bankTransfers:[], hrExpenses:[], otherIncome:[], employees:[], attendance:[], penaltyRules:[], chartOfAccounts:[], journalEntries:[], systemNotifications:[], inventoryAlertState:{} };
+
+// 📝 Audit Log Helper - تسجيل جميع العمليات الهامة
+function writeAuditLog(action, details) {
+  try {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      action: action,
+      details: details,
+      hostname: require('os').hostname()
+    };
+    const logLine = JSON.stringify(logEntry) + '\n';
+    fs.appendFileSync(_auditLogPath, logLine, 'utf8');
+    
+    // Keep log file under 10MB (rotate if needed)
+    try {
+      const stats = fs.statSync(_auditLogPath);
+      if (stats.size > 10 * 1024 * 1024) { // 10MB
+        const oldPath = _auditLogPath + '.old';
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        fs.renameSync(_auditLogPath, oldPath);
+        console.log('[Audit] Log rotated');
+      }
+    } catch(e) {}
+  } catch(e) {
+    console.error('[Audit] Failed to write log:', e.message);
+  }
+}
 // تم التحويل إلى async لتجنب حجب Event Loop عند قراءة ملفات كبيرة
 ipcMain.handle('db-read-full', async () => {
   try {
     const data = await fs.promises.readFile(_dbPath, 'utf8');
-    return JSON.parse(data);
-  } catch(e) { return _emptyDB; }
+    const parsed = JSON.parse(data);
+    
+    // تسجيل خفيف فقط عند الأخطاء أو أول قراءة
+    // لا نسجل كل قراءة عادية لتجنب البطء
+    
+    return parsed;
+  } catch(e) {
+    console.error('[DB Read] Error reading database:', e.message);
+    writeAuditLog('DB_READ_ERROR', { error: e.message });
+    return _emptyDB;
+  }
 });
 ipcMain.handle('db-write-full', async (event, data, opts) => {
   try {
-    await fs.promises.writeFile(_dbPath, JSON.stringify(data, null, 2));
+    // 📝 Log before write (خفيف - بدون تفاصيل كبيرة)
+    writeAuditLog('DB_WRITE_START', {
+      timestamp: new Date().toISOString()
+    });
+    
+    // 🛡️ Create backup before writing (if not a backup operation itself)
+    try {
+      if (fs.existsSync(_dbPath) && (!opts || opts.skipBackup !== true)) {
+        const backupPath = _dbPath + `.backup.${Date.now()}`;
+        await fs.promises.copyFile(_dbPath, backupPath);
+        writeAuditLog('BACKUP_CREATED', { backupPath });
+        
+        // Keep only last 5 backups
+        const dbDir = path.dirname(_dbPath);
+        const files = await fs.promises.readdir(dbDir);
+        const backups = files
+          .filter(f => f.startsWith('pos_database.json.backup.'))
+          .sort((a, b) => b.localeCompare(a));
+        
+        if (backups.length > 5) {
+          for (const old of backups.slice(5)) {
+            await fs.promises.unlink(path.join(dbDir, old));
+          }
+        }
+      }
+    } catch (backupErr) {
+      console.warn('[DB Write] Backup warning:', backupErr.message);
+      writeAuditLog('BACKUP_WARNING', { error: backupErr.message });
+    }
+    
+    // ✍️ Atomic write: write to temp file first, then rename
+    const tempPath = _dbPath + '.tmp';
+    await fs.promises.writeFile(tempPath, JSON.stringify(data, null, 2));
+    await fs.promises.rename(tempPath, _dbPath);
+    
+    // تسجيل خفيف عند الحفظ
+    writeAuditLog('DB_WRITE_SUCCESS', {
+      timestamp: new Date().toISOString()
+    });
+    
     const broadcast = !opts || opts.broadcast !== false;
     if (broadcast) broadcastDBChanged();
     return true;
   } catch (e) {
-    console.error('db-write-full error:', e);
+    console.error('[DB Write] ❌ Error:', e.message);
+    writeAuditLog('DB_WRITE_ERROR', { error: e.message });
+    // Clean up temp file if exists
+    try {
+      const tempPath = _dbPath + '.tmp';
+      if (fs.existsSync(tempPath)) await fs.promises.unlink(tempPath);
+    } catch(cleanupErr) {}
     return false;
   }
 });
@@ -1074,6 +1269,179 @@ ipcMain.handle('local-disk-backup-open-folder', async (event, folderPath) => {
   if (!p || !fs.existsSync(p)) return { success: false, error: 'missing' };
   const err = await shell.openPath(p);
   return err ? { success: false, error: err } : { success: true };
+});
+
+// === استعادة النسخة الاحتياطية ===
+ipcMain.handle('restore-backup-get-info', async (event, backupFolder) => {
+  try {
+    const folder = String(backupFolder).trim();
+    if (!folder || !fs.existsSync(folder)) {
+      return { success: false, error: 'folder_not_found' };
+    }
+
+    // البحث عن ملف pos_database.json في المجلد
+    const dbFile = path.join(folder, 'pos_database.json');
+    if (!fs.existsSync(dbFile)) {
+      return { success: false, error: 'database_not_found' };
+    }
+
+    // قراءة معلومات قاعدة البيانات
+    const dbData = JSON.parse(fs.readFileSync(dbFile, 'utf8'));
+    
+    // استخراج التاريخ من اسم المجلد
+    const folderName = path.basename(folder);
+    const dateMatch = folderName.match(/HashPOS_backup_(.+)/);
+    let dateStr = 'غير معروف';
+    if (dateMatch) {
+      try {
+        const datePart = dateMatch[1].replace(/-/g, '/').replace('T', ' ');
+        dateStr = new Date(datePart).toLocaleString('ar-SA');
+      } catch(e) {
+        dateStr = folderName;
+      }
+    }
+
+    return {
+      success: true,
+      date: dateStr,
+      ordersCount: dbData.orders?.length || 0,
+      productsCount: dbData.products?.length || 0,
+      inventoryCount: dbData.inventory?.length || 0,
+      hasLocalStorage: fs.existsSync(path.join(folder, 'hashpos_localStorage.json'))
+    };
+  } catch (e) {
+    console.error('[Restore] Error getting backup info:', e.message);
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('restore-backup-execute', async (event, options) => {
+  try {
+    // التحقق من المدخلات
+    if (!options || !options.backupFolder) {
+      return { success: false, error: 'لم يتم تحديد مجلد النسخة الاحتياطية' };
+    }
+
+    const backupFolder = String(options.backupFolder).trim();
+    if (!backupFolder) {
+      return { success: false, error: 'مسار المجلد فارغ' };
+    }
+
+    if (!fs.existsSync(backupFolder)) {
+      return { success: false, error: 'المجلد غير موجود: ' + backupFolder };
+    }
+
+    const dbFile = path.join(backupFolder, 'pos_database.json');
+    const lsFile = path.join(backupFolder, 'hashpos_localStorage.json');
+
+    // التحقق من وجود قاعدة البيانات
+    if (!fs.existsSync(dbFile)) {
+      return { success: false, error: 'ملف قاعدة البيانات غير موجود في المجلد:\n' + dbFile };
+    }
+
+    // قراءة بيانات النسخة والتحقق من صحتها
+    let backupDb;
+    try {
+      const raw = fs.readFileSync(dbFile, 'utf8');
+      backupDb = JSON.parse(raw);
+    } catch (parseErr) {
+      return { success: false, error: 'ملف قاعدة البيانات تالف أو غير صالح:\n' + parseErr.message };
+    }
+
+    // التحقق من أن البيانات كائن صحيح
+    if (!backupDb || typeof backupDb !== 'object') {
+      return { success: false, error: 'تنسيق قاعدة البيانات غير صحيح' };
+    }
+    
+    console.log('[Restore] Starting restore from:', backupFolder);
+    
+    // إنشاء backup للقاعدة الحالية قبل الاستعادة
+    try {
+      if (fs.existsSync(_dbPath)) {
+        const currentBackup = _dbPath + `.pre-restore.${Date.now()}`;
+        await fs.promises.copyFile(_dbPath, currentBackup);
+        writeAuditLog('RESTORE_BACKUP_CREATED', { 
+          backupPath: currentBackup,
+          restoreFrom: backupFolder 
+        });
+      }
+    } catch (backupErr) {
+      console.warn('[Restore] Backup current DB warning:', backupErr.message);
+    }
+
+    // استعادة قاعدة البيانات (atomic write)
+    try {
+      const tempPath = _dbPath + '.tmp';
+      
+      // التأكد من حذف الملف المؤقت إذا كان موجوداً
+      if (fs.existsSync(tempPath)) {
+        await fs.promises.unlink(tempPath);
+      }
+      
+      await fs.promises.writeFile(tempPath, JSON.stringify(backupDb, null, 2));
+      await fs.promises.rename(tempPath, _dbPath);
+      
+      console.log('[Restore] ✅ Database restored successfully from:', backupFolder);
+      writeAuditLog('DATABASE_RESTORED', {
+        from: backupFolder,
+        orders: backupDb.orders?.length || 0,
+        products: backupDb.products?.length || 0
+      });
+    } catch (writeErr) {
+      console.error('[Restore] ❌ Failed to write database:', writeErr.message);
+      writeAuditLog('RESTORE_WRITE_ERROR', { error: writeErr.message });
+      
+      // تنظيف الملف المؤقت إذا وجد
+      try {
+        const tempPath = _dbPath + '.tmp';
+        if (fs.existsSync(tempPath)) {
+          await fs.promises.unlink(tempPath);
+        }
+      } catch(e) {}
+      
+      return { success: false, error: 'فشل كتابة قاعدة البيانات:\n' + writeErr.message };
+    }
+
+    // استعادة localStorage إذا وجد
+    if (fs.existsSync(lsFile)) {
+      try {
+        const raw = fs.readFileSync(lsFile, 'utf8');
+        const lsData = JSON.parse(raw);
+        
+        if (lsData && typeof lsData === 'object') {
+          // إرسال البيانات للواجهة لاستعادتها
+          BrowserWindow.getAllWindows().forEach((win) => {
+            if (!win.isDestroyed()) {
+              win.webContents.send('restore-local-storage', lsData);
+            }
+          });
+          writeAuditLog('LOCALSTORAGE_RESTORE_QUEUED', { keysCount: Object.keys(lsData).length });
+        }
+      } catch (lsErr) {
+        console.warn('[Restore] LocalStorage warning:', lsErr.message);
+      }
+    }
+
+    console.log('[Restore] ✅ Restore completed successfully!');
+    return { success: true };
+  } catch (e) {
+    console.error('[Restore] ❌ Fatal error:', e.message);
+    console.error('[Restore] Stack:', e.stack);
+    writeAuditLog('RESTORE_ERROR', { 
+      error: e.message,
+      stack: e.stack 
+    });
+    return { success: false, error: 'خطأ غير متوقع:\n' + e.message };
+  }
+});
+
+// إعادة تحميل التطبيق
+ipcMain.on('app-reload', () => {
+  BrowserWindow.getAllWindows().forEach((win) => {
+    if (!win.isDestroyed()) {
+      win.reload();
+    }
+  });
 });
 
 const LOCAL_DISK_AUTO_CHECK_MS = 60 * 1000;

@@ -442,6 +442,56 @@
                                 <button type="button" class="btn btn-primary" id="btn-local-backup-now" style="background: #ea580c; border: none;">
                                     <i class="ph-fill ph-floppy-disk-back"></i> نسخ الآن
                                 </button>
+                                <button type="button" class="btn btn-primary" id="btn-local-backup-restore" style="background: #16a34a; border: none;">
+                                    <i class="ph-fill ph-download-simple"></i> استعادة نسخة احتياطية
+                                </button>
+                            </div>
+                            <div id="restore-backup-section" style="display:none; margin-top: 20px; padding: 20px; background: rgba(22, 163, 74, 0.1); border-radius: 12px; border: 1px solid rgba(22, 163, 74, 0.3);">
+                                <h4 style="color: #16a34a; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                                    <i class="ph-fill ph-download-simple"></i>
+                                    استعادة نسخة احتياطية
+                                </h4>
+                                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 16px;">
+                                    اختر مجلد النسخة الاحتياطية التي تريد استعادتها. سيتم استبدال قاعدة البيانات الحالية بالنسخة المحددة.
+                                </p>
+                                <div class="form-group">
+                                    <label style="color: var(--text-secondary);">مجلد النسخة الاحتياطية</label>
+                                    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                                        <code id="restore-backup-path" dir="ltr" style="flex:1; min-width:200px; display:block; padding:10px 12px; background:rgba(0,0,0,0.25); border-radius:8px; font-size:12px; word-break:break-all;">لم يتم اختيار مجلد بعد</code>
+                                        <button type="button" class="btn btn-primary" id="btn-restore-browse" style="background: #16a34a; border: none;">
+                                            <i class="ph-fill ph-folder-open"></i> اختيار مجلد النسخة
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="restore-backup-info" style="display:none; margin-top: 16px; padding: 16px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                                    <h5 style="color: var(--text-primary); margin-bottom: 12px;">معلومات النسخة:</h5>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 0.85rem;">
+                                        <div>
+                                            <span style="color: var(--text-muted);">تاريخ الإنشاء:</span><br>
+                                            <strong id="restore-info-date" style="color: var(--text-primary);">-</strong>
+                                        </div>
+                                        <div>
+                                            <span style="color: var(--text-muted);">عدد الطلبات:</span><br>
+                                            <strong id="restore-info-orders" style="color: var(--text-primary);">-</strong>
+                                        </div>
+                                        <div>
+                                            <span style="color: var(--text-muted);">عدد المنتجات:</span><br>
+                                            <strong id="restore-info-products" style="color: var(--text-primary);">-</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:10px; margin-top: 16px; flex-wrap:wrap;">
+                                    <button type="button" class="btn btn-primary" id="btn-restore-confirm" style="background: #16a34a; border: none; flex: 1;">
+                                        <i class="ph-fill ph-check-circle"></i> تأكيد الاستعادة
+                                    </button>
+                                    <button type="button" class="btn btn-primary" id="btn-restore-cancel" style="background: transparent; border: 1px solid var(--border-light); color: var(--text-muted);">
+                                        <i class="ph-fill ph-x-circle"></i> إلغاء
+                                    </button>
+                                </div>
+                                <p style="color: #ef4444; font-size: 0.78rem; margin-top: 12px; display: flex; align-items: center; gap: 6px;">
+                                    <i class="ph-fill ph-warning-circle"></i>
+                                    ⚠️ تحذير: سيتم استبدال قاعدة البيانات الحالية بالكامل!
+                                </p>
                             </div>
                             <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);">
                                 <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color: var(--text-secondary); font-size: 14px;">

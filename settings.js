@@ -415,10 +415,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnLocalBrowse = document.getElementById('btn-local-backup-browse');
     const btnLocalOpen = document.getElementById('btn-local-backup-open');
     const btnLocalNow = document.getElementById('btn-local-backup-now');
+    const btnLocalRestore = document.getElementById('btn-local-backup-restore');
+    const restoreSection = document.getElementById('restore-backup-section');
+    const restorePathEl = document.getElementById('restore-backup-path');
+    const btnRestoreBrowse = document.getElementById('btn-restore-browse');
+    const btnRestoreConfirm = document.getElementById('btn-restore-confirm');
+    const btnRestoreCancel = document.getElementById('btn-restore-cancel');
+    const restoreInfo = document.getElementById('restore-backup-info');
+    const restoreInfoDate = document.getElementById('restore-info-date');
+    const restoreInfoOrders = document.getElementById('restore-info-orders');
+    const restoreInfoProducts = document.getElementById('restore-info-products');
     const localAutoEn = document.getElementById('local-backup-auto-enabled');
     const localAutoInt = document.getElementById('local-backup-auto-interval');
     const localAutoLast = document.getElementById('local-backup-auto-last');
     let prevLocalAutoEnabled = false;
+    let selectedRestoreFolder = null;
 
     function collectAllLocalStorage() {
         const o = {};
@@ -516,6 +527,100 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             btnLocalNow.innerHTML = orig;
             btnLocalNow.style.pointerEvents = 'auto';
+        });
+    }
+
+    // زر استعادة نسخة احتياطية
+    if (btnLocalRestore) {
+        btnLocalRestore.addEventListener('click', () => {
+            if (restoreSection.style.display === 'none') {
+                restoreSection.style.display = 'block';
+                btnLocalRestore.innerHTML = '<i class="ph-fill ph-x-circle"></i> إغلاق استعادة النسخة';
+            } else {
+                restoreSection.style.display = 'none';
+                btnLocalRestore.innerHTML = '<i class="ph-fill ph-download-simple"></i> استعادة نسخة احتياطية';
+            }
+        });
+    }
+
+    // اختيار مجلد النسخة الاحتياطية
+    if (btnRestoreBrowse) {
+        btnRestoreBrowse.addEventListener('click', async () => {
+            try {
+                const { ipcRenderer } = require('electron');
+                const r = await ipcRenderer.invoke('local-disk-backup-pick-folder');
+                if (r.canceled || !r.folderPath) return;
+                
+                selectedRestoreFolder = r.folderPath;
+                restorePathEl.textContent = r.folderPath;
+                
+                // فحص محتوى المجلد وعرض المعلومات
+                const info = await ipcRenderer.invoke('restore-backup-get-info', r.folderPath);
+                if (info.success) {
+                    restoreInfo.style.display = 'block';
+                    restoreInfoDate.textContent = info.date || '-';
+                    restoreInfoOrders.textContent = info.ordersCount || '0';
+                    restoreInfoProducts.textContent = info.productsCount || '0';
+                } else {
+                    restoreInfo.style.display = 'none';
+                    alert('⚠️ هذا المجلد لا يحتوي على نسخة احتياطية صالحة!\n\nتأكد من اختيار مجلد HashPOS_backup_xxx');
+                }
+            } catch (e) {
+                alert('خطأ: ' + (e && e.message));
+            }
+        });
+    }
+
+    // إلغاء الاستعادة
+    if (btnRestoreCancel) {
+        btnRestoreCancel.addEventListener('click', () => {
+            restoreSection.style.display = 'none';
+            btnLocalRestore.innerHTML = '<i class="ph-fill ph-download-simple"></i> استعادة نسخة احتياطية';
+            selectedRestoreFolder = null;
+            restorePathEl.textContent = 'لم يتم اختيار مجلد بعد';
+            restoreInfo.style.display = 'none';
+        });
+    }
+
+    // تأكيد الاستعادة
+    if (btnRestoreConfirm) {
+        btnRestoreConfirm.addEventListener('click', async () => {
+            if (!selectedRestoreFolder) {
+                alert('⚠️ يرجى اختيار مجلد النسخة الاحتياطية أولاً!');
+                return;
+            }
+
+            const confirmMsg = `⚠️ تأكيد استعادة النسخة الاحتياطية\n\n` +
+                `سيتم استبدال قاعدة البيانات الحالية بالكامل!\n\n` +
+                `📂 النسخة المختارة:\n${selectedRestoreFolder}\n\n` +
+                `هل أنت متأكد من المتابعة؟`;
+
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+
+            const origText = btnRestoreConfirm.innerHTML;
+            btnRestoreConfirm.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin"></i> جاري الاستعادة...';
+            btnRestoreConfirm.disabled = true;
+
+            try {
+                const { ipcRenderer } = require('electron');
+                const res = await ipcRenderer.invoke('restore-backup-execute', {
+                    backupFolder: selectedRestoreFolder,
+                });
+
+                if (res.success) {
+                    alert('✅ تم استعادة النسخة الاحتياطية بنجاح!\n\nسيتم إعادة تشغيل التطبيق الآن.');
+                    ipcRenderer.send('app-reload');
+                } else {
+                    alert('❌ فشلت عملية الاستعادة:\n' + (res.error || 'خطأ غير معروف'));
+                }
+            } catch (e) {
+                alert('❌ خطأ أثناء الاستعادة:\n' + (e && e.message));
+            } finally {
+                btnRestoreConfirm.innerHTML = origText;
+                btnRestoreConfirm.disabled = false;
+            }
         });
     }
 

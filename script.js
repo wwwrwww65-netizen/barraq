@@ -334,6 +334,20 @@ try {
         window.dispatchEvent(new CustomEvent('sw-sync-complete'));
     });
 
+    // استعادة localStorage من نسخة احتياطية
+    ipcRenderer.on('restore-local-storage', (event, lsData) => {
+        if (!lsData || typeof lsData !== 'object') return;
+        
+        console.log('[Restore] Received localStorage data for restore, keys:', Object.keys(lsData).length);
+        
+        // حفظ البيانات مؤقتاً لاستعادتها بعد إعادة التحميل
+        try {
+            localStorage.setItem('_restore_pending', JSON.stringify(lsData));
+        } catch (e) {
+            console.error('[Restore] Failed to save restore data:', e.message);
+        }
+    });
+
     // Intercept localStorage — chunk large values (e.g. base64 images) for UDP
     const _origSetItem = localStorage.setItem.bind(localStorage);
     localStorage.setItem = function(key, value) {
@@ -607,6 +621,31 @@ function updateDateTime() {
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
+    // استعادة localStorage من نسخة احتياطية إذا وجدت
+    try {
+        const restoreData = localStorage.getItem('_restore_pending');
+        if (restoreData) {
+            console.log('[Restore] Found pending localStorage restore data');
+            const lsData = JSON.parse(restoreData);
+            
+            // استعادة جميع المفاتيح
+            Object.keys(lsData).forEach(key => {
+                try {
+                    localStorage.setItem(key, lsData[key]);
+                } catch (e) {
+                    console.warn('[Restore] Failed to restore key:', key, e.message);
+                }
+            });
+            
+            // حذف البيانات المؤقتة
+            localStorage.removeItem('_restore_pending');
+            console.log('[Restore] LocalStorage restored successfully');
+        }
+    } catch (e) {
+        console.error('[Restore] Error restoring localStorage:', e.message);
+        localStorage.removeItem('_restore_pending');
+    }
+    
     // Generic UI Interactions
     const navItems = document.querySelectorAll('.nav-item');
     /* 
