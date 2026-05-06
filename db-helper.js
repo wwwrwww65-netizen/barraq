@@ -12,6 +12,7 @@
         expenses:[], bankTransfers:[], hrExpenses:[], otherIncome:[],
         employees:[], attendance:[], penaltyRules:[],
         chartOfAccounts:[], journalEntries:[],
+        customers:[],
         systemNotifications:[], inventoryAlertState:{}, deliveryCompanies:[]
     };
 

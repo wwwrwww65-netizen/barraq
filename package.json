@@ -1,6 +1,6 @@
 {
   "name": "baraaq",
-  "version": "1.0.22",
+  "version": "1.0.23",
   "main": "main.js",
   "description": "Mister Casher Desktop — نظام نقاط البيع المتكامل للمطاعم (Techier)",
   "scripts": {
@@ -21,7 +21,7 @@
   "build": {
     "appId": "com.mistercasher.pos",
     "productName": "Mister Casher",
-    "compression": "maximum",
+    "compression": "store",
     "asar": true,
     "directories": {
       "output": "dist"
@@ -32,7 +32,13 @@
       "!**/*.map",
       "!.git/**/*",
       "!dist/**/*",
-      "!node_modules/puppeteer/.local-chromium/**/*"
+      "!node_modules/puppeteer/.local-chromium/**/*",
+      "!.wwebjs_auth/**/*",
+      "!.wwebjs_cache/**/*",
+      "!invoices/**/*",
+      "!tests/**/*",
+      "!test-results/**/*",
+      "!scripts/**/*"
     ],
     "extraResources": [
       {

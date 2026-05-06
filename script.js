@@ -1058,7 +1058,7 @@ window.syncGlobalSettings = function() {
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     window.syncGlobalSettings();
     if (typeof window.syncGlobalPermissionsUI === 'function') {
         window.syncGlobalPermissionsUI();
@@ -1068,9 +1068,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         window.location.href.includes('login.html');
     // جهاز جديد = لا يوجد أي من هذه المفاتيح الأساسية في localStorage
     // نتحقق من عدة مفاتيح لتجنب اعتبار الجهاز "جديداً" بسبب غياب مفتاح واحد فقط
-    const isNewDevice = !localStorage.getItem('system_roles') &&
-                        !localStorage.getItem('restaurant_settings') &&
-                        !localStorage.getItem('admin_username');
+    // Function to verify if this is really a new device (with retries to avoid race conditions)
+    async function checkIsNewDevice() {
+        for (let i = 0; i < 3; i++) {
+            const hasData = localStorage.getItem('system_roles') || 
+                            localStorage.getItem('restaurant_settings') || 
+                            localStorage.getItem('admin_username');
+            if (hasData) return false;
+            if (i < 2) await new Promise(r => setTimeout(r, 500));
+        }
+        return true;
+    }
+    const isNewDevice = await checkIsNewDevice();
 
     try {
         const { ipcRenderer } = require('electron');

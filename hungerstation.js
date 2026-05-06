@@ -15,6 +15,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const dbData = await window.dbRead();
             const targetCompany = new URLSearchParams(window.location.search).get('company') || 'هنقرستيشن';
+            
+            // تحديث نصوص الواجهة لتناسب الشركة المختارة
+            updateUiText(targetCompany);
+
             hsOrders = (dbData.orders || []).filter(o => {
                 if (targetCompany === 'هنقرستيشن') {
                     return o.deliveryCompany === 'هنقرستيشن' || o.orderType === 'هنقرستيشن' || (o.hungerStation === true && !o.deliveryCompany);
@@ -25,6 +29,52 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderOrders();
         } catch(e) {
             console.error('Failed to load HungerStation data:', e);
+        }
+    }
+
+    function updateUiText(companyName) {
+        // تحديث عنوان المتصفح
+        document.title = `Mister Casher - ${companyName}`;
+        
+        // تحديث عنوان الصفحة الرئيسي
+        const pageTitle = document.querySelector('.page-title h2');
+        if (pageTitle) {
+            pageTitle.innerHTML = `<i class="ph ph-motorcycle" style="color: #ff6b00;"></i> إدارة طلبات ${companyName}`;
+        }
+        
+        // تحديث نص البحث في الهيدر
+        const headerSearch = document.querySelector('.top-header .search-bar input');
+        if (headerSearch) {
+            headerSearch.placeholder = `ابحث في طلبات ${companyName}...`;
+        }
+
+        // تحديث نص البحث في الفلتر
+        const filterSearch = document.getElementById('hs-search-input');
+        if (filterSearch) {
+            filterSearch.placeholder = `ابحث في طلبات ${companyName}...`;
+        }
+
+        // تحديث عنوان مودال استلام المبلغ
+        const bulkModalHeader = document.querySelector('#hs-bulk-receive-modal h2');
+        if (bulkModalHeader) {
+            bulkModalHeader.innerHTML = `<i class="ph ph-hand-coins"></i> استلام مبلغ من ${companyName}`;
+        }
+
+        // تحديث قالب سند القبض
+        const voucherTitle = document.querySelector('.v-main-title');
+        if (voucherTitle) {
+            voucherTitle.innerText = `سند قبض — ${companyName}`;
+        }
+        
+        const voucherFromLabel = document.getElementById('hsv-from');
+        if (voucherFromLabel) {
+            voucherFromLabel.innerText = companyName;
+        }
+
+        // تحديث رسالة الجدول الفارغ
+        const emptyMsg = document.querySelector('.hs-empty p');
+        if (emptyMsg) {
+            emptyMsg.innerText = `لا توجد طلبات لشركة ${companyName} بعد`;
         }
     }
 
@@ -101,11 +151,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (filtered.length === 0) {
+            const targetCompany = new URLSearchParams(window.location.search).get('company') || 'هنقرستيشن';
             tbody.innerHTML = `
                 <tr>
                     <td colspan="8" class="hs-empty">
                         <i class="ph ph-motorcycle"></i>
-                        <p>لا توجد طلبات</p>
+                        <p>لا توجد طلبات لشركة ${targetCompany} بعد</p>
                     </td>
                 </tr>
             `;
@@ -215,7 +266,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="hs-modal-body">
                     <div style="margin-bottom:16px;">
                         <strong>التاريخ:</strong> ${order.date || '-'}<br>
-                        <strong>العميل:</strong> ${order.customerName || 'هنقرستيشن'}<br>
+                        <strong>الشركة:</strong> ${order.deliveryCompany || order.orderType || 'هنقرستيشن'}<br>
+                        <strong>العميل:</strong> ${order.customerName || 'طلب خارجي'}<br>
                         <strong>الحالة:</strong> مكتمل<br>
                         <strong>الدفع:</strong> ${order.hsPaymentStatus === 'paid' ? 'مدفوع' : 'غير مدفوع'}
                     </div>
@@ -348,7 +400,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 id: 'RV-HS-' + Date.now(),
                 type: 'سند قبض',
                 amount: order.total,
-                from: 'هنقرستيشن',
+                from: order.deliveryCompany || order.orderType || 'هنقرستيشن',
                 orderId: orderId,
                 paymentMethod: selectedMethod,
                 notes: notes || `استلام مبلغ طلب ${orderId}`,
@@ -384,7 +436,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Export to PDF - uses system's built-in PDF engine
     window.exportHSPDF = function() {
-        let restName = "هنقرستيشن";
+        const targetCompany = new URLSearchParams(window.location.search).get('company') || 'هنقرستيشن';
+        let restName = targetCompany;
         try {
             const sysRaw = localStorage.getItem('restaurant_settings');
             if (sysRaw) {
@@ -399,7 +452,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
         
         if (typeof window.exportPageToPDF === 'function') {
-            window.exportPageToPDF('هنقرستيشن_' + restName + '_' + dateStr + '.pdf');
+            window.exportPageToPDF(targetCompany + '_' + restName + '_' + dateStr + '.pdf');
         } else {
             window.print();
         }
@@ -500,10 +553,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 id: 'RV-HS-' + Date.now(),
                 type: 'سند قبض',
                 amount: amount,
-                from: 'هنقرستيشن',
+                from: new URLSearchParams(window.location.search).get('company') || 'هنقرستيشن',
                 orderId: 'طلبات متعددة',
                 paymentMethod: paymentMethod,
-                notes: notes || `استلام مبلغ من هنقرستيشن`,
+                notes: notes || `استلام مبلغ من ${new URLSearchParams(window.location.search).get('company') || 'هنقرستيشن'}`,
                 date: now.toLocaleString('ar-u-nu-latn'),
                 timestamp: now.getTime()
             };

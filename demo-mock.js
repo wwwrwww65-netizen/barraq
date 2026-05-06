@@ -120,6 +120,7 @@ window.exportPageToPDF = async function(filename = 'تقرير.pdf') {
             if (!loader) {
                 loader = document.createElement('div');
                 loader.id = 'pdf-export-loader';
+                loader.className = 'no-print';
                 loader.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(2, 6, 23, 0.75); z-index:999999; display:flex; align-items:center; justify-content:center; color:white; font-family:"Cairo",sans-serif; backdrop-filter:blur(8px); transition: opacity 0.3s ease;';
                 loader.innerHTML = `
                     <div class="pdf-loader-content" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); padding: 40px 60px; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; backdrop-filter: blur(16px); animation: floatUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);">
@@ -300,37 +301,40 @@ window.addEventListener('beforeprint', () => {
     });
     
     header.innerHTML = `
-        <div style="width:100%; display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #0f172a !important; padding:15px 30px 20px 30px; margin-bottom:25px; background:#fff !important; font-family: 'Cairo', sans-serif;">
-            
-            <!-- Left Section: Restaurant Info -->
-            <div style="text-align:right; width:35%; padding-right:15px;">
-                <h1 style="margin:0 0 10px 0; font-size:26px; font-weight:900; color:#0f172a !important; line-height:1.2;">${sys.name || 'Mister Casher'}</h1>
-                <div style="display:flex; flex-direction:column; gap:4px;">
-                    ${sys.branch ? `<p style="margin:0; font-size:14px; font-weight:600; color:#475569 !important;"><i class="ph ph-map-pin" style="font-size:14px;"></i> ${sys.branch}</p>` : ''}
-                    ${sys.phone ? `<p style="margin:0; font-size:14px; font-weight:600; color:#475569 !important;" dir="ltr"><i class="ph ph-phone" style="font-size:14px;"></i> ${sys.phone}</p>` : ''}
-                    ${sys.tax ? `<p style="margin:0; font-size:13px; font-weight:600; color:#64748b !important;">الرقم الضريبي: <span dir="ltr">${sys.tax}</span></p>` : ''}
-                    ${sys.whatsapp ? `<p style="margin:0; font-size:13px; font-weight:600; color:#64748b !important;" dir="ltr"><i class="ph ph-whatsapp-logo" style="font-size:14px;"></i> ${sys.whatsapp}</p>` : ''}
+        <div style="width:100%; background:#fff !important; font-family: 'Cairo', sans-serif; padding:15px 30px 0 30px; margin-bottom:20px;">
+            <div style="width:100%; display:flex; justify-content:space-between; align-items:flex-start;">
+                
+                <!-- Left Section: Restaurant Info -->
+                <div style="text-align:right; width:35%; padding-right:15px;">
+                    <h1 style="margin:0 0 10px 0; font-size:26px; font-weight:900; color:#0f172a !important; line-height:1.2;">${sys.name || 'Mister Casher'}</h1>
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        ${sys.branch ? `<p style="margin:0; font-size:14px; font-weight:600; color:#475569 !important;"><i class="ph ph-map-pin" style="font-size:14px;"></i> ${sys.branch}</p>` : ''}
+                        ${sys.phone ? `<p style="margin:0; font-size:14px; font-weight:600; color:#475569 !important;" dir="ltr"><i class="ph ph-phone" style="font-size:14px;"></i> ${sys.phone}</p>` : ''}
+                        ${sys.tax ? `<p style="margin:0; font-size:13px; font-weight:600; color:#64748b !important;">الرقم الضريبي: <span dir="ltr">${sys.tax}</span></p>` : ''}
+                        ${sys.whatsapp ? `<p style="margin:0; font-size:13px; font-weight:600; color:#64748b !important;" dir="ltr"><i class="ph ph-whatsapp-logo" style="font-size:14px;"></i> ${sys.whatsapp}</p>` : ''}
+                    </div>
                 </div>
-            </div>
-            
-            <!-- Center Section: Logo & Report Title -->
-            <div style="text-align:center; width:30%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:0 10px;">
-                <img src="${logoSrc}" style="width:auto;height:auto;max-height:110px;max-width:250px;object-fit:contain;margin-bottom:10px;" onerror="this.src='placeholder.svg'">
-                <div style="background:#f8fafc !important; padding:8px 24px; border:2px solid #cbd5e1 !important; border-radius:25px; box-shadow:0 2px 8px rgba(0,0,0,0.05) !important;">
-                    <span style="font-size:16px; font-weight:800; color:#0f172a !important;">${pageTitle}</span>
-                    ${periodInfo}
+                
+                <!-- Center Section: Logo & Report Title -->
+                <div style="text-align:center; width:30%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:0 10px;">
+                    <img src="${logoSrc}" style="width:auto;height:auto;max-height:110px;max-width:250px;object-fit:contain;margin-bottom:10px;" onerror="this.src='placeholder.svg'">
+                    <div style="background:#f8fafc !important; padding:8px 24px; border:2px solid #cbd5e1 !important; border-radius:25px; box-shadow:0 2px 8px rgba(0,0,0,0.05) !important;">
+                        <span style="font-size:16px; font-weight:800; color:#0f172a !important;">${pageTitle}</span>
+                        ${periodInfo}
+                    </div>
                 </div>
-            </div>
-            
-            <!-- Right Section: Export Date/Time -->
-            <div style="text-align:left; width:35%; padding-left:15px;">
-                <div style="border:2px solid #cbd5e1 !important; padding:14px 18px; border-radius:10px; display:inline-block; text-align:right; background:#f8fafc !important; box-shadow:0 2px 8px rgba(0,0,0,0.05) !important;">
-                    <p style="margin:0 0 8px; font-size:12px; font-weight:700; color:#64748b !important; text-transform:uppercase; letter-spacing:0.5px;">تاريخ ووقت التصدير</p>
-                    <p style="margin:0; font-weight:900; font-size:15px; color:#0f172a !important;" dir="ltr">${dateStr}</p>
-                    ${sys.taxRate ? `<p style="margin:6px 0 0 0; font-size:12px; font-weight:600; color:#64748b !important;">نسبة الضريبة: ${sys.taxRate}%</p>` : ''}
+                
+                <!-- Right Section: Export Date/Time -->
+                <div style="text-align:left; width:35%; padding-left:15px;">
+                    <div style="border:2px solid #cbd5e1 !important; padding:14px 18px; border-radius:10px; display:inline-block; text-align:right; background:#f8fafc !important; box-shadow:0 2px 8px rgba(0,0,0,0.05) !important;">
+                        <p style="margin:0 0 8px; font-size:12px; font-weight:700; color:#64748b !important; text-transform:uppercase; letter-spacing:0.5px;">تاريخ ووقت التصدير</p>
+                        <p style="margin:0; font-weight:900; font-size:15px; color:#0f172a !important;" dir="ltr">${dateStr}</p>
+                        ${sys.taxRate ? `<p style="margin:6px 0 0 0; font-size:12px; font-weight:600; color:#64748b !important;">نسبة الضريبة: ${sys.taxRate}%</p>` : ''}
+                    </div>
                 </div>
+                
             </div>
-            
+            <div style="border-bottom: 2px solid #0f172a !important; margin-top: 15px; width: 100%;"></div>
         </div>
     `;
 });

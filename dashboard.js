@@ -950,7 +950,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('day-total-returns').innerText = curPlain(dayTotalRet);
         document.getElementById('day-total-expenses').innerText= curPlain(dayTotalExp);
         document.getElementById('day-total-sales').innerText   = curPlain(dayTotalIncome);
-        document.getElementById('day-total-hs-unpaid').innerText = curPlain(dayTotalHSUnpaid);
+        const hsUnpaidEl = document.getElementById('day-total-hs-unpaid');
+        if (hsUnpaidEl) hsUnpaidEl.innerText = curPlain(dayTotalHSUnpaid);
         // Update delivery breakdown container
         const dayDeliveryContainer = document.getElementById('day-delivery-breakdown-container');
         if (dayDeliveryContainer) {
@@ -1144,9 +1145,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Get data from the modal
-        const managerName = document.getElementById('day-cashier-name').innerText;
-        const datetime = document.getElementById('day-datetime').innerText;
-        const date = document.getElementById('day-date').innerText;
+        const managerName = document.getElementById('day-cashier-name')?.innerText || 'المدير';
+        const datetime = document.getElementById('day-datetime')?.innerText || '';
+        const date = document.getElementById('day-date')?.innerText || '';
+        const totalHS = document.getElementById('day-total-hs-unpaid')?.innerText || curPlain(0);
         
         // Collect all rows from day report
         const totalOrders = document.getElementById('day-orders-count')?.innerText || '0';
@@ -1173,7 +1175,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             deliveryPrintRowsDay = `<tr class="row-light"><td style="color:#ff6b00;">إجمالي التوصيل</td><td style="color:#ff6b00;">${hsVal}</td></tr>`;
         }
         
-        const totalWithHS = document.getElementById('day-total-with-hs').innerText;
+        const totalWithHS = document.getElementById('day-total-with-hs')?.innerText || curPlain(0);
         const totalWithHSLabel = document.getElementById('day-total-with-delivery-label') ? document.getElementById('day-total-with-delivery-label').innerText.replace(':', '') : 'الإجمالي مع التوصيل';
         const drawerTotal = document.getElementById('day-drawer-total')?.innerText || curPlain(0);
 
@@ -1429,7 +1431,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             </thead>
             <tbody>
                 <tr><td>عدد الطلبات</td><td>${totalOrders}</td></tr>
-                <tr><td>إجمالي توصيل</td><td>${totalHS}</td></tr>
+                ${deliveryPrintRowsDay}
                 <tr><td>إجمالي الكاش</td><td>${totalCash}</td></tr>
                 <tr><td>إجمالي الشبكة</td><td>${totalNetwork}</td></tr>
                 <tr class="row-strong"><td>إجمالي الدخل</td><td>${totalIncome}</td></tr>
@@ -1552,12 +1554,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             deliveryPrintRows = `<tr><td style="color:#ff6b00;">إجمالي التوصيل</td><td style="color:#ff6b00;">${hsVal}</td></tr>`;
         }
         
-        const totalIncome = document.getElementById('shift-total-income').innerText;
-        const tax = document.getElementById('shift-tax').innerText;
-        const returns = document.getElementById('shift-returns').innerText;
-        const expenses = document.getElementById('shift-expenses').innerText;
-        const drawer = document.getElementById('shift-drawer').innerText;
-        const grandTotal = document.getElementById('shift-grand-total').innerText;
+        const totalIncome = document.getElementById('shift-total-income')?.innerText || curPlain(0);
+        const tax = document.getElementById('shift-tax')?.innerText || curPlain(0);
+        const returns = document.getElementById('shift-returns')?.innerText || curPlain(0);
+        const expenses = document.getElementById('shift-expenses')?.innerText || curPlain(0);
+        const drawer = document.getElementById('shift-drawer')?.innerText || curPlain(0);
+        const grandTotal = document.getElementById('shift-grand-total')?.innerText || curPlain(0);
 
         console.log('🖨️  Printing shift closure report...');
         console.log('   Logo:', logoBase64 ? '✓ Base64 (' + logoBase64.length + ' bytes)' : '✗ No logo');

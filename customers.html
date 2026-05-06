@@ -145,111 +145,10 @@
                         <p>تسجيل بيانات للتواصل وبرامج الولاء</p>
                     </div>
 
-                    <!-- Customer Card: VIP -->
-                    <div class="customer-card" data-type="vip">
-                        <div class="cust-card-header">
-                            <div class="cust-avatar-box">
-                                <div class="cust-avatar">ع.م</div>
-                                <div class="cust-info">
-                                    <h3>عبدالله بن محمد</h3>
-                                    <p><i class="ph ph-phone"></i> 0551234567</p>
-                                </div>
-                            </div>
-                            <span class="cust-badge vip"><i class="ph-fill ph-crown"></i> VIP</span>
-                        </div>
-                        
-                        <div class="cust-stats">
-                            <div class="stat-item">
-                                <span>إجمالي الطلبات</span>
-                                <strong>42 طلب</strong>
-                            </div>
-                            <div class="stat-item">
-                                <span>نقاط الولاء</span>
-                                <strong class="highlight">1,250 نقطة</strong>
-                            </div>
-                            <div class="stat-item">
-                                <span>آخر زيارة</span>
-                                <strong>الأمس</strong>
-                            </div>
-                        </div>
-
-                        <div class="cust-actions-grid">
-                            <button class="cust-btn call" title="اتصال"><i class="ph ph-phone-call"></i></button>
-                            <button class="cust-btn msg" title="رسالة واتساب"><i class="ph ph-whatsapp-logo"></i></button>
-                            <button class="cust-btn edit" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
-                        </div>
+                    <!-- Dynamic container for customers from DB -->
+                    <div id="customers-list-container" style="display: contents;">
+                        <!-- JS will inject cards here -->
                     </div>
-
-                    <!-- Customer Card: Regular -->
-                    <div class="customer-card" data-type="regular">
-                        <div class="cust-card-header">
-                            <div class="cust-avatar-box">
-                                <div class="cust-avatar" style="background: linear-gradient(135deg, #10b981, #059669);">س.ع</div>
-                                <div class="cust-info">
-                                    <h3>سالم علي</h3>
-                                    <p><i class="ph ph-phone"></i> 0569876543</p>
-                                </div>
-                            </div>
-                            <span class="cust-badge regular"><i class="ph-fill ph-user"></i> عادي</span>
-                        </div>
-                        
-                        <div class="cust-stats">
-                            <div class="stat-item">
-                                <span>إجمالي الطلبات</span>
-                                <strong>5 طلبات</strong>
-                            </div>
-                            <div class="stat-item">
-                                <span>نقاط الولاء</span>
-                                <strong class="highlight">150 نقطة</strong>
-                            </div>
-                            <div class="stat-item">
-                                <span>آخر زيارة</span>
-                                <strong>قبل أسبوع</strong>
-                            </div>
-                        </div>
-
-                        <div class="cust-actions-grid">
-                            <button class="cust-btn call" title="اتصال"><i class="ph ph-phone-call"></i></button>
-                            <button class="cust-btn msg" title="رسالة واتساب"><i class="ph ph-whatsapp-logo"></i></button>
-                            <button class="cust-btn edit" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
-                        </div>
-                    </div>
-
-                    <!-- Customer Card: VIP 2 -->
-                    <div class="customer-card" data-type="vip">
-                        <div class="cust-card-header">
-                            <div class="cust-avatar-box">
-                                <div class="cust-avatar" style="background: linear-gradient(135deg, #f59e0b, #d97706);">ف.ف</div>
-                                <div class="cust-info">
-                                    <h3>فهد الفهد</h3>
-                                    <p><i class="ph ph-phone"></i> 0541122334</p>
-                                </div>
-                            </div>
-                            <span class="cust-badge vip"><i class="ph-fill ph-crown"></i> VIP</span>
-                        </div>
-                        
-                        <div class="cust-stats">
-                            <div class="stat-item">
-                                <span>إجمالي الطلبات</span>
-                                <strong>85 طلب</strong>
-                            </div>
-                            <div class="stat-item">
-                                <span>نقاط الولاء</span>
-                                <strong class="highlight">3,400 نقطة</strong>
-                            </div>
-                            <div class="stat-item">
-                                <span>آخر زيارة</span>
-                                <strong>اليوم صباحاً</strong>
-                            </div>
-                        </div>
-
-                        <div class="cust-actions-grid">
-                            <button class="cust-btn call" title="اتصال"><i class="ph ph-phone-call"></i></button>
-                            <button class="cust-btn msg" title="رسالة واتساب"><i class="ph ph-whatsapp-logo"></i></button>
-                            <button class="cust-btn edit" title="تعديل"><i class="ph ph-pencil-simple"></i></button>
-                        </div>
-                    </div>
-
                 </div>
 
             </div>
@@ -260,11 +159,12 @@
     <div class="modal-overlay" id="add-customer-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="ph ph-user-plus"></i> إضافة تسجيل عميل جديد</h3>
+                <h3 id="modal-title"><i class="ph ph-user-plus"></i> إضافة تسجيل عميل جديد</h3>
                 <button class="close-modal" id="btn-close-cust-modal"><i class="ph ph-x"></i></button>
             </div>
             <div class="modal-body">
                 <form id="new-customer-form">
+                    <input type="hidden" id="c-id">
                     <div class="form-group">
                         <label>الاسم بالكامل <span class="required">*</span></label>
                         <div class="input-with-icon">

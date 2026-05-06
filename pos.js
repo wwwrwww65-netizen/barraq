@@ -86,22 +86,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const searchInput = document.getElementById('product-search');
     const cartContainer = document.getElementById('cart-items-container');
 
-    const barcodeScanBtn = document.querySelector('.pos-header .pos-action-btn:not(.primary)');
-    const newCustomerHeaderBtn = document.querySelector('.pos-header .pos-action-btn.primary');
-    if (barcodeScanBtn && searchInput) {
-        barcodeScanBtn.addEventListener('click', () => {
-            const code = prompt('أدخل رمز الباركود أو جزءاً من اسم الصنف:', (searchInput.value || '').trim());
-            if (code == null) return;
-            searchInput.value = code.trim();
-            searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-        });
-    }
-    if (newCustomerHeaderBtn) {
-        newCustomerHeaderBtn.addEventListener('click', () => {
-            window.location.href = 'customers.html';
-        });
-    }
-    
     const formatCurrency = (amount) =>
         window.MisterCasherCurrency ? MisterCasherCurrency.format(amount) : Number(amount).toFixed(2) + ' ر.س';
 
@@ -752,9 +736,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // HungerStation specific fields
                 hungerStation: isDelivery,
                 deliveryCompany: isDelivery ? selectedPay : undefined,
-                hsStatus: selectedPay === 'هنقرستيشن' ? 'delivered' : undefined,
-                hsPaymentStatus: selectedPay === 'هنقرستيشن' ? 'unpaid' : undefined,
-                customerName: selectedPay === 'هنقرستيشن' ? 'هنقرستيشن' : undefined
+                hsStatus: isDelivery ? 'delivered' : undefined,
+                hsPaymentStatus: isDelivery ? 'unpaid' : undefined,
+                customerName: isDelivery ? selectedPay : undefined
             };
 
             try {
@@ -941,7 +925,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Payment Method from selected modal option
-        const selectedPay = document.querySelector('.payment-method.selected input').value;
+        let selectedPay = document.querySelector('.payment-method.selected input').value;
+        
+        // إذا تم اختيار "توصيل"، نبحث عن الشركة المحددة من الـ Pills
+        if (selectedPay === 'توصيل') {
+            const selectedPill = document.querySelector('.delivery-pill.selected input');
+            if (selectedPill) {
+                selectedPay = selectedPill.value;
+            }
+        }
+
         if(document.getElementById('r-payment-method')) document.getElementById('r-payment-method').innerText = selectedPay;
 
         // Order notes
@@ -955,12 +948,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             notesRow.style.display = 'none';
         }
 
-        // If HungerStation, add special marker
-        if (selectedPay === 'هنقرستيشن') {
+        // If Delivery Company, add special marker
+        // نتحقق مما إذا كان الدفع عن طريق شركة توصيل (أي ليس كاش أو شبكة أو مجزأ)
+        const isDeliveryPay = selectedPay !== 'كاش' && selectedPay !== 'شبكة / بطاقة' && selectedPay !== 'مجزأ';
+        if (isDeliveryPay) {
             const rType = document.getElementById('r-type');
             const kType = document.getElementById('k-type');
-            if (rType) rType.innerText = 'طلب هنقرستيشن 🏍️';
-            if (kType) kType.innerText = 'هنقرستيشن 🏍️';
+            if (rType) rType.innerText = `طلب ${selectedPay} 🏍️`;
+            if (kType) kType.innerText = `${selectedPay} 🏍️`;
         }
 
         // Fill Items

@@ -104,60 +104,78 @@
         }
         .toggle-switch input:checked + .toggle-slider::before { right:27px; }
 
-        /* Profile Finances Print Styles */
+        /* Profile Finances Print */
         @media print {
-            .no-print { display: none !important; }
-            body { background: white !important; }
-            .sidebar { display: none !important; }
-            .main-content { margin: 0 !important; padding: 20px !important; display: block !important; }
-            .print-only { display: block !important; }
-
-            /* Hide all views by default in print */
-            .hr-view { display: none !important; }
-
-            /* Profile Print Mode (Default fallback) */
-            body:not(.print-mode-history) #view-emp-profile {
-                position: static !important;
-                background: white !important;
-                display: block !important;
-                width: 100% !important;
-                height: auto !important;
-                overflow: visible !important;
+            /* General purge of UI elements */
+            .no-print, .top-header, .hr-header, .sidebar, .hr-sidebar, .modal-overlay, .nav-menu { 
+                display: none !important; 
             }
-            body:not(.print-mode-history) .profile-layout { display: block !important; gap: 0 !important; }
-            body:not(.print-mode-history) .profile-sidebar { display: none !important; }
-            body:not(.print-mode-history) .profile-tabs { display: none !important; }
-            body:not(.print-mode-history) .ptab-content { display: none !important; padding: 0 !important; border: none !important; box-shadow: none !important; }
-            body:not(.print-mode-history) #tab-finances.ptab-content { display: block !important; }
-            body:not(.print-mode-history) .pro-finances-table-wrapper { overflow: visible !important; border: 2px solid #94a3b8 !important; border-radius: 0 !important; }
-            body:not(.print-mode-history) .pro-finances-table { width: 100% !important; }
-            body:not(.print-mode-history) .pro-finances-table tfoot { display: table-row-group !important; }
-            body:not(.print-mode-history) .pro-finances-table tfoot tr td { border: 1px solid #94a3b8 !important; padding: 10px 8px !important; font-size: 13px !important; }
 
-            /* History Print Mode */
-            body.print-mode-history #view-history {
-                position: static !important;
-                background: white !important;
-                display: block !important;
+            /* Layout Reset */
+            html, body { 
+                background: white !important; 
+                height: auto !important; 
+                min-height: 0 !important; 
+                overflow: visible !important; 
                 width: 100% !important;
-                height: auto !important;
-                overflow: visible !important;
+                margin: 0 !important;
                 padding: 0 !important;
             }
-            body.print-mode-history #view-history .card {
+
+            .app-container, .main-content, .hr-main { 
+                display: block !important; 
+                position: static !important; 
+                width: 100% !important; 
+                height: auto !important; 
+                min-height: 0 !important;
+                margin: 0 !important; 
+                padding: 0 !important;
+            }
+
+            /* Header from demo-mock.js - Force to TOP */
+            #global-print-header {
+                display: block !important;
+                position: static !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+            }
+
+            /* View Reset - Force under header */
+            .hr-view { display: none !important; }
+            
+            body.print-mode-totals #view-staff-totals,
+            body.print-mode-history #view-history {
+                display: block !important;
+                position: static !important;
+                width: 100% !important;
+                margin-top: 20px !important; /* Dynamic gap after header */
+                padding: 0 !important;
+            }
+
+            /* Table Formatting for both modes */
+            body.print-mode-history .card,
+            body.print-mode-totals #view-staff-totals .card {
                 box-shadow: none !important;
                 border: none !important;
                 padding: 0 !important;
+                background: transparent !important;
             }
-            body.print-mode-history .table-responsive { overflow: visible !important; max-height: none !important; }
-            body.print-mode-history .data-table { width: 100% !important; border: 2px solid #94a3b8 !important; table-layout: fixed !important; border-collapse: collapse !important; }
-            body.print-mode-history .data-table thead { display: table-row-group !important; }
-            body.print-mode-history .data-table tbody { display: table-row-group !important; }
-            body.print-mode-history .data-table tfoot { display: table-row-group !important; }
-            body.print-mode-history .data-table tr { page-break-inside: avoid !important; }
-            body.print-mode-history .data-table th, 
-            body.print-mode-history .data-table td { border: 1px solid #cbd5e1 !important; color: #000 !important; padding: 6px !important; word-wrap: break-word !important; font-size: 11px !important; }
-            body.print-mode-history .data-table th { font-size: 12px !important; background: #f8fafc !important; }
+            
+            .data-table { 
+                width: 100% !important; 
+                border: 1px solid #000 !important; 
+                border-collapse: collapse !important; 
+                table-layout: auto !important;
+            }
+            .data-table th, .data-table td { 
+                border: 1px solid #000 !important; 
+                color: #000 !important; 
+                padding: 8px !important; 
+                font-size: 12px !important; 
+            }
+            .data-table th { background: #f0f0f0 !important; font-weight: bold !important; }
             
             /* Exact Column Widths to prevent shifting */
             body.print-mode-history .data-table th:nth-child(1), body.print-mode-history .data-table td:nth-child(1) { width: 10% !important; }
@@ -215,7 +233,7 @@
 
     <!-- Main Content -->
     <main class="main-content hr-main">
-        <header class="top-header hr-header">
+        <header class="top-header hr-header no-print">
             <div class="header-left-title">
                 <h2 id="page-title">دليل الموظفين</h2>
                 <p id="page-subtitle">نظرة عامة على الطاقم وحالتهم</p>
@@ -583,6 +601,7 @@
                     </div>
                     <div style="display:flex; gap:10px;" class="no-print">
                         <button class="hr-btn-solid" onclick="showView('view-employees', 'nav-employees')" style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-primary);"><i class="ph ph-arrow-right"></i> العودة</button>
+                        <button class="hr-btn-solid bg-indigo" onclick="showView('view-staff-totals')" style="background:linear-gradient(135deg, #3b82f6, #2563eb);"><i class="ph ph-list-numbers"></i> اجماليات الموظفين</button>
                         <button class="hr-btn-solid" onclick="exportHistoryToPDF()" style="background:rgba(225,29,72,0.1); border:1px solid #e11d48; color:#e11d48;"><i class="ph ph-file-pdf"></i> تصدير PDF</button>
                         <button class="hr-btn-solid bg-purple" onclick="exportHistoryToExcel()" style="background:linear-gradient(135deg, #10b981, #059669);"><i class="ph ph-file-xls"></i> تصدير Excel</button>
                     </div>
@@ -731,6 +750,41 @@
                     <i class="ph ph-clock-counter-clockwise" style="font-size:64px; color:var(--text-muted); opacity:0.3;"></i>
                     <h3 style="color:var(--text-muted); margin-top:16px;">لا توجد عمليات مطابقة</h3>
                     <p style="color:var(--text-muted); font-size:13px;">جرب تغيير الفلاتر أو البحث عن شيء آخر</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- View: Staff Totals Report -->
+        <div id="view-staff-totals" class="hr-view" style="display:none;">
+            <div class="card" style="padding:24px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;" class="no-print">
+                    <div>
+                        <h2 style="color:var(--text-primary); margin:0; display:flex; align-items:center; gap:12px;">
+                            <i class="ph-fill ph-calculator" style="color:#3b82f6; font-size:28px;"></i>
+                            اجماليات أرصدة الموظفين
+                        </h2>
+                        <p style="color:var(--text-muted); margin:4px 0 0; font-size:13px;">ملخص الأرصدة المتبقية وتاريخ آخر عملية صرف لكل موظف</p>
+                    </div>
+                    <div style="display:flex; gap:10px;" class="no-print">
+                        <button class="hr-btn-solid" onclick="showView('view-history')" style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-primary);"><i class="ph ph-arrow-right"></i> العودة للسجل</button>
+                        <button class="hr-btn-solid" onclick="exportStaffTotalsPDF()" style="background:rgba(225,29,72,0.1); border:1px solid #e11d48; color:#e11d48;"><i class="ph ph-file-pdf"></i> تصدير PDF الإجماليات</button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table" id="staff-totals-table">
+                        <thead>
+                            <tr>
+                                <th>اسم الموظف</th>
+                                <th>الوظيفة</th>
+                                <th>الرصيد المتبقي (المستحق)</th>
+                                <th>تاريخ آخر سداد / صرف</th>
+                            </tr>
+                        </thead>
+                        <tbody id="staff-totals-tbody">
+                            <!-- JS Populated -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -953,6 +1007,7 @@
     <script src="script.js"></script>
 <script src="staff.js"></script>
 <script src="staff-history.js"></script>
+<script src="staff-totals.js"></script>
 </body>
 </html>
 

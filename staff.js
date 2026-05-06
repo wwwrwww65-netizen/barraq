@@ -224,9 +224,17 @@ const EMP_PAGE_SIZE = 24;
 let empCurrentPage  = 1;
 let _empSearchTimer;
 window.showView = function(viewId, navId) {
+    // Close any active modals when switching views to prevent focus traps or blocking overlays
+    document.querySelectorAll('.modal-overlay.active').forEach(m => closeHrModal(m));
+
     document.querySelectorAll('.hr-view').forEach(v => v.style.display = 'none');
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.getElementById(viewId).style.display = 'block';
+    
+    const targetView = document.getElementById(viewId);
+    if (targetView) {
+        targetView.style.display = 'block';
+    }
+    
     if(navId) document.getElementById(navId)?.classList.add('active');
 
     if(viewId === 'view-employees') renderEmployees();
@@ -234,6 +242,7 @@ window.showView = function(viewId, navId) {
     if(viewId === 'view-vouchers') renderVouchers();
     if(viewId === 'view-deductions') void renderDeductions();
     if(viewId === 'view-history') loadHistoryData();
+    
     if(viewId === 'view-add-employee') {
         if(navId === 'nav-new-emp') {
             document.getElementById('form-new-emp').reset();
@@ -242,7 +251,7 @@ window.showView = function(viewId, navId) {
             document.getElementById('form-emp-title').innerText = 'إضافة ملف موظف جديد';
         }
         
-        // Dinamically link Job Ttles to System Roles
+        // Dinamically link Job Titles to System Roles
         try {
             const sysRoles = JSON.parse(localStorage.getItem('system_roles') || '[]');
             const opts = document.getElementById('role-options');
@@ -250,6 +259,18 @@ window.showView = function(viewId, navId) {
                 opts.innerHTML = sysRoles.map(r => `<option value="${r.name}">`).join('');
             }
         } catch(e) { }
+
+        // Explicitly set focus to the first field after a short delay for Electron rendering
+        setTimeout(() => {
+            const firstInput = document.getElementById('ne-name');
+            if (firstInput) {
+                try {
+                    firstInput.focus({ preventScroll: true });
+                    // Simulate click to ensure focus is active in all Electron versions
+                    firstInput.click();
+                } catch(e) { console.warn("Focus failed", e); }
+            }
+        }, 300);
     }
 };
 

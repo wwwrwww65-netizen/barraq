@@ -770,6 +770,31 @@ body.light-theme .btn-danger[style*="background"] i {
     color: white !important;
 }
 
+/* Specific fix for Closing Buttons in Modals */
+body.light-theme #shiftReportModal .btn-danger,
+body.light-theme #dayCloseModal .btn-danger {
+    background: #ef4444 !important;
+    color: white !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
+}
+
+body.light-theme #dayCloseModal .btn-danger {
+    background: linear-gradient(135deg,#7c3aed,#4f46e5) !important;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3) !important;
+}
+
+body.light-theme #shiftReportModal .btn-danger i,
+body.light-theme #dayCloseModal .btn-danger i {
+    color: white !important;
+}
+
+body.light-theme #shiftReportModal .btn-danger:hover,
+body.light-theme #dayCloseModal .btn-danger:hover {
+    opacity: 0.9 !important;
+    transform: translateY(-1px) !important;
+}
+
 /* ============================================
    STAFF PAGE BUTTONS - FULL LIGHT THEME FIX
    ============================================ */
