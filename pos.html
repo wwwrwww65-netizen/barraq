@@ -178,10 +178,19 @@
                         <strong style="color: var(--text-muted)">مجزأ</strong>
                     </label>
                     <label class="payment-method" style="flex:1; padding: 15px; border: 2px solid var(--border-light); border-radius: 8px; cursor: pointer; background: rgba(15, 23, 42, 0.4);">
-                        <input type="radio" name="pay_method" value="هنقرستيشن" style="display:none;">
+                        <input type="radio" name="pay_method" value="توصيل" style="display:none;">
                         <i class="ph ph-motorcycle" style="font-size: 32px; color: var(--text-muted); display: block; margin-bottom: 8px;"></i>
-                        <strong style="color: var(--text-muted)">هنقرستيشن</strong>
+                        <strong style="color: var(--text-muted)">توصيل</strong>
                     </label>
+                </div>
+
+                <!-- Nested Delivery Company Selector -->
+                <div id="delivery-company-selector-container" style="display:none; flex-direction: column; gap: 10px; margin-bottom: 20px; text-align:right; border: 1px dashed var(--accent-purple); padding:15px; border-radius:8px; background: rgba(167, 139, 250, 0.05);">
+                    <label style="color: var(--accent-purple); font-size:14px; font-weight:700;"><i class="ph ph-buildings"></i> اختر شركة التوصيل:</label>
+                    <div id="dynamic-delivery-companies-pills" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start;">
+                        <!-- JS injected companies will go here -->
+                        <span style="color:var(--text-muted); font-size:12px;">جاري تحميل الشركات...</span>
+                    </div>
                 </div>
 
                 <div id="split-calculator" style="display:none; flex-direction: column; gap: 10px; margin-bottom: 20px; text-align:right; border: 1px dashed var(--accent-orange); padding:10px; border-radius:8px;">

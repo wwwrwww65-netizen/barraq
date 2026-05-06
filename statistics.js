@@ -121,26 +121,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         let totalRevenue = 0;
         let cashSales = 0;
         let cardSales = 0;
-        let hsSales   = 0;
+        let deliveryBreakdown = {};
 
         function splitOrderAmounts(o) {
             const pm = String(o.paymentMethod || '').trim();
             const total = Number(o.total) || 0;
-            const isHS = o.hungerStation === true || o.orderType === 'توصيل';
-            const isHSPaid = o.hsPaymentStatus === 'paid';
-            if (isHS && !isHSPaid) return { cash: 0, card: 0, hs: 0 };
-            if (isHS && isHSPaid) {
-                const hsMethod = (o.hsPaymentMethod || '').trim();
-                return hsMethod.includes('كاش') ? { cash: total, card: 0, hs: total } : { cash: 0, card: total, hs: total };
+            const isDelivery = o.hungerStation === true || o.orderType === 'توصيل' || !!o.deliveryCompany;
+            
+            if (isDelivery) {
+                const isPaid = o.hsPaymentStatus === 'paid';
+                if (!isPaid) return { cash: 0, card: 0, deliveryAmount: 0 };
+                
+                const method = (o.hsPaymentMethod || '').trim();
+                const compName = o.deliveryCompany || (o.hungerStation === true ? 'هنقرستيشن' : 'توصيل');
+                
+                if (method.includes('كاش')) {
+                    return { cash: total, card: 0, deliveryAmount: total, compName };
+                } else {
+                    return { cash: 0, card: total, deliveryAmount: total, compName };
+                }
             }
+
             if (pm === 'مجزأ') {
                 const c = Number(o.splitCash) || 0;
                 const n = Number(o.splitNetwork) || 0;
-                if (c || n) return { cash: c, card: n, hs: 0 };
-                return { cash: 0, card: total, hs: 0 };
+                if (c || n) return { cash: c, card: n, deliveryAmount: 0 };
+                return { cash: 0, card: total, deliveryAmount: 0 };
             }
-            if (pm.includes('كاش') || pm === 'cash') return { cash: total, card: 0, hs: 0 };
-            return { cash: 0, card: total, hs: 0 };
+            if (pm.includes('كاش') || pm === 'cash') return { cash: total, card: 0, deliveryAmount: 0 };
+            return { cash: 0, card: total, deliveryAmount: 0 };
         }
 
         function splitReturnAmounts(r) {
@@ -161,7 +170,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const pay = splitOrderAmounts(o);
             cashSales += pay.cash;
             cardSales += pay.card;
-            hsSales   += pay.hs;
+            
+            if (pay.deliveryAmount > 0 && pay.compName) {
+                if (!deliveryBreakdown[pay.compName]) deliveryBreakdown[pay.compName] = 0;
+                deliveryBreakdown[pay.compName] += pay.deliveryAmount;
+            }
         });
 
         let totalReturns = 0;
@@ -217,11 +230,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // ---- Donut Chart: payment methods ----
-        categoryDonutChart.data.datasets[0].data = [
-            Math.max(0, cashSales - hsSales),
-            Math.max(0, cardSales),
-            Math.max(0, hsSales)
+        let donutLabels = ['مبيعات نقدية (كاش)', 'مبيعات شبكة'];
+        let donutData = [
+            Math.max(0, cashSales),
+            Math.max(0, cardSales)
         ];
+        let donutColors = ['#3b82f6', '#10b981'];
+
+        // Add dynamic delivery companies
+        const deliveryColors = ['#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f43f5e'];
+        let colorIdx = 0;
+        
+        for (const [comp, amount] of Object.entries(deliveryBreakdown)) {
+            donutLabels.push(comp);
+            donutData.push(Math.max(0, amount));
+            donutColors.push(deliveryColors[colorIdx % deliveryColors.length]);
+            colorIdx++;
+        }
+
+        categoryDonutChart.data.labels = donutLabels;
+        categoryDonutChart.data.datasets[0].data = donutData;
+        categoryDonutChart.data.datasets[0].backgroundColor = donutColors;
         categoryDonutChart.update();
 
         // ---- Trend Chart (uses ALL unfiltered data for 'all', filtered for others) ----
@@ -241,7 +270,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // ---- Populating Print Tables ----
         populatePrintTables({
             netRevenue, exactExpenses, netProfit, margin, avgOrder, ordersCount: orders.length,
-            cashSales, cardSales, hsSales, totalReturns, totalHRExpenses, totalPurchases
+            cashSales, cardSales, deliveryBreakdown, totalReturns, totalHRExpenses, totalPurchases
         }, orders);
     }
 
@@ -534,6 +563,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Table 3: Budget & Payments
         const budgetBody = document.getElementById('pt-budget-body');
         if (budgetBody) {
+            let deliveryHtml = '';
+            let totalDelivery = 0;
+            if (data.deliveryBreakdown) {
+                for (const [comp, amount] of Object.entries(data.deliveryBreakdown)) {
+                    totalDelivery += amount;
+                    deliveryHtml += `
+                        <tr>
+                            <td>مبيعات ${comp}</td>
+                            <td>${curFmt(amount)}</td>
+                        </tr>
+                    `;
+                }
+            }
+
             budgetBody.innerHTML = `
                 <tr>
                     <td>مبيعات كاش</td>
@@ -543,10 +586,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td>مبيعات شبكة</td>
                     <td>${curFmt(data.cardSales)}</td>
                 </tr>
-                <tr>
-                    <td>مبيعات هنقرستيشن</td>
-                    <td>${curFmt(data.hsSales)}</td>
-                </tr>
+                ${deliveryHtml}
                 <tr style="background:#f1f5f9;">
                     <td><strong>إجمالي الدخل</strong></td>
                     <td><strong>${curFmt(data.netRevenue)}</strong></td>

@@ -92,6 +92,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Aggregate Items
         const itemMap = new Map();
+        const deliveryMap = new Map();
         let totalItemsSold = 0;
         let totalRevenueTop = 0;
 
@@ -119,7 +120,42 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 totalItemsSold += qty;
             });
+
+            // Aggregate Delivery Companies
+            const isDelivery = order.hungerStation === true || order.orderType === 'توصيل' || !!order.deliveryCompany;
+            if (isDelivery) {
+                const compName = order.deliveryCompany || (order.hungerStation === true ? 'هنقرستيشن' : 'توصيل');
+                if (!deliveryMap.has(compName)) {
+                    deliveryMap.set(compName, { name: compName, ordersCount: 0, revenue: 0 });
+                }
+                const d = deliveryMap.get(compName);
+                d.ordersCount += 1;
+                d.revenue += (Number(order.total) || 0);
+            }
         });
+
+        // Render Delivery Cards
+        const deliveryContainer = document.getElementById('delivery-cards-container');
+        if (deliveryContainer && deliveryMap.size > 0) {
+            deliveryContainer.style.display = 'grid';
+            let cardsHtml = '';
+            for (const [compName, stats] of deliveryMap.entries()) {
+                cardsHtml += `
+                    <div class="glass-card kpi-card" style="border-left: 4px solid #0ea5e9;">
+                        <div class="kpi-icon" style="background: rgba(14, 165, 233, 0.1); color: #0ea5e9;"><i class="ph-fill ph-motorcycle"></i></div>
+                        <div class="kpi-content">
+                            <p class="kpi-label">${compName}</p>
+                            <h3 class="kpi-value" style="font-size: 1.2rem;">${curNum(stats.revenue)} <span style="font-size:12px; color:var(--text-muted);">${curSym()}</span></h3>
+                            <div class="kpi-trend" style="color:var(--text-muted); margin-top:5px;"><span>${stats.ordersCount} طلبات مُنفذة</span></div>
+                        </div>
+                    </div>
+                `;
+            }
+            deliveryContainer.innerHTML = cardsHtml;
+        } else if (deliveryContainer) {
+            deliveryContainer.style.display = 'none';
+            deliveryContainer.innerHTML = '';
+        }
 
         // Convert to array and sort by quantity descending
         aggregatedItems = Array.from(itemMap.values()).sort((a, b) => b.qty - a.qty);

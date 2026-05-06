@@ -14,19 +14,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         const total = Number(o?.total) || 0;
         const isHS = o?.hungerStation === true || o?.orderType === 'توصيل';
         const isHSPaid = o?.hsPaymentStatus === 'paid';
-        
-        // HungerStation unpaid orders should NOT affect drawer balance
+
+        let deliveryCompany = o?.deliveryCompany || 'توصيل';
+        if (o?.hungerStation === true && !o?.deliveryCompany) deliveryCompany = 'هنقرستيشن';
+
+        // Delivery unpaid orders should NOT affect drawer balance
         if (isHS && !isHSPaid) {
-            return { cash: 0, network: 0, hungerStation: total };
+            let db = {}; db[deliveryCompany] = total;
+            return { cash: 0, network: 0, hungerStation: total, deliveryBreakdown: db };
         }
         
-        // HungerStation paid - check payment method
+        // Delivery paid - check payment method
         if (isHS && isHSPaid) {
             const hsMethod = (o?.hsPaymentMethod || '').trim();
             if (hsMethod.includes('كاش') || hsMethod === 'cash') {
-                return { cash: total, network: 0, hungerStation: 0 };
+                return { cash: total, network: 0, hungerStation: 0, deliveryBreakdown: {} };
             } else {
-                return { cash: 0, network: total, hungerStation: 0 };
+                return { cash: 0, network: total, hungerStation: 0, deliveryBreakdown: {} };
             }
         }
         
@@ -37,15 +41,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Validation: if split values are invalid, use total as cash
             if (c < 0 || n < 0) {
                 console.warn(`[Dashboard Global] Order ${o?.orderId}: Invalid split values (cash=${c}, net=${n}), using total as cash`);
-                return { cash: total, network: 0, hungerStation: 0 };
+                return { cash: total, network: 0, hungerStation: 0, deliveryBreakdown: {} };
             }
             
-            if (c || n) return { cash: c, network: n, hungerStation: 0 };
-            // If no split values stored, assume all cash
-            return { cash: total, network: 0, hungerStation: 0 };
+            if (c || n) return { cash: c, network: n, hungerStation: 0, deliveryBreakdown: {} };
+            return { cash: total, network: 0, hungerStation: 0, deliveryBreakdown: {} };
         }
-        if (pm.includes('كاش') || pm === 'cash') return { cash: total, network: 0, hungerStation: 0 };
-        return { cash: 0, network: total, hungerStation: 0 };
+        if (pm.includes('كاش') || pm === 'cash') return { cash: total, network: 0, hungerStation: 0, deliveryBreakdown: {} };
+        return { cash: 0, network: total, hungerStation: 0, deliveryBreakdown: {} };
     }
     function splitReturnAmountsGlobal(r) {
         const pm = String(r?.method || '').trim();
@@ -122,19 +125,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         const total = Number(o.total) || 0;
         const isHS = o.hungerStation === true || o.orderType === 'توصيل';
         const isHSPaid = o.hsPaymentStatus === 'paid';
-        
-        // HungerStation unpaid orders should NOT affect drawer balance
+
+        let deliveryCompany = o.deliveryCompany || 'توصيل';
+        if (o.hungerStation === true && !o.deliveryCompany) deliveryCompany = 'هنقرستيشن';
+
+        // Delivery unpaid orders should NOT affect drawer balance
         if (isHS && !isHSPaid) {
-            return { cash: 0, network: 0, hungerStation: total };
+            let db = {}; db[deliveryCompany] = total;
+            return { cash: 0, network: 0, hungerStation: total, deliveryBreakdown: db };
         }
         
-        // HungerStation paid - check payment method
+        // Delivery paid - check payment method
         if (isHS && isHSPaid) {
             const hsMethod = (o.hsPaymentMethod || '').trim();
             if (hsMethod.includes('كاش') || hsMethod === 'cash') {
-                return { cash: total, network: 0, hungerStation: 0 };
+                return { cash: total, network: 0, hungerStation: 0, deliveryBreakdown: {} };
             } else {
-                return { cash: 0, network: total, hungerStation: 0 };
+                return { cash: 0, network: total, hungerStation: 0, deliveryBreakdown: {} };
             }
         }
         
@@ -145,15 +152,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Validation: if split values are invalid, use total as cash
             if (c < 0 || n < 0) {
                 console.warn(`[Dashboard] Order ${o.orderId}: Invalid split values (cash=${c}, net=${n}), using total as cash`);
-                return { cash: total, network: 0, hungerStation: 0 };
+                return { cash: total, network: 0, hungerStation: 0, deliveryBreakdown: {} };
             }
             
-            if (c || n) return { cash: c, network: n, hungerStation: 0 };
-            // If no split values stored, assume all cash
-            return { cash: total, network: 0, hungerStation: 0 };
+            if (c || n) return { cash: c, network: n, hungerStation: 0, deliveryBreakdown: {} };
+            return { cash: total, network: 0, hungerStation: 0, deliveryBreakdown: {} };
         }
-        if (pm.includes('كاش') || pm === 'cash') return { cash: total, network: 0, hungerStation: 0 };
-        return { cash: 0, network: total, hungerStation: 0 };
+        if (pm.includes('كاش') || pm === 'cash') return { cash: total, network: 0, hungerStation: 0, deliveryBreakdown: {} };
+        return { cash: 0, network: total, hungerStation: 0, deliveryBreakdown: {} };
     }
     function splitReturnAmounts(r) {
         const pm = String(r.method || '').trim();
@@ -218,10 +224,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let shiftCashSales = 0;
     let shiftHungerStationUnpaid = 0;
+    let shiftDeliveryBreakdown = {};
     shiftOrders.forEach(o => {
         const pay = splitOrderAmounts(o);
         shiftCashSales += pay.cash;
         shiftHungerStationUnpaid += (pay.hungerStation || 0);
+        if (pay.deliveryBreakdown) {
+            for (const [comp, amt] of Object.entries(pay.deliveryBreakdown)) {
+                shiftDeliveryBreakdown[comp] = (shiftDeliveryBreakdown[comp] || 0) + amt;
+            }
+        }
     });
     // NOTE: Returns are NOT subtracted here because returned orders are already excluded from shiftOrders
 
@@ -231,7 +243,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Drawer balance: opening float + cash sales - expenses (DO NOT RESET on closure)
     const drawerBalance = shiftCashFloat + shiftCashSales - shiftTotalExp;
 
-    window.__dashboardData = { dailySales, cashSales, networkSales, totalTax, totalReturnsAmt, totalExp, shiftCashFloat, drawerBalance, shiftHungerStationUnpaid };
+    window.__dashboardData = { dailySales, cashSales, networkSales, totalTax, totalReturnsAmt, totalExp, shiftCashFloat, drawerBalance, shiftHungerStationUnpaid, shiftDeliveryBreakdown };
 
     // Apply to UI
     kpiValues[0].innerHTML = `${curNum(dailySales)}<span class="currency">${curSym()}</span>`;
@@ -557,7 +569,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('shift-float-cash').innerText = curPlain(d.shiftCashFloat);
         document.getElementById('shift-cash').innerText = curPlain(d.cashSales);
         document.getElementById('shift-network').innerText = curPlain(d.networkSales);
-        document.getElementById('shift-hungerstation').innerText = curPlain(d.shiftHungerStationUnpaid || 0);
+        // Update delivery breakdown container dynamically
+        const shiftDeliveryContainer = document.getElementById('shift-delivery-breakdown-container');
+        if (shiftDeliveryContainer) {
+            shiftDeliveryContainer.innerHTML = '';
+            if (d.shiftDeliveryBreakdown && Object.keys(d.shiftDeliveryBreakdown).length > 0) {
+                for (const [comp, amt] of Object.entries(d.shiftDeliveryBreakdown)) {
+                    shiftDeliveryContainer.insertAdjacentHTML('beforeend', `
+                    <div class="receipt-row">
+                        <span>إجمالي ${comp}:</span>
+                        <span style="color:#ff6b00;">${curPlain(amt)}</span>
+                    </div>`);
+                }
+            } else {
+                shiftDeliveryContainer.insertAdjacentHTML('beforeend', `
+                <div class="receipt-row">
+                    <span>إجمالي التوصيل:</span>
+                    <span style="color:#ff6b00;">${curPlain(d.shiftHungerStationUnpaid || 0)}</span>
+                </div>`);
+            }
+        } else if (document.getElementById('shift-hungerstation')) {
+            document.getElementById('shift-hungerstation').innerText = curPlain(d.shiftHungerStationUnpaid || 0);
+        }
         document.getElementById('shift-total-income').innerText = curPlain(d.cashSales + d.networkSales);
         
         document.getElementById('shift-tax').innerText = curPlain(d.totalTax);
@@ -603,13 +636,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const shiftExpenses = allExpenses.filter(e => (e.timestamp || 0) >= lastZTime);
         
         // احسب ملخص الوردية للحفظ في السجل التاريخي
-        let shiftCash = 0, shiftNetwork = 0, shiftTotal = 0, shiftHSUnpaid = 0;
+        let shiftCash = 0, shiftNetwork = 0, shiftTotal = 0, shiftHSUnpaid = 0, shiftDeliveryBreakdown = {};
         shiftOrders.forEach(o => {
             const pay = splitOrderAmountsGlobal(o);
             shiftCash += pay.cash;
             shiftNetwork += pay.network;
             shiftTotal += o.total || 0;
             shiftHSUnpaid += (pay.hungerStation || 0);
+            if (pay.deliveryBreakdown) {
+                for (const [comp, amt] of Object.entries(pay.deliveryBreakdown)) {
+                    shiftDeliveryBreakdown[comp] = (shiftDeliveryBreakdown[comp] || 0) + amt;
+                }
+            }
         });
         // NOTE: Returns are NOT subtracted here because returned orders are already excluded from shiftOrders
         // Returns are only tracked for reporting purposes in the returns field below
@@ -633,6 +671,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             expenses: shiftExp,
             returns: shiftReturns.reduce((sum, r) => sum + (r.amount || 0), 0),
             hungerStationUnpaid: shiftHSUnpaid,
+            deliveryBreakdown: shiftDeliveryBreakdown,
             drawerBalance: shiftDrawerBalance,
             ordersCount: shiftOrders.length,
             closedAt: closeTime
@@ -763,7 +802,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const rExpenses = todayExpenses.filter(e => { const t = e.timestamp || new Date(e.date||0).getTime() || 0; return t >= range.startTime && t < range.endTime; });
 
             let cash = 0, net = 0, tax = 0, ret = 0, exp = 0, hsUnpaid = 0;
-            
+            let sDeliveryBreakdown = {};
+
             // Only include non-returned orders in totals
             rOrders.forEach(o => {
                 // Skip returned orders - they're tracked via returns instead
@@ -774,6 +814,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 cash += pay.cash;
                 net += pay.network;
                 hsUnpaid += (pay.hungerStation || 0);
+                if (pay.deliveryBreakdown) {
+                    for (const [comp, amt] of Object.entries(pay.deliveryBreakdown)) {
+                        sDeliveryBreakdown[comp] = (sDeliveryBreakdown[comp] || 0) + amt;
+                    }
+                }
             });
             
             // Returns are only tracked for reporting (not subtracted since orders are already excluded)
@@ -793,12 +838,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 totalReturns: ret,
                 totalExpenses: exp,
                 hungerStationUnpaid: hsUnpaid,
+                deliveryBreakdown: sDeliveryBreakdown,
                 drawerBalance: floatAmt + cash - exp
             };
         });
 
         // ---- Grand Day Totals ----
         let dayTotalCash = 0, dayTotalNet = 0, dayTotalTax = 0, dayTotalRet = 0, dayTotalExp = 0, dayTotalOrders = 0, dayTotalHSUnpaid = 0;
+        let dayDeliveryBreakdown = {};
         allDayShifts.forEach(s => {
             dayTotalCash    += s.cashSales    || 0;
             dayTotalNet     += s.networkSales || 0;
@@ -807,6 +854,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             dayTotalExp     += s.totalExpenses|| 0;
             dayTotalOrders  += s.ordersCount  || 0;
             dayTotalHSUnpaid += s.hungerStationUnpaid || 0;
+            if (s.deliveryBreakdown) {
+                for (const [comp, amt] of Object.entries(s.deliveryBreakdown)) {
+                    dayDeliveryBreakdown[comp] = (dayDeliveryBreakdown[comp] || 0) + amt;
+                }
+            }
         });
         const dayTotalIncome = dayTotalCash + dayTotalNet;
         const dayNetTotal    = dayTotalIncome - dayTotalRet - dayTotalExp;
@@ -824,6 +876,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('day-total-expenses').innerText= curPlain(dayTotalExp);
         document.getElementById('day-total-sales').innerText   = curPlain(dayTotalIncome);
         document.getElementById('day-total-hs-unpaid').innerText = curPlain(dayTotalHSUnpaid);
+        // Update delivery breakdown container
+        const dayDeliveryContainer = document.getElementById('day-delivery-breakdown-container');
+        if (dayDeliveryContainer) {
+            dayDeliveryContainer.innerHTML = '';
+            if (dayDeliveryBreakdown && Object.keys(dayDeliveryBreakdown).length > 0) {
+                for (const [comp, amt] of Object.entries(dayDeliveryBreakdown)) {
+                    dayDeliveryContainer.insertAdjacentHTML('beforeend', `
+                    <div class="receipt-row">
+                        <span>إجمالي ${comp}:</span>
+                        <span style="color:#ff6b00;">${curPlain(amt)}</span>
+                    </div>`);
+                }
+            } else {
+                dayDeliveryContainer.insertAdjacentHTML('beforeend', `
+                <div class="receipt-row">
+                    <span>إجمالي التوصيل:</span>
+                    <span style="color:#ff6b00;">${curPlain(dayTotalHSUnpaid)}</span>
+                </div>`);
+            }
+        }
         document.getElementById('day-total-with-hs').innerText = curPlain(dayTotalIncome + dayTotalHSUnpaid);
         document.getElementById('day-drawer-total').innerText  = curPlain(dayDrawerTotal);
         
@@ -850,7 +922,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="receipt-row"><span>عدد الطلبات:</span><span>${s.ordersCount || 0} طلب</span></div>
                     <div class="receipt-row"><span>مبيعات كاش:</span><span>${curPlain(s.cashSales||0)}</span></div>
                     <div class="receipt-row"><span>مبيعات شبكة:</span><span>${curPlain(s.networkSales||0)}</span></div>
-                    ${s.hungerStationUnpaid > 0 ? `<div class="receipt-row"><span>توصيل غير مدفوع:</span><span style="color:#ff6b00;">${curPlain(s.hungerStationUnpaid||0)}</span></div>` : ''}
+                    ${(function(){
+                        let sDeliveryHtml = '';
+                        if (s.deliveryBreakdown && Object.keys(s.deliveryBreakdown).length > 0) {
+                            for (const [comp, amt] of Object.entries(s.deliveryBreakdown)) {
+                                sDeliveryHtml += `<div class="receipt-row"><span>توصيل ${comp}:</span><span style="color:#ff6b00;">${curPlain(amt)}</span></div>`;
+                            }
+                        } else if (s.hungerStationUnpaid > 0) {
+                            sDeliveryHtml = `<div class="receipt-row"><span>توصيل غير مدفوع:</span><span style="color:#ff6b00;">${curPlain(s.hungerStationUnpaid||0)}</span></div>`;
+                        }
+                        return sDeliveryHtml;
+                    })()}
                     <div class="receipt-row"><span>إجمالي الدخل:</span><span style="font-weight:800;">${curPlain(parseFloat(sIncome)||0)}</span></div>
                     <div class="receipt-row"><span>المرتجعات:</span><span style="color:#c00;">${curPlain(s.totalReturns||0)}</span></div>
                     <div class="receipt-row"><span>المصروفات:</span><span style="color:#c00;">${curPlain(s.totalExpenses||0)}</span></div>
@@ -860,7 +942,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         // Store snapshot for confirmCloseDay
-        window.__dayCloseSnapshot = { allDayShifts, dayTotalCash, dayTotalNet, dayTotalTax, dayTotalRet, dayTotalExp, dayTotalIncome, dayNetTotal, dayDrawerTotal, dayTotalOrders, dayDate: todayStr, closedAt: now.getTime(), dayTotalHSUnpaid };
+        window.__dayCloseSnapshot = { allDayShifts, dayTotalCash, dayTotalNet, dayTotalTax, dayTotalRet, dayTotalExp, dayTotalIncome, dayNetTotal, dayDrawerTotal, dayTotalOrders, dayDate: todayStr, closedAt: now.getTime(), dayTotalHSUnpaid, dayDeliveryBreakdown };
 
         modal.style.display = 'flex';
         } catch (error) {
@@ -897,6 +979,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             totalExpenses: snap.dayTotalExp || 0,
             netTotal: snap.dayNetTotal || 0,
             hungerStationUnpaid: snap.dayTotalHSUnpaid || 0,
+            deliveryBreakdown: snap.dayDeliveryBreakdown || {},
             drawerTotal: snap.dayDrawerTotal || 0,
             shifts: snap.allDayShifts || []
         });
@@ -999,8 +1082,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         const totalReturns = document.getElementById('day-total-returns')?.innerText || curPlain(0);
         const totalExpenses = document.getElementById('day-total-expenses')?.innerText || curPlain(0);
         const totalSales = document.getElementById('day-total-sales')?.innerText || curPlain(0);
-        const totalHS = document.getElementById('day-total-hs-unpaid')?.innerText || curPlain(0);
-        const totalWithHS = document.getElementById('day-total-with-hs')?.innerText || curPlain(0);
+        
+        // Read delivery breakdown from container
+        let deliveryPrintRowsDay = '';
+        const dayDeliveryContainer = document.getElementById('day-delivery-breakdown-container');
+        if (dayDeliveryContainer && dayDeliveryContainer.children.length > 0) {
+            for (let child of dayDeliveryContainer.children) {
+                const spans = child.querySelectorAll('span');
+                if (spans.length >= 2) {
+                    deliveryPrintRowsDay += `<tr class="row-light"><td>${spans[0].innerText}</td><td>${spans[1].innerText}</td></tr>`;
+                }
+            }
+        } else {
+            const hsVal = document.getElementById('day-total-hs-unpaid') ? document.getElementById('day-total-hs-unpaid').innerText : '0';
+            deliveryPrintRowsDay = `<tr class="row-light"><td style="color:#ff6b00;">إجمالي التوصيل</td><td style="color:#ff6b00;">${hsVal}</td></tr>`;
+        }
+        
+        const totalWithHS = document.getElementById('day-total-with-hs').innerText;
+        const totalWithHSLabel = document.getElementById('day-total-with-delivery-label') ? document.getElementById('day-total-with-delivery-label').innerText.replace(':', '') : 'الإجمالي مع التوصيل';
         const drawerTotal = document.getElementById('day-drawer-total')?.innerText || curPlain(0);
 
         console.log('🖨️  Printing day closure report...');
@@ -1278,7 +1377,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <table class="report-table">
             <tbody>
                 <tr class="grand-total"><td>إجمالي المبيعات</td><td>${totalSales}</td></tr>
-                <tr class="row-strong"><td>الإجمالي مع توصيل</td><td>${totalWithHS}</td></tr>
+                <tr class="row-strong"><td>${totalWithHSLabel}</td><td>${totalWithHS}</td></tr>
                 <tr class="row-strong"><td>رصيد الدرج</td><td>${drawerTotal}</td></tr>
             </tbody>
         </table>
@@ -1362,7 +1461,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         const floatCash = document.getElementById('shift-float-cash').innerText;
         const cashSales = document.getElementById('shift-cash').innerText;
         const networkSales = document.getElementById('shift-network').innerText;
-        const hungerStation = document.getElementById('shift-hungerstation').innerText;
+        
+        // Read delivery breakdown from container
+        let deliveryPrintRows = '';
+        const shiftDeliveryContainer = document.getElementById('shift-delivery-breakdown-container');
+        if (shiftDeliveryContainer && shiftDeliveryContainer.children.length > 0) {
+            for (let child of shiftDeliveryContainer.children) {
+                const spans = child.querySelectorAll('span');
+                if (spans.length >= 2) {
+                    deliveryPrintRows += `<tr class="row-light"><td>${spans[0].innerText}</td><td>${spans[1].innerText}</td></tr>`;
+                }
+            }
+        } else {
+            const hsVal = document.getElementById('shift-hungerstation') ? document.getElementById('shift-hungerstation').innerText : '0';
+            deliveryPrintRows = `<tr><td style="color:#ff6b00;">إجمالي التوصيل</td><td style="color:#ff6b00;">${hsVal}</td></tr>`;
+        }
+        
         const totalIncome = document.getElementById('shift-total-income').innerText;
         const tax = document.getElementById('shift-tax').innerText;
         const returns = document.getElementById('shift-returns').innerText;
@@ -1612,7 +1726,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <tr><td>الرصيد الافتتاحي</td><td>${floatCash}</td></tr>
                 <tr><td>إجمالي الكاش</td><td>${cashSales}</td></tr>
                 <tr><td>إجمالي الشبكة</td><td>${networkSales}</td></tr>
-                <tr><td style="color:#ff6b00;">إجمالي توصيل</td><td style="color:#ff6b00;">${hungerStation}</td></tr>
+${deliveryPrintRows}
                 <tr class="row-strong"><td>إجمالي الدخل</td><td>${totalIncome}</td></tr>
             </tbody>
         </table>

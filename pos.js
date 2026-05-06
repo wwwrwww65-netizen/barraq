@@ -112,29 +112,48 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let catData = _db.categories || JSON.parse(localStorage.getItem('pos_categories') || '[]');
     
-    // Render dynamic delivery companies in POS payment modal
-    if (document.getElementById('dynamic-delivery-methods')) {
+    // Render dynamic delivery companies in POS payment modal (Pills UI)
+    if (document.getElementById('dynamic-delivery-companies-pills')) {
         let companies = _db.deliveryCompanies || [];
         if (companies.length === 0) {
             companies = [{ name: 'هنقرستيشن', isActive: true }];
         }
         let html = '';
-        companies.forEach(c => {
+        companies.forEach((c, index) => {
             if (c.isActive !== false) {
+                const isSelected = index === 0 ? 'selected' : '';
                 html += `
-                <label class="payment-method" style="flex:1; padding: 15px; border: 2px solid var(--border-light); border-radius: 8px; cursor: pointer; background: rgba(15, 23, 42, 0.4);">
-                    <input type="radio" name="pay_method" value="${c.name}" style="display:none;">
-                    <i class="ph ph-motorcycle" style="font-size: 32px; color: var(--text-muted); display: block; margin-bottom: 8px;"></i>
-                    <strong style="color: var(--text-muted)">${c.name}</strong>
+                <label class="delivery-pill ${isSelected}" style="display: inline-flex; align-items: center; justify-content: center; padding: 8px 15px; border: 1px solid #8b5cf6; border-radius: 20px; cursor: pointer; background: ${index === 0 ? '#8b5cf6' : 'transparent'}; color: ${index === 0 ? '#ffffff' : '#8b5cf6'} !important; font-size: 13px; font-weight: 700; transition: all 0.2s;">
+                    <input type="radio" name="delivery_comp_select" value="${c.name}" ${index === 0 ? 'checked' : ''} style="display:none;">
+                    ${c.name}
                 </label>`;
             }
         });
-        const defaultHs = document.querySelector('input[value="هنقرستيشن"]')?.closest('.payment-method');
-        if (defaultHs) defaultHs.remove();
-        document.getElementById('dynamic-delivery-methods').innerHTML = html;
+        document.getElementById('dynamic-delivery-companies-pills').innerHTML = html;
+        
+        // Add click events for pills via event delegation
+        document.getElementById('dynamic-delivery-companies-pills').addEventListener('click', (e) => {
+            const pill = e.target.closest('.delivery-pill');
+            if (!pill) return;
+            
+            const allPills = document.querySelectorAll('.delivery-pill');
+            allPills.forEach(p => {
+                p.classList.remove('selected');
+                p.style.background = 'transparent';
+                p.style.setProperty('color', '#8b5cf6', 'important');
+            });
+            
+            pill.classList.add('selected');
+            pill.style.background = '#8b5cf6';
+            pill.style.setProperty('color', '#ffffff', 'important');
+            
+            const radio = pill.querySelector('input[type="radio"]');
+            if (radio) radio.checked = true;
+        });
+        
         bindPaymentMethodToggles();
     } else {
-        // Fallback if not injected properly, though we expect it to be
+        // Fallback
         bindPaymentMethodToggles();
     }
     
@@ -531,48 +550,64 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // Payment Methods Toggle styling
-    const payMethods = document.querySelectorAll('.payment-method');
-    payMethods.forEach(label => {
-        label.addEventListener('click', () => {
-            payMethods.forEach(l => {
-                l.classList.remove('selected');
-                l.style.borderColor = 'var(--border-light)';
-                l.style.background = 'rgba(15, 23, 42, 0.4)';
-                l.querySelector('i').style.color = 'var(--text-muted)';
-                l.querySelector('strong').style.color = 'var(--text-muted)';
+    function bindPaymentMethodToggles() {
+        const payMethods = document.querySelectorAll('.payment-method');
+        payMethods.forEach(label => {
+            // Remove old listeners to prevent duplicates if called multiple times
+            const newLabel = label.cloneNode(true);
+            label.parentNode.replaceChild(newLabel, label);
+            
+            newLabel.addEventListener('click', () => {
+                const allMethods = document.querySelectorAll('.payment-method');
+                allMethods.forEach(l => {
+                    l.classList.remove('selected');
+                    l.style.borderColor = 'var(--border-light)';
+                    l.style.background = 'rgba(15, 23, 42, 0.4)';
+                    const icon = l.querySelector('i');
+                    const text = l.querySelector('strong');
+                    if(icon) icon.style.color = 'var(--text-muted)';
+                    if(text) text.style.color = 'var(--text-muted)';
+                });
+                newLabel.classList.add('selected');
+                newLabel.style.borderColor = 'var(--accent-blue)';
+                newLabel.style.background = 'rgba(59, 130, 246, 0.1)';
+                const sIcon = newLabel.querySelector('i');
+                const sText = newLabel.querySelector('strong');
+                if(sIcon) sIcon.style.color = 'var(--accent-blue)';
+                if(sText) sText.style.color = 'white';
+                
+                // Toggle Display
+                const inputEl = newLabel.querySelector('input');
+                const pt = inputEl ? inputEl.value : 'كاش';
+                const isDelivery = pt === 'توصيل' || (pt !== 'كاش' && pt !== 'شبكة / بطاقة' && pt !== 'مجزأ');
+                
+                const cashCalc = document.getElementById('cash-calculator');
+                const splitCalc = document.getElementById('split-calculator');
+                
+                if (cashCalc) cashCalc.style.display = pt === 'كاش' ? 'flex' : 'none';
+                if (splitCalc) splitCalc.style.display = pt === 'مجزأ' ? 'flex' : 'none';
+                
+                const deliverySelector = document.getElementById('delivery-company-selector-container');
+                if (deliverySelector) {
+                    deliverySelector.style.display = pt === 'توصيل' ? 'flex' : 'none';
+                }
+                
+                // Show notes field for Delivery, Network, and Bank Transfer
+                const showNotes = (isDelivery || pt === 'شبكة / بطاقة');
+                const orderNotes = document.getElementById('order-notes-field');
+                if (orderNotes) orderNotes.style.display = showNotes ? 'flex' : 'none';
+                
+                // Delivery doesn't need calculator
+                if (isDelivery) {
+                    if (cashCalc) cashCalc.style.display = 'none';
+                    if (splitCalc) splitCalc.style.display = 'none';
+                }
+                
+                // Re-calculate to show full amount in split if needed
+                calculateChange();
             });
-            label.classList.add('selected');
-            label.style.borderColor = 'var(--accent-blue)';
-            label.style.background = 'rgba(59, 130, 246, 0.1)';
-            label.querySelector('i').style.color = 'var(--accent-blue)';
-            label.querySelector('strong').style.color = 'white';
-            
-            // Toggle Display
-            const pt = label.querySelector('input').value;
-            const isDelivery = pt === 'توصيل' || (pt !== 'كاش' && pt !== 'شبكة / بطاقة' && pt !== 'مجزأ');
-            
-            document.getElementById('cash-calculator').style.display = pt === 'كاش' ? 'flex' : 'none';
-            document.getElementById('split-calculator').style.display = pt === 'مجزأ' ? 'flex' : 'none';
-            
-            const deliverySelector = document.getElementById('delivery-company-selector-container');
-            if (deliverySelector) {
-                deliverySelector.style.display = pt === 'توصيل' ? 'flex' : 'none';
-            }
-            
-            // Show notes field for Delivery, Network, and Bank Transfer
-            const showNotes = (isDelivery || pt === 'شبكة / بطاقة');
-            document.getElementById('order-notes-field').style.display = showNotes ? 'flex' : 'none';
-            
-            // Delivery doesn't need calculator
-            if (isDelivery) {
-                document.getElementById('cash-calculator').style.display = 'none';
-                document.getElementById('split-calculator').style.display = 'none';
-            }
-            
-            // Re-calculate to show full amount in split if needed
-            calculateChange();
         });
-    });
+    }
 
     // Cash Calculator
     const cashReceivedInput = document.getElementById('cash-received');
@@ -635,7 +670,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             let selectedPay = document.querySelector('.payment-method.selected input').value;
             if (selectedPay === 'توصيل') {
                 const selectedPill = document.querySelector('.delivery-pill.selected input');
-                if (selectedPill) selectedPay = selectedPill.value;
+                if (selectedPill) {
+                    selectedPay = selectedPill.value;
+                } else {
+                    selectedPay = 'توصيل';
+                }
             }
             const isDelivery = selectedPay !== 'كاش' && selectedPay !== 'شبكة / بطاقة' && selectedPay !== 'مجزأ';
             const _ct = document.getElementById('cart-total').innerText;

@@ -146,6 +146,7 @@
                     </div>
                     
                     <div class="toolbar-actions">
+                        <a href="analytics-delivery.html" class="btn btn-outline" style="text-decoration:none; border-color:#0ea5e9; color:#0ea5e9; font-weight:700;"><i class="ph ph-motorcycle"></i> أداء شركات التوصيل</a>
                         <button class="btn btn-glow-blue" onclick="window.exportTableToCSV('top_items_report.csv')"><i class="ph ph-download-simple"></i> تصدير (Excel)</button>
                         <button class="btn btn-glow-red" onclick="window.exportPageToPDF('تحليلات_الأصناف_الأكثر_مبيعاً.pdf')"><i class="ph ph-file-pdf"></i> تصدير (PDF)</button>
                         <button class="btn btn-glow-blue" onclick="window.print()" style="background:rgba(100,116,139,0.15); border-color:#64748b; color:#94a3b8;"><i class="ph ph-printer"></i> طباعة</button>
@@ -190,6 +191,9 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Dynamic Delivery Companies Cards -->
+                <div id="delivery-cards-container" class="glass-kpis no-print" style="margin-top:15px; display:none; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;"></div>
 
                 <!-- Main Charts Grid -->
                 <div class="analytics-grid no-print">

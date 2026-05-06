@@ -359,11 +359,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
             dbData.receipt_vouchers.push(newVoucher);
             
-            // Update drawer balance if payment was cash
-            if (selectedMethod === 'كاش' || selectedMethod === 'cash') {
-                const currentFloat = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
-                localStorage.setItem('shift_cash_float', currentFloat + order.total);
-            }
             
             await window.dbWrite(dbData);
             modal.remove();
@@ -544,11 +539,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
             
-            // Update drawer balance if payment was cash
-            if (totalCashReceived > 0) {
-                const currentFloat = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
-                localStorage.setItem('shift_cash_float', currentFloat + totalCashReceived);
-            }
             
             await window.dbWrite(dbData);
             closeBulkReceiveModal();
