@@ -91,6 +91,44 @@
             0% { transform: translateX(0); opacity: 1; }
             100% { transform: translateX(120%); opacity: 0; }
         }
+
+        /* Light Theme Overrides */
+        body.light-theme .notif-dropdown {
+            background: rgba(255, 255, 255, 0.98);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        body.light-theme .notif-header {
+            background: rgba(241, 245, 249, 0.9);
+            color: #0f172a;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        body.light-theme .notif-item {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        body.light-theme .notif-item:hover {
+            background: rgba(241, 245, 249, 0.8);
+        }
+        body.light-theme .notif-content h4 {
+            color: #0f172a;
+        }
+        body.light-theme .notif-content p {
+            color: #475569;
+        }
+        body.light-theme .notif-time {
+            color: #94a3b8;
+        }
+        body.light-theme .toast-msg {
+            background: rgba(255, 255, 255, 0.98);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            color: #0f172a;
+        }
+        body.light-theme .toast-msg h4 {
+            color: #0f172a !important;
+        }
+        body.light-theme .toast-msg p {
+            color: #475569 !important;
+        }
     `;
     document.head.appendChild(style);
 

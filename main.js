@@ -1050,7 +1050,7 @@ ipcMain.handle('db-save-inventory', async (event, item) => {
 // Async full-DB read/write — used by renderer files to avoid blocking readFileSync on UI thread
 const _dbPath = path.join(app.getPath('userData'), 'pos_database.json');
 const _auditLogPath = path.join(app.getPath('userData'), 'pos_database_audit.log');
-const _emptyDB = { orders:[], products:[], categories:[], inventory:[], purchases:[], suppliers:[], inventoryTx:[], returns:[], expenses:[], bankTransfers:[], hrExpenses:[], otherIncome:[], employees:[], attendance:[], penaltyRules:[], chartOfAccounts:[], journalEntries:[], systemNotifications:[], inventoryAlertState:{} };
+const _emptyDB = { orders:[], products:[], categories:[], inventory:[], purchases:[], suppliers:[], inventoryTx:[], returns:[], expenses:[], bankTransfers:[], hrExpenses:[], otherIncome:[], employees:[], attendance:[], penaltyRules:[], chartOfAccounts:[], journalEntries:[], systemNotifications:[], inventoryAlertState:{}, deliveryCompanies:[] };
 
 // 📝 Audit Log Helper - تسجيل جميع العمليات الهامة
 function writeAuditLog(action, details) {
@@ -2250,8 +2250,9 @@ async function waitForChatLoaded(win) {
       let n = 0;
       const t = setInterval(() => {
         n++;
-        const m = document.querySelector("#main, footer, div[contenteditable='true']");
-        if (m) {
+        // نتحقق من وجود قائمة الدردشات (#pane-side) أو حقل الإدخال
+        const chatList = document.querySelector('#pane-side, #main footer, footer div[contenteditable="true"]');
+        if (chatList) {
           clearInterval(t);
           r(true);
         } else if (n > 120) {
@@ -2262,6 +2263,7 @@ async function waitForChatLoaded(win) {
     })
   `);
 }
+
 
 async function waitForTextToStabilize(win) {
   return await win.webContents.executeJavaScript(`
@@ -2627,19 +2629,88 @@ async function handleWaSendMessage(event, data) {
       console.log('[WA][NATIVE] Auto-starting native window...');
       startNativeWaWindow();
 
+      // ✅ إظهار النافذة فوراً بشفافية صفر — Chromium يُجمّد JS في النوافذ المخفية
+      if (waNativeWin && !waNativeWin.isVisible()) {
+        waNativeWin.setOpacity(0);
+        waNativeWin.show();
+        console.log('[WA][NATIVE] Window shown (opacity=0) so Chromium runs WA Web JS normally');
+      }
+
+      // ── انتظار ديناميكي: بلا حد زمني ثابت ──────────────────────────────
+      // ── انتظار ديناميكي ───────────────────────────────────────────────────
+      // يتحقق كل ثانية. يُعيد التحميل فقط إذا انتهى التحميل (isLoading=false)
+      // ولم يظهر #pane-side — أي المعلق الحقيقي. إذا كانت الصفحة لا تزال
+      // تحمل (isLoading=true)، يُعيد العداد لأن هناك تقدماً.
       await new Promise((resolve) => {
-        const timeout = setTimeout(resolve, 15000);
-        if (waNativeWin && waNativeWin.webContents) {
-          waNativeWin.webContents.once('did-finish-load', () => {
-            clearTimeout(timeout);
-            setTimeout(resolve, 1000);
-          });
-        } else {
-          clearTimeout(timeout);
-          resolve();
-        }
+        let stuckSeconds = 0;     // ثوانٍ بلا تقدم حقيقي (تحميل منتهٍ + لا #pane-side)
+        let reloadCount = 0;
+        const MAX_RELOADS = 3;
+        const STUCK_THRESHOLD = 30; // ثانية من التعليق الفعلي قبل إعادة التحميل
+
+        const checkInterval = setInterval(async () => {
+          if (!waNativeWin || !waNativeWin.webContents) {
+            clearInterval(checkInterval);
+            resolve();
+            return;
+          }
+
+          try {
+            // أولاً: هل #pane-side ظهر؟
+            const ready = await waNativeWin.webContents.executeJavaScript(
+              `!!document.querySelector('#pane-side, div[data-testid="chat-list"], div[data-tab="3"]')`
+            );
+
+            if (ready) {
+              clearInterval(checkInterval);
+              console.log(`[WA][NATIVE] WA Web ready ✅ (reloads used: ${reloadCount})`);
+              setTimeout(resolve, 1500);
+              return;
+            }
+
+            // ثانياً: هل الصفحة لا تزال تُحمَّل؟
+            const stillLoading = waNativeWin.webContents.isLoading();
+
+            if (stillLoading) {
+              // الصفحة تُحمَّل بشكل طبيعي → تقدم حقيقي → نُعيد عداد التعليق
+              if (stuckSeconds > 0) {
+                console.log(`[WA][NATIVE] Page still loading... resetting stuck counter`);
+                stuckSeconds = 0;
+              }
+            } else {
+              // الصفحة انتهى تحميلها لكن #pane-side غائب → تعليق حقيقي
+              stuckSeconds++;
+              if (stuckSeconds % 10 === 0) {
+                console.log(`[WA][NATIVE] Truly stuck (load done, no chat list): ${stuckSeconds}s (reloads: ${reloadCount}/${MAX_RELOADS})`);
+              }
+
+              if (stuckSeconds >= STUCK_THRESHOLD) {
+                if (reloadCount < MAX_RELOADS) {
+                  reloadCount++;
+                  stuckSeconds = 0;
+                  console.warn(`[WA][NATIVE] Truly stuck ${STUCK_THRESHOLD}s → reloading (attempt ${reloadCount}/${MAX_RELOADS})`);
+                  try {
+                    await waNativeWin.loadURL('https://web.whatsapp.com', {
+                      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    });
+                  } catch (e) {
+                    console.warn('[WA][NATIVE] Reload error (ignored):', e?.message);
+                  }
+                } else {
+                  clearInterval(checkInterval);
+                  console.warn(`[WA][NATIVE] Max reloads (${MAX_RELOADS}) reached — proceeding anyway`);
+                  resolve();
+                }
+              }
+            }
+          } catch (e) {
+            // executeJavaScript فشل (النافذة لا تزال تُحمَّل) — نتابع
+          }
+        }, 1000);
       });
-    }
+
+
+    } // end if (!waNativeWin)
+
 
     if (!waNativeWin) {
       console.error('[WA][NATIVE] Failed to initialize window');
@@ -2661,15 +2732,35 @@ async function handleWaSendMessage(event, data) {
 
       const wasHidden = !waNativeWin.isVisible();
       if (wasHidden) {
-        // إظهار النافذة والتركيز عليها فعليًا قبل أي تفاعل
+        // ✅ setAlwaysOnTop مؤقتاً يضمن حصول النافذة على focus حقيقي من نظام التشغيل
+        waNativeWin.setAlwaysOnTop(true);
         waNativeWin.show();
         waNativeWin.focus();
-        await new Promise(r => setTimeout(r, 800));
+
+        // انتظر حتى isFocused()=true فعلاً (حد أقصى 4 ثوانٍ)
+        let focusWaited = 0;
+        while (!waNativeWin.isFocused() && focusWaited < 4000) {
+          await new Promise(r => setTimeout(r, 100));
+          focusWaited += 100;
+          if (!waNativeWin.isFocused()) waNativeWin.focus(); // إعادة محاولة
+        }
+        waNativeWin.setAlwaysOnTop(false); // إلغاء always-on-top بعد الحصول على focus
+        console.log(`[WA][NATIVE] Window focused after ${focusWaited}ms`);
+        await new Promise(r => setTimeout(r, 400)); // استقرار إضافي
       } else {
-        // حتى لو كانت ظاهرة، نحتاج للتركيز عليها
+        // مرئية بالفعل — نحتاج فقط للتأكد من الـ focus
+        waNativeWin.setAlwaysOnTop(true);
         waNativeWin.focus();
-        await new Promise(r => setTimeout(r, 300));
+        let focusWaited = 0;
+        while (!waNativeWin.isFocused() && focusWaited < 2000) {
+          await new Promise(r => setTimeout(r, 100));
+          focusWaited += 100;
+          if (!waNativeWin.isFocused()) waNativeWin.focus();
+        }
+        waNativeWin.setAlwaysOnTop(false);
+        await new Promise(r => setTimeout(r, 200));
       }
+
 
       // لا تسحب التركيز من واتساب الآن - سنحتاجه للـ paste
       // const mainWins = BrowserWindow.getAllWindows().filter(w => w !== waNativeWin);
@@ -2961,7 +3052,6 @@ async function handleWaSendMessage(event, data) {
           const captionWritten = await waNativeWin.webContents.executeJavaScript(`
             (function() {
               return new Promise(function(resolve) {
-                // البحث عن حقل caption في وضع الوسائط
                 var captionInput = document.querySelector('[data-testid="media-caption-input"]') ||
                                   document.querySelector('div[contenteditable="true"][data-lexical-editor="true"]');
                 
@@ -2971,37 +3061,55 @@ async function handleWaSendMessage(event, data) {
                   return;
                 }
                 
-                // التركيز على الحقل
                 captionInput.focus();
                 captionInput.click();
                 
                 setTimeout(function() {
-                  // كتابة النص باستخدام execCommand للتوافق الأفضل
-                  var text = ${JSON.stringify(data.text)};
-                  
-                  // تحديد كل النص الموجود أولاً
+                  // مسح النص الحالي أولاً
                   document.execCommand('selectAll', false, null);
-                  
                   setTimeout(function() {
-                    // حذف النص القديم وكتابة الجديد
                     document.execCommand('delete', false, null);
                     
                     setTimeout(function() {
-                      // كتابة النص الجديد
-                      document.execCommand('insertText', false, text);
+                      var fullText = ${JSON.stringify(data.text)};
+                      // تقسيم النص على الأسطر
+                      var lines = fullText.split('\\n');
                       
-                      // إطلاق الأحداث اللازمة
-                      var inputEvent = new InputEvent('input', { bubbles: true, cancelable: true });
-                      captionInput.dispatchEvent(inputEvent);
+                      // كتابة السطر الأول
+                      document.execCommand('insertText', false, lines[0]);
                       
-                      console.log('[WA][WEB] Caption written:', text.substring(0, 50));
-                      resolve(true);
+                      // لكل سطر بعد الأول: إرسال Enter + كتابة السطر
+                      var lineIndex = 1;
+                      function writeNextLine() {
+                        if (lineIndex >= lines.length) {
+                          var inputEvent = new InputEvent('input', { bubbles: true, cancelable: true });
+                          captionInput.dispatchEvent(inputEvent);
+                          console.log('[WA][WEB] Caption written with', lines.length, 'lines');
+                          resolve(true);
+                          return;
+                        }
+                        // إرسال Shift+Enter لسطر جديد في حقل الـ caption
+                        var enterEvent = new KeyboardEvent('keydown', {
+                          key: 'Enter', code: 'Enter', keyCode: 13,
+                          shiftKey: true, bubbles: true, cancelable: true
+                        });
+                        captionInput.dispatchEvent(enterEvent);
+                        
+                        setTimeout(function() {
+                          document.execCommand('insertText', false, lines[lineIndex]);
+                          lineIndex++;
+                          setTimeout(writeNextLine, 30);
+                        }, 30);
+                      }
+                      
+                      setTimeout(writeNextLine, 50);
                     }, 100);
                   }, 100);
                 }, 200);
               });
             })()
           `);
+
           
           if (captionWritten) {
             console.log('[WA][NATIVE] Caption written successfully ✓');

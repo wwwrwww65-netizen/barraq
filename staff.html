@@ -59,6 +59,11 @@
             padding: 14px 16px; color: var(--text-primary); font-family: inherit; font-size: 15px; outline: none; transition: 0.3s;
         }
         .fm-input:focus { border-color: #ec4899; box-shadow: 0 0 0 3px rgba(236,72,153,0.1); background: rgba(0,0,0,0.3); }
+        
+        select.fm-input option {
+            background: #1e293b;
+            color: #f8fafc;
+        }
 
         /* Secondary Tabs inside Profile */
         .profile-tabs { display: flex; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 24px; }
@@ -102,11 +107,16 @@
         /* Profile Finances Print Styles */
         @media print {
             .no-print { display: none !important; }
-            
-            /* Hide all other views explicitly to avoid blank pages/cards */
-            .hr-view:not(#view-emp-profile) { display: none !important; }
-            
-            #view-emp-profile {
+            body { background: white !important; }
+            .sidebar { display: none !important; }
+            .main-content { margin: 0 !important; padding: 20px !important; display: block !important; }
+            .print-only { display: block !important; }
+
+            /* Hide all views by default in print */
+            .hr-view { display: none !important; }
+
+            /* Profile Print Mode (Default fallback) */
+            body:not(.print-mode-history) #view-emp-profile {
                 position: static !important;
                 background: white !important;
                 display: block !important;
@@ -114,37 +124,53 @@
                 height: auto !important;
                 overflow: visible !important;
             }
-            .profile-layout {
+            body:not(.print-mode-history) .profile-layout { display: block !important; gap: 0 !important; }
+            body:not(.print-mode-history) .profile-sidebar { display: none !important; }
+            body:not(.print-mode-history) .profile-tabs { display: none !important; }
+            body:not(.print-mode-history) .ptab-content { display: none !important; padding: 0 !important; border: none !important; box-shadow: none !important; }
+            body:not(.print-mode-history) #tab-finances.ptab-content { display: block !important; }
+            body:not(.print-mode-history) .pro-finances-table-wrapper { overflow: visible !important; border: 2px solid #94a3b8 !important; border-radius: 0 !important; }
+            body:not(.print-mode-history) .pro-finances-table { width: 100% !important; }
+            body:not(.print-mode-history) .pro-finances-table tfoot { display: table-row-group !important; }
+            body:not(.print-mode-history) .pro-finances-table tfoot tr td { border: 1px solid #94a3b8 !important; padding: 10px 8px !important; font-size: 13px !important; }
+
+            /* History Print Mode */
+            body.print-mode-history #view-history {
+                position: static !important;
+                background: white !important;
                 display: block !important;
-                gap: 0 !important;
-            }
-            .profile-sidebar { display: none !important; }
-            .profile-tabs { display: none !important; }
-            .ptab-content { 
-                display: none !important; 
-                padding: 0 !important;
-                border: none !important;
-                box-shadow: none !important;
-            }
-            #tab-finances.ptab-content {
-                display: block !important;
-            }
-            .pro-finances-table-wrapper {
+                width: 100% !important;
+                height: auto !important;
                 overflow: visible !important;
-                border: 2px solid #94a3b8 !important;
-                border-radius: 0 !important;
+                padding: 0 !important;
             }
-            .pro-finances-table { width: 100% !important; }
-            .pro-finances-table tfoot { display: table-row-group !important; }
-            .pro-finances-table tfoot tr td {
-                border: 1px solid #94a3b8 !important;
-                padding: 10px 8px !important;
-                font-size: 13px !important;
+            body.print-mode-history #view-history .card {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
             }
-            .print-only { display: block !important; }
-            body { background: white !important; }
-            .sidebar { display: none !important; }
-            .main-content { margin: 0 !important; padding: 20px !important; display: block !important; }
+            body.print-mode-history .table-responsive { overflow: visible !important; max-height: none !important; }
+            body.print-mode-history .data-table { width: 100% !important; border: 2px solid #94a3b8 !important; table-layout: fixed !important; border-collapse: collapse !important; }
+            body.print-mode-history .data-table thead { display: table-row-group !important; }
+            body.print-mode-history .data-table tbody { display: table-row-group !important; }
+            body.print-mode-history .data-table tfoot { display: table-row-group !important; }
+            body.print-mode-history .data-table tr { page-break-inside: avoid !important; }
+            body.print-mode-history .data-table th, 
+            body.print-mode-history .data-table td { border: 1px solid #cbd5e1 !important; color: #000 !important; padding: 6px !important; word-wrap: break-word !important; font-size: 11px !important; }
+            body.print-mode-history .data-table th { font-size: 12px !important; background: #f8fafc !important; }
+            
+            /* Exact Column Widths to prevent shifting */
+            body.print-mode-history .data-table th:nth-child(1), body.print-mode-history .data-table td:nth-child(1) { width: 10% !important; }
+            body.print-mode-history .data-table th:nth-child(2), body.print-mode-history .data-table td:nth-child(2) { width: 12% !important; }
+            body.print-mode-history .data-table th:nth-child(3), body.print-mode-history .data-table td:nth-child(3) { width: 16% !important; }
+            body.print-mode-history .data-table th:nth-child(4), body.print-mode-history .data-table td:nth-child(4) { width: 14% !important; }
+            body.print-mode-history .data-table th:nth-child(5), body.print-mode-history .data-table td:nth-child(5) { width: 12% !important; }
+            body.print-mode-history .data-table th:nth-child(6), body.print-mode-history .data-table td:nth-child(6) { width: 10% !important; }
+            body.print-mode-history .data-table th:nth-child(7), body.print-mode-history .data-table td:nth-child(7) { width: 16% !important; }
+            body.print-mode-history .data-table th:nth-child(8), body.print-mode-history .data-table td:nth-child(8) { width: 10% !important; }
+            
+            body.print-mode-history .hr-kpis { margin-top: 20px !important; page-break-inside: avoid !important; }
+            body.print-mode-history .kpi-card { border: 1px solid #cbd5e1 !important; background: transparent !important; }
         }
     </style>
 </head>
@@ -180,6 +206,7 @@
                 <p class="nav-label">الرواتب والمالية</p>
                 <a href="#" class="nav-item" id="nav-payroll"><i class="ph ph-money"></i><span>مسير الرواتب</span></a>
                 <a href="#" class="nav-item" id="nav-vouchers"><i class="ph ph-receipt"></i><span>سجل السندات والسلف</span></a>
+                <a href="#" class="nav-item" id="nav-history-sidebar" onclick="showView('view-history', 'nav-history-sidebar')"><i class="ph ph-clock-counter-clockwise"></i><span>السجل الكامل للعمليات</span></a>
             </div>
 
             <div class="nav-group mb-5">
@@ -557,14 +584,15 @@
                         </h2>
                         <p style="color:var(--text-muted); margin:4px 0 0; font-size:13px;">عرض وتتبع جميع العمليات: الرواتب، السلف، الخصومات، الجزاءات، والمكافآت</p>
                     </div>
-                    <div style="display:flex; gap:10px;">
+                    <div style="display:flex; gap:10px;" class="no-print">
                         <button class="hr-btn-solid" onclick="showView('view-employees', 'nav-employees')" style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-primary);"><i class="ph ph-arrow-right"></i> العودة</button>
+                        <button class="hr-btn-solid" onclick="exportHistoryToPDF()" style="background:rgba(225,29,72,0.1); border:1px solid #e11d48; color:#e11d48;"><i class="ph ph-file-pdf"></i> تصدير PDF</button>
                         <button class="hr-btn-solid bg-purple" onclick="exportHistoryToExcel()" style="background:linear-gradient(135deg, #10b981, #059669);"><i class="ph ph-file-xls"></i> تصدير Excel</button>
                     </div>
                 </div>
 
                 <!-- Filters Section -->
-                <div style="background:rgba(139, 92, 246, 0.05); border:1px solid rgba(139, 92, 246, 0.2); border-radius:16px; padding:20px; margin-bottom:24px;">
+                <div class="no-print" style="background:rgba(139, 92, 246, 0.05); border:1px solid rgba(139, 92, 246, 0.2); border-radius:16px; padding:20px; margin-bottom:24px;">
                     <h4 style="margin:0 0 16px; color:var(--text-primary); display:flex; align-items:center; gap:8px; font-size:14px;">
                         <i class="ph ph-faders" style="color:#8b5cf6;"></i> الفلاتر والبحث المتقدم
                     </h4>
@@ -572,7 +600,7 @@
                         <!-- Date Filter -->
                         <div class="fm-group" style="margin:0;">
                             <label style="font-size:12px;"><i class="ph ph-calendar"></i> الفترة الزمنية</label>
-                            <select id="history-date-filter" class="fm-input" style="height:40px; font-size:13px;">
+                            <select id="history-date-filter" class="fm-input" style="height:40px; padding: 8px 16px; font-size:13px;" onchange="applyHistoryFilters()">
                                 <option value="all">كل الفترات</option>
                                 <option value="today">اليوم</option>
                                 <option value="week">هذا الأسبوع</option>
@@ -586,11 +614,11 @@
                             <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
                                 <div class="fm-group" style="margin:0;">
                                     <label style="font-size:12px;">من تاريخ</label>
-                                    <input type="date" id="history-date-from" class="fm-input" style="height:40px;">
+                                    <input type="date" id="history-date-from" class="fm-input" style="height:40px; padding: 8px 16px;" onchange="applyHistoryFilters()">
                                 </div>
                                 <div class="fm-group" style="margin:0;">
                                     <label style="font-size:12px;">إلى تاريخ</label>
-                                    <input type="date" id="history-date-to" class="fm-input" style="height:40px;">
+                                    <input type="date" id="history-date-to" class="fm-input" style="height:40px; padding: 8px 16px;" onchange="applyHistoryFilters()">
                                 </div>
                             </div>
                         </div>
@@ -598,7 +626,7 @@
                         <!-- Operation Type Filter -->
                         <div class="fm-group" style="margin:0;">
                             <label style="font-size:12px;"><i class="ph ph-tag"></i> نوع العملية</label>
-                            <select id="history-type-filter" class="fm-input" style="height:40px; font-size:13px;">
+                            <select id="history-type-filter" class="fm-input" style="height:40px; padding: 8px 16px; font-size:13px;" onchange="applyHistoryFilters()">
                                 <option value="all">جميع العمليات</option>
                                 <option value="salary">راتب</option>
                                 <option value="advance">سلفة</option>
@@ -610,7 +638,7 @@
                         <!-- Employee Filter -->
                         <div class="fm-group" style="margin:0;">
                             <label style="font-size:12px;"><i class="ph ph-user"></i> الموظف</label>
-                            <select id="history-employee-filter" class="fm-input" style="height:40px; font-size:13px;">
+                            <select id="history-employee-filter" class="fm-input" style="height:40px; padding: 8px 16px; font-size:13px;" onchange="applyHistoryFilters()">
                                 <option value="all">كل الموظفين</option>
                             </select>
                         </div>
@@ -618,19 +646,18 @@
                         <!-- Search Input -->
                         <div class="fm-group" style="margin:0;">
                             <label style="font-size:12px;"><i class="ph ph-magnifying-glass"></i> بحث</label>
-                            <input type="text" id="history-search" class="fm-input" style="height:40px;" placeholder="رقم السند، البيان...">
+                            <input type="text" id="history-search" class="fm-input" style="height:40px; padding: 8px 16px;" placeholder="رقم السند، البيان..." oninput="applyHistoryFilters()">
                         </div>
                     </div>
 
                     <!-- Filter Actions -->
                     <div style="display:flex; gap:10px; margin-top:16px; justify-content:flex-end;">
-                        <button class="hr-btn-solid" onclick="resetHistoryFilters()" style="background:transparent; border:1px solid var(--text-muted); color:var(--text-primary); padding:8px 16px; font-size:12px;"><i class="ph ph-arrow-counter-clockwise"></i> إعادة تعيين</button>
-                        <button class="hr-btn-solid bg-purple" onclick="applyHistoryFilters()" style="background:linear-gradient(135deg, #8b5cf6, #6366f1); padding:8px 20px; font-size:12px;"><i class="ph ph-check"></i> تطبيق الفلاتر</button>
+                        <button class="hr-btn-solid" onclick="resetHistoryFilters()" style="background:transparent; border:1px solid var(--text-muted); color:var(--text-primary); padding:8px 16px; font-size:12px;"><i class="ph ph-arrow-counter-clockwise"></i> إعادة تعيين الفلاتر</button>
                     </div>
                 </div>
 
                 <!-- Summary Cards -->
-                <div class="kpi-cards hr-kpis" style="margin-bottom:24px;">
+                <div class="kpi-cards hr-kpis no-print" style="margin-bottom:24px;">
                     <div class="card kpi-card hr-kpi-pink">
                         <div class="kpi-icon pink"><i class="ph-fill ph-list-dashes"></i></div>
                         <div class="kpi-details">
@@ -666,6 +693,13 @@
                             <h3 class="kpi-value" style="color:#ef4444;" id="history-total-deduction">0 <span class="js-cur-sym" style="font-size:14px">ر.س</span></h3>
                         </div>
                     </div>
+                    <div class="card kpi-card" style="border-top:3px solid #3b82f6;">
+                        <div class="kpi-icon" style="background:rgba(59,130,246,0.1);"><i class="ph-fill ph-bank" style="color:#3b82f6;"></i></div>
+                        <div class="kpi-details">
+                            <p class="kpi-title">إجمالي المتبقي (صافي)</p>
+                            <h3 class="kpi-value" style="color:#3b82f6;" id="history-total-remaining">0 <span class="js-cur-sym" style="font-size:14px">ر.س</span></h3>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- History Table -->
@@ -680,14 +714,20 @@
                                 <th>المبلغ</th>
                                 <th>طريقة الصرف</th>
                                 <th>البيان / السبب</th>
-                                <th>إجراءات</th>
+                                <th>الرصيد المتبقي</th>
+                                <th class="no-print">إجراءات</th>
                             </tr>
                         </thead>
                         <tbody id="history-tbody">
                             <!-- JS Populated -->
                         </tbody>
+                        <tfoot id="history-tfoot">
+                            <!-- JS Populated Summary for PDF -->
+                        </tfoot>
                     </table>
                 </div>
+
+
 
                 <!-- Empty State -->
                 <div id="history-empty-state" style="display:none; text-align:center; padding:60px 20px;">

@@ -63,13 +63,26 @@ body.light-theme table td {
 }
 
 /* Links */
-body.light-theme a {
+body.light-theme a:not([class*="btn"]):not(.menu-item-card) {
     color: var(--accent-blue);
 }
 
-body.light-theme a:hover {
+body.light-theme a:not([class*="btn"]):not(.nav-item):not(.back-link):hover {
     color: #2563eb;
 }
+
+/* Protect button-style anchor links from hover color changes */
+body.light-theme a.menu-btn-primary,
+body.light-theme a.menu-btn-primary:hover,
+body.light-theme a.menu-btn-primary:focus {
+    color: white !important;
+}
+body.light-theme a.menu-btn-secondary,
+body.light-theme a.menu-btn-secondary:hover {
+    color: #475569 !important;
+}
+body.light-theme a.btn-cancel { color: #475569 !important; }
+body.light-theme a.btn-cancel:hover { color: #ef4444 !important; }
 
 /* Badges & Tags */
 body.light-theme .badge,
@@ -249,4 +262,609 @@ body.light-theme .notification {
         color: #000000 !important;
         background: transparent !important;
     }
+}
+
+
+/* ============================================
+   SPECIFIC TEXT COLOR FIXES FOR LIGHT THEME
+   Generated to catch white text elements
+   ============================================ */
+body.light-theme .kpi-value {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .acc-panel-title {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .input-acc {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .payroll-summary strong {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .card-title-small {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .input-modern {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .upload-placeholder p {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .slider:before {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .recipe-item-li .inv-name {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .cust-search input {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .cust-kpi-info h2 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .cust-avatar {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .cust-info h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .stat-item strong {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .new-cust-card h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .modal-header h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .input-modern {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .kp-input {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .kp-select {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .kds-header-left h1 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .kds-time {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .kds-col-header {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .t-id {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .k-item-name {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .login-title h1 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .login-input {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .menu-section-title h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .menu-select {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .item-name {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme /* Modals */
+.input-acc {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .roles-header h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .matrix-title h2 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .perm-text h5 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .slider:before {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .modal-header h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .input-modern {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .return-search-box h2 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .search-input-group input {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .ret-kpi-info h2 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .returns-list-header h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .ret-table td {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .or-header h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .or-info strong {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .modal-header-danger {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .info-item .value {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .method-option input:checked + .method-box span {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .sales-header h2 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .sales-filters .input-modern {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .sk-value {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .sales-list-header h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .sales-table td {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .sc-header h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .upload-text {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .input-modern {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .factory-modal-title {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .input-modern {
+    color: var(--text-primary) !important;
+}
+
+/* السند يحمل خلفية بيضاء ثابتة (#fff) — نستخدم اللون الداكن للنص العادي فقط */
+body.light-theme .voucher-wrapper {
+    color: #1e3a8a !important; /* لون النص الافتراضي للسند — أزرق داكن لا أسود */
+}
+
+/* ✅ .v-balance-box و .v-notes-strip لهما خلفية زرقاء — يجب أن يبقى النص أبيض */
+body.light-theme .v-balance-box,
+body.light-theme .v-balance-box strong,
+body.light-theme .v-balance-box span {
+    color: #ffffff !important;
+}
+
+body.light-theme .v-notes-strip,
+body.light-theme .v-notes-label,
+body.light-theme .v-notes-text {
+    color: #ffffff !important;
+}
+
+
+body.light-theme .restaurant-logo {
+    color: var(--text-primary) !important;
+}
+
+
+/* ============================================
+   INLINE STYLE TEXT COLOR FIXES
+   Overrides inline color: white on standard elements
+   ============================================ */
+body.light-theme *:not(button):not(.btn):not([class*="btn"]):not(.badge):not([class*="badge"]):not(.kpi-icon):not([style*="background"]):not(a)[style*="color: white"],
+body.light-theme *:not(button):not(.btn):not([class*="btn"]):not(.badge):not([class*="badge"]):not(.kpi-icon):not([style*="background"]):not(a)[style*="color:white"],
+body.light-theme *:not(button):not(.btn):not([class*="btn"]):not(.badge):not([class*="badge"]):not(.kpi-icon):not([style*="background"]):not(a)[style*="color: #fff"],
+body.light-theme *:not(button):not(.btn):not([class*="btn"]):not(.badge):not([class*="badge"]):not(.kpi-icon):not([style*="background"]):not(a)[style*="color:#fff"] {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme strong[style*="color"], 
+body.light-theme b[style*="color"], 
+body.light-theme div[style*="color:white"], 
+body.light-theme div[style*="color: white"] {
+    color: var(--text-primary) !important;
+}
+
+
+/* Fix POS category active icons */
+body.light-theme .category-btn.active .cat-icon,
+body.light-theme .category-btn.active .cat-icon i {
+    color: white !important;
+}
+
+
+/* Login Page Light Theme */
+body.light-theme.login-page-body {
+    background: #f1f5f9 !important;
+}
+body.light-theme .login-box {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05) !important;
+}
+body.light-theme .login-title h1 {
+    color: #0f172a !important;
+}
+body.light-theme .login-title p,
+body.light-theme .login-form-group label,
+body.light-theme .login-footer {
+    color: #64748b !important;
+}
+body.light-theme .login-input {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+body.light-theme .login-input:focus {
+    border-color: var(--accent-blue) !important;
+}
+body.light-theme .login-input-wrapper i {
+    color: #94a3b8 !important;
+}
+body.light-theme .login-logo {
+    border-color: #e2e8f0 !important;
+}
+
+
+/* ============================================
+   HOVER & ACTIVE STATE FIXES FOR LIGHT THEME
+   Fixes buttons that turn white on hover
+   ============================================ */
+body.light-theme .acc-tab-btn:hover,
+body.light-theme .cust-btn:hover,
+body.light-theme .btn-kds-act.to-done:hover,
+body.light-theme .icon-btn-subtle:hover,
+body.light-theme .view-btn.active {
+    color: var(--text-primary) !important;
+}
+
+/* For buttons with borders that turn white on hover */
+body.light-theme .inv-btn-outline:hover {
+    color: var(--text-primary) !important;
+    border-color: var(--text-primary) !important;
+    background: rgba(0, 0, 0, 0.05) !important;
+}
+
+body.light-theme .overlay-btn:hover {
+    color: var(--text-primary) !important;
+    border-color: var(--text-primary) !important;
+    background: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Ensure background of cust-btn is light so dark text is visible */
+body.light-theme .cust-btn:hover {
+    background: #f1f5f9 !important;
+}
+
+body.light-theme .view-btn.active {
+    color: var(--accent-blue) !important;
+}
+
+
+/* ============================================
+   URGENT BACKGROUND FIXES FOR LIGHT THEME
+   Fixes buttons that become white on white
+   ============================================ */
+body.light-theme .category-btn.active {
+    background: var(--accent-blue) !important;
+    color: white !important;
+}
+
+body.light-theme .icon-radio:hover input:checked + .icon-box,
+body.light-theme .cat-radio:hover input:checked + .cat-box {
+    color: white !important;
+}
+
+/* Also ensure kds-nav-btn.active doesn't lose its background */
+body.light-theme .kds-nav-btn.active {
+    background: var(--accent-blue) !important;
+    color: white !important;
+}
+
+
+/* ============================================
+   ADD ITEM & ADD CATEGORY PAGES LIGHT THEME FIXES
+   ============================================ */
+body.light-theme .form-actions-bar {
+    background: #ffffff !important;
+    border-top-color: #e2e8f0 !important;
+    box-shadow: 0 -5px 25px rgba(0,0,0,0.05) !important;
+}
+
+body.light-theme .btn-cancel {
+    color: #475569 !important;
+}
+
+body.light-theme .btn-cancel:hover {
+    color: #ef4444 !important;
+}
+
+body.light-theme .btn-save-draft {
+    background: #f8fafc !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.light-theme .btn-save-draft:hover {
+    background: #f1f5f9 !important;
+    border-color: #94a3b8 !important;
+}
+
+body.light-theme .recipe-item-li:hover {
+    background: #f1f5f9 !important;
+}
+
+body.light-theme .recipe-qty-input {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.light-theme .recipe-dropdown {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+}
+
+body.light-theme .recipe-search-box input {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+/* ============================================
+   UNIVERSAL PRIMARY BUTTONS PROTECTION
+   Ensures all blue/colored action buttons maintain white text
+   ============================================ */
+body.light-theme .btn-primary,
+body.light-theme .btn-primary:hover,
+body.light-theme .btn-primary:focus,
+body.light-theme .menu-btn-primary,
+body.light-theme .menu-btn-primary:hover,
+body.light-theme .menu-btn-primary:focus,
+body.light-theme .btn-login,
+body.light-theme .btn-login:hover,
+body.light-theme .btn-login:focus,
+body.light-theme .pos-action-btn.primary,
+body.light-theme .pos-action-btn.primary:hover,
+body.light-theme .pos-action-btn.primary:focus,
+body.light-theme .add-btn,
+body.light-theme .add-btn:hover,
+body.light-theme .btn-add-role,
+body.light-theme .btn-add-role:hover,
+body.light-theme .btn-save-publish,
+body.light-theme .btn-save-publish:hover,
+body.light-theme .cat-btn-save,
+body.light-theme .cat-btn-save:hover,
+body.light-theme .btn-search-order,
+body.light-theme .btn-search-order:hover,
+body.light-theme .btn-for-him,
+body.light-theme .btn-for-him:hover,
+body.light-theme .btn-on-him,
+body.light-theme .btn-on-him:hover,
+body.light-theme .btn-save-staff,
+body.light-theme .btn-save-staff:hover,
+body.light-theme a.btn-primary,
+body.light-theme a.btn-primary:hover,
+body.light-theme a.menu-btn-primary,
+body.light-theme a.menu-btn-primary:hover {
+    color: white !important;
+}
+
+/* Also ensure their inner icons stay white */
+body.light-theme .btn-primary i,
+body.light-theme .btn-primary:hover i,
+body.light-theme .menu-btn-primary i,
+body.light-theme .menu-btn-primary:hover i,
+body.light-theme .btn-login i,
+body.light-theme .btn-login:hover i,
+body.light-theme .pos-action-btn.primary i,
+body.light-theme .pos-action-btn.primary:hover i,
+body.light-theme .btn-save-publish i,
+body.light-theme .btn-save-publish:hover i,
+body.light-theme .cat-btn-save i,
+body.light-theme .cat-btn-save:hover i {
+    color: white !important;
+}
+
+
+/* btn-danger in light theme: red text on light red bg (normal), white on red (hover) */
+body.light-theme .btn-danger {
+    background: rgba(239, 68, 68, 0.08) !important;
+    color: #dc2626 !important;
+    border: 1px solid rgba(239, 68, 68, 0.2) !important;
+}
+body.light-theme .btn-danger:hover {
+    background: #ef4444 !important;
+    color: white !important;
+    border-color: #ef4444 !important;
+}
+body.light-theme .btn-danger:hover i {
+    color: white !important;
+}
+/* btn-danger with inline background (explicit red/purple bg) keeps white text */
+body.light-theme .btn-danger[style*="background"] {
+    color: white !important;
+}
+body.light-theme .btn-danger[style*="background"] i {
+    color: white !important;
+}
+
+/* ============================================
+   STAFF PAGE BUTTONS - FULL LIGHT THEME FIX
+   ============================================ */
+
+/* hr-btn-solid with SOLID colored backgrounds → keep white text */
+body.light-theme .hr-btn-solid.bg-pink,
+body.light-theme .hr-btn-solid.bg-pink:hover,
+body.light-theme .hr-btn-solid.bg-indigo,
+body.light-theme .hr-btn-solid.bg-indigo:hover,
+body.light-theme .hr-btn-solid.bg-purple,
+body.light-theme .hr-btn-solid.bg-purple:hover,
+body.light-theme .hr-btn-solid.bg-red,
+body.light-theme .hr-btn-solid.bg-red:hover {
+    color: white !important;
+}
+
+/* Icons inside those solid buttons also white */
+body.light-theme .hr-btn-solid.bg-pink i,
+body.light-theme .hr-btn-solid.bg-indigo i,
+body.light-theme .hr-btn-solid.bg-purple i,
+body.light-theme .hr-btn-solid.bg-red i {
+    color: white !important;
+}
+
+/* hr-btn-solid with semi-transparent (rgba) inline styles → these carry their own color, fix bg only */
+body.light-theme .hr-btn-solid[style*="rgba(239,68,68,0.2)"],
+body.light-theme .hr-btn-solid[style*="rgba(239, 68, 68, 0.2)"] {
+    background: rgba(239, 68, 68, 0.1) !important;
+    color: #dc2626 !important;
+    border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+body.light-theme .hr-btn-solid[style*="rgba(59,130,246,0.2)"],
+body.light-theme .hr-btn-solid[style*="rgba(59, 130, 246, 0.2)"] {
+    background: rgba(59, 130, 246, 0.08) !important;
+    color: #2563eb !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+body.light-theme .hr-btn-solid[style*="rgba(99,102,241,0.2)"],
+body.light-theme .hr-btn-solid[style*="rgba(99, 102, 241, 0.2)"] {
+    background: rgba(99, 102, 241, 0.08) !important;
+    color: #4f46e5 !important;
+    border-color: rgba(99, 102, 241, 0.3) !important;
+}
+
+body.light-theme .hr-btn-solid[style*="rgba(16,185,129,0.2)"],
+body.light-theme .hr-btn-solid[style*="rgba(16, 185, 129, 0.2)"] {
+    background: rgba(16, 185, 129, 0.08) !important;
+    color: #059669 !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+body.light-theme .hr-btn-solid[style*="rgba(245,158,11,0.2)"],
+body.light-theme .hr-btn-solid[style*="rgba(245, 158, 11, 0.2)"] {
+    background: rgba(245, 158, 11, 0.08) !important;
+    color: #d97706 !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+/* hr-btn-solid with solid inline backgrounds (red, blue, linear-gradient) → white text */
+body.light-theme .hr-btn-solid[style*="background:var(--accent-red)"],
+body.light-theme .hr-btn-solid[style*="background: var(--accent-red)"],
+body.light-theme .hr-btn-solid[style*="linear-gradient"] {
+    color: white !important;
+}
+body.light-theme .hr-btn-solid[style*="background:var(--accent-red)"] i,
+body.light-theme .hr-btn-solid[style*="linear-gradient"] i {
+    color: white !important;
+}
+
+/* Close/X buttons in modals (white on dark bg → dark on light) */
+body.light-theme .close-modal[style*="color:#fff"],
+body.light-theme .close-modal[style*="color: #fff"],
+body.light-theme .close-modal[style*="color:white"] {
+    color: #475569 !important;
+}
+body.light-theme .close-modal[style*="color:#fff"]:hover,
+body.light-theme .close-modal[style*="color:white"]:hover {
+    color: #ef4444 !important;
+}
+
+/* إقفال اليوم (purple gradient inline button in index.html) → white text */
+body.light-theme .btn.btn-danger[style*="linear-gradient"] {
+    color: white !important;
+}
+body.light-theme .btn.btn-danger[style*="linear-gradient"] i {
+    color: white !important;
+}
+
+/* Inventory bg-blue button */
+body.light-theme .bg-blue,
+body.light-theme .bg-blue:hover {
+    color: white !important;
+}
+
+/* Close Day button (index.html) - Match Close Shift style (pale bg + dark text) */
+body.light-theme .btn.btn-danger[onclick*="openDayCloseReport"] {
+    background: rgba(99, 102, 241, 0.08) !important;
+    color: #4f46e5 !important;
+    border: 1px solid rgba(99, 102, 241, 0.2) !important;
+}
+
+body.light-theme .btn.btn-danger[onclick*="openDayCloseReport"]:hover {
+    background: #6366f1 !important;
+    color: white !important;
+    border-color: #6366f1 !important;
 }

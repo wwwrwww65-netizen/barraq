@@ -12,7 +12,7 @@
         expenses:[], bankTransfers:[], hrExpenses:[], otherIncome:[],
         employees:[], attendance:[], penaltyRules:[],
         chartOfAccounts:[], journalEntries:[],
-        systemNotifications:[], inventoryAlertState:{}
+        systemNotifications:[], inventoryAlertState:{}, deliveryCompanies:[]
     };
 
     /**

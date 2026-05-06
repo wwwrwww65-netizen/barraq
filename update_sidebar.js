@@ -1,15 +1,29 @@
 const fs = require('fs');
-const path = require('path');
+const files = fs.readdirSync('.');
+files.filter(f => f.endsWith('.html')).forEach(f => {
+    let html = fs.readFileSync(f, 'utf8');
+    let changed = false;
 
-const files = fs.readdirSync('.').filter(f => f.endsWith('.html'));
-const searchRegex = /<a href="kitchen\.html" class="nav-item">(.*?)<span>شاشة المطبخ \(KDS\)<\/span><\/a>/g;
-const replacement = '<a href="kitchen-production.html" class="nav-item">$1<span>المطبخ والإنتاج</span></a>';
+    // Add Delivery Companies before settings
+    if (html.includes('href="settings.html"') && !html.includes('delivery-companies.html')) {
+        html = html.replace(
+            /(<a\s+href="settings\.html"\s+class="nav-item".*?>)/,
+            '<a href="delivery-companies.html" class="nav-item"><i class="ph ph-buildings"></i><span>شركات التوصيل</span></a>\n                    $1'
+        );
+        changed = true;
+    }
 
-files.forEach(f => {
-    let content = fs.readFileSync(f, 'utf8');
-    if(content.match(searchRegex) && !content.includes('المطبخ والإنتاج')) {
-        content = content.replace(searchRegex, replacement);
-        fs.writeFileSync(f, content);
-        console.log(`Updated ${f}`);
+    // Add container for dynamic delivery companies after hungerstation
+    if (html.includes('href="hungerstation.html"') && !html.includes('id="dynamic-delivery-companies-nav"')) {
+        html = html.replace(
+            /(<a\s+href="hungerstation\.html"\s+class="nav-item".*?>.*?<\/a>)/,
+            '$1\n                    <div id="dynamic-delivery-companies-nav"></div>'
+        );
+        changed = true;
+    }
+
+    if (changed) {
+        fs.writeFileSync(f, html);
+        console.log('Updated ' + f);
     }
 });

@@ -1329,9 +1329,8 @@ body:not(.light-theme) .theme-toggle-btn:hover {
         outline: none !important;
     }
 
-    /* Make sure inner wrappers don't enforce padding */
+    /* Make sure inner wrappers don't add extra padding/margin in print */
     .main-content > div {
-        display: block !important;
         padding: 0 !important;
         margin: 0 !important;
     }
@@ -1404,6 +1403,8 @@ body:not(.light-theme) .theme-toggle-btn:hover {
         font-size: 12px !important; 
         padding: 7px 5px !important;
         background: #ffffff !important;
+        word-break: normal !important;
+        overflow-wrap: normal !important;
     }
 
     /* Employee profile specific styles */
@@ -1430,6 +1431,24 @@ body:not(.light-theme) .theme-toggle-btn:hover {
     .data-table-expenses tfoot td {
         color: #c2410c !important;
         border-color: #fed7aa !important;
+    }
+
+    /* HR History table tfoot print styles */
+    #history-tfoot { display: table-row-group !important; }
+    #history-tfoot tr { page-break-inside: avoid; }
+    #history-tfoot td {
+        border: 1px solid #cbd5e1 !important;
+        font-size: 12px !important;
+        padding: 7px 10px !important;
+    }
+    #history-tfoot tr:first-child td { border-top: 3px solid #6366f1 !important; }
+    #history-tfoot tr:nth-child(5) td { border-top: 3px solid #3b82f6 !important; }
+
+    /* Print-only info header */
+    #history-print-info {
+        display: block !important;
+        margin-bottom: 12px !important;
+        text-align: center !important;
     }
 
     /* Ensure print-only elements are visible */

@@ -135,6 +135,11 @@ window.exportPageToPDF = async function(filename = 'تقرير.pdf') {
                 return;
             } catch (err) {
                 console.error(err);
+            } finally {
+                const header = document.getElementById('global-print-header');
+                if (header) {
+                    header.remove();
+                }
             }
         }
     }
@@ -158,28 +163,87 @@ window.addEventListener('beforeprint', () => {
     const sys = sysRaw ? JSON.parse(sysRaw) : {};
     const logoSrc = (sys.logo && sys.logo !== '1111.png') ? sys.logo : '1111.png';
     
-    // Try to find a meaningful page title, fallback to page title tag
+    // Try to find a meaningful page title
     let pageTitle = document.title;
-    const h2 = document.querySelector('.top-header h2') || document.querySelector('.page-title h1') || document.querySelector('h2');
-    if(h2) pageTitle = h2.innerText;
+    // Priority: #page-title element > .top-header h2 > any h2 > document.title
+    const pageTitleEl = document.getElementById('page-title') ||
+                        document.querySelector('.top-header h2') ||
+                        document.querySelector('.page-title h1') ||
+                        document.querySelector('h2');
+    if (pageTitleEl) pageTitle = pageTitleEl.innerText.trim();
 
-    // Detect filtered period (Today, Yesterday, Custom Range, etc.)
+    // Detect filtered period — supports both standard period-filter, history-date-filter, and button filters
     let periodInfo = "";
-    const periodSelect = document.querySelector('select[id*="period-filter"]');
-    if (periodSelect) {
-        const val = periodSelect.value;
-        const text = periodSelect.options[periodSelect.selectedIndex].text;
-        if (val !== 'all') {
-            periodInfo = text;
-            if (val === 'custom') {
-                const fDate = document.querySelector('input[id*="date-from"]')?.value;
-                const tDate = document.querySelector('input[id*="date-to"]')?.value;
-                if (fDate && tDate) {
-                    periodInfo = `الفترة من: ${fDate} إلى: ${tDate}`;
+    const periodSelect = 
+        document.querySelector('select[id*="period-filter"]') ||
+        document.getElementById('history-date-filter') ||
+        document.querySelector('select[id*="date-filter"]');
+        
+    const periodButton = 
+        document.querySelector('.date-btn.active[data-range]') ||
+        document.querySelector('.glass-btn.active[data-range]');
+    
+    // Period label mappings for non-standard selects (like history-date-filter) and buttons
+    const periodLabelMap = {
+        'all': null, 'today': 'اليوم', 'day': 'اليوم',
+        'yesterday': 'أمس', 'week': 'هذا الأسبوع', '1week': 'هذا الأسبوع',
+        '7days': 'آخر 7 أيام', 'month': 'هذا الشهر', 'this_month': 'هذا الشهر',
+        'last_month': 'الشهر الماضي', 'quarter': 'هذا الربع', 'year': 'هذه السنة', 'custom': 'فترة مخصصة'
+    };
+
+    let val = null;
+    let text = '';
+
+    if (periodButton) {
+        val = periodButton.getAttribute('data-range');
+        text = periodLabelMap[val] || periodButton.innerText.trim();
+    } else if (periodSelect) {
+        val = periodSelect.value;
+        text = periodLabelMap[val] || periodSelect.options[periodSelect.selectedIndex]?.text || '';
+    }
+
+    if (val && val !== 'all' && text) {
+        let dateDetails = '';
+        
+        if (val === 'custom') {
+            const fDate = document.querySelector('input[id*="date-from"]')?.value;
+            const tDate = document.querySelector('input[id*="date-to"]')?.value;
+            if (fDate && tDate) {
+                dateDetails = `<br><span style="font-size:12px; font-weight:700; color:#64748b !important; display:inline-block; margin-top:3px;">(من: <span dir="ltr">${fDate}</span> إلى: <span dir="ltr">${tDate}</span>)</span>`;
+            }
+        } else if (val !== 'today' && val !== 'day') {
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            let startDate = null;
+            let endDate = new Date();
+            
+            if (val === 'yesterday') {
+                startDate = new Date(startOfToday);
+                startDate.setDate(startDate.getDate() - 1);
+                endDate = new Date(startDate);
+            } else if (val === 'week' || val === '1week' || val === '7days') {
+                startDate = new Date(startOfToday);
+                startDate.setDate(startDate.getDate() - 7);
+            } else if (val === 'month' || val === 'this_month') {
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            } else if (val === 'quarter') {
+                let qMonth = Math.floor(now.getMonth() / 3) * 3;
+                startDate = new Date(now.getFullYear(), qMonth, 1);
+            } else if (val === 'year') {
+                startDate = new Date(now.getFullYear(), 0, 1);
+            }
+
+            if (startDate) {
+                const fDate = startDate.toISOString().split('T')[0];
+                const tDate = endDate.toISOString().split('T')[0];
+                if (fDate === tDate) {
+                    dateDetails = `<br><span style="font-size:12px; font-weight:700; color:#64748b !important; display:inline-block; margin-top:3px;">(بتاريخ: <span dir="ltr">${fDate}</span>)</span>`;
+                } else {
+                    dateDetails = `<br><span style="font-size:12px; font-weight:700; color:#64748b !important; display:inline-block; margin-top:3px;">(من: <span dir="ltr">${fDate}</span> إلى: <span dir="ltr">${tDate}</span>)</span>`;
                 }
             }
-            periodInfo = `<div style="font-size:13px; font-weight:700; color:#475569 !important; margin-top:5px;">${periodInfo}</div>`;
         }
+        periodInfo = `<div style="font-size:14px; font-weight:800; color:#334155 !important; margin-top:6px; text-align:center; line-height:1.4;">${text} ${dateDetails}</div>`;
     }
     
     const dateStr = new Date().toLocaleString('en-GB', { 
@@ -202,7 +266,6 @@ window.addEventListener('beforeprint', () => {
                     ${sys.phone ? `<p style="margin:0; font-size:14px; font-weight:600; color:#475569 !important;" dir="ltr"><i class="ph ph-phone" style="font-size:14px;"></i> ${sys.phone}</p>` : ''}
                     ${sys.tax ? `<p style="margin:0; font-size:13px; font-weight:600; color:#64748b !important;">الرقم الضريبي: <span dir="ltr">${sys.tax}</span></p>` : ''}
                     ${sys.whatsapp ? `<p style="margin:0; font-size:13px; font-weight:600; color:#64748b !important;" dir="ltr"><i class="ph ph-whatsapp-logo" style="font-size:14px;"></i> ${sys.whatsapp}</p>` : ''}
-                    ${sys.footer ? `<p style="margin:5px 0 0 0; font-size:12px; font-weight:500; color:#94a3b8 !important; font-style:italic;">${sys.footer}</p>` : ''}
                 </div>
             </div>
             

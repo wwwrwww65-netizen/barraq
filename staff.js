@@ -1883,7 +1883,7 @@ window.generateVoucher = async function(typeStr) {
                     const empObj = db.employees?.find(e => e.name === employee);
                     if (empObj && empObj.phone) {
                         let phoneNum = String(empObj.phone).replace(/^0/, '+966');
-                        const captionMsg = `مرحباً ${empObj.name}،\n${actionText} رقم (${voucherNo}) لعملية ( ${typeStr} ) بقيمة ${xf(amount)}.\nالبيان: ${reason}`;
+                        const captionMsg = `مرحباً ${empObj.name}،\n${actionText} (${voucherNo})\nالنوع: ${typeStr}\nالقيمة: ${xf(amount)}\nالبيان: ${reason}`;
                         
                         ipcRenderer.send('wa-send-message', {
                             number: phoneNum,

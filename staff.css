@@ -619,7 +619,7 @@
 
 .v-balance-box {
     background: var(--v-blue);
-    color: #ffffff;
+    color: #ffffff !important;
     padding: 8px 12px;
     border-radius: 999px;
     font-size: 13px;
@@ -633,7 +633,12 @@
 }
 .v-balance-box strong {
     font-weight: 800;
+    color: #ffffff !important;
 }
+.v-balance-box span {
+    color: #ffffff !important;
+}
+
 
 .v-body-box {
     border: 1px solid #0f172a;
@@ -677,7 +682,7 @@
     align-items: flex-start;
     gap: 10px;
     background: var(--v-blue);
-    color: #fff;
+    color: #ffffff !important;
     padding: 12px 18px 16px;
     min-height: 44px;
     font-size: 15px;
@@ -686,6 +691,7 @@
 .v-notes-label {
     flex-shrink: 0;
     white-space: nowrap;
+    color: #ffffff !important;
 }
 .v-notes-text {
     flex: 1;
@@ -694,7 +700,9 @@
     line-height: 1.5;
     opacity: 0.98;
     word-break: break-word;
+    color: #ffffff !important;
 }
+
 
 .v-footer {
     display: none;

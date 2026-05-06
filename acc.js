@@ -611,18 +611,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             // This matches the dashboard calculation exactly
 
             let dTotalExp = 0;
-            dExpenses.forEach(h => dTotalExp += (Number(h.amount) || 0));
+            let dCashExp = 0;
+            let dBankExp = 0;
+            dExpenses.forEach(h => {
+                const a = Number(h.amount) || 0;
+                dTotalExp += a;
+                // تفريق بين النقدي والبنكي
+                if (h.pMethod === 'bank') dBankExp += a;
+                else dCashExp += a;
+            });
 
-            let drawerBalanceNow = shiftFloat + dCashSales - dTotalExp;
+            // رصيد الدرج = يتأثر فقط بالمصروفات النقدية (البنك لا يخرج من الدرج)
+            let drawerBalanceNow = shiftFloat + dCashSales - dCashExp;
+
             
             // Debug: Log the calculation
             console.log('\n💵 Expenses Page - Drawer Balance Calculation:');
             console.log(`   - Shift Float: ${shiftFloat.toFixed(2)} ر.س`);
             console.log(`   - Cash Sales: ${dCashSales.toFixed(2)} ر.س`);
             console.log(`   - HungerStation Unpaid: ${dHungerStationUnpaid.toFixed(2)} ر.س`);
-            console.log(`   - Expenses: ${dTotalExp.toFixed(2)} ر.س`);
+            console.log(`   - Cash Expenses: ${dCashExp.toFixed(2)} ر.س`);
+            console.log(`   - Bank Expenses (لا تؤثر على الدرج): ${dBankExp.toFixed(2)} ر.س`);
             console.log(`   - Drawer Balance: ${drawerBalanceNow.toFixed(2)} ر.س`);
-            console.log(`   - Check: ${shiftFloat} + ${dCashSales} - ${dTotalExp} = ${drawerBalanceNow.toFixed(2)}`);
+            console.log(`   - Check: ${shiftFloat} + ${dCashSales} - ${dCashExp} = ${drawerBalanceNow.toFixed(2)}`);
             
             // Compare with Dashboard if available
             if (window.__dashboardData) {
@@ -829,9 +840,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('exp-date').value = localYMD;
         }
 
+        // ── علم تأمين لمنع إرسال سند المصروف أكثر من مرة ──
+        let _expenseWaSending = false;
+
         document.getElementById('form-expense')?.addEventListener('submit', async (ev) => {
             ev.preventDefault();
-            
+
+            // منع الإرسال المزدوج بالكامل
+            if (_expenseWaSending) {
+                console.warn('[Expense] Already processing — ignoring duplicate submit');
+                return;
+            }
+            _expenseWaSending = true;
+
             // منع الإرسال المزدوج - تعطيل الزر أثناء الحفظ
             const submitBtn = ev.target.querySelector('button[type="submit"]');
             if (submitBtn) {
@@ -926,7 +947,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 ctx2.drawImage(canvas, 0, 0, 1600, 1132);
                                 const imgData = fc.toDataURL('image/jpeg', 0.95);
 
-                                const captionMsg = `سند مصروف — ${newExp.cat}\nالمبلغ: ${xf(newExp.amount)}\n${newExp.desc}`;
+                                const captionMsg = [
+                                    `📌 إشعار إداري — سند مصروف`,
+                                    `───────────────────`,
+                                    `رقم السند: ${newExp.id}`,
+                                    ``,
+                                    `📂 التصنيف: ${newExp.cat}`,
+                                    `💰 المبلغ: ${xf(newExp.amount)}`,
+                                    `🗒 البيان: ${newExp.desc}`,
+                                ].join('\n');
                                 const { ipcRenderer } = require('electron');
                                 const hubIp =
                                     typeof window.resolveWaHubIp === 'function'
@@ -959,11 +988,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.error('Error saving expense:', error);
                 alert('حدث خطأ أثناء حفظ سند الصرف');
             } finally {
-                // إعادة تفعيل الزر
+                // إعادة تفعيل الزر فوراً، لكن علم الواتساب يظل مقفلاً حتى ينتهي الإرسال
                 if (submitBtn) {
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = '<i class="ph ph-check-circle"></i> اعتماد سند الصرف وحفظه';
                 }
+                // رفع علم التأمين بعد انتهاء الواتساب (300ms + وقت التنفيذ)
+                setTimeout(() => { _expenseWaSending = false; }, 2000);
             }
         });
 

@@ -1,0 +1,348 @@
+body.light-theme .kpi-value {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .acc-panel-title {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .input-acc {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .acc-tab-btn:hover {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .acc-btn-small:hover {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .payroll-summary strong {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .icon-radio:hover .icon-box {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .card-title-small {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .input-modern {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .cat-radio:hover .cat-box {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .upload-placeholder p {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .slider:before {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .recipe-item-li .inv-name {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .cust-search input {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .cust-filter-btn.active {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .cust-filter-btn:hover {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .cust-kpi-info h2 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .cust-avatar {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .cust-info h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .stat-item strong {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .cust-btn:hover {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .new-cust-card h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .modal-header h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .input-modern {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .inv-btn-outline:hover {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .warehouse-tab.active .wh-icon.blue {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .kp-action-btn {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .kp-action-btn.secondary {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .kp-input {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .kp-select {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .kds-nav-btn.active {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .kds-header-left h1 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .kds-time {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .kds-col-header {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .t-id {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .k-item-name {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .login-title h1 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .login-input {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .menu-section-title h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .menu-select {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .view-btn.active {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .overlay-btn {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .overlay-btn:hover {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .item-name {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .menu-tab-btn:hover {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme /* Modals */
+.input-acc {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .roles-header h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .matrix-title h2 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .perm-text h5 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .slider:before {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .modal-header h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .pos-action-btn.primary:hover {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .category-btn.active {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .product-badge {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .add-btn:hover {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .input-modern {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .return-search-box h2 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .search-input-group input {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .ret-kpi-info h2 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .returns-list-header h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .ret-table td {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .or-header h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .or-info strong {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .modal-header-danger {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .info-item .value {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .method-option input:checked + .method-box span {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .sales-header h2 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .sales-filters .input-modern {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .sk-value {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .sales-list-header h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .sales-table td {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .sales-action-btn:hover {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .sc-header h3 {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .upload-text {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .input-modern {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .factory-modal-title {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .factory-btn-muted:hover {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .factory-btn-danger {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .icon-btn-subtle:hover {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .input-modern {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .voucher-wrapper {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .v-balance-box {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .v-notes-strip {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .date-btn.active {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .date-btn:hover {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .restaurant-logo {
+    color: var(--text-primary) !important;
+}
+
+body.light-theme .filter-btn.active {
+    color: var(--text-primary) !important;
+}

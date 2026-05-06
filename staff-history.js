@@ -14,8 +14,66 @@ function loadHistoryData() {
     applyHistoryFilters();
 }
 
+function calculateHistoricalBalances() {
+    if (!db.hrExpenses) return;
+
+    const employeeExpenses = {};
+    db.hrExpenses.forEach(exp => {
+        if (!employeeExpenses[exp.employee]) employeeExpenses[exp.employee] = [];
+        employeeExpenses[exp.employee].push(exp);
+    });
+
+    const globalReset = db.hrCycle?.lastResetAt || 0;
+
+    Object.keys(employeeExpenses).forEach(empName => {
+        const emp = db.employees?.find(e => e.name === empName);
+        const salary = Number(emp?.salary) || 0;
+        
+        let loans = 0;
+        let paidSalary = 0;
+        let bonuses = 0;
+        let lastProcessedTime = 0;
+
+        // Sort chronologically (oldest first)
+        employeeExpenses[empName].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+        employeeExpenses[empName].forEach(h => {
+            const t = h.timestamp || 0;
+            
+            // Check if we crossed the global reset boundary
+            if (lastProcessedTime < globalReset && t >= globalReset && globalReset > 0) {
+                loans = 0;
+                paidSalary = 0;
+                bonuses = 0;
+            }
+
+            if (h.type === 'تصفير حساب') {
+                loans = 0;
+                paidSalary = 0;
+                bonuses = 0;
+            } else if (h.type.includes('سلفة') || h.type.includes('خصم') || h.type.includes('جزاء')) {
+                // السلف والخصومات تُنقص من الرصيد
+                loans += Number(h.amount) || 0;
+            } else if (h.type.includes('مكافأة')) {
+                // المكافأة تُضاف للرصيد (دخل إضافي)
+                bonuses += Number(h.amount) || 0;
+            } else if (h.type.includes('راتب')) {
+                // الراتب المدفوع يُنقص من الرصيد
+                paidSalary += Number(h.amount) || 0;
+            }
+            
+            // المعادلة: الراتب الأساسي + المكافآت - السلف والخصومات - الراتب المدفوع
+            h._historicalBalance = Math.max(0, salary + bonuses - loans - paidSalary);
+            lastProcessedTime = Math.max(lastProcessedTime, t);
+        });
+    });
+}
+
 function applyHistoryFilters() {
     if (!db.hrExpenses) db.hrExpenses = [];
+    
+    // Calculate true historical balances first
+    calculateHistoricalBalances();
     
     let filtered = [...db.hrExpenses];
     
@@ -58,7 +116,7 @@ function applyHistoryFilters() {
     
     const typeFilter = document.getElementById('history-type-filter')?.value || 'all';
     if (typeFilter !== 'all') {
-        filtered = filtered.filter(exp => exp.type === typeFilter);
+        filtered = filtered.filter(exp => exp.type && exp.type.includes(typeFilter));
     }
     
     const empFilter = document.getElementById('history-employee-filter')?.value || 'all';
@@ -79,20 +137,116 @@ function applyHistoryFilters() {
     
     updateHistorySummary(filtered);
     renderHistoryTable(filtered);
+    
+    // Save filtered data for export
+    window.currentFilteredHistory = filtered;
 }
 
 function updateHistorySummary(expenses) {
     const totalCount = expenses.length;
-    const totalSalary = expenses.filter(e => e.type === 'salary').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-    const totalAdvance = expenses.filter(e => e.type === 'advance').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-    const totalBonus = expenses.filter(e => e.type === 'bonus').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-    const totalDeduction = expenses.filter(e => e.type === 'خصم / جزاء').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const totalSalary = expenses.filter(e => e.type && e.type.includes('راتب')).reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const totalAdvance = expenses.filter(e => e.type && e.type.includes('سلفة')).reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const totalBonus = expenses.filter(e => e.type && e.type.includes('مكافأة')).reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const totalDeduction = expenses.filter(e => e.type && (e.type.includes('خصم') || e.type.includes('جزاء'))).reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
     
+    let totalRemaining = 0;
+    const seenEmps = new Set();
+    for (const exp of expenses) {
+        if (!seenEmps.has(exp.employee)) {
+            seenEmps.add(exp.employee);
+            totalRemaining += exp._historicalBalance || 0;
+        }
+    }
+    
+    // Update KPI cards
     document.getElementById('history-total-count').textContent = totalCount;
     document.getElementById('history-total-salary').innerHTML = `${xfNum(totalSalary)} <span class="js-cur-sym" style="font-size:14px">${curSym()}</span>`;
     document.getElementById('history-total-advance').innerHTML = `${xfNum(totalAdvance)} <span class="js-cur-sym" style="font-size:14px">${curSym()}</span>`;
     document.getElementById('history-total-bonus').innerHTML = `${xfNum(totalBonus)} <span class="js-cur-sym" style="font-size:14px">${curSym()}</span>`;
     document.getElementById('history-total-deduction').innerHTML = `${xfNum(totalDeduction)} <span class="js-cur-sym" style="font-size:14px">${curSym()}</span>`;
+    
+    const remEl = document.getElementById('history-total-remaining');
+    if (remEl) {
+        remEl.innerHTML = `${xfNum(totalRemaining)} <span class="js-cur-sym" style="font-size:14px">${curSym()}</span>`;
+    }
+
+    // Build period label for tfoot & print header
+    const dateFilter = document.getElementById('history-date-filter')?.value || 'all';
+    const typeFilter = document.getElementById('history-type-filter')?.value || 'all';
+    const empFilter = document.getElementById('history-employee-filter')?.value || 'all';
+    const periodLabels = {
+        all: 'كل الفترات', today: 'اليوم', week: 'هذا الأسبوع', month: 'هذا الشهر', custom: 'تاريخ مخصص'
+    };
+    let periodText = periodLabels[dateFilter] || 'كل الفترات';
+    if (dateFilter === 'custom') {
+        const f = document.getElementById('history-date-from')?.value;
+        const t = document.getElementById('history-date-to')?.value;
+        if (f && t) periodText = `من: ${f} إلى: ${t}`;
+        else if (f) periodText = `ابتداءً من: ${f}`;
+        else if (t) periodText = `حتى: ${t}`;
+    }
+    let filterDetails = `الفترة: ${periodText}`;
+    if (typeFilter !== 'all') filterDetails += `  |  النوع: ${typeFilter}`;
+    if (empFilter !== 'all') filterDetails += `  |  الموظف: ${empFilter}`;
+
+    // Update print-only header
+    const printPeriodEl = document.getElementById('history-print-period');
+    if (printPeriodEl) printPeriodEl.textContent = filterDetails;
+
+    // Store totals for tfoot rendering
+    window._historyTotals = { totalSalary, totalAdvance, totalBonus, totalDeduction, totalRemaining, totalCount, filterDetails, sym: curSym() };
+
+    // Render tfoot
+    renderHistoryTfoot();
+}
+
+function renderHistoryTfoot() {
+    const tfoot = document.getElementById('history-tfoot');
+    if (!tfoot) return;
+    const t = window._historyTotals;
+    if (!t) { tfoot.innerHTML = ''; return; }
+
+    const sym = t.sym;
+    const fNum = (n) => xfNum(n);
+
+    tfoot.innerHTML = `
+        <tr style="background:rgba(99,102,241,0.08); border-top:3px solid #6366f1;">
+            <td colspan="4" style="padding:10px 12px; font-size:13px; font-weight:800; color:#6366f1 !important;">إجمالي الرواتب المصروفة</td>
+            <td style="padding:10px 12px; font-size:15px; font-weight:900; color:#6366f1 !important;" dir="ltr">${fNum(t.totalSalary)} ${sym}</td>
+            <td colspan="3" style="padding:10px 12px;"></td>
+            <td class="no-print"></td>
+        </tr>
+        <tr style="background:rgba(245,158,11,0.08);">
+            <td colspan="4" style="padding:8px 12px; font-size:13px; font-weight:700; color:#d97706 !important;">إجمالي السلف</td>
+            <td style="padding:8px 12px; font-size:14px; font-weight:800; color:#d97706 !important;" dir="ltr">${fNum(t.totalAdvance)} ${sym}</td>
+            <td colspan="3" style="padding:8px 12px;"></td>
+            <td class="no-print"></td>
+        </tr>
+        <tr style="background:rgba(16,185,129,0.08);">
+            <td colspan="4" style="padding:8px 12px; font-size:13px; font-weight:700; color:#059669 !important;">إجمالي المكافآت</td>
+            <td style="padding:8px 12px; font-size:14px; font-weight:800; color:#059669 !important;" dir="ltr">${fNum(t.totalBonus)} ${sym}</td>
+            <td colspan="3" style="padding:8px 12px;"></td>
+            <td class="no-print"></td>
+        </tr>
+        <tr style="background:rgba(239,68,68,0.08);">
+            <td colspan="4" style="padding:8px 12px; font-size:13px; font-weight:700; color:#dc2626 !important;">إجمالي الخصومات والجزاءات</td>
+            <td style="padding:8px 12px; font-size:14px; font-weight:800; color:#dc2626 !important;" dir="ltr">${fNum(t.totalDeduction)} ${sym}</td>
+            <td colspan="3" style="padding:8px 12px;"></td>
+            <td class="no-print"></td>
+        </tr>
+        <tr style="background:rgba(59,130,246,0.12); border-top:3px solid #3b82f6;">
+            <td colspan="4" style="padding:12px 12px; font-size:14px; font-weight:900; color:#2563eb !important;">إجمالي المتبقي من الرواتب</td>
+            <td style="padding:12px 12px; font-size:16px; font-weight:900; color:#2563eb !important;" dir="ltr">${fNum(t.totalRemaining)} ${sym}</td>
+            <td colspan="3" style="padding:12px 12px;"></td>
+            <td class="no-print"></td>
+        </tr>
+        <tr style="background:rgba(0,0,0,0.03); border-top:2px dashed #94a3b8;">
+            <td colspan="8" style="padding:8px 12px; font-size:11px; color:#64748b !important; text-align:center;">
+                ${t.filterDetails}  —  إجمالي العمليات: ${t.totalCount}
+            </td>
+            <td class="no-print"></td>
+        </tr>
+    `;
 }
 
 function renderHistoryTable(expenses) {
@@ -103,6 +257,8 @@ function renderHistoryTable(expenses) {
     
     if (expenses.length === 0) {
         tbody.innerHTML = '';
+        const tfoot = document.getElementById('history-tfoot');
+        if (tfoot) tfoot.innerHTML = '';
         if (emptyState) emptyState.style.display = 'block';
         return;
     }
@@ -113,7 +269,8 @@ function renderHistoryTable(expenses) {
         const originalIndex = db.hrExpenses.indexOf(exp);
         const typeConfig = getTypeConfig(exp.type);
         const methodText = exp.pMethod === 'bank' ? 'تحويل بنكي' : 'نقدي (كاش)';
-        
+        const currentNet = exp._historicalBalance !== undefined ? exp._historicalBalance : 0;
+
         return `
             <tr>
                 <td><strong style="color:#8b5cf6; font-family:monospace;">${exp.voucherNo || '---'}</strong></td>
@@ -123,7 +280,8 @@ function renderHistoryTable(expenses) {
                 <td><strong style="color:${typeConfig.color}; font-size:15px;">${xfNum(exp.amount)} ${curSym()}</strong></td>
                 <td>${methodText}</td>
                 <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${exp.reason || ''}">${exp.reason || '---'}</td>
-                <td style="white-space:nowrap;">
+                <td><strong style="color:#3b82f6; font-size:14px;">${xfNum(currentNet)} ${curSym()}</strong></td>
+                <td class="no-print" style="white-space:nowrap;">
                     <button class="history-action-btn btn-edit" title="تعديل" onclick="editHistoryEntry(${originalIndex})">
                         <i class="ph ph-pencil-simple"></i>
                     </button>
@@ -139,19 +297,23 @@ function renderHistoryTable(expenses) {
     }).join('');
 }
 
+
 function getTypeConfig(type) {
-    switch(type) {
-        case 'salary':
-            return { class: 'type-salary', icon: 'ph ph-money', label: 'راتب', color: '#6366f1' };
-        case 'advance':
-            return { class: 'type-advance', icon: 'ph ph-hand-coins', label: 'سلفة', color: '#f59e0b' };
-        case 'bonus':
-            return { class: 'type-bonus', icon: 'ph ph-gift', label: 'مكافأة', color: '#10b981' };
-        case 'خصم / جزاء':
-            return { class: 'type-penalty', icon: 'ph ph-warning-octagon', label: 'خصم / جزاء', color: '#ef4444' };
-        default:
-            return { class: 'type-salary', icon: 'ph ph-receipt', label: type, color: '#6b7280' };
+    if (!type) return { class: 'type-salary', icon: 'ph ph-receipt', label: 'غير محدد', color: '#6b7280' };
+    
+    if (type.includes('راتب')) {
+        return { class: 'type-salary', icon: 'ph ph-money', label: type, color: '#6366f1' };
+    } else if (type.includes('سلفة')) {
+        return { class: 'type-advance', icon: 'ph ph-hand-coins', label: type, color: '#f59e0b' };
+    } else if (type.includes('مكافأة')) {
+        return { class: 'type-bonus', icon: 'ph ph-gift', label: type, color: '#10b981' };
+    } else if (type.includes('خصم') || type.includes('جزاء')) {
+        return { class: 'type-penalty', icon: 'ph ph-warning-octagon', label: type, color: '#ef4444' };
+    } else if (type.includes('تصفير')) {
+        return { class: 'type-salary', icon: 'ph ph-arrows-clockwise', label: type, color: '#8b5cf6' };
     }
+    
+    return { class: 'type-salary', icon: 'ph ph-receipt', label: type, color: '#6b7280' };
 }
 
 function resetHistoryFilters() {
@@ -206,34 +368,27 @@ async function downloadHistoryDocument(index) {
         }
         
         // تعيين العناوين والنصوص حسب نوع العملية
-        const configMap = {
-            'salary': {
-                title: 'سند صرف راتب',
-                recipientLabel: 'تم صرف للأخ :',
-                amountLabel: 'مبلغ وقدره :',
-                notes: 'راتب شهري - تم الصرف نقداً'
-            },
-            'advance': {
-                title: 'سند سلفة',
-                recipientLabel: 'تم صرف للأخ :',
-                amountLabel: 'مبلغ وقدره :',
-                notes: 'سلفة مالية - تُخصم من الراتب'
-            },
-            'bonus': {
-                title: 'سند مكافأة',
-                recipientLabel: 'تم صرف للأخ :',
-                amountLabel: 'مبلغ وقدره :',
-                notes: 'مكافأة - تم الصرف نقداً'
-            },
-            'خصم / جزاء': {
-                title: 'سند خصم / جزاء',
-                recipientLabel: 'يُخصم من الأخ :',
-                amountLabel: 'مبلغ وقدره :',
-                notes: 'خصم/جزاء - ' + (entry.reason || 'بدون سبب محدد')
-            }
+        let config = {
+            title: 'سند صرف',
+            recipientLabel: 'تم صرف للأخ :',
+            amountLabel: 'مبلغ وقدره :',
+            notes: 'صرف نقدي'
         };
         
-        const config = configMap[entry.type] || configMap['salary'];
+        if (entry.type && entry.type.includes('راتب')) {
+            config.title = 'سند صرف راتب';
+            config.notes = 'راتب شهري - تم الصرف نقداً';
+        } else if (entry.type && entry.type.includes('سلفة')) {
+            config.title = 'سند سلفة';
+            config.notes = 'سلفة مالية - تُخصم من الراتب';
+        } else if (entry.type && entry.type.includes('مكافأة')) {
+            config.title = 'سند مكافأة';
+            config.notes = 'مكافأة - تم الصرف نقداً';
+        } else if (entry.type && (entry.type.includes('خصم') || entry.type.includes('جزاء'))) {
+            config.title = 'سند خصم / جزاء';
+            config.recipientLabel = 'يُخصم من الأخ :';
+            config.notes = 'خصم/جزاء - ' + (entry.reason || 'بدون سبب محدد');
+        }
         
         // ملء بيانات القالب
         document.getElementById('v-doc-title').textContent = config.title;
@@ -258,18 +413,16 @@ async function downloadHistoryDocument(index) {
         // تحديث صندوق الرصيد حسب نوع العملية
         const balanceBox = document.getElementById('v-label-balance')?.parentElement;
         if (balanceBox) {
-            if (entry.type === 'salary' || entry.type === 'bonus') {
-                balanceBox.style.display = 'inline-flex';
-                document.getElementById('v-label-balance').textContent = 'الرصيد لكم :';
-                document.getElementById('v-balance-text').textContent = 'تم الصرف';
-            } else if (entry.type === 'خصم / جزاء') {
-                balanceBox.style.display = 'inline-flex';
-                document.getElementById('v-label-balance').textContent = 'المبلغ على :';
-                document.getElementById('v-balance-text').textContent = xfNum(entry.amount) + ' ' + curSym();
-            } else if (entry.type === 'advance') {
-                balanceBox.style.display = 'inline-flex';
-                document.getElementById('v-label-balance').textContent = 'الرصيد عليكم :';
-                document.getElementById('v-balance-text').textContent = xfNum(entry.amount) + ' ' + curSym();
+            balanceBox.style.display = 'inline-flex';
+            if (entry.type && (entry.type.includes('راتب') || entry.type.includes('مكافأة'))) {
+                document.getElementById('v-label-balance').textContent = 'الرصيد المتبقي :';
+                document.getElementById('v-balance-text').textContent = Number(entry._historicalBalance || 0).toLocaleString('en-US');
+            } else if (entry.type && (entry.type.includes('خصم') || entry.type.includes('جزاء'))) {
+                document.getElementById('v-label-balance').textContent = 'صافي الرصيد :';
+                document.getElementById('v-balance-text').textContent = Number(entry._historicalBalance || 0).toLocaleString('en-US');
+            } else if (entry.type && entry.type.includes('سلفة')) {
+                document.getElementById('v-label-balance').textContent = 'الرصيد المتبقي :';
+                document.getElementById('v-balance-text').textContent = Number(entry._historicalBalance || 0).toLocaleString('en-US');
             } else {
                 balanceBox.style.display = 'none';
             }
@@ -353,23 +506,21 @@ async function deleteHistoryEntry(index) {
 }
 
 function exportHistoryToExcel() {
-    if (!db.hrExpenses || db.hrExpenses.length === 0) {
+    const dataToExport = window.currentFilteredHistory || db.hrExpenses || [];
+    
+    if (dataToExport.length === 0) {
         alert('لا توجد بيانات للتصدير');
         return;
     }
     
-    let csv = '\ufeffرقم السند,التاريخ,الموظف,نوع العملية,المبلغ,طريقة الصرف,البيان\n';
+    let csv = '\ufeffرقم السند,التاريخ,الموظف,نوع العملية,المبلغ,طريقة الصرف,البيان,الرصيد المتبقي\n';
     
-    db.hrExpenses.forEach(exp => {
-        const typeMap = {
-            'salary': 'راتب',
-            'advance': 'سلفة',
-            'bonus': 'مكافأة',
-            'خصم / جزاء': 'خصم / جزاء'
-        };
+    dataToExport.forEach(exp => {
         const methodText = exp.pMethod === 'bank' ? 'تحويل بنكي' : 'نقدي';
         
-        csv += `${exp.voucherNo || ''},${exp.date || ''},${exp.employee || ''},${typeMap[exp.type] || exp.type},${exp.amount || 0},${methodText},${(exp.reason || '').replace(/,/g, '،')}\n`;
+        const currentNet = exp._historicalBalance !== undefined ? exp._historicalBalance : 0;
+
+        csv += `${exp.voucherNo || ''},${exp.date || ''},${exp.employee || ''},${exp.type || ''},${exp.amount || 0},${methodText},${(exp.reason || '').replace(/,/g, '،')},${currentNet}\n`;
     });
     
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -396,3 +547,54 @@ function numberToArabicWords(num) {
     
     return num.toLocaleString('ar-SA');
 }
+
+function exportHistoryToPDF() {
+    const dataToExport = window.currentFilteredHistory || db.hrExpenses || [];
+    if (dataToExport.length === 0) {
+        alert('لا توجد بيانات للطباعة');
+        return;
+    }
+
+    const d = new Date();
+    const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+    // ── 1. حفظ حالة كل hr-view ثم إخفاءها جميعاً ──────────────
+    const allViews = document.querySelectorAll('.hr-view');
+    const prevDisplayMap = new Map();
+    allViews.forEach(v => {
+        prevDisplayMap.set(v, v.style.display);
+        v.style.display = 'none';
+    });
+
+    // ── 2. إظهار صفحة السجل الكامل فقط ───────────────────────
+    const historyView = document.getElementById('view-history');
+    if (historyView) historyView.style.display = 'block';
+
+    // ── 3. ضبط body + عنوان الصفحة ────────────────────────────
+    const prevDataView = document.body.dataset.currentView;
+    document.body.dataset.currentView = 'view-history';
+    const titleEl = document.getElementById('page-title');
+    const prevTitle = titleEl ? titleEl.textContent : '';
+    if (titleEl) titleEl.textContent = 'السجل الكامل لعمليات الموظفين';
+
+    document.body.classList.add('print-mode-history');
+
+    const restore = () => {
+        allViews.forEach(v => v.style.display = prevDisplayMap.get(v) || '');
+        document.body.dataset.currentView = prevDataView || 'view-history';
+        if (titleEl) titleEl.textContent = prevTitle;
+        document.body.classList.remove('print-mode-history');
+    };
+
+    // ── 4. التصدير ──────────────────────────────────────────────
+    if (typeof window.exportPageToPDF === 'function') {
+        setTimeout(() => {
+            window.exportPageToPDF('السجل_الكامل_للموظفين_' + dateStr + '.pdf')
+                .finally(restore);
+        }, 100);
+    } else {
+        window.print();
+        setTimeout(restore, 1500);
+    }
+}
+

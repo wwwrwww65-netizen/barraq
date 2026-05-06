@@ -111,6 +111,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     const _db = await window.dbRead();
 
     let catData = _db.categories || JSON.parse(localStorage.getItem('pos_categories') || '[]');
+    
+    // Render dynamic delivery companies in POS payment modal
+    if (document.getElementById('dynamic-delivery-methods')) {
+        let companies = _db.deliveryCompanies || [];
+        if (companies.length === 0) {
+            companies = [{ name: 'هنقرستيشن', isActive: true }];
+        }
+        let html = '';
+        companies.forEach(c => {
+            if (c.isActive !== false) {
+                html += `
+                <label class="payment-method" style="flex:1; padding: 15px; border: 2px solid var(--border-light); border-radius: 8px; cursor: pointer; background: rgba(15, 23, 42, 0.4);">
+                    <input type="radio" name="pay_method" value="${c.name}" style="display:none;">
+                    <i class="ph ph-motorcycle" style="font-size: 32px; color: var(--text-muted); display: block; margin-bottom: 8px;"></i>
+                    <strong style="color: var(--text-muted)">${c.name}</strong>
+                </label>`;
+            }
+        });
+        const defaultHs = document.querySelector('input[value="هنقرستيشن"]')?.closest('.payment-method');
+        if (defaultHs) defaultHs.remove();
+        document.getElementById('dynamic-delivery-methods').innerHTML = html;
+        bindPaymentMethodToggles();
+    } else {
+        // Fallback if not injected properly, though we expect it to be
+        bindPaymentMethodToggles();
+    }
+    
     let prodData = _db.products || JSON.parse(localStorage.getItem('pos_products') || '[]');
 
     // Render Categories
@@ -140,7 +167,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let _posLoading  = false;
 
     // We only filter active products to sell
-    const activeProducts = prodData.filter(p => p.isActive);
+    const activeProducts = prodData.filter(p => p.isActive !== false);
 
     function renderPosProducts(category = 'الكل', query = '') {
         if (!productsGrid) return;
@@ -266,7 +293,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const imgSrc = productCard.querySelector('img').src;
 
         // Check if exists
-        const existingItem = cart.find(item => item.id === id);
+        const existingItem = cart.find(item => String(item.id).trim() === String(id).trim());
         if (existingItem) {
             existingItem.qty++;
         } else {
@@ -522,15 +549,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Toggle Display
             const pt = label.querySelector('input').value;
+            const isDelivery = pt === 'توصيل' || (pt !== 'كاش' && pt !== 'شبكة / بطاقة' && pt !== 'مجزأ');
+            
             document.getElementById('cash-calculator').style.display = pt === 'كاش' ? 'flex' : 'none';
             document.getElementById('split-calculator').style.display = pt === 'مجزأ' ? 'flex' : 'none';
             
-            // Show notes field for HungerStation, Network, and Bank Transfer
-            const showNotes = (pt === 'هنقرستيشن' || pt === 'شبكة / بطاقة');
+            const deliverySelector = document.getElementById('delivery-company-selector-container');
+            if (deliverySelector) {
+                deliverySelector.style.display = pt === 'توصيل' ? 'flex' : 'none';
+            }
+            
+            // Show notes field for Delivery, Network, and Bank Transfer
+            const showNotes = (isDelivery || pt === 'شبكة / بطاقة');
             document.getElementById('order-notes-field').style.display = showNotes ? 'flex' : 'none';
             
-            // HungerStation doesn't need calculator
-            if (pt === 'هنقرستيشن') {
+            // Delivery doesn't need calculator
+            if (isDelivery) {
                 document.getElementById('cash-calculator').style.display = 'none';
                 document.getElementById('split-calculator').style.display = 'none';
             }
@@ -598,7 +632,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             // Save to LocalStorage for Sales page FIRST
             const now = new Date();
-            const selectedPay = document.querySelector('.payment-method.selected input').value;
+            let selectedPay = document.querySelector('.payment-method.selected input').value;
+            if (selectedPay === 'توصيل') {
+                const selectedPill = document.querySelector('.delivery-pill.selected input');
+                if (selectedPill) selectedPay = selectedPill.value;
+            }
+            const isDelivery = selectedPay !== 'كاش' && selectedPay !== 'شبكة / بطاقة' && selectedPay !== 'مجزأ';
             const _ct = document.getElementById('cart-total').innerText;
             let totalOrder = 0;
             
@@ -665,7 +704,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Order notes
                 orderNotes: document.getElementById('checkout-order-notes').value || '',
                 // HungerStation specific fields
-                hungerStation: selectedPay === 'هنقرستيشن',
+                hungerStation: isDelivery,
+                deliveryCompany: isDelivery ? selectedPay : undefined,
                 hsStatus: selectedPay === 'هنقرستيشن' ? 'delivered' : undefined,
                 hsPaymentStatus: selectedPay === 'هنقرستيشن' ? 'unpaid' : undefined,
                 customerName: selectedPay === 'هنقرستيشن' ? 'هنقرستيشن' : undefined

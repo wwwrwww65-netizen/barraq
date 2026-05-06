@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function splitOrderAmountsGlobal(o) {
         const pm = String(o?.paymentMethod || '').trim();
         const total = Number(o?.total) || 0;
-        const isHS = o?.hungerStation === true || o?.orderType === 'هنقرستيشن';
+        const isHS = o?.hungerStation === true || o?.orderType === 'توصيل';
         const isHSPaid = o?.hsPaymentStatus === 'paid';
         
         // HungerStation unpaid orders should NOT affect drawer balance
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function splitOrderAmounts(o) {
         const pm = String(o.paymentMethod || '').trim();
         const total = Number(o.total) || 0;
-        const isHS = o.hungerStation === true || o.orderType === 'هنقرستيشن';
+        const isHS = o.hungerStation === true || o.orderType === 'توصيل';
         const isHSPaid = o.hsPaymentStatus === 'paid';
         
         // HungerStation unpaid orders should NOT affect drawer balance
@@ -850,7 +850,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="receipt-row"><span>عدد الطلبات:</span><span>${s.ordersCount || 0} طلب</span></div>
                     <div class="receipt-row"><span>مبيعات كاش:</span><span>${curPlain(s.cashSales||0)}</span></div>
                     <div class="receipt-row"><span>مبيعات شبكة:</span><span>${curPlain(s.networkSales||0)}</span></div>
-                    ${s.hungerStationUnpaid > 0 ? `<div class="receipt-row"><span>هنقرستيشن غير مدفوع:</span><span style="color:#ff6b00;">${curPlain(s.hungerStationUnpaid||0)}</span></div>` : ''}
+                    ${s.hungerStationUnpaid > 0 ? `<div class="receipt-row"><span>توصيل غير مدفوع:</span><span style="color:#ff6b00;">${curPlain(s.hungerStationUnpaid||0)}</span></div>` : ''}
                     <div class="receipt-row"><span>إجمالي الدخل:</span><span style="font-weight:800;">${curPlain(parseFloat(sIncome)||0)}</span></div>
                     <div class="receipt-row"><span>المرتجعات:</span><span style="color:#c00;">${curPlain(s.totalReturns||0)}</span></div>
                     <div class="receipt-row"><span>المصروفات:</span><span style="color:#c00;">${curPlain(s.totalExpenses||0)}</span></div>
@@ -1255,7 +1255,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             </thead>
             <tbody>
                 <tr><td>عدد الطلبات</td><td>${totalOrders}</td></tr>
-                <tr><td>إجمالي هنقرستيشن</td><td>${totalHS}</td></tr>
+                <tr><td>إجمالي توصيل</td><td>${totalHS}</td></tr>
                 <tr><td>إجمالي الكاش</td><td>${totalCash}</td></tr>
                 <tr><td>إجمالي الشبكة</td><td>${totalNetwork}</td></tr>
                 <tr class="row-strong"><td>إجمالي الدخل</td><td>${totalIncome}</td></tr>
@@ -1278,7 +1278,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <table class="report-table">
             <tbody>
                 <tr class="grand-total"><td>إجمالي المبيعات</td><td>${totalSales}</td></tr>
-                <tr class="row-strong"><td>الإجمالي مع هنقرستيشن</td><td>${totalWithHS}</td></tr>
+                <tr class="row-strong"><td>الإجمالي مع توصيل</td><td>${totalWithHS}</td></tr>
                 <tr class="row-strong"><td>رصيد الدرج</td><td>${drawerTotal}</td></tr>
             </tbody>
         </table>
@@ -1612,7 +1612,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <tr><td>الرصيد الافتتاحي</td><td>${floatCash}</td></tr>
                 <tr><td>إجمالي الكاش</td><td>${cashSales}</td></tr>
                 <tr><td>إجمالي الشبكة</td><td>${networkSales}</td></tr>
-                <tr><td style="color:#ff6b00;">إجمالي هنقرستيشن</td><td style="color:#ff6b00;">${hungerStation}</td></tr>
+                <tr><td style="color:#ff6b00;">إجمالي توصيل</td><td style="color:#ff6b00;">${hungerStation}</td></tr>
                 <tr class="row-strong"><td>إجمالي الدخل</td><td>${totalIncome}</td></tr>
             </tbody>
         </table>

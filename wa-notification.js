@@ -240,7 +240,53 @@
         .wa-toast-icon.pulse {
             animation: waPulse 2s ease-in-out infinite;
         }
+
+        /* Light Theme Overrides */
+        body.light-theme .wa-toast {
+            background: #ffffff;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05);
+        }
+
+        body.light-theme .wa-toast-title {
+            color: #0f172a;
+        }
+
+        body.light-theme .wa-toast-message {
+            color: #475569;
+        }
+
+        body.light-theme .wa-toast-number {
+            background: #f1f5f9;
+            color: #334155;
+            border: 1px solid #e2e8f0;
+        }
+
+        body.light-theme .wa-toast-actions {
+            border-top-color: #f1f5f9;
+        }
+
+        body.light-theme .wa-btn-download {
+            background: #f8fafc;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+
+        body.light-theme .wa-btn-download:hover {
+            background: #f1f5f9;
+            color: #0f172a;
+            border-color: #cbd5e1;
+        }
+
+        body.light-theme .wa-btn-close {
+            color: #64748b;
+        }
+
+        body.light-theme .wa-btn-close:hover {
+            color: #ef4444;
+            background: #fee2e2;
+        }
     `;
+
 
     document.head.appendChild(style);
 

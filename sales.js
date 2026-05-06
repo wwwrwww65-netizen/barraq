@@ -237,6 +237,15 @@ function renderSalesTable(query = '') {
         let methodClass = (order.paymentMethod||'').includes('كاش') ? 'badge-cash' : 'badge-card';
         const itemsCount = Array.isArray(order.items) ? order.items.length : (order.itemsCount || 0);
         
+        let itemsDetails = '-';
+        if (Array.isArray(order.items) && order.items.length > 0) {
+            itemsDetails = order.items.map(item => {
+                const name = item.name || item.productName || item.itemName || '-';
+                const qty = item.qty || item.quantity || 1;
+                return `${name} x${qty}`;
+            }).join('، ');
+        }
+
         // Debug: Log order data
         if (order.paymentMethod === 'مجزأ') {
             console.log('[Sales] Split order:', {
@@ -252,9 +261,11 @@ function renderSalesTable(query = '') {
         tr.innerHTML = `
             <td><strong>${order.orderId}</strong></td>
             <td style="color:var(--text-secondary); font-size:12px;">${order.date || order.dateStr || ''}</td>
-            <td><span class="badge ${typeClass}">${order.type || ''}</span></td>
-            <td><span class="badge ${methodClass}"><i class="ph ph-${(order.paymentMethod||'').includes('كاش') ? 'money' : 'credit-card'}"></i> ${order.paymentMethod || ''}</span></td>
+            <td><span class="sales-badge ${typeClass}">${order.type || ''}</span></td>
+            <td><span class="sales-badge ${methodClass}"><i class="ph ph-${(order.paymentMethod||'').includes('كاش') ? 'money' : 'credit-card'}"></i> ${order.paymentMethod || ''}</span></td>
             <td>${itemsCount} أصناف</td>
+            <td style="font-size: 12px; color: var(--text-secondary); max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${itemsDetails}">${itemsDetails}</td>
+            <td>${order.cashier || '-'}</td>
             <td style="color:var(--accent-green); font-weight:800;">${xf(order.total)}</td>
             <td style="text-align:center;">
                 <button class="sales-action-btn" title="طباعة الفاتورة مرة أخرى" onclick="reprintOrder('${order.orderId}')"><i class="ph ph-printer"></i></button>
@@ -340,7 +351,7 @@ function updateKPIs(orders) {
         } else if (pm.includes('شبكة') || pm === 'network' || pm.includes('بطاقة') || pm === 'card') {
             cardRev += o.total;
             console.log(`[Sales] Network order ${o.orderId}: total=${o.total}`);
-        } else if (pm === 'هنقرستيشن') {
+        } else if (pm === 'توصيل') {
             // HungerStation - check if paid
             if (o.hsPaymentStatus === 'paid' && o.hsPaymentMethod) {
                 if (o.hsPaymentMethod.includes('كاش') || o.hsPaymentMethod === 'cash') {
@@ -380,12 +391,12 @@ function updateKPIs(orders) {
             tfoot.innerHTML = `
                 <tr style="background: rgba(245, 158, 11, 0.1); border-top: 2px solid rgba(245, 158, 11, 0.3);">
                     <td colspan="3" style="text-align:right; font-weight:800; font-size:15px; color:var(--text-primary);">الإجمالي الكلي (كاش + شبكة)</td>
-                    <td colspan="2" style="text-align:right; font-weight:700; color:var(--text-secondary);">عدد الطلبات: ${orderCount}</td>
+                    <td colspan="4" style="text-align:right; font-weight:700; color:var(--text-secondary);">عدد الطلبات: ${orderCount}</td>
                     <td style="font-weight:900; font-size:16px; color:var(--accent-orange);">${xf(totalRev)}</td>
                     <td class="no-print"></td>
                 </tr>
                 <tr style="background: rgba(15, 23, 42, 0.4);">
-                    <td colspan="6" style="text-align:center; padding: 12px; font-weight:700;">
+                    <td colspan="8" style="text-align:center; padding: 12px; font-weight:700;">
                         <span style="color:var(--accent-green); margin-left: 20px;">كاش: ${xf(cashRev)}</span>
                         <span style="color:var(--accent-blue);">شبكة/بطاقة: ${xf(cardRev)}</span>
                     </td>
@@ -413,6 +424,15 @@ window.addEventListener('beforeprint', () => {
         let typeClass = (order.type||'').includes('محلي') ? 'badge-dinein' : 'badge-takeout';
         const itemsCount = Array.isArray(order.items) ? order.items.length : (order.itemsCount || 0);
 
+        let itemsDetails = '-';
+        if (Array.isArray(order.items) && order.items.length > 0) {
+            itemsDetails = order.items.map(item => {
+                const name = item.name || item.productName || item.itemName || '-';
+                const qty = item.qty || item.quantity || 1;
+                return `${name} x${qty}`;
+            }).join('، ');
+        }
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td><strong>${order.orderId}</strong></td>
@@ -420,6 +440,8 @@ window.addEventListener('beforeprint', () => {
             <td>${order.type || ''}</td>
             <td>${order.paymentMethod || ''}</td>
             <td>${itemsCount} أصناف</td>
+            <td style="font-size: 11px;">${itemsDetails}</td>
+            <td style="font-size: 11px;">${order.cashier || '-'}</td>
             <td style="font-weight:800;">${xf(order.total)}</td>
             <td class="no-print"></td>
         `;
@@ -476,7 +498,7 @@ async function fixNegativeBalances() {
             }
             
             // Add HungerStation payment status
-            if (o.paymentMethod === 'هنقرستيشن') {
+            if (o.paymentMethod === 'توصيل') {
                 const payStatus = o.hsPaymentStatus || 'unknown';
                 const payMethod = o.hsPaymentMethod || 'not set';
                 info += ` [الحالة: ${payStatus} | الطريقة: ${payMethod}]`;

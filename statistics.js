@@ -6,21 +6,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     const curSym = () => (window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س');
     const curFmt = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
 
-    let currentStatsRange = 'today';
+    let currentStatsRange = 'all';
 
-    // --- Date Filter Buttons Toggle ---
+    // --- Date Filter Buttons ---
     const dateBtns = document.querySelectorAll('.date-btn');
     dateBtns.forEach(btn => {
         btn.addEventListener('click', async (e) => {
             dateBtns.forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
-            currentStatsRange = e.target.dataset.range || 'month';
+            currentStatsRange = e.target.dataset.range || 'all';
             await fetchRealDataAndUpdateCharts(currentStatsRange);
         });
     });
 
     // --- Chart.js Global Defaults ---
-    Chart.defaults.color = "rgba(255, 255, 255, 0.5)";
+    const isLight = document.body.classList.contains('light-theme');
+    Chart.defaults.color = isLight ? '#64748b' : 'rgba(255, 255, 255, 0.5)';
     Chart.defaults.font.family = "'Cairo', sans-serif";
     Chart.defaults.font.size = 13;
 
@@ -40,28 +41,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         mainTrendChart = new Chart(ctxTrend, {
             type: 'line',
             data: {
-                labels: ['الأسبوع 1', 'الأسبوع 2', 'الأسبوع 3', 'الأسبوع 4'],
+                labels: [],
                 datasets: [
                     {
                         label: 'الإيرادات المحققة',
-                        data: [0, 0, 0, 0],
+                        data: [],
                         borderColor: '#10b981',
                         backgroundColor: gradientRev,
-                        borderWidth: 3, tension: 0.4, fill: true,
+                        borderWidth: 3, tension: 0.4, fill: true, pointRadius: 4,
                     },
                     {
                         label: 'المصروفات الفعلية',
-                        data: [0, 0, 0, 0],
+                        data: [],
                         borderColor: '#ef4444',
                         backgroundColor: gradientExp,
-                        borderWidth: 3, tension: 0.4, fill: true,
+                        borderWidth: 3, tension: 0.4, fill: true, pointRadius: 4,
                     }
                 ]
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
-                plugins: { legend: { position: 'top', labels: { usePointStyle: true } } }
+                plugins: { legend: { position: 'top', labels: { usePointStyle: true } } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)' } },
+                    x: { grid: { display: false } }
+                }
             }
         });
 
@@ -69,70 +74,75 @@ document.addEventListener('DOMContentLoaded', async () => {
         categoryDonutChart = new Chart(ctxDonut, {
             type: 'doughnut',
             data: {
-                labels: ['مبيعات نقدية (كاش)', 'مبيعات شبكة'],
+                labels: ['مبيعات نقدية (كاش)', 'مبيعات شبكة', 'هنقرستيشن'],
                 datasets: [{
-                    data: [50, 50],
-                    backgroundColor: ['#3b82f6', '#10b981'],
+                    data: [0, 0, 0],
+                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b'],
                     borderWidth: 0, hoverOffset: 10
                 }]
             },
-            options: { responsive: true, maintainAspectRatio: false, cutout: '75%' }
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '75%',
+                plugins: { legend: { position: 'right', labels: { usePointStyle: true } } }
+            }
         });
     }
 
     initCharts();
 
-    async function fetchRealDataAndUpdateCharts(range = 'month') {
+    // ======================================================
+    // MAIN DATA FETCH & RENDER
+    // ======================================================
+    async function fetchRealDataAndUpdateCharts(range = 'all') {
         const _db = (await window.dbRead()) || {};
 
+        // Live orders from SQLite
         let orders = await ipcRenderer.invoke('db-get-orders') || [];
 
-        // بقية البيانات من ملف JSON مباشرة
-        let returns      = _db.returns      || [];
-        let hrExpenses   = _db.hrExpenses   || [];
-        let purchases    = _db.purchases    || [];
+        // Other data from JSON DB
+        let returns    = _db.returns    || [];
+        let hrExpenses = _db.hrExpenses || [];
+        let purchases  = _db.purchases  || [];
 
-        if(window.isDateInPeriod) {
-            orders = orders.filter(o => window.isDateInPeriod(o.timestamp || o.dateStr || o.date, range));
-            returns = returns.filter(r => window.isDateInPeriod(r.timestamp || r.date, range));
+        // Keep unfiltered copies for the trend chart (we filter inside buildTrendBuckets)
+        const allOrders     = orders;
+        const allHRExp      = hrExpenses;
+        const allPurchases  = purchases;
+
+        // --- Filter by date range for KPIs ---
+        if (range !== 'all' && window.isDateInPeriod) {
+            orders     = orders.filter(o => window.isDateInPeriod(o.timestamp || o.dateStr || o.date, range));
+            returns    = returns.filter(r => window.isDateInPeriod(r.timestamp || r.date, range));
             hrExpenses = hrExpenses.filter(h => window.isDateInPeriod(h.timestamp || h.date, range));
-            purchases = purchases.filter(p => window.isDateInPeriod(p.date, range));
+            purchases  = purchases.filter(p => window.isDateInPeriod(p.date, range));
         }
 
+        // ---- Revenue ----
         let totalRevenue = 0;
         let cashSales = 0;
         let cardSales = 0;
-        
+        let hsSales   = 0;
+
         function splitOrderAmounts(o) {
             const pm = String(o.paymentMethod || '').trim();
             const total = Number(o.total) || 0;
-            const isHS = o.hungerStation === true || o.orderType === 'هنقرستيشن';
+            const isHS = o.hungerStation === true || o.orderType === 'توصيل';
             const isHSPaid = o.hsPaymentStatus === 'paid';
-            
-            // HungerStation unpaid - exclude
-            if (isHS && !isHSPaid) {
-                return { cash: 0, card: 0 };
-            }
-            
-            // HungerStation paid - check method
+            if (isHS && !isHSPaid) return { cash: 0, card: 0, hs: 0 };
             if (isHS && isHSPaid) {
                 const hsMethod = (o.hsPaymentMethod || '').trim();
-                if (hsMethod.includes('كاش') || hsMethod === 'cash') {
-                    return { cash: total, card: 0 };
-                } else {
-                    return { cash: 0, card: total };
-                }
+                return hsMethod.includes('كاش') ? { cash: total, card: 0, hs: total } : { cash: 0, card: total, hs: total };
             }
-            
             if (pm === 'مجزأ') {
                 const c = Number(o.splitCash) || 0;
                 const n = Number(o.splitNetwork) || 0;
-                if (c || n) return { cash: c, card: n };
-                return { cash: 0, card: total };
+                if (c || n) return { cash: c, card: n, hs: 0 };
+                return { cash: 0, card: total, hs: 0 };
             }
-            if (pm.includes('كاش') || pm === 'cash') return { cash: total, card: 0 };
-            return { cash: 0, card: total };
+            if (pm.includes('كاش') || pm === 'cash') return { cash: total, card: 0, hs: 0 };
+            return { cash: 0, card: total, hs: 0 };
         }
+
         function splitReturnAmounts(r) {
             const pm = String(r.method || '').trim();
             const amount = Number(r.amount) || 0;
@@ -147,15 +157,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         orders.forEach(o => {
-            totalRevenue += o.total;
+            totalRevenue += (Number(o.total) || 0);
             const pay = splitOrderAmounts(o);
             cashSales += pay.cash;
             cardSales += pay.card;
+            hsSales   += pay.hs;
         });
 
         let totalReturns = 0;
         returns.forEach(r => {
-            totalReturns += r.amount;
+            totalReturns += (Number(r.amount) || 0);
             const back = splitReturnAmounts(r);
             cashSales -= back.cash;
             cardSales -= back.card;
@@ -163,49 +174,405 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const netRevenue = totalRevenue - totalReturns;
 
+        // ---- Expenses ----
         let totalHRExpenses = 0;
-        hrExpenses.forEach(hr => totalHRExpenses += (hr.amount || 0));
+        hrExpenses.forEach(hr => totalHRExpenses += (Number(hr.amount) || 0));
 
         let totalPurchases = 0;
-        purchases.forEach(pur => totalPurchases += (pur.total || pur.amount || 0));
+        purchases.forEach(pur => totalPurchases += (Number(pur.total) || Number(pur.amount) || 0));
 
         const exactExpenses = totalHRExpenses + totalPurchases;
         const netProfit = netRevenue - exactExpenses;
-        let margin = netRevenue > 0 ? ((netProfit / netRevenue) * 100).toFixed(1) : 0;
+        const margin = netRevenue > 0 ? ((netProfit / netRevenue) * 100).toFixed(1) : 0;
+        const avgOrder = orders.length > 0 ? (netRevenue / orders.length) : 0;
 
+        // ---- Update KPI Elements ----
         const el = (id) => document.getElementById(id);
-        if(el('dash-revenue')) el('dash-revenue').innerHTML = `${curNum(netRevenue)} <small class="js-cur-sym" style="font-size:16px;">${curSym()}</small>`;
-        if(el('dash-expenses')) el('dash-expenses').innerHTML = `${curNum(exactExpenses)} <small class="js-cur-sym" style="font-size:16px;">${curSym()}</small>`;
-        if(el('dash-profit')) el('dash-profit').innerHTML = `${curNum(netProfit)} <small class="js-cur-sym" style="font-size:16px;">${curSym()}</small>`;
-        
+
+        if (el('dash-revenue'))      el('dash-revenue').innerHTML      = `${curNum(netRevenue)} <small class="js-cur-sym" style="font-size:16px;">${curSym()}</small>`;
+        if (el('dash-expenses'))     el('dash-expenses').innerHTML     = `${curNum(exactExpenses)} <small class="js-cur-sym" style="font-size:16px;">${curSym()}</small>`;
+        if (el('dash-orders-count')) el('dash-orders-count').innerHTML = `${orders.length} <small style="font-size:14px;">طلب</small>`;
+        if (el('dash-avg-order'))    el('dash-avg-order').innerHTML    = `${curNum(avgOrder)} <small class="js-cur-sym" style="font-size:14px;">${curSym()}</small>`;
+
+        const profitEl = el('dash-profit');
+        if (profitEl) {
+            profitEl.innerHTML = `${curNum(netProfit)} <small class="js-cur-sym" style="font-size:16px;">${curSym()}</small>`;
+            profitEl.style.color = netProfit < 0 ? 'var(--accent-red)' : '';
+        }
+
         const mEl = el('dash-margin');
-        if(mEl) {
+        if (mEl) {
             mEl.innerHTML = margin + '%';
-            mEl.style.color = margin < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
+            mEl.style.color = Number(margin) < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
         }
 
-        const posEls = document.querySelectorAll('.perf-amount');
-        if(posEls.length >= 3) {
-            posEls[0].querySelector('h3').innerText = curFmt(netRevenue);
-            posEls[1].querySelector('h3').innerText = '-' + curFmt(exactExpenses);
-            const bal = posEls[2].querySelector('h3');
-            bal.innerText = curFmt(netProfit);
-            bal.style.color = netProfit < 0 ? 'var(--accent-red)' : 'var(--accent-blue)';
+        // Perf list
+        if (el('perf-revenue'))  el('perf-revenue').innerHTML  = `${curNum(netRevenue)} <span class="js-cur-sym">${curSym()}</span>`;
+        if (el('perf-expenses')) el('perf-expenses').innerHTML = `-${curNum(exactExpenses)} <span class="js-cur-sym">${curSym()}</span>`;
+        if (el('perf-returns'))  el('perf-returns').innerHTML  = `-${curNum(totalReturns)} <span class="js-cur-sym">${curSym()}</span>`;
+        const balEl = el('perf-balance');
+        if (balEl) {
+            balEl.innerHTML = `${curNum(netProfit)} <span class="js-cur-sym">${curSym()}</span>`;
+            balEl.style.color = netProfit < 0 ? 'var(--accent-red)' : 'var(--accent-blue)';
         }
 
-        categoryDonutChart.data.datasets[0].data = [Math.max(0, cashSales), Math.max(0, cardSales)];
+        // ---- Donut Chart: payment methods ----
+        categoryDonutChart.data.datasets[0].data = [
+            Math.max(0, cashSales - hsSales),
+            Math.max(0, cardSales),
+            Math.max(0, hsSales)
+        ];
         categoryDonutChart.update();
 
-        mainTrendChart.data.datasets[0].data = [
-            netRevenue * 0.20, netRevenue * 0.25, netRevenue * 0.15, netRevenue * 0.40
-        ];
-        mainTrendChart.data.datasets[1].data = [
-            exactExpenses * 0.22, exactExpenses * 0.20, exactExpenses * 0.28, exactExpenses * 0.30
-        ];
+        // ---- Trend Chart (uses ALL unfiltered data for 'all', filtered for others) ----
+        const trendOrders    = range === 'all' ? allOrders    : orders;
+        const trendHRExp     = range === 'all' ? allHRExp     : hrExpenses;
+        const trendPurchases = range === 'all' ? allPurchases : purchases;
+
+        const { labels, revenueData, expenseData } = buildTrendBuckets(trendOrders, trendHRExp, trendPurchases, range);
+        mainTrendChart.data.labels = labels;
+        mainTrendChart.data.datasets[0].data = revenueData;
+        mainTrendChart.data.datasets[1].data = expenseData;
         mainTrendChart.update();
+
+        // ---- Top Items ----
+        renderTopItemsFromOrders(orders);
+
+        // ---- Populating Print Tables ----
+        populatePrintTables({
+            netRevenue, exactExpenses, netProfit, margin, avgOrder, ordersCount: orders.length,
+            cashSales, cardSales, hsSales, totalReturns, totalHRExpenses, totalPurchases
+        }, orders);
     }
 
-    const firstRange = document.querySelector('.date-btn.active')?.dataset?.range || 'month';
+    // ======================================================
+    // BUILD CHART BUCKETS — supports today/week/month/year/all
+    // ======================================================
+    function buildTrendBuckets(orders, hrExpenses, purchases, range) {
+        const labels = [];
+        const revenueData = [];
+        const expenseData = [];
+        const dayNames   = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+        const monthNames = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+        const now = new Date();
+
+        if (range === 'today') {
+            // Hourly buckets every 3 hours
+            for (let h = 3; h <= 24; h += 3) {
+                const hourLabel = h === 24 ? '12م' : (h <= 12 ? h + 'ص' : (h - 12) + 'م');
+                labels.push(hourLabel);
+                const start = new Date(now); start.setHours(h - 3, 0, 0, 0);
+                const end   = new Date(now); end.setHours(h, 0, 0, 0);
+                let rev = 0, exp = 0;
+                orders.forEach(o => {
+                    const d = new Date(o.timestamp || o.date);
+                    if (d >= start && d < end) rev += (Number(o.total) || 0);
+                });
+                hrExpenses.forEach(hr => {
+                    const d = new Date(hr.timestamp || hr.date);
+                    if (d >= start && d < end) exp += (Number(hr.amount) || 0);
+                });
+                purchases.forEach(p => {
+                    const d = new Date(p.date);
+                    if (d >= start && d < end) exp += (Number(p.total) || Number(p.amount) || 0);
+                });
+                revenueData.push(rev);
+                expenseData.push(exp);
+            }
+
+        } else if (range === 'week') {
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(now);
+                d.setDate(now.getDate() - i);
+                labels.push(dayNames[d.getDay()]);
+                const dateStr = d.toISOString().split('T')[0];
+                let rev = 0, exp = 0;
+                orders.forEach(o => {
+                    const od = (o.timestamp || o.dateStr || o.date || '').substring(0, 10);
+                    if (od === dateStr) rev += (Number(o.total) || 0);
+                });
+                hrExpenses.forEach(hr => {
+                    const hd = (hr.timestamp || hr.date || '').substring(0, 10);
+                    if (hd === dateStr) exp += (Number(hr.amount) || 0);
+                });
+                purchases.forEach(p => {
+                    if ((p.date || '').substring(0, 10) === dateStr) exp += (Number(p.total) || Number(p.amount) || 0);
+                });
+                revenueData.push(rev);
+                expenseData.push(exp);
+            }
+
+        } else if (range === 'month') {
+            // Last 4 weeks
+            for (let w = 3; w >= 0; w--) {
+                labels.push(`الأسبوع ${4 - w}`);
+                const start = new Date(now); start.setDate(now.getDate() - (w + 1) * 7);
+                const end   = new Date(now); end.setDate(now.getDate() - w * 7);
+                let rev = 0, exp = 0;
+                orders.forEach(o => {
+                    const d = new Date(o.timestamp || o.date);
+                    if (d >= start && d < end) rev += (Number(o.total) || 0);
+                });
+                hrExpenses.forEach(hr => {
+                    const d = new Date(hr.timestamp || hr.date);
+                    if (d >= start && d < end) exp += (Number(hr.amount) || 0);
+                });
+                purchases.forEach(p => {
+                    const d = new Date(p.date);
+                    if (d >= start && d < end) exp += (Number(p.total) || Number(p.amount) || 0);
+                });
+                revenueData.push(rev);
+                expenseData.push(exp);
+            }
+
+        } else if (range === 'year') {
+            // This year by month
+            for (let m = 0; m < 12; m++) {
+                labels.push(monthNames[m]);
+                let rev = 0, exp = 0;
+                orders.forEach(o => {
+                    const d = new Date(o.timestamp || o.date);
+                    if (d.getMonth() === m && d.getFullYear() === now.getFullYear()) rev += (Number(o.total) || 0);
+                });
+                hrExpenses.forEach(hr => {
+                    const d = new Date(hr.timestamp || hr.date);
+                    if (d.getMonth() === m && d.getFullYear() === now.getFullYear()) exp += (Number(hr.amount) || 0);
+                });
+                purchases.forEach(p => {
+                    const d = new Date(p.date);
+                    if (d.getMonth() === m && d.getFullYear() === now.getFullYear()) exp += (Number(p.total) || Number(p.amount) || 0);
+                });
+                revenueData.push(rev);
+                expenseData.push(exp);
+            }
+
+        } else {
+            // 'all' — group by month/year from all available data
+            const bucketMap = new Map();
+            const touch = (key) => { if (!bucketMap.has(key)) bucketMap.set(key, { rev: 0, exp: 0 }); };
+
+            orders.forEach(o => {
+                const d = new Date(o.timestamp || o.dateStr || o.date);
+                if (isNaN(d.getTime())) return;
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                touch(key);
+                bucketMap.get(key).rev += (Number(o.total) || 0);
+            });
+
+            hrExpenses.forEach(hr => {
+                const d = new Date(hr.timestamp || hr.date);
+                if (isNaN(d.getTime())) return;
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                touch(key);
+                bucketMap.get(key).exp += (Number(hr.amount) || 0);
+            });
+
+            purchases.forEach(p => {
+                const d = new Date(p.date);
+                if (isNaN(d.getTime())) return;
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                touch(key);
+                bucketMap.get(key).exp += (Number(p.total) || Number(p.amount) || 0);
+            });
+
+            const sortedKeys = Array.from(bucketMap.keys()).sort();
+
+            if (sortedKeys.length === 0) {
+                // No data: show last 6 months as empty placeholders
+                for (let i = 5; i >= 0; i--) {
+                    const d = new Date(now);
+                    d.setMonth(d.getMonth() - i);
+                    labels.push(`${monthNames[d.getMonth()]} ${d.getFullYear()}`);
+                    revenueData.push(0);
+                    expenseData.push(0);
+                }
+            } else {
+                sortedKeys.forEach(key => {
+                    const [year, month] = key.split('-');
+                    labels.push(`${monthNames[parseInt(month) - 1]} ${year}`);
+                    revenueData.push(bucketMap.get(key).rev);
+                    expenseData.push(bucketMap.get(key).exp);
+                });
+            }
+        }
+
+        return { labels, revenueData, expenseData };
+    }
+
+    // ======================================================
+    // RENDER TOP ITEMS FROM REAL ORDERS
+    // ======================================================
+    function renderTopItemsFromOrders(orders) {
+        const container = document.getElementById('stats-dynamic-top-items');
+        if (!container) return;
+
+        const itemMap = new Map();
+        orders.forEach(order => {
+            const items = order.items || [];
+            items.forEach(it => {
+                const name = it.name || 'غير محدد';
+                const qty = Number(it.quantity) || 1;
+                if (!itemMap.has(name)) itemMap.set(name, 0);
+                itemMap.set(name, itemMap.get(name) + qty);
+            });
+        });
+
+        const sorted = Array.from(itemMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 7);
+        const maxQty = sorted.length > 0 ? sorted[0][1] : 1;
+        const totalQty = sorted.reduce((s, [, q]) => s + q, 0);
+
+        const colors = [
+            'linear-gradient(90deg, #3b82f6, #60a5fa)',
+            'linear-gradient(90deg, #10b981, #34d399)',
+            'linear-gradient(90deg, #f59e0b, #fbbf24)',
+            'linear-gradient(90deg, #ec4899, #f472b6)',
+            'linear-gradient(90deg, #8b5cf6, #a78bfa)',
+            'linear-gradient(90deg, #ef4444, #f87171)',
+            'linear-gradient(90deg, #14b8a6, #5eead4)',
+        ];
+
+        if (sorted.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-muted);">لا توجد مبيعات حتى الآن</div>';
+            return;
+        }
+
+        container.innerHTML = sorted.map(([name, qty], i) => {
+            const pct = totalQty > 0 ? Math.round((qty / totalQty) * 100) : 0;
+            const barWidth = Math.round((qty / maxQty) * 100);
+            const starIcon = i === 0 ? '<i class="ph-fill ph-fire" style="color:#f59e0b; margin-right:4px;"></i>' : '';
+            return `
+                <div class="item-progress-row">
+                    <div class="item-meta">
+                        <span>${name} ${starIcon}</span>
+                        <span>${qty} طلب (${pct}%)</span>
+                    </div>
+                    <div class="prog-bar-bg">
+                        <div class="prog-bar-fill" style="width: ${barWidth}%; background: ${colors[i % colors.length]};"></div>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    // ======================================================
+    // POPULATE PRINT-ONLY TABLES
+    // ======================================================
+    function populatePrintTables(data, orders) {
+        // Table 1: Financial KPIs
+        const kpiBody = document.getElementById('pt-kpi-body');
+        if (kpiBody) {
+            kpiBody.innerHTML = `
+                <tr>
+                    <td>إجمالي الإيرادات</td>
+                    <td>${curFmt(data.netRevenue)}</td>
+                    <td>بعد خصم المرتجعات</td>
+                </tr>
+                <tr>
+                    <td>إجمالي المصروفات</td>
+                    <td>${curFmt(data.exactExpenses)}</td>
+                    <td>رواتب + مشتريات</td>
+                </tr>
+                <tr>
+                    <td>صافي الربح التقديري</td>
+                    <td style="color:${data.netProfit < 0 ? 'red' : 'green'}; direction:ltr; text-align:right;">${curFmt(data.netProfit)}</td>
+                    <td>الإيرادات ناقص المصروفات</td>
+                </tr>
+                <tr>
+                    <td>هامش الربح التشغيلي</td>
+                    <td style="color:${Number(data.margin) < 0 ? 'red' : 'green'};">${data.margin}%</td>
+                    <td>نسبة الربح للرصيد</td>
+                </tr>
+                <tr>
+                    <td>عدد الطلبات المكتملة</td>
+                    <td>${data.ordersCount} طلب</td>
+                    <td>في الفترة المحددة</td>
+                </tr>
+                <tr>
+                    <td>متوسط قيمة الطلب</td>
+                    <td>${curFmt(data.avgOrder)}</td>
+                    <td>مؤشر أداء</td>
+                </tr>
+            `;
+        }
+
+        // Table 2: Top Items
+        const itemsBody = document.getElementById('pt-items-body');
+        const itemsTotal = document.getElementById('pt-items-total');
+        if (itemsBody) {
+            const itemMap = new Map();
+            orders.forEach(order => {
+                const items = order.items || [];
+                items.forEach(it => {
+                    const name = it.name || 'غير محدد';
+                    const qty = Number(it.quantity) || 1;
+                    if (!itemMap.has(name)) itemMap.set(name, 0);
+                    itemMap.set(name, itemMap.get(name) + qty);
+                });
+            });
+
+            const sorted = Array.from(itemMap.entries()).sort((a, b) => b[1] - a[1]);
+            const totalQty = sorted.reduce((s, [, q]) => s + q, 0);
+
+            if (sorted.length === 0) {
+                itemsBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">لا توجد مبيعات في هذه الفترة</td></tr>';
+                if (itemsTotal) itemsTotal.innerText = '0';
+            } else {
+                itemsBody.innerHTML = sorted.map(([name, qty], i) => {
+                    const pct = totalQty > 0 ? ((qty / totalQty) * 100).toFixed(1) : 0;
+                    return `
+                        <tr>
+                            <td>${i + 1}</td>
+                            <td>${name}</td>
+                            <td>${qty}</td>
+                            <td>${pct}%</td>
+                        </tr>
+                    `;
+                }).join('');
+                if (itemsTotal) itemsTotal.innerText = totalQty;
+            }
+        }
+
+        // Table 3: Budget & Payments
+        const budgetBody = document.getElementById('pt-budget-body');
+        if (budgetBody) {
+            budgetBody.innerHTML = `
+                <tr>
+                    <td>مبيعات كاش</td>
+                    <td>${curFmt(data.cashSales)}</td>
+                </tr>
+                <tr>
+                    <td>مبيعات شبكة</td>
+                    <td>${curFmt(data.cardSales)}</td>
+                </tr>
+                <tr>
+                    <td>مبيعات هنقرستيشن</td>
+                    <td>${curFmt(data.hsSales)}</td>
+                </tr>
+                <tr style="background:#f1f5f9;">
+                    <td><strong>إجمالي الدخل</strong></td>
+                    <td><strong>${curFmt(data.netRevenue)}</strong></td>
+                </tr>
+                <tr>
+                    <td>إجمالي المرتجعات</td>
+                    <td style="color:red;">-${curFmt(data.totalReturns)}</td>
+                </tr>
+                <tr>
+                    <td>رواتب وسلف العمال</td>
+                    <td style="color:red;">-${curFmt(data.totalHRExpenses)}</td>
+                </tr>
+                <tr>
+                    <td>المشتريات والموردين</td>
+                    <td style="color:red;">-${curFmt(data.totalPurchases)}</td>
+                </tr>
+                <tr style="background:#f1f5f9;">
+                    <td><strong>الرصيد الفعلي (الربح)</strong></td>
+                    <td style="color:${data.netProfit < 0 ? 'red' : 'green'}; direction:ltr; text-align:right;"><strong>${curFmt(data.netProfit)}</strong></td>
+                </tr>
+            `;
+        }
+    }
+
+    // ---- Initial Load ----
+    const firstRange = document.querySelector('.date-btn.active')?.dataset?.range || 'all';
     currentStatsRange = firstRange;
     await fetchRealDataAndUpdateCharts(currentStatsRange);
 

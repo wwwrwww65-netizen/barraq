@@ -83,7 +83,7 @@
             cashSales += order.total;
         } else if (pm.includes('شبكة') || pm.includes('بطاقة')) {
             networkSales += order.total;
-        } else if (pm === 'هنقرستيشن' && order.hsPaymentStatus !== 'paid') {
+        } else if (pm === 'توصيل' && order.hsPaymentStatus !== 'paid') {
             hungerStationUnpaid += order.total;
         } else {
             networkSales += order.total;
@@ -118,7 +118,7 @@
     console.log(`- إجمالي المبيعات: ${totalSales.toFixed(2)} ر.س`);
     console.log(`- مبيعات كاش: ${cashSales.toFixed(2)} ر.س`);
     console.log(`- مبيعات شبكة: ${networkSales.toFixed(2)} ر.س`);
-    console.log(`- هنقرستيشن غير مدفوع: ${hungerStationUnpaid.toFixed(2)} ر.س`);
+    console.log(`- توصيل غير مدفوع: ${hungerStationUnpaid.toFixed(2)} ر.س`);
     
     console.log('\n🔄 المرتجعات:');
     console.log(`- إجمالي المرتجعات: ${totalReturns.toFixed(2)} ر.س`);
@@ -172,7 +172,7 @@
         hasIssues = true;
         console.log(`\n❌ خطأ في حساب المبيعات:`);
         console.log(`   الإجمالي: ${totalSales.toFixed(2)}`);
-        console.log(`   كاش + شبكة + هنقرستيشن: ${expectedTotal.toFixed(2)}`);
+        console.log(`   كاش + شبكة + توصيل: ${expectedTotal.toFixed(2)}`);
         console.log(`   الفرق: ${(expectedTotal - totalSales).toFixed(2)}`);
     } else {
         console.log('\n✅ معادلة المبيعات: صحيحة');
@@ -193,7 +193,7 @@
     console.log(`إجمالي المبيعات: ${totalSales.toFixed(2)} ر.س`);
     console.log(`  ├── كاش: ${cashSales.toFixed(2)} ر.س`);
     console.log(`  ├── شبكة: ${networkSales.toFixed(2)} ر.س`);
-    console.log(`  └── هنقرستيشن (غير مدفوع): ${hungerStationUnpaid.toFixed(2)} ر.س`);
+    console.log(`  └── توصيل (غير مدفوع): ${hungerStationUnpaid.toFixed(2)} ر.س`);
     console.log(`المرتجعات: ${totalReturns.toFixed(2)} ر.س`);
     console.log(`المصروفات: ${totalExpenses.toFixed(2)} ر.س`);
     console.log(`رصيد الدرج المتوقع: ${calculatedDrawerBalance.toFixed(2)} ر.س`);

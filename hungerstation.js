@@ -14,7 +14,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadData() {
         try {
             const dbData = await window.dbRead();
-            hsOrders = (dbData.orders || []).filter(o => o.hungerStation === true || o.orderType === 'هنقرستيشن');
+            const targetCompany = new URLSearchParams(window.location.search).get('company') || 'هنقرستيشن';
+            hsOrders = (dbData.orders || []).filter(o => {
+                if (targetCompany === 'هنقرستيشن') {
+                    return o.deliveryCompany === 'هنقرستيشن' || o.orderType === 'هنقرستيشن' || (o.hungerStation === true && !o.deliveryCompany);
+                }
+                return o.deliveryCompany === targetCompany || o.orderType === targetCompany;
+            });
             renderDashboard();
             renderOrders();
         } catch(e) {
@@ -349,7 +355,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 date: now.toLocaleString('ar-u-nu-latn'),
                 timestamp: now.getTime(),
                 // Mark that this affects drawer balance
-                receivedInDrawer: selectedMethod === 'كاش' || selectedMethod === 'cash'
+                
             };
             dbData.receipt_vouchers.push(newVoucher);
             

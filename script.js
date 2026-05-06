@@ -402,24 +402,43 @@ try {
     style.textContent = `
         #net-sync-badge {
             position: fixed;
-            bottom: 18px;
-            left: 18px;
+            bottom: 20px;
+            right: 20px;
             display: flex;
             align-items: center;
             gap: 6px;
-            padding: 5px 6px 5px 11px;
-            background: rgba(15, 23, 42, 0.92);
-            border: 1px solid rgba(255,255,255,0.08);
+            padding: 6px 8px 6px 12px;
+            background: rgba(15, 23, 42, 0.94);
+            border: 1px solid rgba(255,255,255,0.1);
             border-radius: 22px;
-            font-size: 12px;
-            font-weight: 600;
+            font-size: 11px;
+            font-weight: 700;
             color: #94a3b8;
-            backdrop-filter: blur(10px);
-            z-index: 99999;
-            transition: all 0.3s ease;
-            cursor: default;
+            backdrop-filter: blur(12px);
+            z-index: 10000;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
             user-select: none;
-            max-width: min(96vw, 420px);
+            max-width: 260px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05) inset;
+            opacity: 0.85;
+        }
+        /* رفعه في الصفحات التي تحتوي على شريط أزرار سفلي أو سلة في الكاشير */
+        body:has(.form-actions-bar) #net-sync-badge,
+        body:has(.cart-footer) #net-sync-badge {
+            bottom: 92px;
+        }
+        /* في صفحة الكاشير، نحركه لليسار قليلاً ليتجنب السايدبار المصغر في اليمين */
+        body.pos-body #net-sync-badge {
+            right: 100px;
+        }
+        #net-sync-badge:hover {
+            opacity: 1;
+            background: rgba(30, 41, 59, 0.98);
+            transform: translateY(-3px) scale(1.02);
+            border-color: var(--accent-blue);
+            color: #fff;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.5), 0 0 0 1px rgba(59,130,246,0.3) inset;
         }
         #net-sync-badge .sync-badge-text {
             display: flex;
@@ -1047,7 +1066,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const isLoginPage = window.location.pathname.includes('login.html') ||
                         window.location.href.includes('login.html');
-    const isNewDevice = !localStorage.getItem('system_roles');
+    // جهاز جديد = لا يوجد أي من هذه المفاتيح الأساسية في localStorage
+    // نتحقق من عدة مفاتيح لتجنب اعتبار الجهاز "جديداً" بسبب غياب مفتاح واحد فقط
+    const isNewDevice = !localStorage.getItem('system_roles') &&
+                        !localStorage.getItem('restaurant_settings') &&
+                        !localStorage.getItem('admin_username');
 
     try {
         const { ipcRenderer } = require('electron');
@@ -1622,3 +1645,35 @@ window.isDateInPeriod = function(dateInput, period) {
         });
     } catch(e) {}
 })();
+// Dynamic Delivery Sidebar
+document.addEventListener("DOMContentLoaded", function() {
+    // Populate dynamic delivery companies in sidebar
+    const dynDelivNav = document.getElementById('dynamic-delivery-companies-nav');
+    if (dynDelivNav && typeof window.dbRead === 'function') {
+        window.dbRead().then(_db => {
+            const companies = _db.deliveryCompanies || [];
+            let html = '';
+            companies.forEach(c => {
+                if (c.name !== 'هنقرستيشن' && c.isActive !== false) {
+                    const isActiveCompany = window.location.href.includes(`company=${encodeURIComponent(c.name)}`);
+                    html += `
+                    <a href="hungerstation.html?company=${encodeURIComponent(c.name)}" class="nav-item ${isActiveCompany ? 'active' : ''}" style="padding-right: 25px;">
+                        <i class="ph ph-motorcycle"></i><span>${c.name}</span>
+                    </a>`;
+                }
+            });
+            dynDelivNav.innerHTML = html;
+            
+            // Remove active state from original hungerstation link if we are viewing a different company
+            const urlParams = new URLSearchParams(window.location.search);
+            const hsLink = document.getElementById('nav-hs') || document.querySelector('a[href="hungerstation.html"]');
+            if (hsLink) {
+                if (urlParams.has('company') && urlParams.get('company') !== 'هنقرستيشن') {
+                    hsLink.classList.remove('active');
+                } else if (window.location.pathname.includes('hungerstation.html') && !urlParams.has('company')) {
+                    hsLink.classList.add('active');
+                }
+            }
+        }).catch(e => console.error('Error loading delivery companies for nav', e));
+    }
+});
