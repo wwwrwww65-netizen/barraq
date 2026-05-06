@@ -1,13 +1,13 @@
 document.addEventListener('DOMContentLoaded', async () => {
 
     function curPlain(n) {
-        return window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س';
+        return window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toFixed(2) + ' ر.س';
     }
     function curNum(n) {
-        return window.HashCurrency ? HashCurrency.formatNumber(n) : Number(n).toFixed(2);
+        return window.MisterCasherCurrency ? MisterCasherCurrency.formatNumber(n) : Number(n).toFixed(2);
     }
     function curSym() {
-        return window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س';
+        return window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س';
     }
     function splitOrderAmountsGlobal(o) {
         const pm = String(o?.paymentMethod || '').trim();
@@ -66,7 +66,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const { getReceiptFooterLine, escapeHtmlPrint } = require('./thermal-receipt-updated.js');
 
     const kpiValues = document.querySelectorAll('.kpi-card .kpi-value');
-    if(!kpiValues || kpiValues.length < 7) return; // Not on index page
+    if(!kpiValues || kpiValues.length < 6) return; // Not on index page
+
+    // ⚡ عرض آخر قيم محفوظة فوراً من localStorage قبل جلب البيانات
+    // هذا يمنع ظهور ... ويعرض الأرقام الأخيرة فوراً على الأجهزة الضعيفة
+    try {
+        const snap = JSON.parse(localStorage.getItem('_dashboard_kpi_snap') || 'null');
+        if (snap && Array.isArray(snap.kpis) && snap.kpis.length >= 6) {
+            snap.kpis.forEach((html, i) => { if(kpiValues[i]) kpiValues[i].innerHTML = html; });
+        }
+        // Restore dynamic cards from snapshot
+        if (snap && snap.deliveryHtml) {
+            const container = document.getElementById('dynamic-delivery-kpi-container');
+            if (container) container.innerHTML = snap.deliveryHtml;
+        }
+    } catch(e) {}
 
     let dashboardChart = null;
     /** الفترة المعروضة حالياً — تُحدَّث عند تغيير أزرار اليوم/الأسبوع ليعاد التحميل بعد المزامنة */
@@ -223,24 +237,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     );
 
     let shiftCashSales = 0;
-    let shiftHungerStationUnpaid = 0;
-    let shiftDeliveryBreakdown = {};
+    let deliveryStats = {}; // { 'HungerStation': { amount: 0, count: 0 } }
+    
     shiftOrders.forEach(o => {
         const pay = splitOrderAmounts(o);
         shiftCashSales += pay.cash;
-        shiftHungerStationUnpaid += (pay.hungerStation || 0);
-        if (pay.deliveryBreakdown) {
+        
+        if (pay.hungerStation > 0 && pay.deliveryBreakdown) {
             for (const [comp, amt] of Object.entries(pay.deliveryBreakdown)) {
-                shiftDeliveryBreakdown[comp] = (shiftDeliveryBreakdown[comp] || 0) + amt;
+                if (!deliveryStats[comp]) deliveryStats[comp] = { amount: 0, count: 0 };
+                deliveryStats[comp].amount += amt;
+                deliveryStats[comp].count += 1;
             }
         }
     });
+    
+    // Compatibility for other parts of the code that might use window.__dashboardData
+    let shiftHungerStationUnpaid = 0;
+    let shiftDeliveryBreakdown = {};
+    for (const [c, s] of Object.entries(deliveryStats)) {
+        shiftHungerStationUnpaid += s.amount;
+        shiftDeliveryBreakdown[c] = s.amount;
+    }
     // NOTE: Returns are NOT subtracted here because returned orders are already excluded from shiftOrders
 
     let shiftTotalExp = 0;
-    shiftExpenses.forEach(h => { shiftTotalExp += Number(h.amount) || 0; });
+    // Only subtract CASH expenses from drawer — bank/network transfers do NOT touch the cash drawer
+    shiftExpenses.forEach(h => {
+        const pm = String(h.pMethod || 'cash').trim();
+        if (pm !== 'bank' && pm !== 'network' && pm !== 'شبكة') {
+            shiftTotalExp += Number(h.amount) || 0;
+        }
+    });
 
-    // Drawer balance: opening float + cash sales - expenses (DO NOT RESET on closure)
+    // Drawer balance: opening float + cash sales - cash-only expenses
     const drawerBalance = shiftCashFloat + shiftCashSales - shiftTotalExp;
 
     window.__dashboardData = { dailySales, cashSales, networkSales, totalTax, totalReturnsAmt, totalExp, shiftCashFloat, drawerBalance, shiftHungerStationUnpaid, shiftDeliveryBreakdown };
@@ -268,13 +298,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     const networkEl = kpiValues[5];
     networkEl.innerHTML = `${curNum(networkSales)}<span class="currency">${curSym()}</span>`;
     
-    // HungerStation Total Card (kpiValues[6])
-    const hsEl = kpiValues[6];
-    hsEl.innerHTML = `${curNum(shiftHungerStationUnpaid)}<span class="currency">${curSym()}</span>`;
-    if(shiftHungerStationUnpaid > 0) {
-        hsEl.style.color = 'var(--accent-orange)';
-        hsEl.style.textShadow = '0 0 10px rgba(245, 158, 11, 0.5)';
+    // 6. Dynamic Delivery Company Cards
+    const deliveryContainer = document.getElementById('dynamic-delivery-kpi-container');
+    if (deliveryContainer) {
+        const companies = db.deliveryCompanies || [{ name: 'هنقرستيشن', isActive: true }];
+        let cardsHtml = '';
+        
+        companies.forEach(c => {
+            if (c.isActive === false) return; // Skip inactive
+            
+            const stats = deliveryStats[c.name] || { amount: 0, count: 0 };
+            const amountStr = curNum(stats.amount);
+            const countStr = stats.count;
+            const glowStyle = stats.amount > 0 ? 'style="color: var(--accent-orange); text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);"' : '';
+            
+            cardsHtml += `
+                <div class="card kpi-card">
+                    <div class="kpi-icon orange">
+                        <i class="ph-fill ph-motorcycle"></i>
+                    </div>
+                    <div class="kpi-details">
+                        <p class="kpi-title">اجمالي ${c.name}</p>
+                        <h3 class="kpi-value" ${glowStyle}>${amountStr}<span class="currency">${curSym()}</span></h3>
+                        <div class="kpi-count-sub text-sm" style="color: var(--text-secondary); margin-top: -4px; margin-bottom: 4px; opacity: 0.8;">
+                            <i class="ph ph-list-numbers" style="vertical-align: middle; margin-left: 4px;"></i> ${countStr} طلبات
+                        </div>
+                        <p class="kpi-trend negative"><i class="ph ph-clock"></i> في انتظار التسوية</p>
+                    </div>
+                </div>
+            `;
+        });
+        deliveryContainer.innerHTML = cardsHtml;
     }
+
+    // ⚡ حفظ لقطة (Snapshot) للأرقام في LocalStorage لعرضها فوراً المرة القادمة
+    try {
+        const snap = { 
+            kpis: Array.from(kpiValues).slice(0,6).map(el => el.innerHTML),
+            deliveryHtml: deliveryContainer ? deliveryContainer.innerHTML : ''
+        };
+        localStorage.setItem('_dashboard_kpi_snap', JSON.stringify(snap));
+    } catch(e) {}
+
 
 
     // --- 2. POPULATE RECENT ORDERS TABLE (Latest 5) ---
@@ -549,19 +614,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (sysSet) {
             try {
                 const s = JSON.parse(sysSet);
-                const displayName = (s.name && s.name !== 'هش HASH' && s.name !== 'هـــش HASH') ? s.name : 'هش HASH';
+                const displayName = (s.name && s.name !== 'Mister Casher' && s.name !== 'Mister Casher') ? s.name : 'Mister Casher';
                 const shiftNameEl = document.getElementById('shift-res-name');
                 if (shiftNameEl) shiftNameEl.innerText = displayName;
                 const shiftLogoEl = document.getElementById('shift-logo');
                 if (shiftLogoEl && s.logo) {
                     shiftLogoEl.src = s.logo;
                 } else if (shiftLogoEl) {
-                    shiftLogoEl.src = '1111.png';
+                    shiftLogoEl.src = '2222.png';
                 }
             } catch(e){}
         } else {
             const shiftLogoEl = document.getElementById('shift-logo');
-            if (shiftLogoEl) shiftLogoEl.src = '1111.png';
+            if (shiftLogoEl) shiftLogoEl.src = '2222.png';
         }
         
         const d = window.__dashboardData || { dailySales:0, cashSales:0, networkSales:0, totalTax:0, totalReturnsAmt:0, totalExp:0, shiftCashFloat:0, drawerBalance:0 };
@@ -652,9 +717,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         // NOTE: Returns are NOT subtracted here because returned orders are already excluded from shiftOrders
         // Returns are only tracked for reporting purposes in the returns field below
         let shiftExp = 0;
-        shiftExpenses.forEach(e => { shiftExp += e.amount || 0; });
+        let shiftBankExp = 0;
+        // Separate cash vs bank expenses — only cash affects the drawer
+        shiftExpenses.forEach(e => {
+            const pm = String(e.pMethod || 'cash').trim();
+            if (pm === 'bank' || pm === 'network' || pm === 'شبكة') {
+                shiftBankExp += Number(e.amount) || 0;
+            } else {
+                shiftExp += Number(e.amount) || 0;
+            }
+        });
         
         const currentFloat = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
+        // Drawer balance only deducts cash expenses — bank transfer expenses bypass the drawer
         const shiftDrawerBalance = currentFloat + shiftCash - shiftExp;
 
         // حفظ سجل الوردية في قاعدة البيانات (للتاريخ والتقارير المستقبلية)
@@ -721,11 +796,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const s = JSON.parse(sysSet);
                 // اسم المطعم
-                const displayName = (s.name && s.name !== 'هش HASH' && s.name !== 'هـــش HASH') ? s.name : 'هش HASH';
+                const displayName = (s.name && s.name !== 'Mister Casher' && s.name !== 'Mister Casher') ? s.name : 'Mister Casher';
                 document.getElementById('day-res-name').innerText = displayName;
                 // شعار المطعم
                 const dayLogoEl = document.getElementById('day-logo');
-                if (dayLogoEl && s.logo && s.logo !== '1111.png' && s.logo !== '1(1).png') {
+                if (dayLogoEl && s.logo && s.logo !== '2222.png' && s.logo !== '1(1).png') {
                     dayLogoEl.src = s.logo;
                 }
             } catch(e){}
@@ -1029,7 +1104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Get restaurant settings
         const sysSet = localStorage.getItem('restaurant_settings');
-        let restName = 'هش HASH';
+        let restName = 'Mister Casher';
         let logoBase64 = '';
         
         if (sysSet) {
@@ -1060,7 +1135,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // If no logo, use default
         if (!logoBase64) {
             try {
-                const defaultLogo = path.join(__dirname, '1111.png');
+                const defaultLogo = path.join(__dirname, '2222.png');
                 if (fs.existsSync(defaultLogo)) {
                     const logoBuffer = fs.readFileSync(defaultLogo);
                     logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
@@ -1416,7 +1491,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Get restaurant settings
         const sysSet = localStorage.getItem('restaurant_settings');
-        let restName = 'هش HASH';
+        let restName = 'Mister Casher';
         let logoBase64 = '';
         
         if (sysSet) {
@@ -1447,7 +1522,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // If no logo, use default
         if (!logoBase64) {
             try {
-                const defaultLogo = path.join(__dirname, '1111.png');
+                const defaultLogo = path.join(__dirname, '2222.png');
                 if (fs.existsSync(defaultLogo)) {
                     const logoBuffer = fs.readFileSync(defaultLogo);
                     logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;

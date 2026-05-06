@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const appData = process.env.APPDATA;
-const destDir = path.join(appData, 'Hash POS'); 
+const destDir = path.join(appData, 'Mister Casher POS'); 
 if (!fs.existsSync(destDir)) {
     fs.mkdirSync(destDir, { recursive: true });
 }

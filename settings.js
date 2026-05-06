@@ -126,14 +126,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {}
         const data = {
             ...prev,
-            name: inputName.value || 'هـــش HASH',
+            name: inputName.value || 'Mister Casher',
             branch: inputBranch.value,
             tax: inputTax.value || '300123456780003',
             taxRate: isNaN(taxRateVal) ? 15 : taxRateVal,
             phone: inputPhone.value,
             whatsapp: inputWhatsapp.value,
             footer: inputFooter.value,
-            logo: base64Logo || '1111.png',
+            logo: base64Logo || '2222.png',
             currencyPreset: selCurrencyPreset ? selCurrencyPreset.value : 'SAR',
         };
         if (data.currencyPreset === 'CUSTOM') {
@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetBtn = document.getElementById('btn-reset-settings');
     if (resetBtn) {
         resetBtn.addEventListener('click', () => {
-            if(confirm('هل تريد استعادة شعار واسم "هش HASH" ومسح بيانات المطعم الحالية؟')) {
+            if(confirm('هل تريد استعادة شعار واسم "Mister Casher" ومسح بيانات المطعم الحالية؟')) {
                 // مسح بيانات المطعم وإعادة الشعار الرسمي للبرنامج
                 localStorage.removeItem('restaurant_settings');
                 location.reload();

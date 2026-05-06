@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>هـــش HASH - الأرباح والخسائر</title>
+    <title>Mister Casher - الأرباح والخسائر</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="accounting.css">
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
@@ -47,8 +47,9 @@
         .profit-net .pl-kpi-icon { color: #f59e0b; }
         
         .pl-kpi-title {
-            color: var(--text-muted);
+            color: var(--text-secondary);
             font-size: 14px;
+            font-weight: 600;
             margin-bottom: 5px;
         }
         .pl-kpi-value {
@@ -116,7 +117,7 @@
             text-align: center;
             margin-top: 20px;
         }
-        .grand-total-box h4 { margin: 0 0 10px 0; color: var(--text-muted); }
+        .grand-total-box h4 { margin: 0 0 10px 0; color: var(--text-secondary); font-weight: 700; }
         .grand-total-box .huge-amount {
             font-size: 36px;
             font-weight: 900;
@@ -134,22 +135,19 @@
     </style>
     <link rel="stylesheet" href="light-theme-fixes.css">
 </head>
-<body class="dark-theme">
+<body>
     <script>
         (function(){
             var theme = localStorage.getItem('sys_theme') || 'dark';
-            if (theme === 'light') {
-                document.body.classList.remove('dark-theme');
-                document.body.classList.add('light-theme');
-            }
+            document.body.className = theme === 'light' ? 'light-theme' : 'dark-theme';
         })();
     </script>
     <div class="app-container">
         <!-- Sidebar Navigation -->
         <aside class="sidebar accounting-sidebar">
             <div class="logo">
-                <img src="1111.png" alt="شعار المحاسبة" class="restaurant-logo">
-                <span>هـــش HASH <span class="highlight">ERP</span></span>
+                <img src="2222.png" alt="شعار المحاسبة" class="restaurant-logo">
+                <span>Mister Casher <span class="highlight">ERP</span></span>
             </div>
             
             <nav class="nav-menu">
@@ -218,22 +216,22 @@
                     <div class="pl-kpi-card income">
                         <i class="ph ph-trend-up pl-kpi-icon"></i>
                         <p class="pl-kpi-title">صافي الإيرادات (مبيعات − مرتجعات + إيرادات أخرى)</p>
-                        <h3 class="pl-kpi-value acc-glow-green" id="pl-total-revenue">0.00 <span class="js-cur-sym">ر.س</span></h3>
+                        <h3 class="pl-kpi-value acc-glow-green" id="pl-total-revenue">... <span class="js-cur-sym">ر.س</span></h3>
                     </div>
                     <div class="pl-kpi-card expense">
                         <i class="ph ph-trend-down pl-kpi-icon"></i>
                         <p class="pl-kpi-title">إجمالي المصروفات (مشتريات، رواتب، تشغيل)</p>
-                        <h3 class="pl-kpi-value acc-glow-red" id="pl-total-expense">0.00 <span class="js-cur-sym">ر.س</span></h3>
+                        <h3 class="pl-kpi-value acc-glow-red" id="pl-total-expense">... <span class="js-cur-sym">ر.س</span></h3>
                     </div>
                     <div class="pl-kpi-card profit">
                         <i class="ph ph-coins pl-kpi-icon"></i>
                         <p class="pl-kpi-title">إجمالي المرتجعات / خصومات</p>
-                        <h3 class="pl-kpi-value" id="pl-total-returns" style="color:var(--text-muted)">0.00 <span class="js-cur-sym">ر.س</span></h3>
+                        <h3 class="pl-kpi-value" id="pl-total-returns" style="color:var(--text-muted)">... <span class="js-cur-sym">ر.س</span></h3>
                     </div>
                     <div class="pl-kpi-card profit-net">
                         <i class="ph ph-scales pl-kpi-icon"></i>
                         <p class="pl-kpi-title">صافي الربح التقديري (قبل الضريبة)</p>
-                        <h3 class="pl-kpi-value" id="pl-net-profit">0.00 <span class="js-cur-sym">ر.س</span></h3>
+                        <h3 class="pl-kpi-value" id="pl-net-profit">... <span class="js-cur-sym">ر.س</span></h3>
                     </div>
                 </div>
 

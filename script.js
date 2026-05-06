@@ -701,21 +701,21 @@ document.addEventListener('DOMContentLoaded', () => {
 window.syncGlobalSettings = function() {
     const saved = localStorage.getItem('restaurant_settings');
 
-    // الافتراضي: شعار هش HASH واسمه
-    const DEFAULT_LOGO = '1111.png';
-    const DEFAULT_NAME = 'هش HASH';
+    // الافتراضي: شعار Mister Casher واسمه
+    const DEFAULT_LOGO = '2222.png';
+    const DEFAULT_NAME = 'Mister Casher';
 
     if (saved) {
         try {
             const data = JSON.parse(saved);
 
             // تحديد شعار العرض: إذا كان الشعار base64 أو مسار مختلف عن الافتراضي → مطعم
-            const logoSrc = (data.logo && data.logo !== '1111.png' && data.logo !== '1(1).png')
+            const logoSrc = (data.logo && data.logo !== '2222.png' && data.logo !== '1(1).png')
                 ? data.logo
                 : DEFAULT_LOGO;
 
             // تحديد اسم العرض: إذا أدخل المستخدم اسم مطعم حقيقي → استخدمه
-            const isCustomName = data.name && data.name !== 'هش HASH' && data.name !== 'هـــش HASH';
+            const isCustomName = data.name && data.name !== 'Mister Casher';
             const displayName = isCustomName ? data.name : DEFAULT_NAME;
 
             // 1. تحديث شعار واسم الشريط الجانبي (عام)
@@ -767,7 +767,7 @@ window.syncGlobalSettings = function() {
             console.error('Settings parse error', e);
         }
     } else {
-        // لا توجد إعدادات → استخدم شعار هش HASH الرسمي
+        // لا توجد إعدادات → استخدم شعار Mister Casher الرسمي
         const sideLogos = document.querySelectorAll('.restaurant-logo');
         sideLogos.forEach(img => { img.src = DEFAULT_LOGO; });
 
@@ -1053,8 +1053,8 @@ window.syncGlobalSettings = function() {
         });
     }
 
-    if (window.HashCurrency && typeof window.HashCurrency.applySymToDom === 'function') {
-        window.HashCurrency.applySymToDom();
+    if (window.MisterCasherCurrency && typeof window.MisterCasherCurrency.applySymToDom === 'function') {
+        window.MisterCasherCurrency.applySymToDom();
     }
 };
 
@@ -1215,8 +1215,8 @@ function showSyncWizard(ipcRenderer) {
     overlay.id = 'sw-overlay';
     overlay.innerHTML = `
         <div class="sw-logo-area">
-            <img src="1111.png" alt="Logo">
-            <h1>هـــش HASH POS</h1>
+            <img src="2222.png" alt="Logo">
+            <h1>Mister Casher POS</h1>
             <p>إعداد المزامنة مع الشبكة المحلية</p>
         </div>
 

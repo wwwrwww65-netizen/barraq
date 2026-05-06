@@ -4,7 +4,7 @@
     <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل الدخول - هش HASH POS</title>
+    <title>تسجيل الدخول - Mister Casher POS</title>
     <!-- Base styles -->
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="login.css">
@@ -31,10 +31,10 @@
     <div class="login-bg-spot green"></div>
 
     <div class="login-box">
-        <img src="1111.png" alt="شعار هش HASH" class="login-logo" id="dyn-login-logo">
+        <img src="2222.png" alt="شعار Mister Casher" class="login-logo" id="dyn-login-logo">
         
         <div class="login-title">
-            <h1 id="dyn-login-name">هش HASH <span class="highlight">POS</span></h1>
+            <h1 id="dyn-login-name">Mister Casher <span class="highlight">POS</span></h1>
             <p>أدخل بيانات الاعتماد للوصول لنظام الإدارة</p>
         </div>
 
@@ -65,7 +65,7 @@
         </form>
 
         <div class="login-footer">
-            جميع الحقوق محفوظة &copy; 2026 - نظام هش HASH POS
+            جميع الحقوق محفوظة &copy; 2026 - نظام Mister Casher POS
         </div>
     </div>
 
@@ -73,7 +73,7 @@
     <script>
         // ═══════════════════════════════════════════════════════
         // منطق شاشة تسجيل الدخول:
-        // - الافتراضي: شعار وإسم هش HASH (الشعار الرسمي للبرنامج)
+        // - الافتراضي: شعار وإسم Mister Casher (الشعار الرسمي للبرنامج)
         // - إذا ضبط المالك اسم مطعمه وشعاره من الإعدادات → تظهر بيانات المطعم
         // ═══════════════════════════════════════════════════════
         document.addEventListener('DOMContentLoaded', () => {
@@ -84,16 +84,16 @@
             if (saved) {
                 try {
                     const data = JSON.parse(saved);
-                    // استخدم بيانات المطعم إذا أدخلها المستخدم (اسم مختلف عن هش)
+                    // استخدم بيانات المطعم إذا أدخلها المستخدم (اسم مختلف عن الافتراضي)
                     const restaurantName = (data.name || '').trim();
                     const restaurantLogo = (data.logo || '').trim();
 
                     // إذا كان الشعار base64 أو مساراً لملف مطعم حقيقي
-                    if (restaurantLogo && restaurantLogo !== '1111.png' && restaurantLogo !== '1(1).png') {
+                    if (restaurantLogo && restaurantLogo !== '2222.png' && restaurantLogo !== '1(1).png') {
                         logoEl.src = restaurantLogo;
                     }
                     // إذا كان اسم مطعم حقيقي مختلف عن الافتراضي
-                    if (restaurantName && restaurantName !== 'هش HASH' && restaurantName !== 'هـــش HASH') {
+                    if (restaurantName && restaurantName !== 'Mister Casher') {
                         nameEl.innerHTML = restaurantName + ' <span class="highlight">POS</span>';
                     }
                 } catch(e) { console.error('Login settings parse error', e); }

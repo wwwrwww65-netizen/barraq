@@ -12,6 +12,23 @@ const {
 // ملاحظة: تم حذف ignore-gpu-blocklist و enable-hardware-overlays لأنها كانت تسبب الشاشة السوداء
 // على بعض أجهزة Windows عند التعارض مع مشغلات كروت الشاشة
 
+// 🔒 Single Instance Lock - منع تشغيل أكثر من نسخة في نفس الوقت
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  console.log('[MisterCasherPOS] ⚠️ Another instance is already running. Quitting.');
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    // تركيز النافذة الموجودة عند محاولة تشغيل البرنامج مرة أخرى
+    const allWindows = BrowserWindow.getAllWindows();
+    if (allWindows.length > 0) {
+      const win = allWindows[0];
+      if (win.isMinimized()) win.restore();
+      win.focus();
+    }
+  });
+}
+
 app.on('web-contents-created', (e, webContents) => {
   webContents.on('context-menu', (event, params) => {
     const { Menu, MenuItem } = require('electron');
@@ -52,24 +69,24 @@ const myInstanceId = Math.random().toString(36).substring(7);
 
 /**
  * محاكاة طابعة حرارية: لا يُرسل إلى الطابعة؛ يُصدَّر PDF بنفس HTML وبـ @page 80mm (preferCSSPageSize).
- * تشغيل: متغير بيئة HASH_POS_SIMULATE_PRINT=1 أو وسيط --simulate-thermal-print
- * فتح الملف تلقائياً: HASH_POS_SIMULATE_PRINT_OPEN=1 أو --simulate-thermal-print-open
+ * تشغيل: متغير بيئة MISTER_CASHER_SIMULATE_PRINT=1 أو وسيط --simulate-thermal-print
+ * فتح الملف تلقائياً: MISTER_CASHER_SIMULATE_PRINT_OPEN=1 أو --simulate-thermal-print-open
  */
 function isSimulateThermalPrint() {
   if (process.argv.includes('--simulate-thermal-print')) return true;
-  const v = process.env.HASH_POS_SIMULATE_PRINT;
+  const v = process.env.MISTER_CASHER_SIMULATE_PRINT;
   return v === '1' || v === 'true' || v === 'yes';
 }
 
 function shouldOpenSimulatedPrintPdf() {
   if (process.argv.includes('--simulate-thermal-print-open')) return true;
-  const v = process.env.HASH_POS_SIMULATE_PRINT_OPEN;
+  const v = process.env.MISTER_CASHER_SIMULATE_PRINT_OPEN;
   return v === '1' || v === 'true';
 }
 
 /** سجلات الطباعة — تظهر في طرفية التشغيل؛ واجهة الصفحة: Ctrl+Shift+I (أدوات المطوّر) */
 function logPrint(...args) {
-  console.log('[HashPOS.print]', new Date().toISOString(), ...args);
+  console.log('[MisterCasherPOS.print]', new Date().toISOString(), ...args);
 }
 
 function placePrintWindowOnPrimaryDisplay(win) {
@@ -211,7 +228,7 @@ function probePeerWaReady(ip, done) {
  * طباعة HTML صامتة — print-to-device / print-receipt
  * ويندوز + اسم طابعة: أولاً حجم الورق من تعريف الطابعة (usePrinterDefaultPageSize)، وإن فشلت المهمة يُعاد بـ 80mm صريح.
  * نافذة الطباعة تُعرض داخل الشاشة الرئيسية (Chromium قد يُرسم إيصالاً فارغاً إن كانت النافذة خارج الإحداثيات/بدون تركيز).
- * تعيين HASH_POS_PRINT_EXPLICIT_FIRST=1 لعكس الترتيب (80mm ثم تعريف الطابعة).
+ * تعيين MISTER_CASHER_PRINT_EXPLICIT_FIRST=1 لعكس الترتيب (80mm ثم تعريف الطابعة).
  */
 function scheduleSilentPrint(html, printerName) {
   return new Promise((resolve) => {
@@ -880,7 +897,7 @@ function setupNetworkSync() {
                 },
                 pageSize: 'A4'
             });
-            fs.writeFileSync(filePath, pdfData);
+            await fs.promises.writeFile(filePath, pdfData);
             return { success: true, path: filePath };
         }
         return { success: false, cancel: true };
@@ -1010,6 +1027,10 @@ const dbAPI = require('./database');
 
 ipcMain.handle('db-save-order', async (event, data) => {
   const result = dbAPI.saveOrder(data);
+  
+  // ⚡ تحديث الكاش فوراً لأن dbAPI قام بالكتابة للقرص بشكل مستقل
+  await _refreshDbCache();
+
   // 🚨 Broadcast immediately so kitchen + all devices see the new order NOW
   broadcastDBChanged();
   
@@ -1027,22 +1048,42 @@ ipcMain.handle('db-save-order', async (event, data) => {
   
   return result;
 });
-ipcMain.handle('db-get-orders',   async ()        => dbAPI.getOrders());
+ipcMain.handle('db-get-orders', async () => {
+  if (_dbCacheReady && _dbCache.orders) return _dbCache.orders;
+  return dbAPI.getOrders();
+});
+
+ipcMain.handle('db-get-products', async () => {
+  if (_dbCacheReady && _dbCache.products) return _dbCache.products;
+  return dbAPI.getProducts();
+});
+
+ipcMain.handle('db-get-categories', async () => {
+  if (_dbCacheReady && _dbCache.categories) return _dbCache.categories;
+  return dbAPI.getCategories();
+});
+
+ipcMain.handle('db-get-inventory', async () => {
+  if (_dbCacheReady && _dbCache.inventory) return _dbCache.inventory;
+  return dbAPI.getInventory();
+});
+
 ipcMain.handle('db-save-product', async (event, data) => {
   const result = dbAPI.saveProduct(data);
+  await _refreshDbCache();
   broadcastDBChanged();
   return result;
 });
-ipcMain.handle('db-get-products', async ()        => dbAPI.getProducts());
+
 ipcMain.handle('db-save-category', async (event, data) => {
   const result = dbAPI.saveCategory(data);
+  await _refreshDbCache();
   broadcastDBChanged();
   return result;
 });
-ipcMain.handle('db-get-categories', async ()      => dbAPI.getCategories());
-ipcMain.handle('db-get-inventory',async ()        => dbAPI.getInventory());
 ipcMain.handle('db-save-inventory', async (event, item) => {
   const result = dbAPI.saveInventoryItem(item);
+  await _refreshDbCache();
   broadcastDBChanged();
   return result;
 });
@@ -1051,6 +1092,32 @@ ipcMain.handle('db-save-inventory', async (event, item) => {
 const _dbPath = path.join(app.getPath('userData'), 'pos_database.json');
 const _auditLogPath = path.join(app.getPath('userData'), 'pos_database_audit.log');
 const _emptyDB = { orders:[], products:[], categories:[], inventory:[], purchases:[], suppliers:[], inventoryTx:[], returns:[], expenses:[], bankTransfers:[], hrExpenses:[], otherIncome:[], employees:[], attendance:[], penaltyRules:[], chartOfAccounts:[], journalEntries:[], systemNotifications:[], inventoryAlertState:{}, deliveryCompanies:[] };
+
+// ⚡ In-Memory Cache — يُخزَّن في الذاكرة لتجنب قراءة القرص في كل مرة
+let _dbCache = null;
+let _dbCacheReady = false;
+
+async function _loadDbIntoCache() {
+  try {
+    const data = await fs.promises.readFile(_dbPath, 'utf8');
+    _dbCache = JSON.parse(data);
+    _dbCacheReady = true;
+    console.log('[DB Cache] ✅ Database loaded into memory cache.');
+  } catch(e) {
+    console.warn('[DB Cache] ⚠️ Could not load DB into cache, using empty:', e.message);
+    _dbCache = JSON.parse(JSON.stringify(_emptyDB));
+    _dbCacheReady = true;
+  }
+}
+
+// ⚡ وظيفة لتحديث الكاش فوراً بعد أي عملية حفظ تتم عبر النظام القديم
+async function _refreshDbCache() {
+  await _loadDbIntoCache();
+}
+
+// تحميل قاعدة البيانات للذاكرة فور جاهزية التطبيق
+app.whenReady().then(() => _loadDbIntoCache());
+
 
 // 📝 Audit Log Helper - تسجيل جميع العمليات الهامة
 function writeAuditLog(action, details) {
@@ -1078,16 +1145,18 @@ function writeAuditLog(action, details) {
     console.error('[Audit] Failed to write log:', e.message);
   }
 }
-// تم التحويل إلى async لتجنب حجب Event Loop عند قراءة ملفات كبيرة
+// ⚡ قراءة فورية من الذاكرة (Cache) بدلاً من القرص في كل مرة
 ipcMain.handle('db-read-full', async () => {
   try {
+    // إذا كانت الكاش جاهزة — أرجعها فوراً بدون I/O
+    if (_dbCacheReady && _dbCache) {
+      return _dbCache;
+    }
+    // Fallback: قراءة من القرص إذا لم تكن الكاش جاهزة بعد
     const data = await fs.promises.readFile(_dbPath, 'utf8');
-    const parsed = JSON.parse(data);
-    
-    // تسجيل خفيف فقط عند الأخطاء أو أول قراءة
-    // لا نسجل كل قراءة عادية لتجنب البطء
-    
-    return parsed;
+    _dbCache = JSON.parse(data);
+    _dbCacheReady = true;
+    return _dbCache;
   } catch(e) {
     console.error('[DB Read] Error reading database:', e.message);
     writeAuditLog('DB_READ_ERROR', { error: e.message });
@@ -1096,46 +1165,45 @@ ipcMain.handle('db-read-full', async () => {
 });
 ipcMain.handle('db-write-full', async (event, data, opts) => {
   try {
-    // 📝 Log before write (خفيف - بدون تفاصيل كبيرة)
-    writeAuditLog('DB_WRITE_START', {
-      timestamp: new Date().toISOString()
-    });
-    
-    // 🛡️ Create backup before writing (if not a backup operation itself)
-    try {
-      if (fs.existsSync(_dbPath) && (!opts || opts.skipBackup !== true)) {
-        const backupPath = _dbPath + `.backup.${Date.now()}`;
-        await fs.promises.copyFile(_dbPath, backupPath);
-        writeAuditLog('BACKUP_CREATED', { backupPath });
-        
-        // Keep only last 5 backups
-        const dbDir = path.dirname(_dbPath);
-        const files = await fs.promises.readdir(dbDir);
-        const backups = files
-          .filter(f => f.startsWith('pos_database.json.backup.'))
-          .sort((a, b) => b.localeCompare(a));
-        
-        if (backups.length > 5) {
-          for (const old of backups.slice(5)) {
-            await fs.promises.unlink(path.join(dbDir, old));
+    // ⚡ تحديث الكاش فوراً قبل الكتابة للقرص — لضمان أن أي قراءة بعدها تكون فورية
+    _dbCache = data;
+    _dbCacheReady = true;
+
+    // 🛡️ عمل نسخة احتياطية في الخلفية (لا توقف الواجهة) — مرة كل 5 كتابات
+    if (!opts || opts.skipBackup !== true) {
+      // عداد الكتابات لتقليل عدد النسخ الاحتياطية
+      if (!ipcMain._writeCount) ipcMain._writeCount = 0;
+      ipcMain._writeCount++;
+      if (ipcMain._writeCount % 5 === 0) {
+        // تشغيل النسخ في الخلفية بعد الانتهاء من الكتابة الرئيسية
+        setImmediate(async () => {
+          try {
+            if (fs.existsSync(_dbPath)) {
+              const backupPath = _dbPath + `.backup.${Date.now()}`;
+              await fs.promises.copyFile(_dbPath, backupPath);
+              const dbDir = path.dirname(_dbPath);
+              const files = await fs.promises.readdir(dbDir);
+              const backups = files
+                .filter(f => f.startsWith('pos_database.json.backup.'))
+                .sort((a, b) => b.localeCompare(a));
+              if (backups.length > 5) {
+                for (const old of backups.slice(5)) {
+                  await fs.promises.unlink(path.join(dbDir, old)).catch(() => {});
+                }
+              }
+            }
+          } catch(backupErr) {
+            console.warn('[DB Write] Backup warning:', backupErr.message);
           }
-        }
+        });
       }
-    } catch (backupErr) {
-      console.warn('[DB Write] Backup warning:', backupErr.message);
-      writeAuditLog('BACKUP_WARNING', { error: backupErr.message });
     }
-    
+
     // ✍️ Atomic write: write to temp file first, then rename
     const tempPath = _dbPath + '.tmp';
     await fs.promises.writeFile(tempPath, JSON.stringify(data, null, 2));
     await fs.promises.rename(tempPath, _dbPath);
-    
-    // تسجيل خفيف عند الحفظ
-    writeAuditLog('DB_WRITE_SUCCESS', {
-      timestamp: new Date().toISOString()
-    });
-    
+
     const broadcast = !opts || opts.broadcast !== false;
     if (broadcast) broadcastDBChanged();
     return true;
@@ -1200,16 +1268,16 @@ function runLocalDiskBackupJob(parentDir, dbFilePath, localStorageSnapshot) {
     if (!fs.existsSync(norm)) return { success: false, error: 'folder_missing' };
     if (!fs.statSync(norm).isDirectory()) return { success: false, error: 'not_a_directory' };
     const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const destDir = path.join(norm, `HashPOS_backup_${stamp}`);
+    const destDir = path.join(norm, `MisterCasherPOS_backup_${stamp}`);
     fs.mkdirSync(destDir, { recursive: true });
     let dbRaw = '{}';
     if (fs.existsSync(dbFilePath)) dbRaw = fs.readFileSync(dbFilePath, 'utf8');
     const dbObj = JSON.parse(dbRaw);
     fs.writeFileSync(path.join(destDir, 'pos_database.json'), JSON.stringify(dbObj, null, 2), 'utf8');
     const ls = localStorageSnapshot && typeof localStorageSnapshot === 'object' ? localStorageSnapshot : {};
-    fs.writeFileSync(path.join(destDir, 'hashpos_localStorage.json'), JSON.stringify(ls, null, 2), 'utf8');
+    fs.writeFileSync(path.join(destDir, 'mistercasher_localStorage.json'), JSON.stringify(ls, null, 2), 'utf8');
     const manifest = {
-      hashPosLocalBackupVersion: 1,
+      misterCasherLocalBackupVersion: 1,
       exportedAt: new Date().toISOString(),
       hostname: os.hostname(),
     };
@@ -1290,7 +1358,7 @@ ipcMain.handle('restore-backup-get-info', async (event, backupFolder) => {
     
     // استخراج التاريخ من اسم المجلد
     const folderName = path.basename(folder);
-    const dateMatch = folderName.match(/HashPOS_backup_(.+)/);
+    const dateMatch = folderName.match(/MisterCasherPOS_backup_(.+)/);
     let dateStr = 'غير معروف';
     if (dateMatch) {
       try {
@@ -1307,7 +1375,7 @@ ipcMain.handle('restore-backup-get-info', async (event, backupFolder) => {
       ordersCount: dbData.orders?.length || 0,
       productsCount: dbData.products?.length || 0,
       inventoryCount: dbData.inventory?.length || 0,
-      hasLocalStorage: fs.existsSync(path.join(folder, 'hashpos_localStorage.json'))
+      hasLocalStorage: fs.existsSync(path.join(folder, 'mistercasher_localStorage.json'))
     };
   } catch (e) {
     console.error('[Restore] Error getting backup info:', e.message);
@@ -1332,7 +1400,7 @@ ipcMain.handle('restore-backup-execute', async (event, options) => {
     }
 
     const dbFile = path.join(backupFolder, 'pos_database.json');
-    const lsFile = path.join(backupFolder, 'hashpos_localStorage.json');
+    const lsFile = path.join(backupFolder, 'mistercasher_localStorage.json');
 
     // التحقق من وجود قاعدة البيانات
     if (!fs.existsSync(dbFile)) {
@@ -1515,7 +1583,7 @@ function createWindow () {
     show: false, // لا تظهر النافذة فوراً لمنع الوميض الأبيض
     backgroundColor: '#0b0f19', // لون خلفية مظلم يطابق لون التطبيق
     autoHideMenuBar: true,
-    icon: path.join(__dirname, '1111.png'),
+    icon: path.join(__dirname, '2222.png'),
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -1573,10 +1641,10 @@ app.whenReady().then(() => {
       }
     });
     if (!devOk) {
-      console.warn('[HashPOS] لم يُسجَّل اختصار Ctrl+Shift+I (قد يكون محجوزاً لتطبيق آخر)');
+      console.warn('[MisterCasherPOS] لم يُسجَّل اختصار Ctrl+Shift+I (قد يكون محجوزاً لتطبيق آخر)');
     }
   } catch (e) {
-    console.warn('[HashPOS] globalShortcut DevTools:', e.message);
+    console.warn('[MisterCasherPOS] globalShortcut DevTools:', e.message);
   }
 
   // Auto-start WhatsApp disabled — now starts only when user clicks connect in settings
@@ -1592,6 +1660,13 @@ app.whenReady().then(() => {
 
 app.on('will-quit', () => {
   try {
+    // 🛑 إغلاق الخوادم بشكل صريح لمنع بقاء العمليات عالقة في الخلفية
+    if (server) {
+      try { server.close(); console.log('[Network Sync] UDP server closed'); } catch(e) {}
+    }
+    if (httpServer) {
+      try { httpServer.close(); console.log('[HTTP Sync] HTTP server closed'); } catch(e) {}
+    }
     globalShortcut.unregisterAll();
   } catch (_) { /* ignore */ }
 });

@@ -1,9 +1,9 @@
 // ✅ staff.js — HR Module fully connected to pos_database.json (Premium Full-Page Design)
 const nodePath = require('path');
 const fmt = (n) => Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const curSym = () => (window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س');
-const xfNum = (n) => (window.HashCurrency ? HashCurrency.formatNumber(n) : fmt(n));
-const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : fmt(n) + ' ر.س');
+const curSym = () => (window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س');
+const xfNum = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.formatNumber(n) : fmt(n));
+const xf = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : fmt(n) + ' ر.س');
 
 let db = {};
 let voucherSearchQuery = '';
@@ -183,31 +183,22 @@ function closeHrModal(modalOrId) {
     if (modal.id === 'advance-modal') hideAdvanceVoucherError();
     modal.classList.remove('active');
     modal.setAttribute('inert', '');
-    const ae = document.activeElement;
-    if (ae && modal.contains(ae)) {
-        try {
-            ae.blur();
-        } catch (_) { /* ignore */ }
-    }
-    try {
-        document.body.setAttribute('tabindex', '-1');
-        document.body.focus({ preventScroll: true });
-        document.body.removeAttribute('tabindex');
-    } catch (_) { /* ignore */ }
 }
 
 function openHrModal(modalId) {
-    // Aggressive fix for Electron trapped focus
-    if (document.activeElement) {
-        try { document.activeElement.blur(); } catch(e) {}
-    }
-    window.focus();
-    
     const m = document.getElementById(modalId);
     if (!m) return;
     if (modalId === 'advance-modal') hideAdvanceVoucherError();
     m.removeAttribute('inert');
     m.classList.add('active');
+    
+    // Safely transfer focus inside the modal after it renders
+    setTimeout(() => {
+        const firstInput = m.querySelector('input:not([type="hidden"]), select, textarea');
+        if (firstInput) {
+            try { firstInput.focus({ preventScroll: true }); } catch(e){}
+        }
+    }, 150);
 }
 
 // ── Role Config ───────────────────────────────────────────────
@@ -528,7 +519,7 @@ window.openFullProfile = function(id) {
             if (!salesBody) return;
 
             const totalSales = myOrders.reduce((s, o) => s + (o.total || 0), 0);
-            const fmt2 = (n) => (window.HashCurrency ? HashCurrency.format(n) : n.toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س');
+            const fmt2 = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : n.toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س');
             const payColor = m => m === 'كاش' ? '#10b981' : m === 'مجزأ' ? '#f59e0b' : '#60a5fa';
 
             if (salesKpi) {
@@ -855,7 +846,7 @@ window.renderProfileFinances = function(empName) {
         const paidSalary = getEmpPaidSalary(empName);
         const netPayable = Math.max(0, currentSalary - currentLoans - paidSalary);
         
-        const sym = window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س';
+        const sym = window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س';
         const netAmount = totalPayments - totalDeductions;
         tfoot.innerHTML = `
             <tr style="background:rgba(255,255,255,0.02); font-weight:700; border-top:3px solid var(--border-color);">
@@ -1167,23 +1158,12 @@ function openVoucherEditor(voucherIndex) {
     openHrModal('advance-modal');
 }
 
-document.getElementById('btn-open-advance-modal')?.addEventListener('click', () => {
-    // Prevent focus trap
-    if(document.activeElement) document.activeElement.blur();
-    
+document.getElementById('btn-open-advance-modal')?.addEventListener('click', (e) => {
+    if(e) e.preventDefault();
     const modal = document.getElementById('advance-modal');
     if (modal) delete modal.dataset.editIndex;
     populateEmpSelect();
     openHrModal('advance-modal');
-    setTimeout(() => {
-        const el = document.getElementById('voucher-employee');
-        try {
-            if(el) {
-                el.focus({ preventScroll: true });
-                el.click();
-            }
-        } catch (_) {}
-    }, 150);
 });
 
 document.getElementById('btn-close-advance-modal')?.addEventListener('click', () => {
@@ -1720,7 +1700,7 @@ window.generateVoucher = async function(typeStr) {
                 if (titleEl && sysSettings.name) titleEl.innerText = sysSettings.name;
                 if (pEls[0] && sysSettings.branch) pEls[0].innerText = sysSettings.branch;
                 if (pEls[1] && sysSettings.phone) pEls[1].innerText = sysSettings.phone;
-                if (logoEl && sysSettings.logo && sysSettings.logo !== '1111.png') {
+                if (logoEl && sysSettings.logo && sysSettings.logo !== '2222.png') {
                     logoEl.src = sysSettings.logo;
                     // Wait for image to load before capturing
                     await new Promise(resolve => { logoEl.onload = resolve; logoEl.onerror = resolve; setTimeout(resolve, 500); });
@@ -2138,20 +2118,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         modalObserver.observe(modal, { attributes: true });
     });
 
-    // Add touch-friendly scroll behavior for modal content
+    // Enable smooth scrolling in modal content
     document.querySelectorAll('.modal-content').forEach((modalContent) => {
-        // Enable smooth scrolling
         modalContent.style.scrollBehavior = 'smooth';
-        
-        // Prevent zoom on double tap for iOS
-        let lastTouchEnd = 0;
-        modalContent.addEventListener('touchend', (e) => {
-            const now = Date.now();
-            if (now - lastTouchEnd <= 300) {
-                e.preventDefault();
-            }
-            lastTouchEnd = now;
-        }, false);
+        // NOTE: We intentionally do NOT preventDefault on touchend here
+        // because it breaks text input focus on slow/touch devices in Electron
     });
 
     // Close modal when clicking outside (on overlay)

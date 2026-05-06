@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     const formatCurrency = (amount) =>
-        window.HashCurrency ? HashCurrency.format(amount) : Number(amount).toFixed(2) + ' ر.س';
+        window.MisterCasherCurrency ? MisterCasherCurrency.format(amount) : Number(amount).toFixed(2) + ' ر.س';
 
     /* ===============================
        Dynamic Data Loading from JSON DB
@@ -232,12 +232,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
             `;
-            // Add click listener to the card directly instead of global delegate
+            // Add click listener — use stopPropagation on add-btn to prevent double-fire
             div.addEventListener('click', (e) => {
-                // If they clicked the plus button, don't double fire if button handles it, 
-                // but here card click handles everything:
+                // Ignore clicks that bubble up from the add-btn (it has its own listener)
+                if (e.target.closest('.add-btn')) return;
                 addProductToCart(div);
             });
+            const addBtn = div.querySelector('.add-btn');
+            if (addBtn) {
+                addBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // prevent the div click from also firing
+                    addProductToCart(div);
+                });
+            }
             fragment.appendChild(div);
         }
         
@@ -680,9 +687,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const _ct = document.getElementById('cart-total').innerText;
             let totalOrder = 0;
             
-            // Use HashCurrency.parseLoose if available, otherwise parse manually
-            if (window.HashCurrency && HashCurrency.parseLoose) {
-                totalOrder = HashCurrency.parseLoose(_ct);
+            // Use MisterCasherCurrency.parseLoose if available, otherwise parse manually
+            if (window.MisterCasherCurrency && MisterCasherCurrency.parseLoose) {
+                totalOrder = MisterCasherCurrency.parseLoose(_ct);
                 if (isNaN(totalOrder)) totalOrder = 0;
             } else {
                 // Fallback: remove all non-numeric chars except dots and minus
@@ -1012,7 +1019,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const storeNameEl = document.getElementById('r-store-name');
-        const storeName = storeNameEl ? storeNameEl.innerText.trim() : 'هش HASH';
+        const storeName = storeNameEl ? storeNameEl.innerText.trim() : 'Mister Casher';
         const rawStoreTaxEl = document.getElementById('r-store-tax');
         const storeTax = rawStoreTaxEl ? rawStoreTaxEl.innerText.replace(/[^\d]/g, '') : '310000000000003';
         
@@ -1117,7 +1124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         // ── Get restaurant name and logo for kitchen tickets ──
-        let kitchenRestName = 'هش HASH';
+        let kitchenRestName = 'Mister Casher';
         let kitchenLogoBase64 = '';
         try {
             const ss = JSON.parse(localStorage.getItem('restaurant_settings') || '{}');
@@ -1705,29 +1712,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 categoriesScroll.insertAdjacentHTML('beforeend', html);
             });
         }
-        if (productsGrid) {
-            productsGrid.innerHTML = '';
-            prodData.filter((p) => p.isActive).forEach((p) => {
-                const html = `
-                <div class="product-card" data-category="${p.categoryId}" data-name="${p.nameAr}" data-price="${p.price}" data-id="${p.id}">
-                    <div class="product-img-wrapper">
-                        <img src="${p.image}" alt="${p.nameAr}">
-                    </div>
-                    <div class="product-details">
-                        <h4>${p.nameAr}</h4>
-                        <div class="price-row">
-                            <span class="product-price">${formatCurrency(p.price)}</span>
-                            <button class="add-btn"><i class="ph ph-plus"></i></button>
-                        </div>
-                    </div>
-                </div>
-            `;
-                productsGrid.insertAdjacentHTML('beforeend', html);
-            });
-        }
-        bindPosCatalogInteraction();
+        // Use renderPosProducts so cards get proper click listeners attached
         const activeCatBtn = document.querySelector('.category-btn.active');
-        if (activeCatBtn) filterProducts(activeCatBtn.dataset.category, searchInput.value.toLowerCase());
+        const activeCategory = activeCatBtn ? activeCatBtn.dataset.category : 'الكل';
+        const activeQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        renderPosProducts(activeCategory, activeQuery);
+        bindPosCatalogInteraction();
     }
 
     if (typeof window.registerPosDatabaseRefresh === 'function') {

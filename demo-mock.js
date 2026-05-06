@@ -115,31 +115,75 @@ window.exportPageToPDF = async function(filename = 'تقرير.pdf') {
     if (typeof require !== 'undefined') {
         const { ipcRenderer } = require('electron');
         if (ipcRenderer && ipcRenderer.invoke) {
+            
+            let loader = document.getElementById('pdf-export-loader');
+            if (!loader) {
+                loader = document.createElement('div');
+                loader.id = 'pdf-export-loader';
+                loader.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(2, 6, 23, 0.75); z-index:999999; display:flex; align-items:center; justify-content:center; color:white; font-family:"Cairo",sans-serif; backdrop-filter:blur(8px); transition: opacity 0.3s ease;';
+                loader.innerHTML = `
+                    <div class="pdf-loader-content" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); padding: 40px 60px; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; backdrop-filter: blur(16px); animation: floatUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);">
+                        <div style="position: relative; width: 80px; height: 80px; margin-bottom: 24px; display: flex; align-items: center; justify-content: center;">
+                            <!-- Outer spinning ring -->
+                            <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; border: 3px solid transparent; border-top-color: #3b82f6; border-right-color: #8b5cf6; border-radius: 50%; animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;"></div>
+                            <!-- Inner spinning ring (reverse) -->
+                            <div style="position: absolute; top: 12px; left: 12px; right: 12px; bottom: 12px; border: 3px solid transparent; border-bottom-color: #10b981; border-left-color: #3b82f6; border-radius: 50%; animation: spin-reverse 1.5s cubic-bezier(0.5, 0, 0.5, 1) infinite;"></div>
+                            <!-- Center Icon -->
+                            <i class="ph-fill ph-file-pdf" style="font-size: 32px; color: #fff; animation: pulse-icon 2s ease-in-out infinite;"></i>
+                        </div>
+                        
+                        <h3 style="margin: 0; font-weight: 800; font-size: 22px; background: linear-gradient(135deg, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px;">جاري إعداد التقرير وتصديره</h3>
+                        <p style="margin: 0; color: #94a3b8; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 2px;">
+                            <span>يرجى الانتظار، لا تقم بإغلاق النافذة</span>
+                            <span class="loading-dots" style="display:flex; width:20px; margin-right:4px;">
+                                <span style="animation: bounce 1.4s infinite ease-in-out both; animation-delay: -0.32s; font-size:20px; line-height:1;">.</span>
+                                <span style="animation: bounce 1.4s infinite ease-in-out both; animation-delay: -0.16s; font-size:20px; line-height:1;">.</span>
+                                <span style="animation: bounce 1.4s infinite ease-in-out both; font-size:20px; line-height:1;">.</span>
+                            </span>
+                        </p>
+                    </div>
+                    <style>
+                        @keyframes spin { 100% { transform: rotate(360deg); } }
+                        @keyframes spin-reverse { 100% { transform: rotate(-360deg); } }
+                        @keyframes pulse-icon { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; text-shadow: 0 0 15px rgba(59, 130, 246, 0.5); } }
+                        @keyframes floatUp { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+                        @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-4px); } }
+                    </style>
+                `;
+                document.body.appendChild(loader);
+            }
+            loader.style.display = 'flex';
+            
+            // Allow DOM to render the loader before the heavy IPC call
+            await new Promise(r => setTimeout(r, 150));
+
             try {
                 // Trigger CSS print layout logic (handles white background via @media print)
                 window.dispatchEvent(new Event('beforeprint'));
                 
+                await new Promise(r => setTimeout(r, 50)); // let CSS settle
+                
                 const res = await ipcRenderer.invoke('export-pdf', filename);
                 
+                loader.style.display = 'none';
+
                 // Cleanup CSS print layout logic
                 const header = document.getElementById('global-print-header');
-                if(header) {
-                    header.remove();
-                }
+                if(header) header.remove();
                 
                 if (res && res.success) {
-                    alert('تم استخراج وحفظ التقرير كـ PDF بنجاح! ✅\n' + res.path);
+                    setTimeout(() => alert('تم استخراج وحفظ التقرير كـ PDF بنجاح! ✅\n' + res.path), 50);
                 } else if (res && res.error) {
-                    alert('حدث خطأ أثناء الاستخراج: ' + res.error);
+                    setTimeout(() => alert('حدث خطأ أثناء الاستخراج: ' + res.error), 50);
                 }
                 return;
             } catch (err) {
                 console.error(err);
+                if (loader) loader.style.display = 'none';
             } finally {
+                if (loader) loader.style.display = 'none';
                 const header = document.getElementById('global-print-header');
-                if (header) {
-                    header.remove();
-                }
+                if (header) header.remove();
             }
         }
     }
@@ -161,7 +205,7 @@ window.addEventListener('beforeprint', () => {
     
     const sysRaw = localStorage.getItem('restaurant_settings');
     const sys = sysRaw ? JSON.parse(sysRaw) : {};
-    const logoSrc = (sys.logo && sys.logo !== '1111.png') ? sys.logo : '1111.png';
+    const logoSrc = (sys.logo && sys.logo !== '2222.png') ? sys.logo : '2222.png';
     
     // Try to find a meaningful page title
     let pageTitle = document.title;
@@ -260,7 +304,7 @@ window.addEventListener('beforeprint', () => {
             
             <!-- Left Section: Restaurant Info -->
             <div style="text-align:right; width:35%; padding-right:15px;">
-                <h1 style="margin:0 0 10px 0; font-size:26px; font-weight:900; color:#0f172a !important; line-height:1.2;">${sys.name || 'هـــش HASH'}</h1>
+                <h1 style="margin:0 0 10px 0; font-size:26px; font-weight:900; color:#0f172a !important; line-height:1.2;">${sys.name || 'Mister Casher'}</h1>
                 <div style="display:flex; flex-direction:column; gap:4px;">
                     ${sys.branch ? `<p style="margin:0; font-size:14px; font-weight:600; color:#475569 !important;"><i class="ph ph-map-pin" style="font-size:14px;"></i> ${sys.branch}</p>` : ''}
                     ${sys.phone ? `<p style="margin:0; font-size:14px; font-weight:600; color:#475569 !important;" dir="ltr"><i class="ph ph-phone" style="font-size:14px;"></i> ${sys.phone}</p>` : ''}

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const appData = process.env.APPDATA;
-['Hash POS', 'baraaq'].forEach(folder => {
+['Mister Casher POS', 'baraaq'].forEach(folder => {
     const destDir = path.join(appData, folder); 
     if (!fs.existsSync(destDir)) {
         fs.mkdirSync(destDir, { recursive: true });

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تقارير الكاشيرين — هـــش HASH</title>
+    <title>تقارير الكاشيرين — Mister Casher</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
@@ -71,14 +71,11 @@
     </style>
     <link rel="stylesheet" href="light-theme-fixes.css">
 </head>
-<body class="dark-theme">
+<body>
     <script>
         (function(){
             var theme = localStorage.getItem('sys_theme') || 'dark';
-            if (theme === 'light') {
-                document.body.classList.remove('dark-theme');
-                document.body.classList.add('light-theme');
-            }
+            document.body.className = theme === 'light' ? 'light-theme' : 'dark-theme';
         })();
     </script>
 <div class="page-wrapper">
@@ -86,8 +83,8 @@
     <!-- Sidebar -->
     <aside class="sidebar">
         <div class="sidebar-logo">
-            <img src="1111.png" alt="Logo" onerror="this.style.display='none'">
-            <h2>هـــش HASH</h2>
+            <img src="2222.png" alt="Logo" onerror="this.style.display='none'">
+            <h2>Mister Casher</h2>
         </div>
         <nav>
             <a href="index.html" class="nav-item"><i class="ph ph-squares-four"></i> الرئيسية</a>
@@ -310,7 +307,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             else if (o.paymentMethod === 'مجزأ') { cash += o.splitCash || 0; network += o.splitNetwork || 0; }
         });
         let totalReturns = returns.reduce((s, r) => s + (r.amount || 0), 0);
-        const fmt = (n) => (window.HashCurrency ? HashCurrency.format(n) : n.toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س');
+        const fmt = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : n.toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س');
         document.getElementById('kpi-total').textContent = fmt(total);
         document.getElementById('kpi-orders').textContent = orders.length + ' طلب';
         document.getElementById('kpi-avg').textContent = fmt(orders.length ? total / orders.length : 0);
@@ -326,7 +323,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             tbody.innerHTML = `<tr><td colspan="7" class="no-data"><i class="ph ph-user-circle"></i> لا توجد بيانات للفترة المحددة</td></tr>`;
             return;
         }
-        const fmt = (n) => (window.HashCurrency ? HashCurrency.format(n) : n.toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س');
+        const fmt = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : n.toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س');
         tbody.innerHTML = allCashiers.map(name => {
             const myOrders = orders.filter(o => (o.cashier || 'غير معروف') === name);
             const myReturns = returns.filter(r => (r.emp || '') === name);
@@ -359,7 +356,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         const sorted = [...orders].sort((a,b) => (b.timestamp||0)-(a.timestamp||0));
-        const fmt = (n) => (window.HashCurrency ? HashCurrency.format(n || 0) : (n || 0).toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س');
+        const fmt = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n || 0) : (n || 0).toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س');
         const payClass = m => m==='كاش' ? 'badge-green' : m==='مجزأ' ? 'badge-orange' : 'badge-blue';
         const typeClass = t => t==='سفري' ? 'badge-orange' : 'badge-blue';
         tbody.innerHTML = sorted.map(o => `<tr>

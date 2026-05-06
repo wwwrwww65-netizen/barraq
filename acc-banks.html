@@ -4,29 +4,26 @@
     <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>هـــش HASH - الخزينة والبنوك</title>
+    <title>Mister Casher - الخزينة والبنوك</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="acc.css">
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
     <link rel="stylesheet" href="light-theme-fixes.css">
 </head>
-<body class="dark-theme">
+<body>
     <script>
         (function(){
             var theme = localStorage.getItem('sys_theme') || 'dark';
-            if (theme === 'light') {
-                document.body.classList.remove('dark-theme');
-                document.body.classList.add('light-theme');
-            }
+            document.body.className = theme === 'light' ? 'light-theme' : 'dark-theme';
         })();
     </script>
     <div class="app-container">
         <!-- Sidebar Navigation -->
         <aside class="sidebar accounting-sidebar">
             <div class="logo">
-                <img src="1111.png" alt="شعار المحاسبة" class="restaurant-logo" onerror="this.src='placeholder.svg'">
-                <span>هـــش HASH <span class="highlight">ERP</span></span>
+                <img src="2222.png" alt="شعار المحاسبة" class="restaurant-logo" onerror="this.src='placeholder.svg'">
+                <span>Mister Casher <span class="highlight">ERP</span></span>
             </div>
             <nav class="nav-menu">
                 <div class="nav-group">

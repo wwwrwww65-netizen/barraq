@@ -196,3 +196,96 @@ input:checked + .slider:before { transform: translateX(20px); }
     border-radius: var(--border-radius-md); width: 100%; font-family: inherit; margin-bottom: 20px; font-size: 15px;
 }
 .role-input-modern:focus { border-color: var(--accent-blue); outline: none; }
+
+/* =========================================
+   LIGHT THEME OVERRIDES FOR PERMISSIONS
+   ========================================= */
+
+body.light-theme .roles-list-card,
+body.light-theme .perm-matrix-card,
+body.light-theme .modal-content {
+    background: #ffffff !important;
+}
+
+body.light-theme .roles-header h3,
+body.light-theme .role-info h4,
+body.light-theme .matrix-title h2,
+body.light-theme .perm-text h5,
+body.light-theme .modal-header h3 {
+    color: #0f172a !important;
+}
+
+body.light-theme .role-item {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.light-theme .role-item:hover,
+body.light-theme .role-item.active {
+    background: rgba(59, 130, 246, 0.05) !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+body.light-theme .role-icon {
+    background: #f1f5f9 !important;
+    color: #64748b !important;
+}
+
+body.light-theme .role-item.active .role-icon {
+    background: rgba(59, 130, 246, 0.1) !important;
+    color: var(--accent-blue) !important;
+}
+
+body.light-theme .btn-add-role {
+    background: rgba(59, 130, 246, 0.15) !important;
+    color: #2563eb !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+}
+
+body.light-theme .btn-add-role:hover {
+    background: #2563eb !important;
+    color: #ffffff !important;
+}
+
+body.light-theme .perm-toggle-row {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.light-theme .perm-toggle-row:hover {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.light-theme .slider {
+    background-color: #e2e8f0;
+    border-color: #cbd5e1 !important;
+}
+
+body.light-theme input:checked + .slider {
+    background-color: var(--accent-green) !important;
+    border-color: var(--accent-green) !important;
+}
+
+body.light-theme .slider:before {
+    background-color: #ffffff !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15) !important;
+}
+
+body.light-theme .role-input-modern {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.light-theme .matrix-header {
+    border-bottom-color: #e2e8f0 !important;
+}
+
+body.light-theme .empty-perm-state {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .modal-overlay {
+    background: rgba(15, 23, 42, 0.5) !important;
+}

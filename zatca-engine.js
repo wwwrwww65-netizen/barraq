@@ -1,5 +1,5 @@
 /**
- * ZATCA Phase 2 E-Invoicing Engine for HASH POS
+ * ZATCA Phase 2 E-Invoicing Engine for Mister Casher POS
  * Integrates natively with Fatoora APIs without a third-party broker.
  */
 
@@ -49,8 +49,8 @@ class ZatcaEngine {
 
         const egsUnit = {
             uuid: crypto.randomUUID(),
-            custom_id: "EGS-HASH-" + Date.now(),
-            model: "HASH POS",
+            custom_id: "EGS-Mister Casher-" + Date.now(),
+            model: "Mister Casher POS",
             CRN_number: "454634645645654",
             VAT_name: companyName || "مطعم",
             VAT_number: vatNumber || "310000000000003",
@@ -72,7 +72,7 @@ class ZatcaEngine {
         const dbData = this.getDbData();
         if(!dbData.zatca_keys || !dbData.zatca_keys.privateKey) {
             console.log('[ZATCA] Generating new ECDSA keys and CSR...');
-            await this.egs.generateNewKeysAndCSR(false, "HASH_POS_ZATCA");
+            await this.egs.generateNewKeysAndCSR(false, "Mister Casher_POS_ZATCA");
             // Assume the egs object has methods to export or it saves locally.
             // Documentation implies keys are stored inside egs instance.
             this.saveKeysToDB(this.egs);
@@ -119,7 +119,7 @@ class ZatcaEngine {
         }
 
         try {
-            // Transform HASH orderData to lib-specific ZATCASimplifiedTaxInvoice
+            // Transform Mister Casher orderData to lib-specific ZATCASimplifiedTaxInvoice
             const invoice = {
                 invoice_counter_number: orderData.icv,
                 invoice_serial_number: orderData.orderId,

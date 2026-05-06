@@ -4,7 +4,7 @@
     <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>هـــش HASH - تحليلات الأصناف الأكثر مبيعاً</title>
+    <title>Mister Casher - تحليلات الأصناف الأكثر مبيعاً</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="light-theme-fixes.css">
     <link rel="stylesheet" href="analytics-bestsellers.css">
@@ -54,22 +54,19 @@
         }
     </style>
 </head>
-<body class="dark-theme">
+<body>
     <script>
         (function(){
             var theme = localStorage.getItem('sys_theme') || 'dark';
-            if (theme === 'light') {
-                document.body.classList.remove('dark-theme');
-                document.body.classList.add('light-theme');
-            }
+            document.body.className = theme === 'light' ? 'light-theme' : 'dark-theme';
         })();
     </script>
     <div class="app-container">
         <!-- Sidebar Navigation -->
         <aside class="sidebar">
             <div class="logo">
-                <img src="1111.png" alt="مطعم هـــش HASH" class="restaurant-logo">
-                <span>هـــش HASH <span class="highlight">POS</span></span>
+                <img src="2222.png" alt="مطعم Mister Casher" class="restaurant-logo">
+                <span>Mister Casher <span class="highlight">POS</span></span>
             </div>
             
             <nav class="nav-menu">
@@ -159,7 +156,7 @@
                         <div class="kpi-icon"><i class="ph-fill ph-package"></i></div>
                         <div class="kpi-content">
                             <p class="kpi-label">إجمالي الوحدات المباعة</p>
-                            <h3 class="kpi-value" id="kpi-total-qty">0</h3>
+                            <h3 class="kpi-value" id="kpi-total-qty">...</h3>
                             <div class="kpi-trend positive"><i class="ph ph-trend-up"></i> <span>+15% من المستهدف</span></div>
                         </div>
                     </div>
@@ -168,7 +165,7 @@
                         <div class="kpi-icon"><i class="ph-fill ph-money"></i></div>
                         <div class="kpi-content">
                             <p class="kpi-label">عائد أفضل 10 أصناف</p>
-                            <h3 class="kpi-value"><span id="kpi-top-revenue">0.00</span> <small class="currency js-cur-sym">ر.س</small></h3>
+                            <h3 class="kpi-value"><span id="kpi-top-revenue">...</span> <small class="currency js-cur-sym">ر.س</small></h3>
                             <div class="kpi-trend positive"><i class="ph ph-trend-up"></i> <span>تمثل الغالبية من الدخل</span></div>
                         </div>
                     </div>
@@ -177,7 +174,7 @@
                         <div class="kpi-icon"><i class="ph-fill ph-chart-line-up"></i></div>
                         <div class="kpi-content">
                             <p class="kpi-label">متوسط البيع المتوقع يومياً</p>
-                            <h3 class="kpi-value" id="kpi-expected-qty">0</h3>
+                            <h3 class="kpi-value" id="kpi-expected-qty">...</h3>
                             <div class="kpi-trend neutral"><i class="ph ph-scales"></i> <span>مؤشر التوقع الخوارزمي</span></div>
                         </div>
                     </div>

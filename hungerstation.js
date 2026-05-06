@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Format currency
     const formatCurrency = (amount) =>
-        window.HashCurrency ? HashCurrency.format(amount) : Number(amount).toFixed(2) + ' ر.س';
+        window.MisterCasherCurrency ? MisterCasherCurrency.format(amount) : Number(amount).toFixed(2) + ' ر.س';
 
     // Load data
     async function loadData() {
@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const unpaidAmt = filtered.filter(o => o.hsPaymentStatus !== 'paid').reduce((s, o) => s + (Number(o.total) || 0), 0);
             const paidCount   = filtered.filter(o => o.hsPaymentStatus === 'paid').length;
             const unpaidCount = filtered.filter(o => o.hsPaymentStatus !== 'paid').length;
-            const sym = window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س';
+            const sym = window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س';
 
             tfoot.innerHTML = `
                 <tr style="background:rgba(255,107,0,0.07); font-weight:700; border-top:3px solid #ff6b00;">
@@ -587,7 +587,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const sysSet = sysRaw ? JSON.parse(sysRaw) : {};
             
             const restNameEl = document.getElementById('hsv-rest-name');
-            if (restNameEl) restNameEl.innerText = sysSet.name || 'مطابخ ومحائذ هـــش HASH';
+            if (restNameEl) restNameEl.innerText = sysSet.name || 'مطابخ ومحائذ Mister Casher';
             
             const branchEl = document.getElementById('hsv-branch');
             if (branchEl) branchEl.innerText = sysSet.branch || '';
@@ -596,7 +596,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (phoneEl) phoneEl.innerText = sysSet.phone || '';
             
             const logoEl = document.getElementById('hsv-logo');
-            if (logoEl && sysSet.logo && sysSet.logo !== '1111.png') {
+            if (logoEl && sysSet.logo && sysSet.logo !== '2222.png') {
                 logoEl.src = sysSet.logo;
             }
 

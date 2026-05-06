@@ -6,8 +6,8 @@ async function saveDB(db) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
-    const curSym = () => (window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س');
+    const xf = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
+    const curSym = () => (window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س');
     const tbody = document.querySelector('.inv-table tbody');
     if (!tbody) return;
 

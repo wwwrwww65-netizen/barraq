@@ -4,8 +4,8 @@
 (function () {
     const fmt = (n) =>
         Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : fmt(n) + ' ر.س');
-    const curSym = () => (window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س');
+    const xf = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : fmt(n) + ' ر.س');
+    const curSym = () => (window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س');
 
     function esc(s) {
         return String(s == null ? '' : s)

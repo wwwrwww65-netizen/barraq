@@ -7,7 +7,7 @@ async function saveDB(db) {
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
+    const xf = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
 
     let db = await window.dbRead();
     if(!db.categories) db.categories = [];

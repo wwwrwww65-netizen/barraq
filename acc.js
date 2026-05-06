@@ -6,8 +6,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function loadAccountingData(period = 'this_month') {
         const xf = (n) =>
-            window.HashCurrency
-                ? HashCurrency.format(n)
+            window.MisterCasherCurrency
+                ? MisterCasherCurrency.format(n)
                 : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س';
         const db = await window.dbRead();
         let posOrders = db.orders || [];
@@ -453,7 +453,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const sum = filt.reduce((s, e) => s + (Number(e.amount) || 0), 0);
             const sumStr = fmt2(sum);
             const wordsLine = sarAmountToArabicWords(sum);
-            const sym = window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س';
+            const sym = window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س';
 
             // Helper to recursively calculate balance up to a date limit
             function calculateBalancesUpTo(dateLimitExclusive=null, startTime=null) {
@@ -926,7 +926,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             if(document.getElementById('ev-branch')) document.getElementById('ev-branch').innerText = sysSet.branch || '';
                             if(document.getElementById('ev-phone')) document.getElementById('ev-phone').innerText = sysSet.phone || '';
                             const logoEl = document.getElementById('ev-logo');
-                            if(logoEl && sysSet.logo && sysSet.logo !== '1111.png') logoEl.src = sysSet.logo;
+                            if(logoEl && sysSet.logo && sysSet.logo !== '2222.png') logoEl.src = sysSet.logo;
 
                             const voucherEl = document.getElementById('exp-voucher-template');
                             const container = document.getElementById('exp-voucher-container');
@@ -1086,7 +1086,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if(document.getElementById('hr-v-branch') && sysSet.branch) document.getElementById('hr-v-branch').innerText = sysSet.branch;
                     if(document.getElementById('hr-v-phone') && sysSet.phone) document.getElementById('hr-v-phone').innerText = sysSet.phone;
                     const logoEl = document.getElementById('hr-v-logo');
-                    if(logoEl && sysSet.logo && sysSet.logo !== '1111.png') logoEl.src = sysSet.logo;
+                    if(logoEl && sysSet.logo && sysSet.logo !== '2222.png') logoEl.src = sysSet.logo;
 
                 } else {
                     voucherEl = document.getElementById('exp-voucher-template');
@@ -1106,7 +1106,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if(document.getElementById('ev-branch') && sysSet.branch) document.getElementById('ev-branch').innerText = sysSet.branch;
                     if(document.getElementById('ev-phone') && sysSet.phone) document.getElementById('ev-phone').innerText = sysSet.phone;
                     const logoEl = document.getElementById('ev-logo');
-                    if(logoEl && sysSet.logo && sysSet.logo !== '1111.png') logoEl.src = sysSet.logo;
+                    if(logoEl && sysSet.logo && sysSet.logo !== '2222.png') logoEl.src = sysSet.logo;
                 }
                 if (!voucherEl || !container) {
                     alert('قالب السند غير موجود!');

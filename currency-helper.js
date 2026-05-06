@@ -90,7 +90,7 @@
     } catch (_) {}
   }
 
-  global.HashCurrency = {
+  global.MisterCasherCurrency = {
     PRESETS,
     getConfig,
     formatNumber,

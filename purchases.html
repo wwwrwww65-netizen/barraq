@@ -4,28 +4,25 @@
     <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>هـــش HASH - المشتريات والموردين</title>
+    <title>Mister Casher - المشتريات والموردين</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="light-theme-fixes.css">
     <link rel="stylesheet" href="purchases.css">
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
 </head>
-<body class="dark-theme">
+<body>
     <script>
         (function(){
             var theme = localStorage.getItem('sys_theme') || 'dark';
-            if (theme === 'light') {
-                document.body.classList.remove('dark-theme');
-                document.body.classList.add('light-theme');
-            }
+            document.body.className = theme === 'light' ? 'light-theme' : 'dark-theme';
         })();
     </script>
     <div class="app-container">
         <!-- Sidebar Navigation -->
         <aside class="sidebar">
             <div class="logo">
-                <img src="1111.png" alt="شعار هـــش HASH" class="restaurant-logo" onerror="this.src='placeholder.svg'">
+                <img src="2222.png" alt="شعار Mister Casher" class="restaurant-logo" onerror="this.src='placeholder.svg'">
                 <span>نظام <span class="highlight">المشتريات</span></span>
             </div>
             
@@ -98,7 +95,7 @@
                 <div class="filter-bar mt-4">
                     <div class="filter-left">
                         <input type="text" id="search-inv" class="input-modern" placeholder="ابحث برقم الفاتورة أو المورد.." style="width:300px">
-                        <button class="btn btn-primary" style="margin-right:10px" onclick="window.exportTableToCSV('purchases.csv')"><i class="ph ph-export"></i> تصدير (Excel)</button><button class="btn btn-outline" style="font-size:13px; margin-right:10px; border-color:#e11d48; color:#e11d48;" onclick="window.exportPageToPDF('تقرير_نظام_هش.pdf')"><i class="ph ph-file-pdf"></i> تصدير (PDF)</button>
+                        <button class="btn btn-primary" style="margin-right:10px" onclick="window.exportTableToCSV('purchases.csv')"><i class="ph ph-export"></i> تصدير (Excel)</button><button class="btn btn-outline" style="font-size:13px; margin-right:10px; border-color:#e11d48; color:#e11d48;" onclick="window.exportPageToPDF('تقرير_مستر_كاشير.pdf')"><i class="ph ph-file-pdf"></i> تصدير (PDF)</button>
                         <button class="btn btn-outline" style="margin-right:10px" onclick="window.print()"><i class="ph ph-printer"></i> طباعة السجل</button>
                     </div>
                 </div>

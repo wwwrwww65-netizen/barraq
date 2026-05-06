@@ -1,8 +1,8 @@
 {
   "name": "baraaq",
-  "version": "1.0.21",
+  "version": "1.0.22",
   "main": "main.js",
-  "description": "Hash POS Desktop — نظام نقاط البيع المتكامل للمطاعم (Techier)",
+  "description": "Mister Casher Desktop — نظام نقاط البيع المتكامل للمطاعم (Techier)",
   "scripts": {
     "test": "npm run test:unit",
     "test:unit": "vitest run",
@@ -19,8 +19,8 @@
   "author": "",
   "license": "ISC",
   "build": {
-    "appId": "com.hash.pos",
-    "productName": "Hash POS Desktop",
+    "appId": "com.mistercasher.pos",
+    "productName": "Mister Casher",
     "compression": "maximum",
     "asar": true,
     "directories": {
@@ -42,7 +42,7 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "1111.png"
+      "icon": "2222.png"
     },
     "nsis": {
       "oneClick": false,

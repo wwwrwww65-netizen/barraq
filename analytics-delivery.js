@@ -5,8 +5,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Check if the user has correct permissions (optional based on app structure)
     // if(!window.hasPermission || !window.hasPermission('view_reports')) return;
 
-    const curNum = (n) => (window.HashCurrency ? HashCurrency.formatNumber(n) : Number(n).toFixed(2));
-    const curSym = () => (window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س');
+    const curNum = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.formatNumber(n) : Number(n).toFixed(2));
+    const curSym = () => (window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س');
 
     let allOrders = [];
     let filteredOrders = [];

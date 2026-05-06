@@ -28,7 +28,7 @@ const html = `<!DOCTYPE html>
 </head>
 <body>
   <h1>اختبار محاكاة حراري</h1>
-  <p>Hash POS — print-sim-smoke</p>
+  <p>Mister Casher — print-sim-smoke</p>
   <div class="line"></div>
   <p>عرض 80mm — preferCSSPageSize</p>
 </body>

@@ -3,13 +3,13 @@
 
 /** أسماء افتراضية في الإعدادات = يُعتبر المستخدم لم يُخصّص هوية المنشأة بعد */
 const DEFAULT_RESTAURANT_NAMES = new Set([
-  'هش HASH',
-  'هـــش HASH',
-  'مطابخ ومحائذ هـــش HASH',
+  'Mister Casher',
+  'Mister Casher',
+  'مطابخ ومحائذ Mister Casher',
 ]);
 
 /**
- * تذييل الطباعة: اسم المنشأة عند التخصيص (اسم غير افتراضي أو شعار ليس 1111.png / base64)، وإلا اسم البرنامج.
+ * تذييل الطباعة: اسم المنشأة عند التخصيص (اسم غير افتراضي أو شعار ليس 2222.png / base64)، وإلا اسم البرنامج.
  * @param {string|null} settingsRaw — JSON من localStorage restaurant_settings
  * @param {string} displayRestName — الاسم المعروض أعلى الإيصال
  * @param {string|null} reportSuffix — مثل «تقرير وردية» للتقارير؛ null للإيصال العادي
@@ -24,17 +24,17 @@ function getReceiptFooterLine(settingsRaw, displayRestName, reportSuffix) {
       const lg = s.logo;
       if (typeof lg === 'string') {
         if (lg.startsWith('data:')) personalized = true;
-        else if (lg && lg !== '1111.png') personalized = true;
+        else if (lg && lg !== '2222.png') personalized = true;
       }
     } catch (e) { /* ignore */ }
   }
   const dn = (displayRestName || '').trim();
   if (reportSuffix) {
     if (personalized) return `${dn || 'منشأة'} — ${reportSuffix}`;
-    return `Hash POS — ${reportSuffix}`;
+    return `Mister Casher — ${reportSuffix}`;
   }
   if (personalized) return dn || 'منشأة';
-  return 'Hash POS — نظام نقاط البيع';
+  return 'Mister Casher — نظام نقاط البيع';
 }
 
 function escapeHtmlPrint(text) {
@@ -45,11 +45,11 @@ function escapeHtmlPrint(text) {
     .replace(/"/g, '&quot;');
 }
 
-/** هل يعرض السطر مبلغاً غير صفري؟ (يعمل بدون HashCurrency في اختبارات Node) */
+/** هل يعرض السطر مبلغاً غير صفري؟ (يعمل بدون MisterCasherCurrency في اختبارات Node) */
 function isNonZeroMoneyDisplay(s) {
   if (!s) return false;
-  if (typeof globalThis.HashCurrency !== 'undefined' && HashCurrency.parseLoose) {
-    const v = HashCurrency.parseLoose(s);
+  if (typeof globalThis.MisterCasherCurrency !== 'undefined' && MisterCasherCurrency.parseLoose) {
+    const v = MisterCasherCurrency.parseLoose(s);
     return Number.isFinite(v) && Math.abs(v) > 0.0001;
   }
   const m = String(s).match(/-?\d+(?:\.\d+)?/);
@@ -66,7 +66,7 @@ async function printCustomerReceipt(receiptSnap) {
     
     // Get restaurant settings for logo and info
     const sysSet = localStorage.getItem('restaurant_settings');
-    let restName = 'مطابخ ومحائذ هـــش HASH';
+    let restName = 'مطابخ ومحائذ Mister Casher';
     let restTax = '310000000000003';
     let restBranch = 'شارع المعارض جوار محطة مزايا';
     let restPhone = '';
@@ -109,7 +109,7 @@ async function printCustomerReceipt(receiptSnap) {
     // If no logo from settings, use default and convert to base64
     if (!logoBase64) {
         try {
-            const defaultLogo = path.join(__dirname, '1111.png');
+            const defaultLogo = path.join(__dirname, '2222.png');
             if (fs.existsSync(defaultLogo)) {
                 const logoBuffer = fs.readFileSync(defaultLogo);
                 logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;

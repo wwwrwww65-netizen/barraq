@@ -2,7 +2,7 @@ const { ipcRenderer } = require('electron');
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
+    const xf = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
     
     // Elements
     const grid = document.getElementById('orders-grid');
@@ -326,8 +326,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Helper function to format currency
     function formatCurrency(amount) {
-        if (window.HashCurrency) {
-            return HashCurrency.format(amount || 0);
+        if (window.MisterCasherCurrency) {
+            return MisterCasherCurrency.format(amount || 0);
         }
         return Number(amount || 0).toLocaleString('en-US', { 
             minimumFractionDigits: 2, 

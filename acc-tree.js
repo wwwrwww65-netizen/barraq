@@ -121,8 +121,8 @@
         const bankBal = bankRev - bankPur - bankExp - bankRetOut + manualBankIn - manualBankOut;
 
         const fmt = (n) =>
-            window.HashCurrency
-                ? HashCurrency.format(n)
+            window.MisterCasherCurrency
+                ? MisterCasherCurrency.format(n)
                 : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س';
 
         const set = (id, text) => {

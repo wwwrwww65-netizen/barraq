@@ -229,7 +229,7 @@ function renderSalesTable(query = '') {
     const start = (salesCurrentPage - 1) * SALES_PAGE_SIZE;
     const pageItems = filteredSalesOrders.slice(start, start + SALES_PAGE_SIZE);
 
-    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
+    const xf = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
     const fragment = document.createDocumentFragment();
 
     pageItems.forEach(order => {
@@ -317,7 +317,7 @@ function _renderSalesPagination(page, totalPages, total, tbody) {
 }
 
 function updateKPIs(orders) {
-    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
+    const xf = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
     let totalRev = 0;
     let cashRev = 0;
     let cardRev = 0;
@@ -417,7 +417,7 @@ window.addEventListener('beforeprint', () => {
     let bar = document.getElementById('sales-pagination-bar');
     if(bar) bar.style.display = 'none';
 
-    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
+    const xf = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
     const fragment = document.createDocumentFragment();
 
     filteredSalesOrders.forEach(order => {
@@ -805,8 +805,8 @@ async function reprintOrder(orderId) {
 
 // Helper function to format currency
 function formatCurrency(amount) {
-    if (window.HashCurrency) {
-        return HashCurrency.format(amount || 0);
+    if (window.MisterCasherCurrency) {
+        return MisterCasherCurrency.format(amount || 0);
     }
     return Number(amount || 0).toLocaleString('en-US', { 
         minimumFractionDigits: 2, 
@@ -815,7 +815,7 @@ function formatCurrency(amount) {
 }
 
 function exportSalesPDF() {
-    let restName = "نظام_هش";
+    let restName = "نظام_مستر_كاشير";
     try {
         const sysRaw = localStorage.getItem('restaurant_settings');
         if (sysRaw) {

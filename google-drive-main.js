@@ -158,7 +158,7 @@ async function runDriveBackup(app, getDbPath, localStorageSnapshot) {
   }
 
   const payload = {
-    hashPosBackupVersion: 1,
+    misterCasherPosBackupVersion: 1,
     exportedAt: new Date().toISOString(),
     hostname: os.hostname(),
     localStorage:
@@ -190,7 +190,7 @@ async function runDriveBackup(app, getDbPath, localStorageSnapshot) {
     }
   }
 
-  const fileName = `HashPOS_full_backup_${payload.exportedAt.replace(/[:.]/g, '-').slice(0, 19)}.json`;
+  const fileName = `MisterCasherPOS_full_backup_${payload.exportedAt.replace(/[:.]/g, '-').slice(0, 19)}.json`;
   const createRes = await drive.files.create({
     requestBody: { name: fileName, mimeType: 'application/json' },
     media: { mimeType: 'application/json', body: Readable.from(buf) },
@@ -435,7 +435,7 @@ function setupGoogleDriveIpc(ipcMain, app, getDbPath) {
       const list = await drive.files.list({
         pageSize: 15,
         fields: 'files(id,name,modifiedTime)',
-        q: "name contains 'HashPOS_full_backup' and mimeType = 'application/json' and trashed = false",
+        q: "name contains 'MisterCasherPOS_full_backup' and mimeType = 'application/json' and trashed = false",
       });
       const files = list.data.files || [];
       if (files.length === 0) {

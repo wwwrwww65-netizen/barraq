@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>هـــش HASH - النظام المحاسبي الشامل</title>
+    <title>Mister Casher - النظام المحاسبي الشامل</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="accounting.css">
     <link rel="stylesheet" href="staff.css">
@@ -13,14 +13,11 @@
     <script src="node_modules/chart.js/dist/chart.umd.js"></script>
     <link rel="stylesheet" href="light-theme-fixes.css">
 </head>
-<body class="dark-theme">
+<body>
     <script>
         (function(){
             var theme = localStorage.getItem('sys_theme') || 'dark';
-            if (theme === 'light') {
-                document.body.classList.remove('dark-theme');
-                document.body.classList.add('light-theme');
-            }
+            document.body.className = theme === 'light' ? 'light-theme' : 'dark-theme';
         })();
     </script>
     <div class="app-container">
@@ -112,7 +109,7 @@
                         </div>
                         <div class="kpi-details">
                             <p class="kpi-title">الرصيد الكلي (الخزينة + البنوك)</p>
-                            <h3 class="kpi-value acc-glow-blue"><span id="bal-total">0.00</span> <span class="currency js-cur-sym">ر.س</span></h3>
+                            <h3 class="kpi-value acc-glow-blue"><span id="bal-total">...</span> <span class="currency js-cur-sym">ر.س</span></h3>
                             <p class="kpi-trend">
                                 كاش: <span id="bal-cash">0</span> | بنك: <span id="bal-bank">0</span>
                             </p>
@@ -125,7 +122,7 @@
                         </div>
                         <div class="kpi-details">
                             <p class="kpi-title">صافي إيرادات المبيعات (بعد المرتجعات)</p>
-                            <h3 class="kpi-value acc-glow-green" id="kpi-revenue">0.00 <span class="currency js-cur-sym">ر.س</span></h3>
+                            <h3 class="kpi-value acc-glow-green" id="kpi-revenue">... <span class="currency js-cur-sym">ر.س</span></h3>
                             <p class="kpi-trend positive"><i class="ph ph-trend-up"></i> يطابق قائمة الأرباح والخسائر</p>
                         </div>
                     </div>
@@ -136,7 +133,7 @@
                         </div>
                         <div class="kpi-details">
                             <p class="kpi-title">المشتريات والمصروفات</p>
-                            <h3 class="kpi-value acc-glow-red" id="kpi-expenses">0.00 <span class="currency js-cur-sym">ر.س</span></h3>
+                            <h3 class="kpi-value acc-glow-red" id="kpi-expenses">... <span class="currency js-cur-sym">ر.س</span></h3>
                             <p class="kpi-trend negative"><i class="ph ph-trend-up"></i> إجمالي التكاليف التشغيلية</p>
                         </div>
                     </div>
@@ -147,7 +144,7 @@
                         </div>
                         <div class="kpi-details">
                             <p class="kpi-title">صافي الدخل (الأرباح)</p>
-                            <h3 class="kpi-value acc-glow-orange" id="kpi-profit">0.00 <span class="currency js-cur-sym">ر.س</span></h3>
+                            <h3 class="kpi-value acc-glow-orange" id="kpi-profit">... <span class="currency js-cur-sym">ر.س</span></h3>
                             <p class="kpi-trend positive" id="kpi-profit-trend"><i class="ph ph-check-circle"></i> مؤشر ربحية</p>
                         </div>
                     </div>
@@ -293,7 +290,7 @@
             </div>
 
             <div class="v-bottom-meta">
-                <span class="v-by">By HASH</span>
+                <span class="v-by">By Mister Casher</span>
                 <span class="v-date-foot" id="v-bottom-date">2026/03/17</span>
             </div>
         </div>

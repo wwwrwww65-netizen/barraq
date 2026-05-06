@@ -4,7 +4,7 @@
     <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>هـــش HASH - هنقرستيشن</title>
+    <title>Mister Casher - هنقرستيشن</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="light-theme-fixes.css">
     <link rel="stylesheet" href="accounting.css">
@@ -371,22 +371,19 @@
         }
     </style>
 </head>
-<body class="dark-theme">
+<body>
     <script>
         (function(){
             var theme = localStorage.getItem('sys_theme') || 'dark';
-            if (theme === 'light') {
-                document.body.classList.remove('dark-theme');
-                document.body.classList.add('light-theme');
-            }
+            document.body.className = theme === 'light' ? 'light-theme' : 'dark-theme';
         })();
     </script>
     <div class="app-container">
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo">
-                <img src="1111.png" alt="شعار هـــش HASH" class="restaurant-logo">
-                <span>هـــش HASH <span class="highlight">POS</span></span>
+                <img src="2222.png" alt="شعار Mister Casher" class="restaurant-logo">
+                <span>Mister Casher <span class="highlight">POS</span></span>
             </div>
             
             <nav class="nav-menu">
@@ -665,13 +662,13 @@
         <div id="hs-voucher-template" class="voucher-wrapper">
             <div class="v-header">
                 <div class="v-right-text">
-                    <h2 id="hsv-rest-name">مطابخ ومحائذ هـــش HASH</h2>
+                    <h2 id="hsv-rest-name">مطابخ ومحائذ Mister Casher</h2>
                     <p id="hsv-branch"></p>
                     <p id="hsv-phone"></p>
                 </div>
                 <div class="v-logo-title-block">
                     <div class="v-center-logo">
-                        <img id="hsv-logo" src="1111.png" alt="" onerror="this.src='placeholder.svg'">
+                        <img id="hsv-logo" src="2222.png" alt="" onerror="this.src='placeholder.svg'">
                     </div>
                     <h1 class="v-main-title" style="color:#ff6b00;">سند قبض — هنقرستيشن</h1>
                 </div>
@@ -696,7 +693,7 @@
                 </div>
             </div>
             <div class="v-bottom-meta">
-                <span class="v-by">By HASH</span>
+                <span class="v-by">By Mister Casher</span>
                 <span class="v-date-foot" id="hsv-foot-date"></span>
             </div>
         </div>

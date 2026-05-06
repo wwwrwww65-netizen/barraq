@@ -4,7 +4,7 @@
     <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>بوابة زاتكا للربط المباشر - هـــش HASH</title>
+    <title>بوابة زاتكا للربط المباشر - Mister Casher</title>
     <link rel="stylesheet" href="styles.css">
     <!-- Google Fonts -->
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
@@ -59,6 +59,61 @@
         .btn-save:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 15px 25px -5px var(--zatca-glow); }
         .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
         .otp-input { text-align: center; font-size: 24px; letter-spacing: 5px; font-weight: 800; font-family: monospace; }
+
+        /* Light Theme Overrides for Zakat Page */
+        body.light-theme {
+            --bg-base: #f1f5f9;
+            --card-glass: rgba(255, 255, 255, 0.85);
+            --card-border: rgba(0, 0, 0, 0.08);
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+        }
+        body.light-theme .premium-bg {
+            background: radial-gradient(circle at 15% 50%, rgba(14, 192, 116, 0.04), transparent 25%), 
+                        radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.04), transparent 25%);
+        }
+        body.light-theme .page-title h1 {
+            background: linear-gradient(to left, #075231, #10b981);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        body.light-theme .input-modern {
+            background: #ffffff;
+            color: #0f172a;
+            border-color: #cbd5e1;
+        }
+        body.light-theme .input-modern:focus {
+            background: #ffffff;
+            border-color: var(--zatca-green);
+        }
+        body.light-theme .input-group label {
+            color: #475569;
+        }
+        body.light-theme .section-header h3,
+        body.light-theme .status-text {
+            color: #1e293b;
+        }
+        body.light-theme .glass-card {
+            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+        }
+        body.light-theme #loading-overlay {
+            background: rgba(255, 255, 255, 0.9) !important;
+        }
+        body.light-theme #loading-step-title {
+            color: #0f172a;
+        }
+        body.light-theme .sidebar {
+            background: rgba(255, 255, 255, 0.7) !important;
+            border-left-color: rgba(0, 0, 0, 0.05) !important;
+        }
+        body.light-theme .nav-item {
+            color: #64748b !important;
+        }
+        body.light-theme .nav-item.active {
+            background: rgba(14, 192, 116, 0.1) !important;
+            color: var(--zatca-green) !important;
+        }
     </style>
     <link rel="stylesheet" href="light-theme-fixes.css">
 </head>
@@ -77,8 +132,8 @@
         <!-- Sidebar Navigation -->
         <aside class="sidebar" style="background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(20px); border-left: 1px solid rgba(255,255,255,0.05);">
             <div class="logo">
-                <img src="1111.png" alt="هش HASH" class="restaurant-logo">
-                <span>هـــش HASH <span class="highlight">POS</span></span>
+                <img src="2222.png" alt="Mister Casher" class="restaurant-logo">
+                <span>Mister Casher <span class="highlight">POS</span></span>
             </div>
             
             <nav class="nav-menu">
@@ -91,21 +146,30 @@
         </aside>
 
         <main class="main-content" style="background: transparent;">
-            <div class="premium-container">
-                <header class="page-header">
-                    <div class="page-title">
-                        <div class="title-icon"><i class="ph-bold ph-shield-check"></i></div>
-                        <div>
-                            <h1>مرحلة الربط المباشر لتسجيل العناوين (Onboarding)</h1>
-                            <p>تتم هذه العملية بالربط المباشر (Direct Integration) بالمنصة وتوليد الشهادات الرقمية (CSID) محلياً.</p>
+            <header class="top-header">
+                <div class="header-left">
+                    <div class="breadcrumbs pt-0">
+                        <h2>الربط المباشر مع الزكاة (Onboarding)</h2>
+                        <span class="separator">/</span>
+                        <span>توليد الشهادات الرقمية CSID</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <div class="user-profile">
+                        <img src="avatar.svg" alt="المدير" class="avatar">
+                        <div class="user-info">
+                            <span class="user-name">جاري التحميل...</span>
+                            <span class="user-role">...</span>
                         </div>
                     </div>
-                </header>
+                </div>
+            </header>
 
+            <div class="premium-container">
                 <div class="grid-layout">
                     <!-- Status Panel -->
                     <div class="glass-card">
-                        <div class="section-header" style="justify-content: center;"><h3 style="color: white;">حالة شهادة الربط</h3></div>
+                        <div class="section-header" style="justify-content: center;"><h3>حالة شهادة الربط</h3></div>
                         <div class="status-hero" id="status-hero">
                             <div class="status-circle" id="fatora-status-icon-wrapper">
                                 <div class="pulse-ring"></div>
@@ -137,7 +201,7 @@
 
                             <div class="input-group">
                                 <label>اسم المنشأة التجاري (Company Name)</label>
-                                <input type="text" id="company_name" class="input-modern" placeholder="مطعم هاش HASH" required>
+                                <input type="text" id="company_name" class="input-modern" placeholder="مطعم Mister Casher" required>
                                 <i class="ph-fill ph-buildings input-icon"></i>
                             </div>
                             
@@ -178,6 +242,8 @@
                     return;
                 } else {
                     const u = JSON.parse(userRaw);
+                    document.querySelector('.user-name').textContent = u.username || u.name;
+                    document.querySelector('.user-role').textContent = u.role;
                     if(u.role !== 'مدير' && u.role !== 'Admin' && u.role !== 'المدير العام' && u.role !== 'مدير نظام') {
                         document.body.innerHTML = `
                             <div style="height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0b1120; color: white;">

@@ -7,7 +7,7 @@ async function saveDB(db) {
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س');
+    const xf = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س');
 
     let db = await window.dbRead();
     if(!db.purchases) db.purchases = [];
@@ -358,8 +358,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const destWh = document.getElementById('inv-warehouse').value;
             const grandTotalRaw = document.getElementById('grandtotal').innerText;
             const grandTot =
-                window.HashCurrency && HashCurrency.parseLoose
-                    ? HashCurrency.parseLoose(grandTotalRaw) || 0
+                window.MisterCasherCurrency && MisterCasherCurrency.parseLoose
+                    ? MisterCasherCurrency.parseLoose(grandTotalRaw) || 0
                     : Number(String(grandTotalRaw).replace(/[^\d.]/g, '')) || 0;
 
             const newPurchase = {
@@ -701,8 +701,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const supObj = suppliers.find(s => s.id === supId);
         const newPayMethod = document.getElementById('edit-inv-payment').value;
         const grandTotalRaw = document.getElementById('edit-grandtotal').innerText;
-        const grandTot = window.HashCurrency && HashCurrency.parseLoose
-            ? HashCurrency.parseLoose(grandTotalRaw) || 0
+        const grandTot = window.MisterCasherCurrency && MisterCasherCurrency.parseLoose
+            ? MisterCasherCurrency.parseLoose(grandTotalRaw) || 0
             : Number(String(grandTotalRaw).replace(/[^\d.]/g, '')) || 0;
 
         // عكس مديونية المورد القديمة إن كانت آجلة
@@ -913,7 +913,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <body>
                 <div class="header">
                     <div class="header-left">
-                        <h1>هـــش HASH للمطاعم</h1>
+                        <h1>Mister Casher للمطاعم</h1>
                         <p>إدارة المشتريات والمخازن</p>
                         <h2 style="margin-top:15px; color:#10b981;">فاتورة مشتريات / توريد بضاعة</h2>
                     </div>

@@ -4,7 +4,7 @@
     <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>هـــش HASH - شؤون الموظفين (HR)</title>
+    <title>Mister Casher - شؤون الموظفين (HR)</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="light-theme-fixes.css">
     <link rel="stylesheet" href="staff.css">
@@ -174,14 +174,11 @@
         }
     </style>
 </head>
-<body class="dark-theme">
+<body>
     <script>
         (function(){
             var theme = localStorage.getItem('sys_theme') || 'dark';
-            if (theme === 'light') {
-                document.body.classList.remove('dark-theme');
-                document.body.classList.add('light-theme');
-            }
+            document.body.className = theme === 'light' ? 'light-theme' : 'dark-theme';
         })();
     </script>
 <div class="app-container">
@@ -189,7 +186,7 @@
     <!-- Sidebar -->
     <aside class="sidebar hr-sidebar">
         <div class="logo">
-            <img src="1111.png" alt="شعار" class="restaurant-logo" onerror="this.src='placeholder.svg'">
+            <img src="2222.png" alt="شعار" class="restaurant-logo" onerror="this.src='placeholder.svg'">
             <span>شؤون <span class="highlight text-pink">الموظفين</span></span>
         </div>
         <nav class="nav-menu">
@@ -246,21 +243,21 @@
                     <div class="kpi-icon pink"><i class="ph-fill ph-users"></i></div>
                     <div class="kpi-details">
                         <p class="kpi-title">إجمالي الموظفين</p>
-                        <h3 class="kpi-value hr-glow-pink" id="kpi-total">0 <span class="currency" style="font-size:14px">موظف</span></h3>
+                        <h3 class="kpi-value hr-glow-pink" id="kpi-total">... <span class="currency" style="font-size:14px">موظف</span></h3>
                     </div>
                 </div>
                 <div class="card kpi-card hr-kpi-orange">
                     <div class="kpi-icon orange"><i class="ph-fill ph-hand-coins"></i></div>
                     <div class="kpi-details">
                         <p class="kpi-title">السلف المفتوحة</p>
-                        <h3 class="kpi-value text-orange" id="kpi-loans">0 <span class="currency js-cur-sym">ر.س</span></h3>
+                        <h3 class="kpi-value text-orange" id="kpi-loans">... <span class="currency js-cur-sym">ر.س</span></h3>
                     </div>
                 </div>
                 <div class="card kpi-card hr-kpi-indigo">
                     <div class="kpi-icon indigo"><i class="ph-fill ph-wallet"></i></div>
                     <div class="kpi-details">
                         <p class="kpi-title">مسير الرواتب</p>
-                        <h3 class="kpi-value hr-glow-indigo" id="kpi-payroll">0 <span class="currency js-cur-sym">ر.س</span></h3>
+                        <h3 class="kpi-value hr-glow-indigo" id="kpi-payroll">... <span class="currency js-cur-sym">ر.س</span></h3>
                     </div>
                 </div>
             </div>
@@ -846,13 +843,13 @@
     <div class="voucher-wrapper" id="voucher-template">
         <div class="v-header">
             <div class="v-right-text">
-                <h2>مطابخ ومحائذ هـــش HASH</h2>
+                <h2>مطابخ ومحائذ Mister Casher</h2>
                 <p>شارع المعارض جوار محطة مزايا</p>
                 <p>0539774699</p>
             </div>
             <div class="v-logo-title-block">
                 <div class="v-center-logo">
-                    <img src="1111.png" alt="Logo" onerror="this.src='placeholder.svg'">
+                    <img src="2222.png" alt="Logo" onerror="this.src='placeholder.svg'">
                 </div>
                 <h1 class="v-main-title" id="v-doc-title">سند صرف</h1>
             </div>
@@ -876,7 +873,7 @@
             </div>
         </div>
         <div class="v-bottom-meta">
-            <span class="v-by">By HASH</span>
+            <span class="v-by">By Mister Casher</span>
             <span class="v-date-foot" id="v-bottom-date"></span>
         </div>
     </div>

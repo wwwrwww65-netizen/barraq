@@ -15,7 +15,7 @@ function getQRBase64(sellerName, vatReg, timestamp, total, vat) {
         return tlvs.toString('base64');
     } catch(e) { return e.toString(); }
 }
-console.log('Test QR TLV:', getQRBase64('هش HASH', '310000000000003', new Date().toISOString(), '115.00', '15.00'));
+console.log('Test QR TLV:', getQRBase64('Mister Casher', '310000000000003', new Date().toISOString(), '115.00', '15.00'));
 
 let zatcaMeta = { icv: 1, uuid: crypto.randomUUID(), pih: 'NWZlY2ViNjZmZmM4NmYzOGQ5NTI3ODZjNmQ2OTZjNzljMmRiYzIzOWRkNGU5MWI0NjcyOWQ3M2EyN2ZiNTdlOQ==' };
 const orderId = '#INV-00001';

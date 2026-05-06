@@ -2,9 +2,9 @@ const { ipcRenderer } = require('electron');
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-    const curNum = (n) => (window.HashCurrency ? HashCurrency.formatNumber(n) : Number(n).toFixed(2));
-    const curSym = () => (window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س');
-    const curFmt = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
+    const curNum = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.formatNumber(n) : Number(n).toFixed(2));
+    const curSym = () => (window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س');
+    const curFmt = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
 
     let currentStatsRange = 'all';
 

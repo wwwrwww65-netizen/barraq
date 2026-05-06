@@ -223,7 +223,7 @@
 
         document.getElementById('btn-journal-export-pdf')?.addEventListener('click', () => {
             if (typeof window.exportPageToPDF === 'function') {
-                window.exportPageToPDF('قيود_محاسبية_هش.pdf');
+                window.exportPageToPDF('قيود_محاسبية_مستر_كاشير.pdf');
             } else {
                 window.print();
             }

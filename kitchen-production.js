@@ -166,7 +166,7 @@ function printKitchenReceiveReceipt(tx, copyLabel) {
             @media print { button { display: none; } }
         </style></head><body>
             <div class="receipt-wrapper">
-            <div class="logo">🍽 هـش HASH</div>
+            <div class="logo">🍽 Mister Casher</div>
             <div style="color:#888;font-size:12px;margin-bottom:8px;">المطبخ — استلام من المخزن${label}</div>
             <div class="badge">سند استلام #${tx.id}</div>
             <div class="details">
@@ -632,7 +632,7 @@ function renderReceive() {
 }
 
 function renderHandover() {
-    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
+    const xf = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
     let menuItems = (currentDb && currentDb.products) ? currentDb.products : [];
     
     // Auto-update to current date/time
@@ -871,7 +871,7 @@ window.printKitchenReport = function() {
                 <tbody>${rows}</tbody>
             </table>
             <p class="total">إجمالي عدد السندات: ${txs.length} | إجمالي الكميات: ${totalQty}</p>
-            <div class="footer">تم الإنشاء بواسطة نظام هـش HASH للمطاعم</div>
+            <div class="footer">تم الإنشاء بواسطة نظام Mister Casher للمطاعم</div>
             <br><button onclick="window.print()" style="padding:10px 20px;background:#ff4757;color:white;border:none;border-radius:6px;cursor:pointer;font-size:15px;">🖨️ طباعة الآن</button>
             </div>
         </body></html>`;
@@ -920,7 +920,7 @@ window.printSingleTx = function(txId) {
         </style></head>
         <body>
             <div class="receipt-wrapper">
-            <div class="logo">🍽 هـش HASH</div>
+            <div class="logo">🍽 Mister Casher</div>
             <div class="subtitle">المطبخ والإنتاج</div>
             <div class="type-badge">${typeName}</div>
             <div class="details">
@@ -934,7 +934,7 @@ window.printSingleTx = function(txId) {
             <div class="footer">
                 <p>توقيع المستلم: ................................</p>
                 <p>توقيع المشرف: ................................</p>
-                <p>هـش HASH — نظام إدارة المطاعم</p>
+                <p>Mister Casher — نظام إدارة المطاعم</p>
             </div>
             <br><button onclick="window.print()" style="padding:8px 18px;background:#ff4757;color:white;border:none;border-radius:6px;cursor:pointer;">🖨️ طباعة</button>
             </div>

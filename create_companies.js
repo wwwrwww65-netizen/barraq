@@ -2,7 +2,7 @@ const fs = require('fs');
 let html = fs.readFileSync('customers.html', 'utf8');
 
 // Replace title
-html = html.replace('<title>هـــش HASH - إدارة العملاء</title>', '<title>هـــش HASH - شركات التوصيل</title>');
+html = html.replace('<title>Mister Casher - إدارة العملاء</title>', '<title>Mister Casher - شركات التوصيل</title>');
 
 // Replace css links
 html = html.replace('<link rel="stylesheet" href="customers.css">', '');

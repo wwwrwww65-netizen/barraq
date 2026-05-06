@@ -12,7 +12,7 @@ function fmt(n) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : fmt(n) + ' ر.س');
+    const xf = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : fmt(n) + ' ر.س');
     const tbody = document.getElementById('sup-tbody');
     const searchInput = document.getElementById('search-sup');
     const modal = document.getElementById('supModal');

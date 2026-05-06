@@ -7,7 +7,7 @@ function whLabel(id) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const xf = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
+    const xf = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
     const txBody = document.getElementById('tx-tbody');
     const searchInput = document.getElementById('search-tx');
     const tabs = document.querySelectorAll('.filter-tab');
@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 w.document.write(`
                     <html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>سند ${tx.id}</title>
                     <style>body{font-family:Segoe UI,Tahoma,sans-serif;padding:16px;font-size:14px}</style></head><body>
-                    <h2 style="margin:0 0 12px">هـــش HASH</h2>
+                    <h2 style="margin:0 0 12px">Mister Casher</h2>
                     <p><strong>رقم السند:</strong> ${tx.id}</p>
                     <p><strong>النوع:</strong> ${lblNameFor(tx)}</p>
                     <p><strong>التاريخ:</strong> ${new Date(tx.date || Date.now()).toLocaleString('ar-SA')}</p>

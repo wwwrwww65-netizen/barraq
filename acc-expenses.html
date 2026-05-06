@@ -4,7 +4,7 @@
     <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>هـــش HASH - المصروفات والمدفوعات</title>
+    <title>Mister Casher - المصروفات والمدفوعات</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="acc.css">
     <link rel="stylesheet" href="staff.css">
@@ -12,21 +12,18 @@
     <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
     <link rel="stylesheet" href="light-theme-fixes.css">
 </head>
-<body class="dark-theme">
+<body>
     <script>
         (function(){
             var theme = localStorage.getItem('sys_theme') || 'dark';
-            if (theme === 'light') {
-                document.body.classList.remove('dark-theme');
-                document.body.classList.add('light-theme');
-            }
+            document.body.className = theme === 'light' ? 'light-theme' : 'dark-theme';
         })();
     </script>
     <div class="app-container">
         <!-- Sidebar Navigation -->
         <aside class="sidebar">
             <div class="logo">
-                <img src="1111.png" alt="شعار هـــش HASH" class="restaurant-logo" onerror="this.src='placeholder.svg'">
+                <img src="2222.png" alt="شعار Mister Casher" class="restaurant-logo" onerror="this.src='placeholder.svg'">
                 <span>المالية <span class="highlight">والمحاسبة</span></span>
             </div>
             
@@ -258,13 +255,13 @@
         <div id="exp-voucher-template" class="voucher-wrapper">
             <div class="v-header">
                 <div class="v-right-text">
-                    <h2 id="ev-rest-name">مطابخ ومحائذ هـــش HASH</h2>
+                    <h2 id="ev-rest-name">مطابخ ومحائذ Mister Casher</h2>
                     <p id="ev-branch"></p>
                     <p id="ev-phone"></p>
                 </div>
                 <div class="v-logo-title-block">
                     <div class="v-center-logo">
-                        <img id="ev-logo" src="1111.png" alt="" onerror="this.src='placeholder.svg'">
+                        <img id="ev-logo" src="2222.png" alt="" onerror="this.src='placeholder.svg'">
                     </div>
                     <h1 class="v-main-title">سند صرف — مصروفات</h1>
                 </div>
@@ -289,7 +286,7 @@
                 </div>
             </div>
             <div class="v-bottom-meta">
-                <span class="v-by">By HASH</span>
+                <span class="v-by">By Mister Casher</span>
                 <span class="v-date-foot" id="ev-foot-date"></span>
             </div>
         </div>
@@ -300,13 +297,13 @@
         <div class="voucher-wrapper" id="hr-voucher-template">
             <div class="v-header">
                 <div class="v-right-text">
-                    <h2 id="hr-v-rest-name">مطابخ ومحائذ هـــش HASH</h2>
+                    <h2 id="hr-v-rest-name">مطابخ ومحائذ Mister Casher</h2>
                     <p id="hr-v-branch">شارع المعارض جوار محطة مزايا</p>
                     <p id="hr-v-phone">0539774699</p>
                 </div>
                 <div class="v-logo-title-block">
                     <div class="v-center-logo">
-                        <img id="hr-v-logo" src="1111.png" alt="Logo" onerror="this.src='placeholder.svg'">
+                        <img id="hr-v-logo" src="2222.png" alt="Logo" onerror="this.src='placeholder.svg'">
                     </div>
                     <h1 class="v-main-title" id="hr-v-doc-title">سند صرف</h1>
                 </div>
@@ -330,7 +327,7 @@
                 </div>
             </div>
             <div class="v-bottom-meta">
-                <span class="v-by">By HASH</span>
+                <span class="v-by">By Mister Casher</span>
                 <span class="v-date-foot" id="hr-v-bottom-date"></span>
             </div>
         </div>
@@ -343,7 +340,7 @@
     <script src="acc.js"></script>
     <script>
         function exportExpensesPDF() {
-            let restName = "نظام_هش";
+            let restName = "نظام_مستر_كاشير";
             try {
                 const sysRaw = localStorage.getItem('restaurant_settings');
                 if (sysRaw) {

@@ -16,8 +16,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let selectedOrder = null;
 
     const xf = (n) =>
-        window.HashCurrency
-            ? HashCurrency.format(n)
+        window.MisterCasherCurrency
+            ? MisterCasherCurrency.format(n)
             : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س';
 
     function currentOperatorName() {
@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderSearchResult(order) {
         document.getElementById('res-order-id').innerText = `رقم الطلب: #${order.orderId || '—'}`;
         document.getElementById('res-date').innerText = order.date || new Date(order.timestamp || Date.now()).toLocaleString('ar-SA');
-        document.getElementById('res-total').innerHTML = `${(window.HashCurrency ? HashCurrency.formatNumber(order.total || 0) : Number(order.total || 0).toFixed(2))} <span class="js-cur-sym">${window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س'}</span>`;
+        document.getElementById('res-total').innerHTML = `${(window.MisterCasherCurrency ? MisterCasherCurrency.formatNumber(order.total || 0) : Number(order.total || 0).toFixed(2))} <span class="js-cur-sym">${window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س'}</span>`;
         document.getElementById('res-method').innerText = order.paymentMethod || 'غير محدد';
         document.getElementById('res-type').innerText = order.type || 'محلي';
 
@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderKpis() {
         const list = db.returns || [];
         const total = list.reduce((s, r) => s + (Number(r.amount) || 0), 0);
-        document.getElementById('kpi-total-returns').innerHTML = `${window.HashCurrency ? HashCurrency.formatNumber(total) : total.toFixed(2)} <span class="js-cur-sym">${window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س'}</span>`;
+        document.getElementById('kpi-total-returns').innerHTML = `${window.MisterCasherCurrency ? MisterCasherCurrency.formatNumber(total) : total.toFixed(2)} <span class="js-cur-sym">${window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س'}</span>`;
         document.getElementById('kpi-return-count').innerText = `${list.length} طلب`;
         if (list.length > 0) {
             const last = [...list].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))[0];

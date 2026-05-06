@@ -1,8 +1,8 @@
 document.addEventListener('DOMContentLoaded', async () => {
 
-    const curSym = () => (window.HashCurrency ? HashCurrency.getConfig().symbol : 'ر.س');
-    const curNum = (n) => (window.HashCurrency ? HashCurrency.formatNumber(n) : Number(n).toFixed(2));
-    const curFmt = (n) => (window.HashCurrency ? HashCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
+    const curSym = () => (window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س');
+    const curNum = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.formatNumber(n) : Number(n).toFixed(2));
+    const curFmt = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
     
     let currentPlPeriod = 'month';
 
@@ -21,8 +21,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function initChart() {
         const ctx = document.getElementById('plChart').getContext('2d');
+        const isLight = document.body.classList.contains('light-theme');
         
-        Chart.defaults.color = "rgba(255, 255, 255, 0.5)";
+        Chart.defaults.color = isLight ? "#475569" : "rgba(255, 255, 255, 0.5)";
         Chart.defaults.font.family = "'Cairo', sans-serif";
         
         const gradRev = ctx.createLinearGradient(0, 0, 0, 400);
@@ -60,11 +61,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { labels: { usePointStyle: true } }
+                    legend: { labels: { usePointStyle: true, color: isLight ? "#1e293b" : "#f8fafc" } }
                 },
                 scales: {
-                    x: { grid: { color: 'rgba(255,255,255,0.05)' } },
-                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { callback: (v) => v + ' ' + curSym() } }
+                    x: { grid: { color: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)' }, ticks: { color: isLight ? "#475569" : "rgba(255,255,255,0.7)" } },
+                    y: { grid: { color: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)' }, ticks: { color: isLight ? "#475569" : "rgba(255,255,255,0.7)", callback: (v) => v + ' ' + curSym() } }
                 }
             }
         });

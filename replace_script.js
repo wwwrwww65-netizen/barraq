@@ -10,7 +10,7 @@ function replaceInFile(filePath) {
     content = content.replace(/logo\.jpg/g, '1(1).png');
     
     // Replace Name
-    content = content.replace(/هـــش HASH/g, 'هـــش HASH');
+    content = content.replace(/Mister Casher/g, 'Mister Casher');
     
     if(content !== original) {
         fs.writeFileSync(filePath, content, 'utf8');
