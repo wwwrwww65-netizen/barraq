@@ -43,6 +43,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentDb.kitchenTx = [];
     }
 
+    // Add Force Refresh API
+    window.forceRecalculateKitchenStock = async function() {
+        await syncKitchenStockToInventory(true);
+        alert("✅ تم إعادة جرد المطبخ بالكامل من واقع سجلات الاستلام.");
+    };
+
     const navItems = document.querySelectorAll('#kp-nav-menu .nav-item[data-tab]');
 
     await switchTab('dashboard');
@@ -67,6 +73,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
     }
+
+    // Run stock sync immediately on load
+    await syncKitchenStockToInventory();
 });
 
 function playKitchenLowStockBeep() {
@@ -202,12 +211,18 @@ async function switchTab(tab) {
                 maybeRunKitchenStockSoundCheck(currentDb);
             } catch (e) {}
         }, 400);
+    } else if (tab === 'pending_issues') {
+        pageTitle.innerText = "أوامر صرف بانتظار استلام المطبخ";
+        contentArea.innerHTML = renderPendingIssues();
     } else if (tab === 'receive') {
         pageTitle.innerText = 'استلام مواد من المخزن (سحب يدوي)';
         contentArea.innerHTML = renderReceive();
     } else if (tab === 'handover') {
         pageTitle.innerText = "تسليم للمبيعات (تحويل جاهز)";
         contentArea.innerHTML = renderHandover();
+    } else if (tab === 'stock') {
+        pageTitle.innerText = "رصيد ومخزون المطبخ الحالي";
+        contentArea.innerHTML = renderStock();
     } else if (tab === 'reports') {
         pageTitle.innerText = "التقارير وسندات المطبخ";
         contentArea.innerHTML = renderReports();
@@ -255,18 +270,44 @@ window.confirmKitchenReceiveOrder = async function(orderId) {
     if (!db.kitchenTx) db.kitchenTx = [];
     db.kitchenTx.push(newTx);
 
-    // 3. Add to kitchen internal stock tracker
+    // 3. Add to kitchen internal stock tracker AND inventory (for POS deduction)
     if (!db.kitchenStock) db.kitchenStock = [];
-    const kIdx = db.kitchenStock.findIndex(k => k.sku === order.sku);
+    const kIdx = db.kitchenStock.findIndex(k => (k.sku && k.sku === order.sku) || k.name === order.itemName);
     if (kIdx !== -1) {
-        db.kitchenStock[kIdx].qty += order.qty;
+        db.kitchenStock[kIdx].qty = (Number(db.kitchenStock[kIdx].qty) || 0) + order.qty;
     } else {
         db.kitchenStock.push({
             name: order.itemName,
             sku: order.sku,
             unit: order.unit || '',
             qty: order.qty,
+            standardYield: order.standardYield || 1,
             minQty: 3 // Default minimum
+        });
+    }
+
+    // --- Sync with db.inventory (warehouseId: 'restaurant') ---
+    if (!db.inventory) db.inventory = [];
+    let invIdx = db.inventory.findIndex(i => i.sku === order.sku && i.warehouseId === 'restaurant');
+    if (invIdx === -1) {
+        // Try by name as fallback
+        invIdx = db.inventory.findIndex(i => i.name === order.itemName && i.warehouseId === 'restaurant');
+    }
+
+    if (invIdx !== -1) {
+        db.inventory[invIdx].qty = (Number(db.inventory[invIdx].qty) || 0) + order.qty;
+        db.inventory[invIdx].physicalQty = (Number(db.inventory[invIdx].physicalQty) || 0) + order.qty;
+        db.inventory[invIdx].standardYield = order.standardYield || 1;
+    } else {
+        db.inventory.push({
+            name: order.itemName,
+            sku: order.sku,
+            qty: order.qty,
+            physicalQty: order.qty,
+            unit: order.unit || '',
+            warehouseId: 'restaurant',
+            cost: order.cost || 0,
+            standardYield: order.standardYield || 1
         });
     }
 
@@ -338,7 +379,7 @@ window.saveKitchenReceive = async function() {
             db.inventory[idx].qty -= qty;
         }
 
-        // 3. Add to kitchen internal stock tracker
+        // 3. Add to kitchen internal stock tracker AND inventory
         if (!db.kitchenStock) db.kitchenStock = [];
         const kIdx = db.kitchenStock.findIndex(k => k.name === itemName);
         if (kIdx !== -1) {
@@ -353,6 +394,30 @@ window.saveKitchenReceive = async function() {
                 unit: invItem.unit || '',
                 qty: qty,
                 minQty: invItem.minQty != null ? Number(invItem.minQty) : 3
+            });
+        }
+
+        // --- Sync with db.inventory (warehouseId: 'restaurant') ---
+        if (!db.inventory) db.inventory = [];
+        let invIdxRes = db.inventory.findIndex(i => i.sku === invItem.sku && i.warehouseId === 'restaurant');
+        if (invIdxRes === -1) {
+            invIdxRes = db.inventory.findIndex(i => i.name === itemName && i.warehouseId === 'restaurant');
+        }
+
+        if (invIdxRes !== -1) {
+            db.inventory[invIdxRes].qty = (Number(db.inventory[invIdxRes].qty) || 0) + qty;
+            db.inventory[invIdxRes].physicalQty = (Number(db.inventory[invIdxRes].physicalQty) || 0) + qty;
+            db.inventory[invIdxRes].standardYield = invItem.standardYield || 1;
+        } else {
+            db.inventory.push({
+                name: itemName,
+                sku: invItem.sku,
+                qty: qty,
+                physicalQty: qty,
+                unit: invItem.unit || '',
+                warehouseId: 'restaurant',
+                cost: invItem.cost || 0,
+                standardYield: invItem.standardYield || 1
             });
         }
     });
@@ -425,21 +490,21 @@ function renderDashboard() {
     let pendingHTML = '';
     if (pendingOrders.length > 0) {
         let cardsHTML = pendingOrders.map(order => `
-            <div style="background:rgba(0,0,0,0.25); border:1px solid rgba(234,179,8,0.3); border-radius:10px; padding:15px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-                <div>
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px;">
-                        <span style="background:rgba(234,179,8,0.2); color:#fbbf24; padding:3px 8px; border-radius:6px; font-size:12px; font-weight:bold;">${order.id}</span>
-                        <strong style="color:white; font-size:16px;">${order.itemName}</strong>
+            <div class="kp-pending-item">
+                <div class="kp-pending-main">
+                    <div class="kp-pending-header">
+                        <span class="kp-pending-id">${order.id}</span>
+                        <strong class="kp-pending-name">${order.itemName}</strong>
                     </div>
-                    <div style="color:var(--text-muted); font-size:13px;">
+                    <div class="kp-pending-info">
                         <i class="ph ph-warehouse"></i> من: ${order.fromWhName} |
                         <i class="ph ph-calendar"></i> التاريخ: ${order.date} 
                         ${order.notes ? `| <i class="ph ph-info"></i> ${order.notes}` : ''}
                     </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:15px;">
-                    <span style="font-size:20px; font-weight:800; color:#10b981;">${order.qty} <span style="font-size:14px;">${order.unit}</span></span>
-                    <button class="kp-action-btn" style="background:linear-gradient(135deg, #10b981, #059669); padding:8px 16px; min-width:auto;" onclick="window.confirmKitchenReceiveOrder('${order.id}')">
+                <div class="kp-pending-actions">
+                    <span class="kp-pending-qty">${order.qty} <span class="kp-pending-unit">${order.unit}</span></span>
+                    <button class="kp-action-btn kp-confirm-btn" onclick="window.confirmKitchenReceiveOrder('${order.id}')">
                         <i class="ph ph-check-circle"></i> تأكيد الاستلام
                     </button>
                 </div>
@@ -447,9 +512,9 @@ function renderDashboard() {
         `).join('');
 
         pendingHTML = `
-            <div class="kp-card" style="border: 2px solid rgba(234,179,8,0.5); background: linear-gradient(135deg, rgba(234,179,8,0.05), rgba(234,179,8,0.01));">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                    <h3 style="margin:0; color:#fbbf24;"><i class="ph ph-truck"></i> أوامر جاهزة بانتظار استلام المطبخ (${pendingOrders.length})</h3>
+            <div class="kp-card kp-pending-wrapper">
+                <div class="kp-pending-title-row">
+                    <h3 class="kp-pending-title"><i class="ph ph-truck"></i> أوامر جاهزة بانتظار استلام المطبخ (${pendingOrders.length})</h3>
                 </div>
                 ${cardsHTML}
             </div>
@@ -503,13 +568,13 @@ function renderDashboard() {
                     <h3>${handoverCount} وحدة</h3>
                 </div>
             </div>
-            <div class="kp-stat-card">
+            <div class="kp-stat-card" onclick="switchTab('stock')" style="cursor:pointer">
                 <div class="kp-icon-box red">
                     <i class="ph-fill ph-warning-circle"></i>
                 </div>
                 <div class="kp-stat-details">
                     <p>أصناف قاربت على النفاذ</p>
-                    <h3>0 أصناف</h3>
+                    <h3>${(currentDb.kitchenStock || []).filter(k => (Number(k.qty)||0) <= (Number(k.minQty)||3)).length} أصناف</h3>
                 </div>
             </div>
             <div class="kp-stat-card">
@@ -541,6 +606,58 @@ function renderDashboard() {
                     ${rowsHTML}
                 </tbody>
             </table>
+        </div>
+    `;
+}
+
+/** 
+ * ريندر لصفحة مستقلة مخصصة فقط للأوامر المعلقة (عند الضغط من السايدبار)
+ */
+function renderPendingIssues() {
+    const pendingOrders = (currentDb && currentDb.issueOrders) ? currentDb.issueOrders.filter(o => o.status === 'قيد الاستلام') : [];
+    
+    if (pendingOrders.length === 0) {
+        return `
+            <div class="kp-card">
+                <div class="kp-empty-state">
+                    <i class="ph ph-check-circle" style="color:var(--accent-green); opacity:0.5;"></i>
+                    <h3>لا توجد أوامر معلقة حالياً</h3>
+                    <p>تم استلام جميع طلبات الصرف المحولة من المستودعات.</p>
+                    <button class="kp-action-btn secondary" style="margin-top:20px;" onclick="switchTab('dashboard')">العودة للوحة الرئيسية</button>
+                </div>
+            </div>
+        `;
+    }
+
+    let cardsHTML = pendingOrders.map(order => `
+        <div class="kp-pending-item">
+            <div class="kp-pending-main">
+                <div class="kp-pending-header">
+                    <span class="kp-pending-id">${order.id}</span>
+                    <strong class="kp-pending-name">${order.itemName}</strong>
+                </div>
+                <div class="kp-pending-info">
+                    <i class="ph ph-warehouse"></i> من: ${order.fromWhName} |
+                    <i class="ph ph-calendar"></i> التاريخ: ${order.date} 
+                    ${order.notes ? `| <i class="ph ph-info"></i> ${order.notes}` : ''}
+                </div>
+            </div>
+            <div class="kp-pending-actions">
+                <span class="kp-pending-qty">${order.qty} <span class="kp-pending-unit">${order.unit}</span></span>
+                <button class="kp-action-btn kp-confirm-btn" onclick="window.confirmKitchenReceiveOrder('${order.id}')">
+                    <i class="ph ph-check-circle"></i> تأكيد الاستلام
+                </button>
+            </div>
+        </div>
+    `).join('');
+
+    return `
+        <div class="kp-card kp-pending-wrapper">
+            <div class="kp-pending-title-row">
+                <h3 class="kp-pending-title"><i class="ph ph-clock-counter-clockwise"></i> قائمة طلبات الصرف الواردة (${pendingOrders.length})</h3>
+            </div>
+            <p style="color:var(--text-muted); margin-bottom:20px; font-size:13px;">يرجى مراجعة الأصناف أدناه والضغط على "تأكيد الاستلام" لإضافتها لمخزون المطبخ فور وصولها فعلياً.</p>
+            ${cardsHTML}
         </div>
     `;
 }
@@ -1017,3 +1134,247 @@ window.saveKitchenPrefs = function () {
     localStorage.setItem(KITCHEN_PREFS_KEY, JSON.stringify(next));
     alert('تم حفظ إعدادات المطبخ (المستودع، الخصم عند البيع، التنبيه الصوتي، الطباعة التلقائية).');
 };
+
+function renderStock() {
+    const inv = (currentDb && currentDb.inventory) ? currentDb.inventory.filter(i => i.warehouseId === 'restaurant') : [];
+    
+    let rows = inv.map(i => {
+        const min = i.minQty != null ? i.minQty : 3;
+        const isLow = Number(i.qty) <= min;
+        return `
+            <tr class="${isLow ? 'kp-row-warning' : ''}">
+                <td>${i.sku || '-'}</td>
+                <td style="font-weight:bold;">${i.name}</td>
+                <td><span class="kp-badge ${isLow ? 'status-out' : 'status-in'}">${i.qty} ${i.unit || ''}</span></td>
+                <td>${min}</td>
+                <td>${Number(i.cost || 0).toFixed(2)} ر.س</td>
+                <td>
+                    ${isLow ? '<i class="ph-fill ph-warning" style="color:var(--accent-orange)"></i> منخفض' : '<i class="ph-fill ph-check-circle" style="color:var(--accent-green)"></i> متوفر'}
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    if (!rows) {
+        rows = `<tr><td colspan="6" style="text-align:center; padding:40px; color:var(--text-muted);">لا يوجد مخزون في المطبخ حالياً. قم باستلام مواد من المخزن.</td></tr>`;
+    }
+
+    return `
+        <div class="kp-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 style="margin:0;"><i class="ph ph-package"></i> المواد الخام والسلع المتوفرة بالمطبخ</h3>
+                <button class="kp-action-btn secondary" onclick="switchTab('receive')"><i class="ph ph-plus"></i> استلام مواد جديدة</button>
+            </div>
+            <div class="kp-table-container">
+                <table class="kp-table">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>اسم الصنف</th>
+                            <th>الكمية المتبقية</th>
+                            <th>الحد الأدنى</th>
+                            <th>التكلفة</th>
+                            <th>الحالة</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+// --- Migration / Auto-Sync Logic ---
+function renderStock() {
+    const inv = (currentDb && currentDb.inventory) ? currentDb.inventory.filter(i => i.warehouseId === 'restaurant') : [];
+    const txs = (currentDb && currentDb.kitchenTx) ? currentDb.kitchenTx : [];
+
+    // Grouping and sorting
+    const grouped = {};
+    inv.forEach(i => {
+        const n = i.name.trim();
+        if (!grouped[n]) {
+            grouped[n] = { ...i, qty: 0 };
+        }
+        grouped[n].qty += (Number(i.qty) || 0);
+    });
+
+    const items = Object.values(grouped).sort((a,b) => a.qty - b.qty);
+
+    let cardsHTML = items.map(i => {
+        const min = i.minQty != null ? i.minQty : 3;
+        const isLow = Number(i.qty) <= min;
+        const totalIn = txs.filter(t => t.type === 'receive' && t.itemName.trim() === i.name.trim()).reduce((s, t) => s + (Number(t.qty)||0), 0);
+        
+        return `
+            <div class="kp-stock-card">
+                <div class="kp-stock-card-header">
+                    <div>
+                        <h4 class="kp-stock-name">${i.name}</h4>
+                        <span class="kp-stock-sku">${i.sku || 'بدون كود'}</span>
+                    </div>
+                    <div class="kp-status-tag ${isLow ? 'status-warning' : 'status-safe'}">
+                        <i class="ph-fill ${isLow ? 'ph-warning' : 'ph-check-circle'}"></i>
+                        ${isLow ? 'يحتاج طلب' : 'متوفر جيد'}
+                    </div>
+                </div>
+
+                <div class="kp-stock-main">
+                    <span class="kp-qty-large" style="color: ${isLow ? '#f59e0b' : '#10b981'}">
+                        ${Math.ceil(Number(i.qty))}
+                        <span class="kp-qty-unit">${i.unit || 'وحدة'}</span>
+                    </span>
+                    <span class="kp-qty-label">العدد الحالي (رؤوس/قطع)</span>
+                </div>
+
+                <div class="kp-stock-main" style="margin-top: 10px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 10px;">
+                    <span class="kp-qty-large" style="color: var(--accent-orange); font-size: 24px;">
+                        ${parseFloat((Number(i.qty) * (i.standardYield || 1)).toFixed(2))}
+                        <span class="kp-qty-unit">نفر/طبق</span>
+                    </span>
+                    <span class="kp-qty-label">السعة التشغيلية (جاهز للبيع)</span>
+                </div>
+
+                <div class="kp-stock-footer">
+                    <div class="kp-audit-info">
+                        <i class="ph ph-list-checks"></i>
+                        مجموع المستلم: ${totalIn}
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted)">
+                        الحد الأدنى: ${min}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    if (!cardsHTML) {
+        cardsHTML = `
+            <div class="kp-empty-state" style="grid-column: 1 / -1; padding: 100px 0;">
+                <i class="ph ph-package" style="font-size: 80px;"></i>
+                <h2 style="color:white">لا يوجد مخزون في المطبخ</h2>
+                <p>قم باستلام بضاعة من المخازن لتظهر هنا</p>
+                <button class="kp-action-btn" onclick="switchTab('receive')" style="margin-top:20px">
+                    <i class="ph ph-plus"></i> ابدأ الاستلام الآن
+                </button>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="kp-stock-grid">
+            ${cardsHTML}
+        </div>
+    `;
+}
+
+// Ensures that kitchenStock is always mirrored in inventory for correct POS deductions
+async function syncKitchenStockToInventory(forceFromLog = false) {
+    const db = await window.dbRead();
+    if (!db.kitchenTx) return;
+    
+    let changed = false;
+    if (!db.kitchenStock) { db.kitchenStock = []; changed = true; }
+    if (!db.inventory) { db.inventory = []; changed = true; }
+
+    // 1. Audit Kitchen Transactions (In - Out)
+    const txTotals = {}; // key: sku || name
+    const txMetadata = {}; // key -> { name, sku, unit }
+
+    if (db.kitchenTx) {
+        db.kitchenTx.forEach(tx => {
+            const name = (tx.itemName || "").trim();
+            const sku = (tx.itemSku || "").trim();
+            const key = sku || name;
+            if (!key) return;
+
+            if (!txMetadata[key]) {
+                txMetadata[key] = { name, sku, unit: tx.unit || '' };
+            }
+
+            const qty = Number(tx.qty) || 0;
+            if (tx.type === 'receive') {
+                txTotals[key] = (txTotals[key] || 0) + qty;
+            } else if (tx.type === 'pos_sale' || tx.type === 'waste') {
+                // We exclude 'handover' here because it typically refers to finished products,
+                // while kitchenStock tracks raw materials/ingredients.
+                txTotals[key] = (txTotals[key] || 0) - qty;
+            }
+        });
+    }
+
+    if (forceFromLog) {
+        // Aggressively rebuild kitchenStock from Log
+        db.kitchenStock = Object.keys(txTotals).map(key => {
+            const meta = txMetadata[key];
+            return {
+                name: meta.name,
+                sku: meta.sku,
+                qty: txTotals[key],
+                unit: meta.unit,
+                minQty: 3
+            };
+        });
+        changed = true;
+    } else {
+        // Rebuild kitchenStock directly from txTotals (The source of truth)
+        // This ensures ghost items (like products with only handover records) are purged.
+        const newStock = Object.keys(txTotals).map(key => {
+            const meta = txMetadata[key];
+            return {
+                name: meta.name,
+                sku: meta.sku,
+                qty: txTotals[key],
+                unit: meta.unit,
+                minQty: 3
+            };
+        });
+
+        // Only update if something actually changed to avoid unnecessary writes
+        if (JSON.stringify(db.kitchenStock) !== JSON.stringify(newStock)) {
+            db.kitchenStock = newStock;
+            changed = true;
+        }
+    }
+
+    // 4. Sync to Global Inventory (and deduplicate it for restaurant)
+    const otherWhInv = (db.inventory || []).filter(i => i.warehouseId !== 'restaurant');
+    const newRestaurantInv = [];
+
+    db.kitchenStock.forEach(ks => {
+        if (ks.qty === 0 && !db.kitchenTx.find(t => (t.itemName === ks.name || t.itemSku === ks.sku) && t.type === 'receive')) {
+            // Skip 0-qty items that were never received (likely artifacts)
+            return;
+        }
+        // Pull standardYield from other warehouse items if available
+        const srcItem = otherWhInv.find(i => i.sku === ks.sku || i.name === ks.name);
+        const stdY = (srcItem ? srcItem.standardYield : 0) || (ks.standardYield || 1);
+
+        newRestaurantInv.push({
+            name: ks.name,
+            sku: ks.sku,
+            qty: ks.qty,
+            unit: ks.unit || '',
+            warehouseId: 'restaurant',
+            cost: 0,
+            minQty: ks.minQty || 3,
+            standardYield: stdY
+        });
+    });
+
+    db.inventory = [...otherWhInv, ...newRestaurantInv];
+    changed = true;
+
+    if (changed) {
+        await window.dbWrite(db);
+        currentDb = db;
+        if (typeof switchTab === 'function') {
+            await switchTab(kpActiveTab);
+        }
+    }
+}
+
+// Run sync immediately
+syncKitchenStockToInventory();

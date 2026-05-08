@@ -2,12 +2,36 @@ const { ipcRenderer } = require('electron');
 
 async function saveDB(db) {
     await window.dbWrite(db);
-    try { ipcRenderer.send('notify-db-changed'); } catch (e) {}
+    try { ipcRenderer.send('notify-db-changed'); } catch (e) { }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
     const xf = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
     const curSym = () => (window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س');
+
+    // Helper for Arabic Pluralization
+    function formatArabicQty(qty, unit) {
+        const q = Math.round(qty);
+        if (q === 0) return '0 ' + unit;
+
+        // Define common unit plurals
+        const unitMap = {
+            'حبة': { dual: 'حبتين', plural: 'حبات' },
+            'خروف': { dual: 'خروفين', plural: 'خراف' },
+            'كيس': { dual: 'كيسين', plural: 'أكياس' },
+            'كرتون': { dual: 'كرتونين', plural: 'كراتين' },
+            'طبق': { dual: 'طبقين', plural: 'أطباق' },
+            'نفر': { dual: 'نفرين', plural: 'نفرات' },
+            'حبه': { dual: 'حبتين', plural: 'حبات' }
+        };
+
+        const map = unitMap[unit] || { dual: unit + 'ين', plural: unit };
+
+        if (q === 1) return unit;
+        if (q === 2) return map.dual;
+        if (q >= 3 && q <= 10) return q + ' ' + map.plural;
+        return q + ' ' + unit;
+    }
     const tbody = document.querySelector('.inv-table tbody');
     if (!tbody) return;
 
@@ -27,16 +51,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             const s = JSON.parse(localStorage.getItem('restaurant_settings') || '{}');
             const rate = parseFloat(s.taxRate);
             return isNaN(rate) ? 15 : rate;
-        } catch(e) { return 15; }
+        } catch (e) { return 15; }
     }
 
     function renderPendingReceipts() {
         const pending = (db.purchases || []).filter(p => p.status === 'قيد الاستلام');
         const section = document.getElementById('pending-receipts-section');
-        const list    = document.getElementById('pending-receipts-list');
-        const badge   = document.getElementById('pending-count-badge');
+        const list = document.getElementById('pending-receipts-list');
+        const badge = document.getElementById('pending-count-badge');
         const navLink = document.getElementById('nav-pending-link');
-        const navCnt  = document.getElementById('nav-pending-count');
+        const navCnt = document.getElementById('nav-pending-count');
 
         if (!section || !list) return;
 
@@ -49,7 +73,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         section.style.display = 'block';
         if (badge) badge.textContent = pending.length + ' فاتورة معلقة';
         if (navLink) navLink.style.display = '';
-        if (navCnt)  navCnt.textContent = pending.length;
+        if (navCnt) navCnt.textContent = pending.length;
 
         list.innerHTML = '';
         pending.forEach(pur => {
@@ -97,6 +121,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // --- Fix for Pending Receipts Sidebar Link ---
+    const navPendingLink = document.getElementById('nav-pending-link');
+    if (navPendingLink) {
+        navPendingLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            const section = document.getElementById('pending-receipts-section');
+            if (section) {
+                section.style.display = 'block'; // Ensure it's visible
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                // Add a temporary highlight effect
+                const inner = section.querySelector('div');
+                if (inner) {
+                    inner.style.transition = 'all 0.5s ease';
+                    inner.style.boxShadow = '0 0 30px rgba(234,179,8,0.5)';
+                    inner.style.borderColor = '#fbbf24';
+                    setTimeout(() => {
+                        inner.style.boxShadow = '';
+                        inner.style.borderColor = 'rgba(234,179,8,0.4)';
+                    }, 2000);
+                }
+            }
+        });
+    }
+
     async function whReceivePurchase(pur) {
         const taxPct = getSystemTaxRate();
         const destWh = pur.destWh || 'main';
@@ -105,16 +154,45 @@ document.addEventListener('DOMContentLoaded', async () => {
             const unitCost = buyItem.price / (1 + taxPct / 100);
             let invItem = erpItems.find(i => i.sku === buyItem.sku && (i.warehouseId || 'main') === destWh);
 
+            const standardYield = (invItem ? invItem.standardYield : 0) || 1;
+            const actualYield = Number(buyItem.yield) || 0;
+
+            // Calculation: AddedQty = (Total Actual Yield / Standard Yield)
+            // If no yield specified, we assume physical quantity matches standard.
+            let addedQty = buyItem.qty;
+            if (actualYield > 0) {
+                addedQty = actualYield / standardYield;
+                console.log(`[Yield Management] Normalizing ${buyItem.qty} physical units (Yield ${actualYield}) to ${addedQty.toFixed(4)} standard units (Std ${standardYield})`);
+            }
+
             if (invItem) {
-                invItem.qty = (Number(invItem.qty) || 0) + buyItem.qty;
-                invItem.cost = unitCost;
+                invItem.qty = (Number(invItem.qty) || 0) + addedQty;
+                invItem.physicalQty = (Number(invItem.physicalQty) || (Number(invItem.qty) - addedQty) || 0) + buyItem.qty;
+                invItem.cost = unitCost * (buyItem.qty / addedQty); // Adjusted cost to reflect standard unit
             } else {
                 let src = erpItems.find(i => i.sku === buyItem.sku);
                 if (src) {
-                    let clone = { ...src, warehouseId: destWh, qty: buyItem.qty, cost: unitCost };
+                    let clone = {
+                        ...src,
+                        warehouseId: destWh,
+                        qty: addedQty,
+                        physicalQty: buyItem.qty,
+                        cost: unitCost * (buyItem.qty / addedQty)
+                    };
                     erpItems.push(clone);
                 } else {
-                    erpItems.push({ sku: buyItem.sku, name: buyItem.name, category: '', unit: '', cost: unitCost, qty: buyItem.qty, minQty: 0, warehouseId: destWh });
+                    erpItems.push({
+                        sku: buyItem.sku,
+                        name: buyItem.name,
+                        category: '',
+                        unit: '',
+                        cost: unitCost * (buyItem.qty / addedQty),
+                        qty: addedQty,
+                        physicalQty: buyItem.qty,
+                        minQty: 0,
+                        warehouseId: destWh,
+                        standardYield: 1 // Default if unknown
+                    });
                 }
             }
 
@@ -124,9 +202,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 total: buyItem.qty * unitCost,
                 date: Date.now(),
                 fromWh: 'SUPPLIER',
-                toWh: destWh,
+                warehouseId: destWh,
                 sku: buyItem.sku,
-                refInvoice: pur.id
+                refInvoice: pur.id,
+                actualQty: buyItem.qty,
+                normalizedQty: addedQty
             });
         });
 
@@ -134,7 +214,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         db.inventory = erpItems;
         db.inventoryTx = erpTx;
         await window.dbWrite(db);
-        try { const { ipcRenderer } = require('electron'); ipcRenderer.send('notify-db-changed'); } catch(e) {}
+        try { const { ipcRenderer } = require('electron'); ipcRenderer.send('notify-db-changed'); } catch (e) { }
 
         renderPendingReceipts();
         renderTable();
@@ -148,15 +228,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     function whPrintReceiveNote(pur) {
         const taxPct = getSystemTaxRate();
         const destWhName = whNames[pur.destWh || 'main'] || pur.destWh;
-        const dateStr = new Date().toLocaleDateString('ar-SA', { year:'numeric', month:'long', day:'numeric' });
+        const dateStr = new Date().toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' });
         let rows = ''; let sub = 0;
         (pur.items || []).forEach((it, i) => {
             const uc = it.price / (1 + taxPct / 100);
             const lt = it.qty * uc;
             sub += lt;
-            rows += `<tr><td style="text-align:center">${i+1}</td><td>${it.name}</td><td style="text-align:center">${it.qty}</td><td style="text-align:center">${uc.toFixed(2)}</td><td style="text-align:center">${lt.toFixed(2)}</td><td style="text-align:center;color:green">✓</td></tr>`;
+            rows += `<tr><td style="text-align:center">${i + 1}</td><td>${it.name}</td><td style="text-align:center">${it.qty}</td><td style="text-align:center">${uc.toFixed(2)}</td><td style="text-align:center">${lt.toFixed(2)}</td><td style="text-align:center;color:green">✓</td></tr>`;
         });
-        const w = window.open('','_blank','width=820,height=700');
+        const w = window.open('', '_blank', 'width=820,height=700');
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>أمر استلام - ${pur.id}</title>
         <style>body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;padding:28px;color:#111;font-size:13px}
         h1{margin:0 0 4px;font-size:20px;color:#0f172a}.sub{color:#10b981;font-weight:600;font-size:14px}
@@ -187,14 +267,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="grid2">
           <div class="box"><label>المورد</label><span>${pur.supName}</span></div>
           <div class="box"><label>المستودع المستلِم</label><span>${destWhName}</span></div>
-          <div class="box"><label>طريقة الدفع</label><span>${pur.payMethod==='cash'?'نقداً':pur.payMethod==='bank'?'حوالة بنكية':'آجل (ذمة)'}</span></div>
+          <div class="box"><label>طريقة الدفع</label><span>${pur.payMethod === 'cash' ? 'نقداً' : pur.payMethod === 'bank' ? 'حوالة بنكية' : 'آجل (ذمة)'}</span></div>
           <div class="box"><label>حالة الاستلام</label><span style="color:#10b981">✓ تم الاستلام وإدخال المخزون</span></div>
         </div>
         <table><thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>سعر الوحدة (ق.ض)</th><th>الإجمالي</th><th>تم الإدخال</th></tr></thead>
         <tbody>${rows}</tbody></table>
         <div style="display:flex;justify-content:flex-end"><div class="sumbox">
           <div class="sl"><span>إجمالي قبل الضريبة:</span><span>${sub.toFixed(2)} ر.س</span></div>
-          <div class="sl"><span>ضريبة ${taxPct}%:</span><span>${(sub*taxPct/100).toFixed(2)} ر.س</span></div>
+          <div class="sl"><span>ضريبة ${taxPct}%:</span><span>${(sub * taxPct / 100).toFixed(2)} ر.س</span></div>
           <div class="sl tot"><span>الإجمالي النهائي:</span><span>${xf(pur.total)}</span></div>
         </div></div>
         <div class="notice">⚠️ هذا السند يُثبت استلام البضاعة وإدخالها في المخزون الإلكتروني. يُعتمد بتوقيع أمين المستودع والمستلم.</div>
@@ -320,7 +400,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td>${item.category || ''}</td>
                 <td>${item.unit || ''}</td>
                 <td>${xf(item.cost)}</td>
-                <td class="qty-col ${qty === 0 ? 'empty' : qty <= minQ ? 'low' : 'safe'}">${qty}</td>
+                <td class="physical-col" style="text-align:center;">${formatArabicQty(item.physicalQty != null ? item.physicalQty : qty, item.unit || 'وحدة')}</td>
+                <td class="qty-col ${qty === 0 ? 'empty' : qty <= minQ ? 'low' : 'safe'}">${qty.toFixed(3)}</td>
+                <td style="text-align:center; color:var(--text-muted); font-size:12px;">${item.standardYield || 1}</td>
+                <td class="capacity-col" style="text-align:center;">${(qty * (item.standardYield || 1)).toFixed(1)}</td>
                 <td>${xf(qty * Number(item.cost))}</td>
                 <td>${statusTag}</td>
                 <td>
@@ -336,14 +419,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ── Infinite Scroll State ────────────────────────────────────────────────
     const INV_INITIAL_CHUNK = 50;    // أول تحميل
-    const INV_LOAD_MORE     = 20;    // كل scroll إضافي
-    let   _filteredItems    = [];    // البيانات المصفاة الكاملة
-    let   _renderedCount    = 0;     // كم صف رُسم حتى الآن
-    let   _isLoadingMore    = false; // حارس لمنع طلبين متزامنين
+    const INV_LOAD_MORE = 20;    // كل scroll إضافي
+    let _filteredItems = [];    // البيانات المصفاة الكاملة
+    let _renderedCount = 0;     // كم صف رُسم حتى الآن
+    let _isLoadingMore = false; // حارس لمنع طلبين متزامنين
 
     /** يُرتّب البيانات المصفاة ويُخزّنها، ثم يرسم أول chunk */
     function renderTable() {
         updateTableTitle();
+        if (!erpItems || erpItems.length === 0) {
+            console.warn('[Inventory] renderTable called but erpItems is empty. Skipping clear to prevent data disappearance.');
+            // If it's truly empty (first load), we show the message, otherwise we keep old data
+            if (tbody.innerHTML === '') {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:20px;">جاري تحميل البيانات...</td></tr>';
+            }
+            return;
+        }
+
         tbody.innerHTML = '';
         _renderedCount = 0;
 
@@ -358,13 +450,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (q)
             base = base.filter((it) =>
                 String(it.name || '').toLowerCase().includes(q) ||
-                String(it.sku  || '').toLowerCase().includes(q)
+                String(it.sku || '').toLowerCase().includes(q)
             );
 
         _filteredItems = base;
 
         if (_filteredItems.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:20px;">لا توجد أصناف مطابقة للعرض الحالي.</td></tr>';
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" style="text-align:center;color:var(--text-muted);padding:40px;">
+                        <i class="ph ph-mask-sad" style="font-size:48px;display:block;margin-bottom:15px;opacity:0.5;"></i>
+                        <div style="font-size:18px;font-weight:700;margin-bottom:8px;">لا توجد أصناف مطابقة للعرض الحالي</div>
+                        <p style="font-size:14px;margin-bottom:20px;opacity:0.8;">ربما قمت باختيار مستودع فارغ أو أن هناك تصفية نشطة.</p>
+                        <button type="button" class="glass-btn" onclick="window.location.reload()" style="padding:8px 20px;">
+                            <i class="ph ph-arrows-clockwise"></i> تحديث الصفحة بالكامل
+                        </button>
+                    </td>
+                </tr>`;
             return;
         }
 
@@ -405,7 +507,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.dataset.bound = '1';
             btn.addEventListener('click', (e) => {
                 const sku = e.currentTarget.dataset.sku;
-                const wh  = e.currentTarget.dataset.wh || currentWH;
+                const wh = e.currentTarget.dataset.wh || currentWH;
                 openItemModalEdit(sku, wh);
             });
         });
@@ -413,7 +515,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.dataset.bound = '1';
             btn.addEventListener('click', (e) => {
                 const sku = e.currentTarget.dataset.sku;
-                const wh  = e.currentTarget.dataset.wh || currentWH;
+                const wh = e.currentTarget.dataset.wh || currentWH;
                 deleteItem(sku, wh);
             });
         });
@@ -430,7 +532,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // إضافة الفئات الافتراضية إذا لم تكن موجودة
         const defaultCats = ['المواد التموينية', 'اللحوم والدواجن', 'الخضروات والفاكهة', 'الزيوت والصلصات', 'البهارات والمكسرات', 'مواد تعبئة وتغليف'];
         defaultCats.forEach(c => cats.add(c));
-        
+
         datalist.innerHTML = '';
         [...cats].sort().forEach((c) => {
             const option = document.createElement('option');
@@ -489,7 +591,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         _scrollObserver.observe(_sentinel);
     }
     // نُضيف sentinel بعد استدعاء renderTable
-    const _patchedRender = function() {
+    const _patchedRender = function () {
         _scrollObserver.unobserve(_sentinel);
         renderTable();
         if (_filteredItems.length > INV_INITIAL_CHUNK) _observeSentinel();
@@ -509,11 +611,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (typeof window.registerPosDatabaseRefresh === 'function') {
         window.registerPosDatabaseRefresh(async () => {
-            db = await window.dbRead();
-            erpItems = db.inventory || [];
-            erpTx = db.inventoryTx || [];
-            _patchedRender();
-            renderKPIs();
+            // Stagger staggered refresh to avoid file lock contention among windows
+            const staggerDelay = Math.floor(Math.random() * 800) + 100;
+            console.log(`[Inventory] 🔄 Database update notification received. Refreshing in ${staggerDelay}ms...`);
+
+            setTimeout(async () => {
+                const newDb = await window.dbRead();
+                if (newDb && newDb.inventory && newDb.inventory.length > 0) {
+                    db = newDb;
+                    erpItems = db.inventory || [];
+                    erpTx = db.inventoryTx || [];
+                    _patchedRender();
+                    renderKPIs();
+                    console.log('[Inventory] ✅ UI Refreshed with', erpItems.length, 'items');
+                } else {
+                    console.warn('[Inventory] ⚠️ Received empty database on refresh, ignoring to prevent UI clear.');
+                }
+            }, staggerDelay);
         });
     }
 
@@ -539,12 +653,54 @@ document.addEventListener('DOMContentLoaded', async () => {
     function resetItemModal() {
         document.getElementById('item-edit-sku').value = '';
         document.getElementById('item-edit-wh').value = '';
+        document.getElementById('item-sku-input').value = '';
+        document.getElementById('item-sku-input').disabled = false;
         document.getElementById('item-modal-title').textContent = 'تعريف منتج مخزني جديد';
-        document.getElementById('item-qty-label').textContent = 'الرصيد الافتتاحي (الكمية)';
+
+        const hasQtyCheck = document.getElementById('item-has-qty');
+        const qtyInput = document.getElementById('item-qty');
+        const physInput = document.getElementById('item-physical-qty');
+        const lblStd = document.getElementById('lbl-qty-std');
+        const lblPhys = document.getElementById('lbl-qty-phys');
+        const qtyNote = document.getElementById('qty-note');
+
+        if (hasQtyCheck) {
+            hasQtyCheck.checked = false;
+            hasQtyCheck.parentElement.style.display = 'flex';
+        }
+        if (qtyInput) {
+            qtyInput.style.display = 'none';
+            qtyInput.required = false;
+        }
+        if (physInput) {
+            physInput.style.display = 'none';
+            physInput.required = false;
+        }
+        if (lblStd) lblStd.style.display = 'none';
+        if (lblPhys) lblPhys.style.display = 'none';
+        if (qtyNote) qtyNote.style.display = 'none';
+
         document.getElementById('item-submit-btn').textContent = 'حفظ المنتج';
+        document.getElementById('item-standard-yield').value = '1';
         document.getElementById('form-item').reset();
         updateCategorySuggestions();
     }
+
+    // Toggle Quantity Input visibility
+    document.getElementById('item-has-qty')?.addEventListener('change', (e) => {
+        const qtyInput = document.getElementById('item-qty');
+        const physInput = document.getElementById('item-physical-qty');
+        const lblStd = document.getElementById('lbl-qty-std');
+        const lblPhys = document.getElementById('lbl-qty-phys');
+        const qtyNote = document.getElementById('qty-note');
+
+        const show = e.target.checked;
+        if (qtyInput) { qtyInput.style.display = show ? 'block' : 'none'; qtyInput.required = show; }
+        if (physInput) { physInput.style.display = show ? 'block' : 'none'; physInput.required = show; }
+        if (lblStd) lblStd.style.display = show ? 'block' : 'none';
+        if (lblPhys) lblPhys.style.display = show ? 'block' : 'none';
+        if (qtyNote) qtyNote.style.display = show ? 'block' : 'none';
+    });
 
     function openItemModalEdit(sku, wh) {
         const idx = findItemIndex(sku, wh);
@@ -554,14 +710,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('item-edit-sku').value = sku;
         document.getElementById('item-edit-wh').value = whNorm(it.warehouseId);
         document.getElementById('item-modal-title').textContent = 'تعديل صنف مخزني';
-        document.getElementById('item-qty-label').textContent = 'الكمية الحالية';
+
+        const hasQtyCheck = document.getElementById('item-has-qty');
+        const qtyInput = document.getElementById('item-qty');
+        const physInput = document.getElementById('item-physical-qty');
+        const lblStd = document.getElementById('lbl-qty-std');
+        const lblPhys = document.getElementById('lbl-qty-phys');
+        const qtyNote = document.getElementById('qty-note');
+
+        if (hasQtyCheck) {
+            hasQtyCheck.checked = true;
+            hasQtyCheck.parentElement.style.display = 'none'; // Hide checkbox during edit
+        }
+        if (qtyInput) {
+            qtyInput.style.display = 'block';
+            qtyInput.required = true;
+        }
+        if (physInput) {
+            physInput.style.display = 'block';
+            physInput.required = true;
+        }
+        if (lblStd) lblStd.style.display = 'block';
+        if (lblPhys) lblPhys.style.display = 'block';
+        if (qtyNote) qtyNote.style.display = 'block';
+
         document.getElementById('item-submit-btn').textContent = 'حفظ التعديلات';
         document.getElementById('item-name').value = it.name || '';
         document.getElementById('item-cat').value = it.category || '';
         document.getElementById('item-unit').value = it.unit || '';
         document.getElementById('item-cost').value = it.cost ?? '';
         document.getElementById('item-qty').value = it.qty ?? '';
+        document.getElementById('item-physical-qty').value = it.physicalQty ?? it.qty ?? '';
         document.getElementById('item-min').value = it.minQty ?? '';
+        document.getElementById('item-standard-yield').value = it.standardYield || 1;
+
+        const skuInput = document.getElementById('item-sku-input');
+        if (skuInput) {
+            skuInput.value = it.sku || '';
+            skuInput.disabled = true; // Don't allow changing SKU during edit to maintain data integrity
+        }
+
         updateCategorySuggestions();
         openModal('itemModal');
     }
@@ -734,14 +922,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (formTransfer) {
         formTransfer.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             // منع الإرسال المزدوج
             const submitBtn = e.target.querySelector('button[type="submit"]');
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري التحويل...';
             }
-            
+
             try {
                 const fromWh = document.getElementById('trans-from').value;
                 const toWh = document.getElementById('trans-to').value;
@@ -790,7 +978,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 closeModal('transferModal');
                 formTransfer.reset();
-                
+
                 // تأجيل إعادة التحميل لمنع الشاشة السوداء
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
@@ -815,14 +1003,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (formItem) {
         formItem.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             // منع الإرسال المزدوج
             const submitBtn = e.target.querySelector('button[type="submit"]');
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري الحفظ...';
             }
-            
+
             try {
                 const editSku = document.getElementById('item-edit-sku').value.trim();
                 const editWh = document.getElementById('item-edit-wh').value.trim();
@@ -838,16 +1026,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                     erpItems[idx].unit = document.getElementById('item-unit').value;
                     erpItems[idx].cost = Number(document.getElementById('item-cost').value);
                     erpItems[idx].qty = Number(document.getElementById('item-qty').value);
+                    erpItems[idx].physicalQty = Number(document.getElementById('item-physical-qty').value);
                     erpItems[idx].minQty = Number(document.getElementById('item-min').value);
+                    erpItems[idx].standardYield = Number(document.getElementById('item-standard-yield').value) || 1;
                 } else {
+                    const skuFromInput = document.getElementById('item-sku-input').value.trim();
+                    const hasQty = document.getElementById('item-has-qty').checked;
+
                     const newItem = {
-                        sku: 'SKU-' + Math.floor(1000 + Math.random() * 9000),
+                        sku: skuFromInput || ('SKU-' + Math.floor(1000 + Math.random() * 9000)),
                         name: document.getElementById('item-name').value,
                         category: document.getElementById('item-cat').value,
                         unit: document.getElementById('item-unit').value,
                         cost: Number(document.getElementById('item-cost').value),
-                        qty: Number(document.getElementById('item-qty').value),
+                        qty: hasQty ? Number(document.getElementById('item-qty').value) : 0,
+                        physicalQty: hasQty ? Number(document.getElementById('item-physical-qty').value) : 0,
                         minQty: Number(document.getElementById('item-min').value),
+                        standardYield: Number(document.getElementById('item-standard-yield').value) || 1,
                         warehouseId: currentWH
                     };
                     erpItems.push(newItem);
@@ -858,7 +1053,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 resetItemModal();
                 closeModal('itemModal');
-                
+
                 // تأجيل إعادة التحميل لمنع الشاشة السوداء
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
@@ -894,20 +1089,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         const skuSelect = document.getElementById('tx-sku');
         if (skuSelect) {
             const currentItems = erpItems.filter((i) => whNorm(i.warehouseId) === currentWH);
-            skuSelect.innerHTML = currentItems.map((it) => `<option value="${it.sku}">${it.name} — متوفر: ${it.qty} ${it.unit || ''} (${it.sku})</option>`).join('');
+            skuSelect.innerHTML = currentItems.map((it) => {
+                const phys = (it.physicalQty != null ? it.physicalQty : it.qty);
+                const std = Number(it.qty) || 0;
+                return `<option value="${it.sku}">${it.name} — متوفر: ${formatArabicQty(phys, it.unit || 'وحدة')} (قيمة إنتاجية: ${std.toFixed(2)})</option>`;
+            }).join('');
         }
     }
 
     function updateTxModalUI() {
         const bType = document.getElementById('tx-type').value;
         const isOut = bType === 'out';
-        const destGrp  = document.getElementById('tx-dest-group');
+        const destGrp = document.getElementById('tx-dest-group');
+        const capGrp = document.getElementById('tx-capacity-group');
         const notesGrp = document.getElementById('tx-notes-group');
-        const title    = document.getElementById('tx-modal-title');
-        const submitBtn= document.getElementById('tx-submit-btn');
-        if (destGrp)  destGrp.style.display  = isOut ? '' : 'none';
+        const title = document.getElementById('tx-modal-title');
+        const submitBtn = document.getElementById('tx-submit-btn');
+        if (destGrp) destGrp.style.display = isOut ? '' : 'none';
+        if (capGrp) capGrp.style.display = isOut ? '' : 'none';
         if (notesGrp) notesGrp.style.display = isOut ? '' : 'none';
-        if (title)    title.textContent = isOut ? 'إصدار أمر صرف (خروج للتشغيل)' : 'سند استلام (دخول مستودع)';
+        if (title) title.textContent = isOut ? 'إصدار أمر صرف (خروج للتشغيل)' : 'سند استلام (دخول مستودع)';
         if (submitBtn) submitBtn.textContent = isOut ? 'إصدار أمر الصرف' : 'تأكيد الاستلام';
         if (submitBtn) submitBtn.style.background = isOut ? 'linear-gradient(135deg,#f59e0b,#d97706)' : '';
     }
@@ -915,23 +1116,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('tx-type')?.addEventListener('change', updateTxModalUI);
 
     btnReceive?.addEventListener('click', () => { updateTxDropdown(); updateTxModalUI(); });
-    btnIssue?.addEventListener('click',   () => { updateTxDropdown(); updateTxModalUI(); });
+    btnIssue?.addEventListener('click', () => { updateTxDropdown(); updateTxModalUI(); });
+
+    // Auto-calc capacity when qty changes
+    document.getElementById('tx-qty')?.addEventListener('input', (e) => {
+        const qty = Number(e.target.value);
+        const sku = document.getElementById('tx-sku').value;
+        const item = erpItems.find(it => it.sku === sku && whNorm(it.warehouseId) === currentWH);
+        if (item && qty > 0) {
+            const ratio = (Number(item.physicalQty) > 0) ? (Number(item.qty) / Number(item.physicalQty)) : 1;
+            const cap = qty * ratio * (item.standardYield || 1);
+            // إظهار الرقم بدون أصفار زائدة (مثلاً 16 بدلاً من 16.0)
+            document.getElementById('tx-capacity').value = parseFloat(cap.toFixed(2));
+        }
+    });
 
     if (formTx) {
         formTx.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             // منع الإرسال المزدوج
             const submitBtn = e.target.querySelector('button[type="submit"]');
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري الحفظ...';
             }
-            
+
             try {
-                const bSku  = document.getElementById('tx-sku').value;
+                const bSku = document.getElementById('tx-sku').value;
                 const bType = document.getElementById('tx-type').value;
-                const bQty  = Number(document.getElementById('tx-qty').value);
+                const bQty = Number(document.getElementById('tx-qty').value);
 
                 const idx = erpItems.findIndex((it) => it.sku === bSku && whNorm(it.warehouseId) === currentWH);
                 if (idx === -1) {
@@ -940,11 +1154,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 if (bType === 'in') {
-                    // ── Simple IN: add to stock directly ──
-                    erpItems[idx].qty += bQty;
+                    // ── Simple IN: treat bQty as Physical Unit ──
+                    const item = erpItems[idx];
+                    const ratio = (Number(item.physicalQty) > 0) ? (Number(item.qty) / Number(item.physicalQty)) : 1;
+                    const stdAddition = bQty * ratio;
+
+                    item.qty = (Number(item.qty) || 0) + stdAddition;
+                    item.physicalQty = (Number(item.physicalQty) || (item.qty - stdAddition) || 0) + bQty;
 
                     const newTxId = 'TX-' + Math.floor(Math.random() * 90000 + 10000);
-                    const totalCost = bQty * erpItems[idx].cost;
+                    const totalCost = stdAddition * (item.cost || 0);
                     const newTx = { id: newTxId, type: 'in', total: totalCost, date: Date.now(), wh: currentWH, sku: bSku, toWh: currentWH };
                     erpTx.push(newTx);
 
@@ -955,7 +1174,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     closeModal('txModal');
                     formTx.reset();
                     updateTxModalUI();
-                    
+
                     // تأجيل إعادة التحميل لمنع الشاشة السوداء
                     requestAnimationFrame(() => {
                         requestAnimationFrame(() => {
@@ -967,21 +1186,34 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 } else {
                     // ── OUT: issue order flow ──
-                    if (erpItems[idx].qty < bQty) {
-                        alert(`الكمية المتوفرة (${erpItems[idx].qty}) لا تكفي للصرف (مطلوب: ${bQty})!`);
+                    const item = erpItems[idx];
+                    const bCap = Number(document.getElementById('tx-capacity').value);
+
+                    let stdDeduction;
+                    if (bCap > 0) {
+                        // Use manually entered capacity (justice for kitchen)
+                        stdDeduction = bCap / (item.standardYield || 1);
+                    } else {
+                        // Use average ratio
+                        const ratio = (Number(item.physicalQty) > 0) ? (Number(item.qty) / Number(item.physicalQty)) : 1;
+                        stdDeduction = bQty * ratio;
+                    }
+
+                    if (item.qty < stdDeduction) {
+                        alert(`الكمية المتوفرة لا تكفي للصرف!`);
                         return;
                     }
 
-                    const destKey  = document.getElementById('tx-dest').value;
+                    const destKey = document.getElementById('tx-dest').value;
                     const destName = destLabels[destKey] || destKey;
-                    const notes    = document.getElementById('tx-notes').value;
-                    const item     = erpItems[idx];
+                    const notes = document.getElementById('tx-notes').value;
 
-                    // Deduct from warehouse immediately
-                    erpItems[idx].qty -= bQty;
+                    // Deduct from warehouse
+                    item.qty -= stdDeduction;
+                    item.physicalQty = (Number(item.physicalQty) || 0) - bQty;
 
-                    const issueId   = 'ISS-' + Math.floor(Math.random() * 90000 + 10000);
-                    const totalCost = bQty * item.cost;
+                    const issueId = 'ISS-' + Math.floor(Math.random() * 90000 + 10000);
+                    const totalCost = stdDeduction * (item.cost || 0);
 
                     // Log in inventoryTx (out)
                     erpTx.push({
@@ -1012,18 +1244,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                         qty: bQty,
                         cost: item.cost,
                         total: totalCost,
+                        standardYield: item.standardYield || 1,
                         notes
                     };
                     db.issueOrders.push(issueOrder);
 
-                    db.inventory   = erpItems;
+                    db.inventory = erpItems;
                     db.inventoryTx = erpTx;
                     await saveDB(db);
 
                     closeModal('txModal');
                     formTx.reset();
                     updateTxModalUI();
-                    
+
                     // تأجيل إعادة التحميل لمنع الشاشة السوداء
                     requestAnimationFrame(() => {
                         requestAnimationFrame(() => {
@@ -1031,7 +1264,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             renderKPIs();
                             renderPendingReceipts();
                             printIssueOrder(issueOrder);
-                            alert(`✅ تم إصدار أمر الصرف ${issueId}\nالصنف: ${item.name} — ${bQty} ${item.unit||''}\nالوجهة: ${destName}\n\nتم خصم الكمية من المخزون فوراً. ينتظر تأكيد الاستلام من ${destName}.`);
+                            alert(`✅ تم إصدار أمر الصرف ${issueId}\nالصنف: ${item.name} — ${bQty} ${item.unit || ''}\nالوجهة: ${destName}\n\nتم خصم الكمية من المخزون فوراً. ينتظر تأكيد الاستلام من ${destName}.`);
                         });
                     });
                 }
@@ -1050,11 +1283,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ── Print Issue Order Document (Thermal 80mm) ───────────────────────────
     function printIssueOrder(order) {
         const dateStr = new Date(order.dateTs || Date.now()).toLocaleString('ar-SA');
-        
+
         const settings = db.settings || {};
         const storeName = settings.storeName || 'إدارة النظام';
         const logoBase64 = settings.logoBase64 || '';
-        
+
         let logoHtml = '';
         if (logoBase64) {
             logoHtml = `<img src="${logoBase64}" class="store-logo" alt="شعار المتجر">`;
@@ -1182,11 +1415,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     function printInventoryReceipt(tx, item, qty, type) {
         const typeName = type === 'in' ? 'سند إدخال (استلام)' : 'أمر صرف (خروج)';
         const dateStr = new Date(tx.date).toLocaleString('ar-SA');
-        
+
         const settings = db.settings || {};
         const storeName = settings.storeName || 'إدارة النظام';
         const logoBase64 = settings.logoBase64 || '';
-        
+
         let logoHtml = '';
         if (logoBase64) {
             logoHtml = `<img src="${logoBase64}" class="store-logo" alt="شعار المتجر">`;

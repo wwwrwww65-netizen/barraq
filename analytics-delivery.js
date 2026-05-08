@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let allOrders = [];
     let filteredOrders = [];
-    let currentRange = 'all';
+    let currentRange = 'today';
 
     let aggregatedCompanies = [];
     

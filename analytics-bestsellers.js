@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const curNum = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.formatNumber(n) : Number(n).toFixed(2));
     const curSym = () => (window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س');
 
-    let currentRange = 'all';
+    let currentRange = 'today';
     let allOrders = [];
     let aggregatedItems = [];
 
@@ -84,10 +84,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function processAndRender() {
-        // Filter by Date
-        let filteredOrders = allOrders;
+        // Filter by Date and Status
+        let filteredOrders = allOrders.filter(o => o.status !== 'returned');
         if (currentRange !== 'all' && window.isDateInPeriod) {
-            filteredOrders = allOrders.filter(o => window.isDateInPeriod(o.timestamp || o.dateStr || o.date, currentRange));
+            filteredOrders = filteredOrders.filter(o => window.isDateInPeriod(o.timestamp || o.dateStr || o.date, currentRange));
         }
 
         // Aggregate Items
@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const items = order.items || [];
             items.forEach(it => {
                 const name = it.name || 'غير محدد';
-                const qty = Number(it.quantity) || 1;
+                const qty = Number(it.qty) || 1;
                 const price = Number(it.price) || 0;
                 const revenue = qty * price;
 

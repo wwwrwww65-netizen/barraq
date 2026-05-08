@@ -99,16 +99,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(window.isDateInPeriod) {
             orders = orders.filter(o => 
                 o.status !== 'returned' &&
-                window.isDateInPeriod(o.timestamp || o.dateStr || o.date, period) && 
-                ((o.timestamp || o.createdAt || Date.now()) >= lastZReport)
+                window.isDateInPeriod(o.timestamp || o.dateStr || o.date, period)
             );
             returns = returns.filter(r => 
-                window.isDateInPeriod(r.timestamp || r.date, period) &&
-                ((r.timestamp || Date.now()) >= lastZReport)
+                window.isDateInPeriod(r.timestamp || r.date, period)
             );
             hrExpenses = hrExpenses.filter(h => 
-                window.isDateInPeriod(h.timestamp || h.date, period) &&
-                ((h.timestamp || new Date(h.date).getTime()) >= lastZReport)
+                window.isDateInPeriod(h.timestamp || h.date, period)
             );
         }
 

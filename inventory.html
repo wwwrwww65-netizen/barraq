@@ -206,7 +206,10 @@
                                     <th>الفئة</th>
                                     <th>وحدة القياس</th>
                                     <th>تكلفة الوحدة</th>
-                                    <th>الكمية المتبقية (الرصيد)</th>
+                                    <th>الكمية الفعلية الحالية</th>
+                                    <th>الرصيد المعياري (وحدة)</th>
+                                    <th>الإنتاجية المعيارية</th>
+                                    <th>السعة المتبقية (نفر/طبق)</th>
                                     <th>قيمة المخزون</th>
                                     <th>حالة المخزون</th>
                                     <th>إجراءات</th>
@@ -250,18 +253,49 @@
                         <input type="text" id="item-unit" class="input-modern" placeholder="كيس، كرتون، كيلو..." required>
                     </div>
                     <div class="form-group">
-                        <label>تكلفة الوحدة (<span class="js-cur-sym">ر.س</span>)</label>
-                        <input type="number" step="0.01" id="item-cost" class="input-modern" required>
+                        <label>تكلفة الوحدة (<span class="js-cur-sym">ر.س</span>) <span style="font-size: 11px; color: var(--text-muted);">(اختياري)</span></label>
+                        <input type="number" step="any" id="item-cost" class="input-modern" placeholder="0.00">
+                        <small style="display:block; margin-top:4px; font-size:10px; color:var(--text-muted);">سيتم تحديث التكلفة تلقائياً عند تسجيل فواتير المشتريات.</small>
+                    </div>
+                </div>
+                <div class="form-group-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label>رمز الصنف (SKU) <span style="font-size: 11px; color: var(--text-muted);">(اختياري - سيولد تلقائياً إذا ترك فارغاً)</span></label>
+                        <input type="text" id="item-sku-input" class="input-modern" placeholder="مثال: PRD-12345">
                     </div>
                 </div>
                 <div class="form-group-row">
                     <div class="form-group">
-                        <label id="item-qty-label">الرصيد الافتتاحي (الكمية)</label>
-                        <input type="number" id="item-qty" class="input-modern" required>
+                        <label id="item-qty-label" style="display:flex; align-items:center; gap:8px;">
+                            <input type="checkbox" id="item-has-qty" style="width:16px; height:16px;">
+                            تحديد رصيد افتتاحي (الكمية)
+                        </label>
+                        <div style="display:flex; gap:10px;">
+                            <div style="flex:1;">
+                                <small style="display:none; margin-bottom:4px; font-size:10px; color:var(--text-muted);" id="lbl-qty-std">الرصيد المحاسبي (لأغراض البيع والتكلفة)</small>
+                                <input type="number" step="any" id="item-qty" class="input-modern" style="display:none;" placeholder="مثال: 11">
+                            </div>
+                            <div style="flex:1;">
+                                <small style="display:none; margin-bottom:4px; font-size:10px; color:var(--text-muted);" id="lbl-qty-phys">العدد الحالي (الموجود فعلياً بالثلاجة)</small>
+                                <input type="number" step="any" id="item-physical-qty" class="input-modern" style="display:none;" placeholder="مثال: 11">
+                            </div>
+                        </div>
+                        <p id="qty-note" style="display:none; margin-top:8px; font-size:11px; color:var(--accent-blue); font-weight:600;">
+                            <i class="ph ph-info"></i> ملاحظة: في الحالات العادية، اكتب نفس الرقم في الخانتين (مثلاً: 11 و 11).
+                        </p>
                     </div>
+                </div>
+                <div class="form-group-row">
                     <div class="form-group">
                         <label>الحد الأدنى للتنبيه بالنواقص</label>
-                        <input type="number" id="item-min" class="input-modern" required>
+                        <input type="number" step="any" id="item-min" class="input-modern" required>
+                    </div>
+                    <div class="form-group">
+                        <label>الإنتاجية المعيارية (عدد النفرات/الأطباق لكل وحدة واحدة)</label>
+                        <input type="number" step="any" id="item-standard-yield" class="input-modern" placeholder="مثال: اكتب 16 إذا كان الخروف ينتج 16 نفراً" value="1">
+                        <small style="display:block; margin-top:4px; font-size:10px; color:var(--accent-orange); font-weight:700;">
+                            <i class="ph ph-info"></i> اكتب "كم نفر" ينتج الخروف الواحد (مثلاً: 16). لا تكتب الكسور مثل 0.0625.
+                        </small>
                     </div>
                 </div>
                 <div class="modal-actions mt-3">
@@ -319,9 +353,16 @@
                     <label>الصنف المطلوب للحركة</label>
                     <select id="tx-sku" class="input-modern" required></select>
                 </div>
-                <div class="form-group">
-                    <label>الكمية (بالوحدة المعيارية)</label>
-                    <input type="number" id="tx-qty" min="1" class="input-modern" required>
+                <div class="form-group-row">
+                    <div class="form-group">
+                        <label>الكمية المطلوبة (العدد الحقيقي)</label>
+                        <input type="number" id="tx-qty" step="any" min="0.0001" class="input-modern" required>
+                    </div>
+                    <div class="form-group" id="tx-capacity-group" style="display:none;">
+                        <label>إجمالي السعة (نفر/طبق) - للمطبخ</label>
+                        <input type="number" id="tx-capacity" step="any" min="0" class="input-modern" placeholder="تلقائي">
+                        <small style="font-size:10px; color:var(--text-muted);">يمكنك تعديلها بناءً على حجم القطعة الحقيقي.</small>
+                    </div>
                 </div>
 
                 <!-- Destination — shown only for "out" orders -->
@@ -385,8 +426,8 @@
                     <select id="trans-sku" class="input-modern" required></select>
                 </div>
                 <div class="form-group">
-                    <label>الكمية المحولة</label>
-                    <input type="number" id="trans-qty" min="1" class="input-modern" required>
+                    <label>الكمية المحولة (العدد الحقيقي)</label>
+                    <input type="number" id="trans-qty" step="any" min="0.0001" class="input-modern" required>
                 </div>
                 <div class="modal-actions mt-3">
                     <button type="button" class="btn-cancel btn-cancel-modal">إلغاء</button>

@@ -28,7 +28,7 @@
     --border-radius-md: 12px;
     --border-radius-sm: 8px;
     /* انتقال محسن */
-    --transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    --transition: background-color 0.08s ease, border-color 0.08s ease, color 0.08s ease, box-shadow 0.08s ease, opacity 0.08s ease;
     --transition-transform: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     /* Touch target minimum size */
     --touch-target: 44px;
@@ -58,7 +58,7 @@ body {
 .app-container {
     display: flex;
     height: 100vh;
-    overflow: hidden;
+    overflow: visible; /* Changed from hidden to allow scaled elements to show */
 }
 
 
@@ -97,7 +97,8 @@ body {
     height: 100vh;
     overflow-y: auto;
     overflow-x: hidden;
-    transition: width 0.25s ease, min-width 0.25s ease;
+    transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.08s ease;
+    /* removed will-change for scroll perf */
 }
 
 
@@ -194,7 +195,7 @@ body {
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     min-width: 0;
-    scroll-behavior: smooth;
+
 }
 
 /* محتوى الصفحة: لا نختبرها بالتمرير بعد الآن - main-content تتولى كل شيء */
@@ -208,19 +209,25 @@ body {
 .top-header {
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: 1000;
     flex-shrink: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 12px;
-    min-height: 70px;
+    min-height: 100px; /* Increased height to give more room */
     height: auto;
-    padding: 10px 24px;
+    padding: 15px 24px; /* Balanced padding */
     background: rgba(11, 15, 25, 0.98);
     border-bottom: 1px solid var(--border-color);
-    /* تسريع الهاردوير ضروري جداً لتجنب تعليق Sticky Header عند تغيير حجم النافذة */
-    transform: translateZ(0);
+    overflow: visible !important; /* Ensure no clipping on parents */
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    overflow: visible !important; /* Allow buttons inside to scale/move without clipping */
 }
 
 
@@ -433,7 +440,7 @@ body {
     cursor: pointer;
     transition: var(--transition), transform 0.15s ease;
     border: none;
-    will-change: transform;
+    /* removed will-change for scroll perf */
 }
 .btn i { font-size: 20px; }
 
@@ -465,15 +472,15 @@ body {
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-lg);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(8px);
-    transition: var(--transition), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: transform;
-    transform: translateZ(0);
+    /* backdrop-filter: blur(8px); (Disabled for Performance) */
+    transition: var(--transition), transform 0.08s cubic-bezier(0.4, 0, 0.2, 1);
+    /* removed will-change for scroll perf */
+    /* removed translateZ for scroll perf */
 }
 
 .card:hover {
     border-color: var(--border-light);
-    transform: translateY(-2px) translateZ(0);
+    transform: translateY(-2px);
 }
 
 /* KPI Cards */
@@ -1039,8 +1046,8 @@ body.light-theme table td { color: #334155 !important; border-bottom: 1px solid 
 .theme-toggle-btn {
     position: relative;
     overflow: hidden;
-    transition: background-color 0.25s ease, transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease !important;
-    will-change: transform;
+    transition: background-color 0.08s ease, transform 0.08s ease, border-color 0.08s ease, box-shadow 0.08s ease !important;
+    /* removed will-change for scroll perf */
 }
 .theme-toggle-btn::before {
     content: '';
@@ -1050,7 +1057,7 @@ body.light-theme table td { color: #334155 !important; border-bottom: 1px solid 
     width: 100%; height: 100%;
     background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%);
     border-radius: 50%;
-    transition: transform 0.4s;
+    transition: transform 0.08s;
     z-index: 0;
 }
 .theme-toggle-btn:active::before {
@@ -1282,7 +1289,7 @@ body:not(.light-theme) .theme-toggle-btn:hover {
     .time-filters, .filter-bar, .acc-actions-bar,
     .btn-suspend, .btn-print, button, .nav-menu,
     .cart-actions-grid, .pos-panel, .badge, .pur-header,
-    .no-print, #net-sync-badge, .acc-kpis, .search-box,
+    #net-sync-badge, .acc-kpis, .search-box,
     .modal-overlay, #expenseModal, #exp-voucher-container,
     .hr-tabs, .hr-header-actions, .profile-header-actions,
     #view-dashboard, #view-add-employee, #view-roles,
@@ -1341,7 +1348,7 @@ body:not(.light-theme) .theme-toggle-btn:hover {
     }
 
     /* Fix grids so they wrap nicely */
-    .pur-kpis, .kpi-cards, .dashboard-grid, .hr-kpis, .profile-stats-grid {
+    .pur-kpis:not(.no-print), .kpi-cards:not(.no-print), .dashboard-grid:not(.no-print), .hr-kpis:not(.no-print), .profile-stats-grid:not(.no-print) {
         display: flex !important;
         flex-wrap: wrap !important;
         gap: 15px !important;
@@ -1451,15 +1458,28 @@ body:not(.light-theme) .theme-toggle-btn:hover {
         text-align: center !important;
     }
 
+    /* The injected header */
+    #global-print-header { 
+        display: flex !important; 
+        margin-bottom: 8px !important;
+        padding: 0 !important;
+    }
+
+    /* Supplier Print Mode */
+    body.print-mode-supplier > .app-container > .sidebar,
+    body.print-mode-supplier > .app-container > .main-content > .top-header,
+    body.print-mode-supplier > .app-container > .main-content > .inv-dashboard-grid:not(#supplier-profile-view) {
+        display: none !important;
+    }
+    
+    body.print-mode-supplier #supplier-profile-view {
+        display: block !important;
+        width: 100% !important;
+    }
+
     /* Ensure print-only elements are visible */
     .print-only {
         display: block !important;
-    }
-
-    /* Hide action buttons in tables */
-    td:last-child button,
-    .no-print {
-        display: none !important;
     }
 
     /* A4 Standard Portrait - 2mm side margins */
@@ -1470,10 +1490,14 @@ body:not(.light-theme) .theme-toggle-btn:hover {
         widows: 2;
     }
 
-    /* The injected header */
-    #global-print-header { 
-        display: flex !important; 
-        margin-bottom: 8px !important;
-        padding: 0 !important;
+    /* Absolute highest priority for .no-print */
+    .no-print, .no-print * {
+        display: none !important;
     }
+}
+
+/* Force Instant UI Globally (Requested by User) */
+* {
+    transition-duration: 0.01s !important;
+    animation-duration: 0.01s !important;
 }

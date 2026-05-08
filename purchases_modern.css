@@ -1,0 +1,505 @@
+/* 
+   Purchases & Invoices - Modern Premium Design
+   Focus: Glassmorphism, Action Buttons, High Contrast Labels
+*/
+
+:root {
+    --pur-accent-blue: #3b82f6;
+    --pur-accent-green: #10b981;
+    --pur-accent-red: #ef4444;
+    --pur-accent-orange: #f59e0b;
+    --pur-glass-bg: rgba(30, 36, 51, 0.95); /* More solid for performance */
+    --pur-glass-border: rgba(255, 255, 255, 0.08);
+}
+
+.pur-main {
+    animation: fadeIn 0.1s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Header Action Button */
+#btn-new-invoice {
+    height: 48px;
+    padding: 0 25px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--pur-accent-blue), #1e40af);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+    font-weight: 800;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#btn-new-invoice:hover {
+    transform: translateY(-2px) scale(1.01); /* Reduced scale/translate for safety */
+    box-shadow: 0 12px 25px rgba(59, 130, 246, 0.4);
+    filter: brightness(1.1);
+}
+
+/* Header Section Refinement */
+.pur-header {
+    padding-top: 30px !important; /* Increased space from top */
+    padding-bottom: 25px !important;
+    min-height: 110px !important; /* Larger hit area */
+    background: var(--pur-glass-bg) !important;
+    border-bottom: 1px solid var(--pur-glass-border) !important;
+    
+    margin: 15px 24px 15px 24px !important;
+    border-radius: 24px !important;
+    top: 15px !important; 
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15) !important;
+    
+    overflow: visible !important;
+    position: sticky !important;
+    z-index: 999; /* Lowered to be under modals (2000) but above content */
+    display: flex !important;
+    align-items: center !important;
+}
+
+#btn-new-invoice {
+    height: 52px; /* Slightly taller for premium feel */
+    padding: 0 30px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--pur-accent-blue), #1e40af);
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.35);
+    font-weight: 800;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 5px; /* Added margin to push it down from header top */
+}
+
+#btn-new-invoice:hover {
+    transform: translateY(-2px); /* Only vertical move, no scale to prevent clipping risk */
+    box-shadow: 0 15px 30px rgba(59, 130, 246, 0.45);
+    filter: brightness(1.1);
+}
+
+/* KPI Cards - Glassmorphism */
+.pur-kpis .kpi-card {
+    background: var(--pur-glass-bg) !important;
+    /* backdrop-filter: blur(12px); (Disabled for Performance) */
+    border: 1px solid var(--pur-glass-border) !important;
+    border-radius: 24px !important;
+    padding: 30px !important;
+    transition: opacity 0.08s cubic-bezier(0.4, 0, 0.2, 1), transform 0.08s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.08s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.08s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.08s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pur-kpis .kpi-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.pur-kpis .kpi-card h3 {
+    color: white !important;
+    font-weight: 800;
+}
+
+/* Filter Bar Modernization */
+.filter-bar {
+    background: var(--pur-glass-bg) !important;
+    /* backdrop-filter: blur(16px); (Disabled for Performance) */
+    border: 1px solid var(--pur-glass-border) !important;
+    border-radius: 20px !important;
+    padding: 20px 25px !important;
+}
+
+/* Table Styling */
+.pur-table {
+    background: var(--pur-glass-bg);
+    border-radius: 24px;
+    overflow: hidden;
+    border: 1px solid var(--pur-glass-border);
+    /* Performance: Removed heavy blur on large wrapper */
+}
+
+.pur-table th {
+    padding: 20px 24px !important;
+    background: rgba(0, 0, 0, 0.2) !important;
+    color: var(--text-secondary) !important;
+    font-weight: 700;
+}
+
+.pur-table td {
+    padding: 22px 24px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    vertical-align: middle;
+}
+
+.pur-table tr:hover td {
+    background: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* Premium Row Buttons */
+.pur-btn-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.pur-btn {
+    height: 38px;
+    padding: 0 14px;
+    border-radius: 10px;
+    border: none;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: opacity 0.08s cubic-bezier(0.4, 0, 0.2, 1), transform 0.08s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.08s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.08s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.08s cubic-bezier(0.4, 0, 0.2, 1);
+    color: white;
+}
+
+.pur-btn-receive { background: linear-gradient(135deg, #10b981, #059669); }
+.pur-btn-edit { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.pur-btn-cancel { background: linear-gradient(135deg, #f97316, #ea580c); }
+.pur-btn-delete { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.pur-btn-print { background: rgba(255, 255, 255, 0.1); color: var(--text-secondary); border: 1px solid rgba(255, 255, 255, 0.1); }
+
+.pur-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.pur-btn:active {
+    transform: scale(0.96);
+}
+
+/* Invoice Info Styling */
+.inv-id-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.inv-id-cell strong { font-size: 15px; color: white; }
+.inv-ref-label { font-size: 11px; color: var(--text-muted); font-family: monospace; }
+
+/* Status Tags */
+.inv-tag {
+    padding: 6px 12px !important;
+    border-radius: 10px !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+}
+
+/* Modals Modernization */
+.modal-overlay {
+    background: rgba(0, 0, 0, 0.6);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 2000 !important; /* Force modal to be on top of everything */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+#invoiceModal .modal-box, 
+#editPurchaseModal .modal-box {
+    background: rgba(26, 31, 44, 0.98) !important;
+    backdrop-filter: blur(20px);
+    border-radius: 28px !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6) !important;
+    padding: 35px !important;
+    transform: scale(0.95) translateY(15px);
+    transition: opacity 0.08s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.08s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.08s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.08s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.08s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-overlay.active .modal-box {
+    transform: scale(1) translateY(0);
+}
+
+#invoiceModal .modal-header h3, 
+#editPurchaseModal .modal-header h3 {
+    color: white !important;
+}
+
+.invoice-items {
+    border-radius: 20px !important;
+    background: rgba(0, 0, 0, 0.25) !important;
+    padding: 24px !important;
+    margin-bottom: 24px !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+#items-container, #edit-items-container {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 8px;
+    margin-bottom: 16px;
+}
+
+#items-container::-webkit-scrollbar, #edit-items-container::-webkit-scrollbar {
+    width: 6px;
+}
+#items-container::-webkit-scrollbar-thumb, #edit-items-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.item-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 25px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    animation: slideIn 0.2s ease-out;
+}
+
+.item-row > *:nth-child(1) { grid-column: span 1; } /* Product Select */
+.item-row > *:nth-child(4) { grid-row: 2; } /* Price input */
+.item-row > *:nth-child(5) { grid-row: 2; } /* Total input */
+.item-row > *:nth-child(6) { grid-row: 2; align-self: end; } /* Trash btn */
+
+.item-row .form-group label {
+    font-size: 11px !important;
+    margin-bottom: 5px !important;
+    color: var(--text-muted) !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.btn-remove-row {
+    background: rgba(239, 68, 68, 0.1) !important;
+    border: 1px solid rgba(239, 68, 68, 0.2) !important;
+    color: #ef4444 !important;
+    width: 40px;
+    height: 46px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-remove-row:hover {
+    background: #ef4444 !important;
+    color: white !important;
+}
+
+.btn-add-row {
+    margin-top: 10px;
+    background: rgba(59, 130, 246, 0.1) !important;
+    border: 1px solid rgba(59, 130, 246, 0.2) !important;
+    color: var(--pur-accent-blue) !important;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.btn-add-row:hover {
+    background: var(--pur-accent-blue) !important;
+    color: white !important;
+}
+
+.totals-box {
+    border-radius: 20px !important;
+    padding: 25px !important;
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* Input Styles */
+.input-modern {
+    height: 46px;
+    border-radius: 12px !important;
+    background: rgba(0, 0, 0, 0.25) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+    padding: 0 15px !important;
+    font-size: 14px !important;
+    transition: opacity 0.08s ease, visibility 0.08s ease, transform 0.08s ease, background-color 0.08s ease, border-color 0.08s ease, box-shadow 0.08s ease;
+}
+
+.input-modern:focus {
+    border-color: var(--pur-accent-blue) !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+/* =========================================
+   LIGHT THEME OVERRIDES FOR PURCHASES
+   ========================================= */
+body.light-theme {
+    --pur-glass-bg: rgba(255, 255, 255, 0.9);
+    --pur-glass-border: rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .pur-kpis .kpi-card {
+    background: #fff !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+}
+
+body.light-theme .filter-bar {
+    background: #fff !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.light-theme .pur-table {
+    background: #fff !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.light-theme .pur-table th {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+}
+
+body.light-theme .pur-table td {
+    border-color: #f1f5f9 !important;
+}
+
+body.light-theme .pur-table tr:hover td {
+    background: #f8fafc !important;
+}
+
+body.light-theme .inv-id-cell strong {
+    color: #0f172a;
+}
+
+body.light-theme .pur-btn-print {
+    background: #f1f5f9;
+    color: #475569;
+    border-color: #cbd5e1;
+}
+
+body.light-theme .pur-btn-print:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+body.light-theme #invoiceModal .modal-box,
+body.light-theme #editPurchaseModal .modal-box {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 40px 80px rgba(0, 0, 0, 0.15) !important;
+}
+
+body.light-theme .invoice-items {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.light-theme .totals-box {
+    background: #f1f5f9 !important;
+}
+
+body.light-theme .input-modern {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.light-theme .pur-table td[style*="color:white"] {
+    color: #0f172a;
+}
+
+body.light-theme .pur-kpis .kpi-card h3 {
+    color: #0f172a !important;
+}
+
+body.light-theme #invoiceModal .modal-header h3,
+body.light-theme #editPurchaseModal .modal-header h3 {
+    color: #0f172a;
+}
+
+/* =========================================
+   RESPONSIVE DESIGN
+   ========================================= */
+@media (max-width: 1024px) {
+    .pur-kpis {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .modal-box {
+        width: 95% !important;
+        padding: 20px !important;
+        max-height: 95vh;
+        overflow-y: auto;
+    }
+
+    .form-group-row {
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+
+    .item-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .item-row > *:first-child {
+        grid-column: span 2;
+    }
+
+    .btn-remove-row {
+        grid-column: span 2;
+        width: 100%;
+        justify-content: center;
+        margin-top: 5px;
+        background: rgba(239, 68, 68, 0.1) !important;
+        color: #ef4444 !important;
+        border: 1px solid rgba(239, 68, 68, 0.2) !important;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .pur-kpis {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .header-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    #btn-new-invoice {
+        width: 100%;
+    }
+}

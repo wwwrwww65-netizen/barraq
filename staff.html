@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
     <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
@@ -12,123 +13,379 @@
     <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
     <style>
         /* Premium Page Transitions */
-        .hr-view { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* Modern Form Grid */
-        .premium-form { background: rgba(15, 23, 42, 0.4); border: 1px solid var(--border-color); border-radius: var(--border-radius-xl); padding: 32px; backdrop-filter: blur(10px); }
-        .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-        .form-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-        
-        .photo-upload-box {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            border: 2px dashed rgba(236, 72, 153, 0.4); border-radius: 50%; width: 150px; height: 150px;
-            margin: 0 auto 32px; background: rgba(236, 72, 153, 0.05); cursor: pointer; transition: all 0.3s ease; position: relative; overflow: hidden;
+        .hr-view {
+            animation: fadeIn 0.4s ease-out;
         }
-        .photo-upload-box:hover { background: rgba(236, 72, 153, 0.1); border-color: #ec4899; }
-        .photo-upload-box img { width: 100%; height: 100%; object-fit: cover; position: absolute; top:0; left:0; z-index: 1; }
-        .photo-upload-box .upload-icon { position: relative; z-index: 2; color: #ec4899; display: flex; flex-direction: column; align-items: center; }
-        .photo-upload-box input[type="file"] { display: none; }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Modern Form Grid */
+        .premium-form {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-xl);
+            padding: 32px;
+        }
+
+        .form-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .form-grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .photo-upload-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed rgba(236, 72, 153, 0.4);
+            border-radius: 50%;
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 32px;
+            background: rgba(236, 72, 153, 0.05);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .photo-upload-box:hover {
+            background: rgba(236, 72, 153, 0.1);
+            border-color: #ec4899;
+        }
+
+        .photo-upload-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .photo-upload-box .upload-icon {
+            position: relative;
+            z-index: 2;
+            color: #ec4899;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .photo-upload-box input[type="file"] {
+            display: none;
+        }
 
         /* Profile Header */
         .profile-header {
-            display: flex; gap: 32px; padding: 32px; border-radius: var(--border-radius-xl);
+            display: flex;
+            gap: 32px;
+            padding: 32px;
+            border-radius: var(--border-radius-xl);
             background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(236, 72, 153, 0.05) 100%);
-            border: 1px solid rgba(255,255,255,0.05); margin-bottom: 24px; position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 24px;
+            position: relative;
         }
+
         .profile-avatar {
-            width: 140px; height: 140px; border-radius: 24px; object-fit: cover;
-            border: 4px solid var(--bg-card); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 140px;
+            height: 140px;
+            border-radius: 24px;
+            object-fit: cover;
+            border: 4px solid var(--bg-card);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
-        .profile-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
-        .profile-info h1 { font-size: 32px; margin-bottom: 8px; color: var(--text-primary); display: flex; align-items: center; gap: 12px; }
-        .profile-meta-tags { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-        .p-tag { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background: rgba(255,255,255,0.05); display: flex; align-items: center; gap: 6px; }
-        
+
+        .profile-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .profile-info h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .profile-meta-tags {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .p-tag {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
         /* Stats row inside profile */
-        .profile-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 16px; }
-        .p-stat-card { background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.03); padding: 16px; border-radius: 16px; }
-        .p-stat-card p { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
-        .p-stat-card h3 { font-size: 24px; color: var(--text-primary); }
+        .profile-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .p-stat-card {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            padding: 16px;
+            border-radius: 16px;
+        }
+
+        .p-stat-card p {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .p-stat-card h3 {
+            font-size: 24px;
+            color: var(--text-primary);
+        }
 
         /* Fancy Form Inputs Fix */
-        .fm-group { display: flex; flex-direction: column; margin-bottom: 20px; }
-        .fm-group label { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; }
-        .fm-input { 
-            background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; 
-            padding: 14px 16px; color: var(--text-primary); font-family: inherit; font-size: 15px; outline: none; transition: 0.3s;
+        .fm-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
         }
-        .fm-input:focus { border-color: #ec4899; box-shadow: 0 0 0 3px rgba(236,72,153,0.1); background: rgba(0,0,0,0.3); }
-        
+
+        .fm-group label {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .fm-input {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 14px 16px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 15px;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .fm-input:focus {
+            border-color: #ec4899;
+            box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1);
+            background: rgba(0, 0, 0, 0.3);
+        }
+
         select.fm-input option {
             background: #1e293b;
             color: #f8fafc;
         }
 
         /* Secondary Tabs inside Profile */
-        .profile-tabs { display: flex; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 24px; }
-        .ptab-btn { 
-            background: transparent; border: none; border-bottom: 3px solid transparent; color: var(--text-muted); 
-            padding: 12px 24px; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; transition: 0.3s;
+        .profile-tabs {
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 24px;
         }
-        .ptab-btn.active { color: var(--text-primary); border-bottom-color: #ec4899; }
-        .ptab-btn:hover:not(.active) { color: var(--text-primary); background: rgba(255,255,255,0.02); }
-        .ptab-content { display: none; }
-        .ptab-content.active { display: block; animation: fadeIn 0.3s; }
+
+        .ptab-btn {
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--text-muted);
+            padding: 12px 24px;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .ptab-btn.active {
+            color: var(--text-primary);
+            border-bottom-color: #ec4899;
+        }
+
+        .ptab-btn:hover:not(.active) {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .ptab-content {
+            display: none;
+        }
+
+        .ptab-content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
 
         /* Mini Quick Action Buttons */
         .action-btn-mini {
-            width: 36px; height: 36px; border-radius: 8px; border: none; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s;
         }
-        .btn-att-present { background: rgba(16,185,129,0.1); color: #34d399; }
-        .btn-att-present:hover { background: #10b981; color: var(--text-primary); }
-        .btn-att-absent { background: rgba(248,113,113,0.1); color: #f87171; }
-        .btn-att-absent:hover { background: #ef4444; color: var(--text-primary); }
-        .btn-att-excused { background: rgba(245,158,11,0.1); color: #fbbf24; }
-        .btn-att-excused:hover { background: #f59e0b; color: var(--text-primary); }
 
-        .toggle-wrap { display:flex; align-items:center; gap:8px; }
-        .toggle-label { font-size:12px; color:var(--text-muted); }
-        .toggle-switch { position:relative; width:54px; height:30px; display:inline-block; }
-        .toggle-switch input { opacity:0; width:0; height:0; }
+        .btn-att-present {
+            background: rgba(16, 185, 129, 0.1);
+            color: #34d399;
+        }
+
+        .btn-att-present:hover {
+            background: #10b981;
+            color: var(--text-primary);
+        }
+
+        .btn-att-absent {
+            background: rgba(248, 113, 113, 0.1);
+            color: #f87171;
+        }
+
+        .btn-att-absent:hover {
+            background: #ef4444;
+            color: var(--text-primary);
+        }
+
+        .btn-att-excused {
+            background: rgba(245, 158, 11, 0.1);
+            color: #fbbf24;
+        }
+
+        .btn-att-excused:hover {
+            background: #f59e0b;
+            color: var(--text-primary);
+        }
+
+        .toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toggle-label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 54px;
+            height: 30px;
+            display: inline-block;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
         .toggle-slider {
-            position:absolute; inset:0; border-radius:999px; cursor:pointer;
-            background:rgba(239,68,68,0.35); border:1px solid rgba(239,68,68,0.45); transition:all .2s ease;
+            position: absolute;
+            inset: 0;
+            border-radius: 999px;
+            cursor: pointer;
+            background: rgba(239, 68, 68, 0.35);
+            border: 1px solid rgba(239, 68, 68, 0.45);
+            transition: all .2s ease;
         }
+
         .toggle-slider::before {
-            content:''; position:absolute; width:22px; height:22px; top:3px; right:3px;
-            background:#fff; border-radius:50%; transition:all .2s ease;
+            content: '';
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            top: 3px;
+            right: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: all .2s ease;
         }
-        .toggle-switch input:checked + .toggle-slider {
-            background:rgba(16,185,129,0.35); border-color:rgba(16,185,129,0.5);
+
+        .toggle-switch input:checked+.toggle-slider {
+            background: rgba(16, 185, 129, 0.35);
+            border-color: rgba(16, 185, 129, 0.5);
         }
-        .toggle-switch input:checked + .toggle-slider::before { right:27px; }
+
+        .toggle-switch input:checked+.toggle-slider::before {
+            right: 27px;
+        }
 
         /* Profile Finances Print */
         @media print {
+
             /* General purge of UI elements */
-            .no-print, .top-header, .hr-header, .sidebar, .hr-sidebar, .modal-overlay, .nav-menu { 
-                display: none !important; 
+            .no-print,
+            .top-header,
+            .hr-header,
+            .sidebar,
+            .hr-sidebar,
+            .modal-overlay,
+            .nav-menu {
+                display: none !important;
             }
 
             /* Layout Reset */
-            html, body { 
-                background: white !important; 
-                height: auto !important; 
-                min-height: 0 !important; 
-                overflow: visible !important; 
+            html,
+            body {
+                background: white !important;
+                height: auto !important;
+                min-height: 0 !important;
+                overflow: visible !important;
                 width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
             }
 
-            .app-container, .main-content, .hr-main { 
-                display: block !important; 
-                position: static !important; 
-                width: 100% !important; 
-                height: auto !important; 
+            .app-container,
+            .main-content,
+            .hr-main {
+                display: block !important;
+                position: static !important;
+                width: 100% !important;
+                height: auto !important;
                 min-height: 0 !important;
-                margin: 0 !important; 
+                margin: 0 !important;
                 padding: 0 !important;
             }
 
@@ -143,871 +400,1164 @@
             }
 
             /* View Reset - Force under header */
-            .hr-view { display: none !important; }
-            
+            .hr-view {
+                display: none !important;
+            }
+
             body.print-mode-totals #view-staff-totals,
-            body.print-mode-history #view-history {
+            body.print-mode-history #view-history,
+            body.print-mode-profile #view-emp-profile {
                 display: block !important;
                 position: static !important;
                 width: 100% !important;
-                margin-top: 20px !important; /* Dynamic gap after header */
+                margin-top: 20px !important;
+                /* Dynamic gap after header */
                 padding: 0 !important;
             }
 
             /* Table Formatting for both modes */
             body.print-mode-history .card,
-            body.print-mode-totals #view-staff-totals .card {
+            body.print-mode-totals #view-staff-totals .card,
+            body.print-mode-profile #view-emp-profile .card {
                 box-shadow: none !important;
                 border: none !important;
                 padding: 0 !important;
                 background: transparent !important;
             }
-            
-            .data-table { 
-                width: 100% !important; 
-                border: 1px solid #000 !important; 
-                border-collapse: collapse !important; 
+
+            /* Profile Print Logic */
+            body.print-mode-profile .profile-header,
+            body.print-mode-profile .profile-tabs,
+            body.print-mode-profile .hr-btn-solid {
+                display: none !important;
+            }
+
+            body.print-mode-profile .ptab-content {
+                display: none !important;
+                border: none !important;
+            }
+
+            body.print-mode-profile .ptab-content.active {
+                display: block !important;
+            }
+
+            body.print-mode-profile #pro-finances-print-info {
+                display: block !important;
+            }
+
+
+            .data-table {
+                width: 100% !important;
+                border: 1px solid #000 !important;
+                border-collapse: collapse !important;
                 table-layout: auto !important;
             }
-            .data-table th, .data-table td { 
-                border: 1px solid #000 !important; 
-                color: #000 !important; 
-                padding: 8px !important; 
-                font-size: 12px !important; 
+
+            .data-table th,
+            .data-table td {
+                border: 1px solid #000 !important;
+                color: #000 !important;
+                padding: 8px !important;
+                font-size: 12px !important;
             }
-            .data-table th { background: #f0f0f0 !important; font-weight: bold !important; }
-            
+
+            .data-table th {
+                background: #f0f0f0 !important;
+                font-weight: bold !important;
+            }
+
             /* Exact Column Widths to prevent shifting */
-            body.print-mode-history .data-table th:nth-child(1), body.print-mode-history .data-table td:nth-child(1) { width: 10% !important; }
-            body.print-mode-history .data-table th:nth-child(2), body.print-mode-history .data-table td:nth-child(2) { width: 12% !important; }
-            body.print-mode-history .data-table th:nth-child(3), body.print-mode-history .data-table td:nth-child(3) { width: 16% !important; }
-            body.print-mode-history .data-table th:nth-child(4), body.print-mode-history .data-table td:nth-child(4) { width: 14% !important; }
-            body.print-mode-history .data-table th:nth-child(5), body.print-mode-history .data-table td:nth-child(5) { width: 12% !important; }
-            body.print-mode-history .data-table th:nth-child(6), body.print-mode-history .data-table td:nth-child(6) { width: 10% !important; }
-            body.print-mode-history .data-table th:nth-child(7), body.print-mode-history .data-table td:nth-child(7) { width: 16% !important; }
-            body.print-mode-history .data-table th:nth-child(8), body.print-mode-history .data-table td:nth-child(8) { width: 10% !important; }
-            
-            body.print-mode-history .hr-kpis { margin-top: 20px !important; page-break-inside: avoid !important; }
-            body.print-mode-history .kpi-card { border: 1px solid #cbd5e1 !important; background: transparent !important; }
+            body.print-mode-history .data-table th:nth-child(1),
+            body.print-mode-history .data-table td:nth-child(1) {
+                width: 10% !important;
+            }
+
+            body.print-mode-history .data-table th:nth-child(2),
+            body.print-mode-history .data-table td:nth-child(2) {
+                width: 12% !important;
+            }
+
+            body.print-mode-history .data-table th:nth-child(3),
+            body.print-mode-history .data-table td:nth-child(3) {
+                width: 16% !important;
+            }
+
+            body.print-mode-history .data-table th:nth-child(4),
+            body.print-mode-history .data-table td:nth-child(4) {
+                width: 14% !important;
+            }
+
+            body.print-mode-history .data-table th:nth-child(5),
+            body.print-mode-history .data-table td:nth-child(5) {
+                width: 12% !important;
+            }
+
+            body.print-mode-history .data-table th:nth-child(6),
+            body.print-mode-history .data-table td:nth-child(6) {
+                width: 10% !important;
+            }
+
+            body.print-mode-history .data-table th:nth-child(7),
+            body.print-mode-history .data-table td:nth-child(7) {
+                width: 16% !important;
+            }
+
+            body.print-mode-history .data-table th:nth-child(8),
+            body.print-mode-history .data-table td:nth-child(8) {
+                width: 10% !important;
+            }
+
+            body.print-mode-history .hr-kpis {
+                margin-top: 20px !important;
+                page-break-inside: avoid !important;
+            }
+
+            body.print-mode-history .kpi-card {
+                border: 1px solid #cbd5e1 !important;
+                background: transparent !important;
+            }
         }
     </style>
 </head>
+
 <body>
     <script>
-        (function(){
+        (function () {
             var theme = localStorage.getItem('sys_theme') || 'dark';
             document.body.className = theme === 'light' ? 'light-theme' : 'dark-theme';
         })();
     </script>
-<div class="app-container">
+    <div class="app-container">
 
-    <!-- Sidebar -->
-    <aside class="sidebar hr-sidebar">
-        <div class="logo">
-            <img src="2222.png" alt="شعار" class="restaurant-logo" onerror="this.src='placeholder.svg'">
-            <span>شؤون <span class="highlight text-pink">الموظفين</span></span>
-        </div>
-        <nav class="nav-menu">
-            <div class="nav-group">
-                <p class="nav-label">نطاق العمل الرئيسي</p>
-                <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i class="ph ph-arrow-right"></i><span>العودة للكاشير / الرئيسية</span></a>
+        <!-- Sidebar -->
+        <aside class="sidebar hr-sidebar">
+            <div class="logo">
+                <img src="2222.png" alt="شعار" class="restaurant-logo" onerror="this.src='placeholder.svg'">
+                <span>شؤون <span class="highlight text-pink">الموظفين</span></span>
             </div>
-            <div class="nav-group">
-                <p class="nav-label">إدارة الطاقم</p>
-                <a href="#" class="nav-item active" id="nav-employees"><i class="ph ph-users"></i><span>دليل الموظفين</span></a>
-                <a href="#" class="nav-item" id="nav-new-emp"><i class="ph ph-user-plus"></i><span>إضافة موظف جديد</span></a>
-            </div>
-            <div class="nav-group">
-                <p class="nav-label">الرواتب والمالية</p>
-                <a href="#" class="nav-item" id="nav-payroll"><i class="ph ph-money"></i><span>مسير الرواتب</span></a>
-                <a href="#" class="nav-item" id="nav-vouchers"><i class="ph ph-receipt"></i><span>سجل السندات والسلف</span></a>
-                <a href="#" class="nav-item" id="nav-history-sidebar" onclick="showView('view-history', 'nav-history-sidebar')"><i class="ph ph-clock-counter-clockwise"></i><span>السجل الكامل للعمليات</span></a>
-            </div>
-
-            <div class="nav-group mb-5">
-                <p class="nav-label">العقوبات والقرارات</p>
-                <a href="#" class="nav-item text-red" id="nav-deductions" style="color:#f87171;"><i class="ph ph-warning-octagon"></i><span>الخصومات والجزاءات</span></a>
-            </div>
-        </nav>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="main-content hr-main">
-        <header class="top-header hr-header no-print">
-            <div class="header-left-title">
-                <h2 id="page-title">دليل الموظفين</h2>
-                <p id="page-subtitle">نظرة عامة على الطاقم وحالتهم</p>
-            </div>
-            <div class="header-actions" style="display:flex; gap:10px; align-items:center;">
-                <button class="hr-btn-solid bg-purple" id="btn-open-history" style="background:linear-gradient(135deg, #8b5cf6, #6366f1);"><i class="ph ph-clock-counter-clockwise"></i> السجل الكامل</button>
-                <button class="hr-btn-solid bg-red" id="btn-open-penalty-modal" style="background:rgba(239,68,68,0.2) !important; color:#ef4444; border:1px solid #ef4444;"><i class="ph ph-warning-octagon"></i> خصم / جزاء</button>
-                <button class="hr-btn-solid bg-indigo" id="btn-open-advance-modal"><i class="ph ph-hand-coins"></i> صرف راتب / سلفة سريع</button>
-                
-                <div style="width: 1px; height: 32px; background: var(--border-color); margin: 0 8px;"></div>
-                <div class="user-profile">
-                    <img src="avatar.svg" alt="صورة المستخدم" class="avatar">
-                    <div class="user-info">
-                        <span class="user-name">جاري التحميل...</span>
-                        <span class="user-role">...</span>
-                    </div>
+            <nav class="nav-menu">
+                <div class="nav-group">
+                    <p class="nav-label">نطاق العمل الرئيسي</p>
+                    <a href="index.html" class="nav-item" style="color:var(--text-muted)"><i
+                            class="ph ph-arrow-right"></i><span>العودة للكاشير / الرئيسية</span></a>
                 </div>
-            </div>
-        </header>
-
-        <!-- View: All Employees -->
-        <div id="view-employees" class="hr-view" style="padding:24px;">
-            <div class="kpi-cards hr-kpis" style="margin-bottom:24px;">
-                <div class="card kpi-card hr-kpi-pink">
-                    <div class="kpi-icon pink"><i class="ph-fill ph-users"></i></div>
-                    <div class="kpi-details">
-                        <p class="kpi-title">إجمالي الموظفين</p>
-                        <h3 class="kpi-value hr-glow-pink" id="kpi-total">... <span class="currency" style="font-size:14px">موظف</span></h3>
-                    </div>
+                <div class="nav-group">
+                    <p class="nav-label">إدارة الطاقم</p>
+                    <a href="#" class="nav-item active" id="nav-employees"><i class="ph ph-users"></i><span>دليل
+                            الموظفين</span></a>
+                    <a href="#" class="nav-item" id="nav-new-emp"><i class="ph ph-user-plus"></i><span>إضافة موظف
+                            جديد</span></a>
                 </div>
-                <div class="card kpi-card hr-kpi-orange">
-                    <div class="kpi-icon orange"><i class="ph-fill ph-hand-coins"></i></div>
-                    <div class="kpi-details">
-                        <p class="kpi-title">السلف المفتوحة</p>
-                        <h3 class="kpi-value text-orange" id="kpi-loans">... <span class="currency js-cur-sym">ر.س</span></h3>
-                    </div>
+                <div class="nav-group">
+                    <p class="nav-label">الرواتب والمالية</p>
+                    <a href="#" class="nav-item" id="nav-payroll"><i class="ph ph-money"></i><span>مسير
+                            الرواتب</span></a>
+                    <a href="#" class="nav-item" id="nav-vouchers"><i class="ph ph-receipt"></i><span>سجل السندات
+                            والسلف</span></a>
+                    <a href="#" class="nav-item" id="nav-history-sidebar"
+                        onclick="showView('view-history', 'nav-history-sidebar')"><i
+                            class="ph ph-clock-counter-clockwise"></i><span>السجل الكامل للعمليات</span></a>
                 </div>
-                <div class="card kpi-card hr-kpi-indigo">
-                    <div class="kpi-icon indigo"><i class="ph-fill ph-wallet"></i></div>
-                    <div class="kpi-details">
-                        <p class="kpi-title">مسير الرواتب</p>
-                        <h3 class="kpi-value hr-glow-indigo" id="kpi-payroll">... <span class="currency js-cur-sym">ر.س</span></h3>
-                    </div>
+
+                <div class="nav-group mb-5">
+                    <p class="nav-label">العقوبات والقرارات</p>
+                    <a href="#" class="nav-item text-red" id="nav-deductions" style="color:#f87171;"><i
+                            class="ph ph-warning-octagon"></i><span>الخصومات والجزاءات</span></a>
                 </div>
-            </div>
+            </nav>
+        </aside>
 
-            <div class="roles-toolbar card" style="margin-bottom:24px;">
-                <div class="roles-tabs" id="role-tabs">
-                    <button class="role-tab active" data-role="all">الجميع</button>
-                    <!-- سيتم إضافة الأقسام الأخرى تلقائياً عبر الجافاسكربت -->
+        <!-- Main Content -->
+        <main class="main-content hr-main">
+            <header class="top-header hr-header no-print">
+                <div class="header-left-title">
+                    <h2 id="page-title">دليل الموظفين</h2>
+                    <p id="page-subtitle">نظرة عامة على الطاقم وحالتهم</p>
                 </div>
-                <div class="search-bar" style="width:300px;">
-                    <i class="ph ph-magnifying-glass"></i>
-                    <input type="text" id="search-emp" placeholder="البحث بالاسم أو الإقامة...">
-                </div>
-            </div>
+                <div class="header-actions" style="display:flex; gap:10px; align-items:center;">
+                    <button class="hr-btn-solid bg-purple" id="btn-open-history"
+                        style="background:linear-gradient(135deg, #8b5cf6, #6366f1);"><i
+                            class="ph ph-clock-counter-clockwise"></i> السجل الكامل</button>
+                    <button class="hr-btn-solid bg-red" id="btn-open-penalty-modal"
+                        style="background:rgba(239,68,68,0.2) !important; color:#ef4444; border:1px solid #ef4444;"><i
+                            class="ph ph-warning-octagon"></i> خصم / جزاء</button>
+                    <button class="hr-btn-solid bg-indigo" id="btn-open-advance-modal"><i class="ph ph-hand-coins"></i>
+                        صرف راتب / سلفة سريع</button>
 
-            <div class="staff-grid" id="staff-grid">
-                <!-- Filled by JS -->
-            </div>
-        </div>
-
-        <!-- View: Add/Edit Employee (Full Page) -->
-        <div id="view-add-employee" class="hr-view" style="padding:24px; display:none;">
-            <div class="premium-form" style="max-width: 1000px; margin:0 auto;">
-                <h2 style="margin-bottom: 24px; display:flex; align-items:center; gap:12px; color:var(--text-primary);">
-                    <i class="ph-fill ph-user-circle-plus" style="color:#ec4899; font-size:32px;"></i>
-                    <span id="form-emp-title">إضافة ملف موظف جديد</span>
-                </h2>
-                
-                <form id="form-new-emp">
-                    <!-- Avatar Upload -->
-                    <div class="photo-upload-box" id="avatar-dropzone" onclick="document.getElementById('ne-photo').click()">
-                        <div class="upload-icon">
-                            <i class="ph ph-camera" style="font-size:32px; margin-bottom:8px;"></i>
-                            <span style="font-size:12px; font-weight:700;">صورة الموظف</span>
-                        </div>
-                        <img id="avatar-preview" src="" style="display:none;">
-                        <input type="file" id="ne-photo" accept="image/png, image/jpeg, image/webp">
-                    </div>
-
-                    <div class="form-grid-2">
-                        <!-- Personal Info -->
-                        <div>
-                            <h3 style="color:var(--accent-blue); margin-bottom:16px;"><i class="ph ph-identification-card"></i> البيانات الشخصية</h3>
-                            <div class="fm-group">
-                                <label>الاسم الكامل <span class="required">*</span></label>
-                                <input type="text" id="ne-name" class="fm-input" required placeholder="مثال: أحمد عبدالله صالح">
-                            </div>
-                            <div class="form-grid-2">
-                                <div class="fm-group">
-                                    <label>الجنسية <span class="required">*</span></label>
-                                    <input type="text" id="ne-nationality" class="fm-input" required placeholder="يمني / هندي...">
-                                </div>
-                                <div class="fm-group">
-                                    <label>رقم الهاتف <span class="required">*</span></label>
-                                    <input type="text" id="ne-phone" class="fm-input" required placeholder="05xxxxxxxx" dir="ltr" style="text-align:right;">
-                                </div>
-                            </div>
-                            <div class="form-grid-2">
-                                <div class="fm-group">
-                                    <label>رقم الهوية / الإقامة <span class="required">*</span></label>
-                                    <input type="text" id="ne-iqama" class="fm-input" required placeholder="2xxxxxxxxx">
-                                </div>
-                                <div class="fm-group">
-                                    <label>تاريخ الانتهاء</label>
-                                    <input type="date" id="ne-expiry" class="fm-input">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Job Info -->
-                        <div>
-                            <h3 style="color:var(--accent-pink); margin-bottom:16px;"><i class="ph ph-briefcase"></i> الوظيفة والراتب</h3>
-                            <div class="form-grid-2">
-                                <div class="fm-group">
-                                    <label>القسم / الوظيفة (اكتب أو اختر) <span class="required">*</span></label>
-                                    <input type="text" id="ne-role" list="role-options" class="fm-input" required placeholder="مثال: الإدارة، محاسبة، نظافة...">
-                                    <datalist id="role-options">
-                                        <option value="إدارة">
-                                        <option value="كاشير">
-                                        <option value="مطبخ">
-
-                                        <option value="خدمة">
-                                    </datalist>
-                                </div>
-                                <div class="fm-group">
-                                    <label>تاريخ المباشرة</label>
-                                    <input type="date" id="ne-start" class="fm-input">
-                                </div>
-                            </div>
-                            <div class="form-grid-2">
-                                <div class="fm-group">
-                                    <label>الوردية / الدوام <span class="required">*</span></label>
-                                    <select id="ne-shift" class="fm-input" required>
-                                        <option value="صباحي">صباحي (Morning)</option>
-                                        <option value="مسائي">مسائي (Evening)</option>
-                                        <option value="كامل">دوام كامل (Full Day)</option>
-                                        <option value="مفتوح">مفتوح / منزلي</option>
-                                    </select>
-                                </div>
-                                <div class="fm-group">
-                                    <label>ساعات العمل</label>
-                                    <input type="number" id="ne-hours" class="fm-input" min="1" max="24" value="8" placeholder="8 ساعات">
-                                </div>
-                            </div>
-                            <div class="fm-group">
-                                <label>الراتب الأساسي (<span class="js-cur-sym">ر.س</span>) <span class="required">*</span></label>
-                                <input type="number" id="ne-salary" class="fm-input" required min="0" step="any" placeholder="3000">
-                            </div>
-                            
-                            <h4 style="color:var(--text-muted); margin-top:24px; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">بيانات دخول النظام (صلاحيات الكاشير)</h4>
-                            <div class="form-grid-2">
-                                <div class="fm-group">
-                                    <label>اسم المستخدم (الدخول للنظام)</label>
-                                    <input type="text" id="ne-username" class="fm-input" placeholder="مثال: ahmed123">
-                                </div>
-                                <div class="fm-group">
-                                    <label>كلمة السر</label>
-                                    <input type="password" id="ne-password" class="fm-input" placeholder="****">
-                                </div>
-                            </div>
-                            
-                            <div class="fm-group" style="margin-top:16px;">
-                                <label>ملاحظات إضافية (أوصاف الوظيفة، شروط)</label>
-                                <textarea id="ne-notes" class="fm-input" style="height:104px; resize:none;" placeholder="أي ملاحظات إضافية عن عقد الموظف..."></textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="border-top:1px solid rgba(255,255,255,0.05); margin-top:32px; padding-top:24px; display:flex; gap:16px; justify-content:flex-end;">
-                        <button type="button" onclick="showView('view-employees', 'nav-employees')" class="hr-btn-solid" style="background:transparent; border:1px solid var(--text-muted); color:var(--text-primary);">إلغاء والعودة</button>
-                        <button type="submit" class="hr-btn-solid bg-pink" style="padding:12px 40px; font-size:16px;"><i class="ph ph-floppy-disk"></i> حفظ في قاعدة البيانات</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- View: Employee Full Profile -->
-        <div id="view-emp-profile" class="hr-view" style="padding:24px; display:none; max-width:1400px; margin:0 auto;">
-            <button onclick="showView('view-employees', 'nav-employees')" class="hr-btn-solid" style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-primary); margin-bottom:16px; padding:6px 16px;"><i class="ph ph-arrow-right"></i> العودة للقائمة</button>
-            
-            <div class="profile-header">
-                <img id="pro-avatar" src="avatar.svg" class="profile-avatar" onerror="this.src='avatar.svg'">
-                <div class="profile-info">
-                    <h1 id="pro-name">اسم الموظف</h1>
-                    <div class="profile-meta-tags">
-                        <span class="p-tag" style="color:#60a5fa; border:1px solid rgba(59,130,246,0.3)"><i class="ph ph-briefcase"></i> <span id="pro-role">وظيفة</span></span>
-                        <span class="p-tag" style="color:#f472b6; border:1px solid rgba(236,72,153,0.3)"><i class="ph ph-clock"></i> <span id="pro-shift">صباحي (8 سا)</span></span>
-                        <span class="p-tag" style="color:#a78bfa; border:1px solid rgba(139,92,246,0.3)"><i class="ph ph-identification-card"></i> إقامة: <span id="pro-iqama">---</span></span>
-                        <span class="p-tag" style="color:#34d399; border:1px solid rgba(16,185,129,0.3)" id="pro-status"><i class="ph ph-check-circle"></i> مداوم الآن</span>
-                    </div>
-                    <div class="profile-stats-grid">
-                        <div class="p-stat-card">
-                            <p>الراتب الأساسي</p>
-                            <h3 style="color:#34d399;" id="pro-salary">0.00 <span class="js-cur-sym" style="font-size:12px">ر.س</span></h3>
-                        </div>
-                        <div class="p-stat-card">
-                            <p>إجمالي السلف / الخصم</p>
-                            <h3 style="color:#f87171;" id="pro-loans">0.00 <span class="js-cur-sym" style="font-size:12px">ر.س</span></h3>
-                        </div>
-                        <div class="p-stat-card">
-                            <p>صافي المستحق للصرف</p>
-                            <h3 style="color:#60a5fa;" id="pro-net">0.00 <span class="js-cur-sym" style="font-size:12px">ر.س</span></h3>
-                        </div>
-                        <div class="p-stat-card" style="background:rgba(236,72,153,0.1); border-color:rgba(236,72,153,0.2);">
-                            <p style="color:#f472b6;">أيام الغياب هذا الشهر</p>
-                            <h3 style="color:#f472b6;" id="pro-absent">0 <span style="font-size:12px">يوم</span></h3>
+                    <div style="width: 1px; height: 32px; background: var(--border-color); margin: 0 8px;"></div>
+                    <div class="user-profile">
+                        <img src="avatar.svg" alt="صورة المستخدم" class="avatar">
+                        <div class="user-info">
+                            <span class="user-name">جاري التحميل...</span>
+                            <span class="user-role">...</span>
                         </div>
                     </div>
                 </div>
-                <div style="position:absolute; top:32px; left:32px; display:flex; gap:8px;">
-                    <button class="icon-btn-subtle" id="pro-btn-edit" title="تعديل الملف" style="background:rgba(255,255,255,0.1); width:40px; height:40px; border-radius:10px;"><i class="ph ph-pencil-simple"></i></button>
-                    <button class="icon-btn-subtle" id="pro-btn-print" title="طباعة كشف الحساب" style="background:rgba(255,255,255,0.1); width:40px; height:40px; border-radius:10px;"><i class="ph ph-printer"></i></button>
-                    <button class="hr-btn-solid" id="pro-btn-reset" title="تصفير حساب الموظف" style="background:rgba(245,158,11,0.2); border:1px solid rgba(245,158,11,0.35); color:#fbbf24; height:40px; padding:0 12px;">تصفير الحساب</button>
-                    <button class="icon-btn-subtle" id="pro-btn-delete" title="حذف الموظف" style="background:rgba(239,68,68,0.15); color:#ef4444; width:40px; height:40px; border-radius:10px; border:1px solid rgba(239,68,68,0.3);"><i class="ph ph-trash"></i></button>
-                </div>
-            </div>
+            </header>
 
-            <!-- Profile Internal Tabs -->
-            <div class="profile-tabs">
-                <button class="ptab-btn active" onclick="switchProTab('tab-attendance', this)"><i class="ph ph-calendar-check"></i> سجل الحضور والغياب</button>
-                <button class="ptab-btn" onclick="switchProTab('tab-finances', this)"><i class="ph ph-money"></i> السجل المالي والسندات</button>
-                <button class="ptab-btn" onclick="switchProTab('tab-personal', this)"><i class="ph ph-identification-card"></i> البيانات والمرفقات</button>
-                <button class="ptab-btn" id="pro-sales-tab-btn" onclick="switchProTab('tab-sales', this)" style="display:none;"><i class="ph ph-shopping-cart-simple" style="color:#10b981;"></i> <span style="color:#10b981;">سجل المبيعات</span></button>
-            </div>
-
-            <div id="tab-attendance" class="ptab-content active card" style="padding:24px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                    <h3>سجل البصمة / التحضير الذكي</h3>
-                    <div style="display:flex; gap:10px;">
-                        <button class="hr-btn-solid bg-indigo" onclick="markAttendance('حضور')"><i class="ph ph-fingerprint"></i> تسجيل حضور الآن</button>
-                        <button class="hr-btn-solid" style="background:var(--accent-red);" onclick="markAttendance('غياب')"><i class="ph ph-user-minus"></i> تسجيل غياب</button>
-                    </div>
-                </div>
-                <table class="data-table">
-                    <thead><tr><th>التاريخ</th><th>الوقت</th><th>الحالة</th><th>بواسطة</th></tr></thead>
-                    <tbody id="pro-attendance-body"></tbody>
-                </table>
-            </div>
-
-            <div id="tab-finances" class="ptab-content card" style="padding:24px;">
-                <div class="pro-finances-header no-print" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
-                    <div style="display:flex; gap:10px; align-items:center;">
-                        <h3 style="margin:0;">السندات المالية</h3>
-                        <div style="width:1px;height:24px;background:var(--border-color);margin:0 5px;"></div>
-                        <select id="pro-finances-period" class="filter-select" onchange="window.toggleProFinancesCustomDate(); renderProfileFinances();">
-                            <option value="all">كل الأوقات</option>
-                            <option value="today">اليوم</option>
-                            <option value="week">هذا الأسبوع</option>
-                            <option value="month" selected>هذا الشهر</option>
-                            <option value="last_month">الشهر الماضي</option>
-                            <option value="custom">تاريخ مخصص</option>
-                        </select>
-                        <div id="pro-finances-custom-date" style="display:none; gap:10px; align-items:center; margin-right:10px;">
-                            <input type="date" id="pro-finances-from" class="filter-select" onchange="renderProfileFinances()">
-                            <span style="color:var(--text-muted);">إلى</span>
-                            <input type="date" id="pro-finances-to" class="filter-select" onchange="renderProfileFinances()">
-                        </div>
-                    </div>
-                    <div style="display:flex; gap:10px;">
-                        <button class="hr-btn-outline" style="font-size:13px; border-color:#e11d48; color:#e11d48;" onclick="exportProFinancesPDF()"><i class="ph ph-file-pdf"></i> تصدير (PDF)</button>
-                        <button class="hr-btn-solid bg-pink" onclick="openAdvanceModalForCurrent()"><i class="ph ph-plus"></i> إصدار سند جديد</button>
-                    </div>
-                </div>
-                <!-- Print only header to show report period -->
-                <div id="pro-finances-print-info" class="print-only" style="display:none; text-align:center; margin-bottom:20px;">
-                    <h2 style="margin:0; font-size:18px; color:#000;">كشف حساب الموظف: <span id="pro-print-emp-name"></span></h2>
-                    <p style="margin:5px 0 0 0; font-size:14px; color:#333;" id="pro-print-period-text"></p>
-                </div>
-                <div class="pro-finances-table-wrapper">
-                    <table class="data-table pro-finances-table">
-                        <thead><tr><th>التاريخ</th><th>نوع السند</th><th>المبلغ</th><th>البيان</th><th class="no-print">إجراء</th></tr></thead>
-                        <tbody id="pro-finances-body"></tbody>
-                        <tfoot id="pro-finances-tfoot"></tfoot>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Sales Tab -->
-            <div id="tab-sales" class="ptab-content card" style="padding:24px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                    <h3 style="color:#10b981;"><i class="ph ph-shopping-cart-simple"></i> سجل مبيعات الكاشير</h3>
-                    <div id="pro-sales-kpi" style="display:flex; gap:16px; font-size:13px;"></div>
-                </div>
-                <table class="data-table">
-                    <thead><tr><th>رقم الطلب</th><th>التاريخ</th><th>نوع الطلب</th><th>طريقة الدفع</th><th>المبلغ</th></tr></thead>
-                    <tbody id="pro-sales-body"></tbody>
-                </table>
-            </div>
-
-            <div id="tab-personal" class="ptab-content card" style="padding:24px;">
-                <h3>معلومات إضافية</h3>
-                <div class="form-grid-3" style="margin-top:20px;">
-                    <div class="fm-group"><label>رقم الهاتف</label><div class="fm-input" id="pro-info-phone" style="background:rgba(0,0,0,0.1)">-</div></div>
-                    <div class="fm-group"><label>الجنسية</label><div class="fm-input" id="pro-info-nat" style="background:rgba(0,0,0,0.1)">-</div></div>
-                    <div class="fm-group"><label>تاريخ المباشرة</label><div class="fm-input" id="pro-info-start" style="background:rgba(0,0,0,0.1)">-</div></div>
-                </div>
-                <div class="fm-group" style="margin-top:16px;">
-                    <label>الملاحظات الإدارية لشؤون الموظفين</label>
-                    <div class="fm-input" id="pro-info-notes" style="background:rgba(0,0,0,0.1); height:100px;">-</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- View: Payroll -->
-        <div id="view-payroll" class="hr-view" style="padding:24px; display:none;">
-            <div class="card" style="padding:24px;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
-                    <h3 style="color:var(--text-primary);"><i class="ph ph-money"></i> مسير الرواتب الشهري المجمع</h3>
-                    <div style="display:flex; gap:8px; align-items:center;">
-                        <label for="payroll-cycle-start-day" style="font-size:12px; color:var(--text-muted);">بداية الدورة (يوم بالشهر)</label>
-                        <input id="payroll-cycle-start-day" type="number" min="1" max="28" class="fm-input" style="width:80px; height:36px; padding:6px 10px;">
-                        <label for="payroll-cycle-length-days" style="font-size:12px; color:var(--text-muted);">مدة الدورة (أيام)</label>
-                        <input id="payroll-cycle-length-days" type="number" min="1" max="62" class="fm-input" style="width:80px; height:36px; padding:6px 10px;">
-                        <label for="payroll-next-reset-date" style="font-size:12px; color:var(--text-muted);">التصفير القادم</label>
-                        <input id="payroll-next-reset-date" type="date" class="fm-input" style="width:150px; height:36px; padding:6px 10px;">
-                        <button class="hr-btn-solid" id="btn-save-cycle-start" style="background:rgba(59,130,246,0.2); border:1px solid rgba(59,130,246,0.35); color:#60a5fa;"><i class="ph ph-floppy-disk"></i> حفظ البداية</button>
-                        <button class="hr-btn-solid" id="btn-save-next-reset-date" style="background:rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.35); color:#a5b4fc;">حفظ موعد التصفير</button>
-                        <div class="toggle-wrap">
-                            <span class="toggle-label" id="auto-reset-toggle-text">التصفير التلقائي: مفعل</span>
-                            <label class="toggle-switch" title="تشغيل/إطفاء التصفير التلقائي">
-                                <input type="checkbox" id="auto-reset-toggle">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <button class="hr-btn-solid" id="btn-close-payroll-cycle" style="background:rgba(16,185,129,0.2); border:1px solid rgba(16,185,129,0.35); color:#34d399;">إقفال دورة الرواتب</button>
-                        <button class="hr-btn-solid" id="btn-start-new-cycle" style="background:rgba(245,158,11,0.2); border:1px solid rgba(245,158,11,0.35); color:#fbbf24;"><i class="ph ph-arrow-counter-clockwise"></i> بدء شهر جديد (تصفير الكل)</button>
-                        <button class="hr-btn-solid bg-indigo"><i class="ph ph-printer"></i> طباعة المسير</button>
-                    </div>
-                </div>
-                <div id="payroll-cycle-meta" style="margin-bottom:16px; font-size:13px; color:var(--text-muted);"></div>
-                <table class="data-table">
-                    <thead><tr><th>الموظف</th><th>الوظيفة</th><th>الراتب الأساسي</th><th>السلف المخصومة</th><th>صافي الراتب</th><th>الحالة</th></tr></thead>
-                    <tbody id="payroll-tbody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- View: Vouchers -->
-        <div id="view-vouchers" class="hr-view" style="padding:24px; display:none;">
-            <div class="card" style="padding:24px;">
-                <h3 style="margin-bottom:20px; color:var(--text-primary);"><i class="ph ph-receipt"></i> سجل أرشيف السندات</h3>
-                <div class="search-bar" style="width:320px; margin-bottom:14px;">
-                    <i class="ph ph-magnifying-glass"></i>
-                    <input type="text" id="search-voucher" placeholder="البحث برقم السند أو الموظف أو البيان...">
-                </div>
-                <table class="data-table">
-                    <thead><tr><th>رقم السند</th><th>التاريخ</th><th>الموظف</th><th>النوع</th><th>المبلغ</th><th>السبب</th><th>إجراء</th></tr></thead>
-                    <tbody id="vouchers-tbody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- View: HR History (Full Operations Log) -->
-        <div id="view-history" class="hr-view" style="padding:24px; display:none;">
-            <div class="card" style="padding:24px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
-                    <div>
-                        <h2 style="color:var(--text-primary); margin:0; display:flex; align-items:center; gap:12px;">
-                            <i class="ph-fill ph-clock-counter-clockwise" style="color:#8b5cf6; font-size:28px;"></i>
-                            السجل الكامل لعمليات الموظفين
-                        </h2>
-                        <p style="color:var(--text-muted); margin:4px 0 0; font-size:13px;">عرض وتتبع جميع العمليات: الرواتب، السلف، الخصومات، الجزاءات، والمكافآت</p>
-                    </div>
-                    <div style="display:flex; gap:10px;" class="no-print">
-                        <button class="hr-btn-solid" onclick="showView('view-employees', 'nav-employees')" style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-primary);"><i class="ph ph-arrow-right"></i> العودة</button>
-                        <button class="hr-btn-solid bg-indigo" onclick="showView('view-staff-totals')" style="background:linear-gradient(135deg, #3b82f6, #2563eb);"><i class="ph ph-list-numbers"></i> اجماليات الموظفين</button>
-                        <button class="hr-btn-solid" onclick="exportHistoryToPDF()" style="background:rgba(225,29,72,0.1); border:1px solid #e11d48; color:#e11d48;"><i class="ph ph-file-pdf"></i> تصدير PDF</button>
-                        <button class="hr-btn-solid bg-purple" onclick="exportHistoryToExcel()" style="background:linear-gradient(135deg, #10b981, #059669);"><i class="ph ph-file-xls"></i> تصدير Excel</button>
-                    </div>
-                </div>
-
-                <!-- Filters Section -->
-                <div class="no-print" style="background:rgba(139, 92, 246, 0.05); border:1px solid rgba(139, 92, 246, 0.2); border-radius:16px; padding:20px; margin-bottom:24px;">
-                    <h4 style="margin:0 0 16px; color:var(--text-primary); display:flex; align-items:center; gap:8px; font-size:14px;">
-                        <i class="ph ph-faders" style="color:#8b5cf6;"></i> الفلاتر والبحث المتقدم
-                    </h4>
-                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px;">
-                        <!-- Date Filter -->
-                        <div class="fm-group" style="margin:0;">
-                            <label style="font-size:12px;"><i class="ph ph-calendar"></i> الفترة الزمنية</label>
-                            <select id="history-date-filter" class="fm-input" style="height:40px; padding: 8px 16px; font-size:13px;" onchange="applyHistoryFilters()">
-                                <option value="all">كل الفترات</option>
-                                <option value="today">اليوم</option>
-                                <option value="week">هذا الأسبوع</option>
-                                <option value="month">هذا الشهر</option>
-                                <option value="custom">تاريخ مخصص</option>
-                            </select>
-                        </div>
-                        
-                        <!-- Custom Date Range (hidden by default) -->
-                        <div id="history-custom-date" style="display:none; grid-column:span 2;">
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                                <div class="fm-group" style="margin:0;">
-                                    <label style="font-size:12px;">من تاريخ</label>
-                                    <input type="date" id="history-date-from" class="fm-input" style="height:40px; padding: 8px 16px;" onchange="applyHistoryFilters()">
-                                </div>
-                                <div class="fm-group" style="margin:0;">
-                                    <label style="font-size:12px;">إلى تاريخ</label>
-                                    <input type="date" id="history-date-to" class="fm-input" style="height:40px; padding: 8px 16px;" onchange="applyHistoryFilters()">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Operation Type Filter -->
-                        <div class="fm-group" style="margin:0;">
-                            <label style="font-size:12px;"><i class="ph ph-tag"></i> نوع العملية</label>
-                            <select id="history-type-filter" class="fm-input" style="height:40px; padding: 8px 16px; font-size:13px;" onchange="applyHistoryFilters()">
-                                <option value="all">جميع العمليات</option>
-                                <option value="salary">راتب</option>
-                                <option value="advance">سلفة</option>
-                                <option value="bonus">مكافأة</option>
-                                <option value="خصم / جزاء">خصم / جزاء</option>
-                            </select>
-                        </div>
-
-                        <!-- Employee Filter -->
-                        <div class="fm-group" style="margin:0;">
-                            <label style="font-size:12px;"><i class="ph ph-user"></i> الموظف</label>
-                            <select id="history-employee-filter" class="fm-input" style="height:40px; padding: 8px 16px; font-size:13px;" onchange="applyHistoryFilters()">
-                                <option value="all">كل الموظفين</option>
-                            </select>
-                        </div>
-
-                        <!-- Search Input -->
-                        <div class="fm-group" style="margin:0;">
-                            <label style="font-size:12px;"><i class="ph ph-magnifying-glass"></i> بحث</label>
-                            <input type="text" id="history-search" class="fm-input" style="height:40px; padding: 8px 16px;" placeholder="رقم السند، البيان..." oninput="applyHistoryFilters()">
-                        </div>
-                    </div>
-
-                    <!-- Filter Actions -->
-                    <div style="display:flex; gap:10px; margin-top:16px; justify-content:flex-end;">
-                        <button class="hr-btn-solid" onclick="resetHistoryFilters()" style="background:transparent; border:1px solid var(--text-muted); color:var(--text-primary); padding:8px 16px; font-size:12px;"><i class="ph ph-arrow-counter-clockwise"></i> إعادة تعيين الفلاتر</button>
-                    </div>
-                </div>
-
-                <!-- Summary Cards -->
-                <div class="kpi-cards hr-kpis no-print" style="margin-bottom:24px;">
+            <!-- View: All Employees -->
+            <div id="view-employees" class="hr-view" style="padding:24px;">
+                <div class="kpi-cards hr-kpis" style="margin-bottom:24px;">
                     <div class="card kpi-card hr-kpi-pink">
-                        <div class="kpi-icon pink"><i class="ph-fill ph-list-dashes"></i></div>
+                        <div class="kpi-icon pink"><i class="ph-fill ph-users"></i></div>
                         <div class="kpi-details">
-                            <p class="kpi-title">إجمالي العمليات</p>
-                            <h3 class="kpi-value hr-glow-pink" id="history-total-count">0</h3>
-                        </div>
-                    </div>
-                    <div class="card kpi-card hr-kpi-indigo">
-                        <div class="kpi-icon indigo"><i class="ph-fill ph-money"></i></div>
-                        <div class="kpi-details">
-                            <p class="kpi-title">إجمالي الرواتب</p>
-                            <h3 class="kpi-value hr-glow-indigo" id="history-total-salary">0 <span class="js-cur-sym" style="font-size:14px">ر.س</span></h3>
+                            <p class="kpi-title">إجمالي الموظفين</p>
+                            <h3 class="kpi-value hr-glow-pink" id="kpi-total">... <span class="currency"
+                                    style="font-size:14px">موظف</span></h3>
                         </div>
                     </div>
                     <div class="card kpi-card hr-kpi-orange">
                         <div class="kpi-icon orange"><i class="ph-fill ph-hand-coins"></i></div>
                         <div class="kpi-details">
-                            <p class="kpi-title">إجمالي السلف</p>
-                            <h3 class="kpi-value text-orange" id="history-total-advance">0 <span class="js-cur-sym" style="font-size:14px">ر.س</span></h3>
+                            <p class="kpi-title">السلف المفتوحة</p>
+                            <h3 class="kpi-value text-orange" id="kpi-loans">... <span
+                                    class="currency js-cur-sym">ر.س</span></h3>
                         </div>
                     </div>
-                    <div class="card kpi-card" style="border-top:3px solid #10b981;">
-                        <div class="kpi-icon" style="background:rgba(16,185,129,0.1);"><i class="ph-fill ph-gift" style="color:#10b981;"></i></div>
+                    <div class="card kpi-card hr-kpi-indigo">
+                        <div class="kpi-icon indigo"><i class="ph-fill ph-wallet"></i></div>
                         <div class="kpi-details">
-                            <p class="kpi-title">إجمالي المكافآت</p>
-                            <h3 class="kpi-value" style="color:#10b981;" id="history-total-bonus">0 <span class="js-cur-sym" style="font-size:14px">ر.س</span></h3>
-                        </div>
-                    </div>
-                    <div class="card kpi-card" style="border-top:3px solid #ef4444;">
-                        <div class="kpi-icon" style="background:rgba(239,68,68,0.1);"><i class="ph-fill ph-warning-octagon" style="color:#ef4444;"></i></div>
-                        <div class="kpi-details">
-                            <p class="kpi-title">إجمالي الخصومات</p>
-                            <h3 class="kpi-value" style="color:#ef4444;" id="history-total-deduction">0 <span class="js-cur-sym" style="font-size:14px">ر.س</span></h3>
-                        </div>
-                    </div>
-                    <div class="card kpi-card" style="border-top:3px solid #3b82f6;">
-                        <div class="kpi-icon" style="background:rgba(59,130,246,0.1);"><i class="ph-fill ph-bank" style="color:#3b82f6;"></i></div>
-                        <div class="kpi-details">
-                            <p class="kpi-title">إجمالي المتبقي (صافي)</p>
-                            <h3 class="kpi-value" style="color:#3b82f6;" id="history-total-remaining">0 <span class="js-cur-sym" style="font-size:14px">ر.س</span></h3>
+                            <p class="kpi-title">مسير الرواتب</p>
+                            <h3 class="kpi-value hr-glow-indigo" id="kpi-payroll">... <span
+                                    class="currency js-cur-sym">ر.س</span></h3>
                         </div>
                     </div>
                 </div>
 
-                <!-- History Table -->
-                <div class="table-responsive" style="max-height:600px; overflow-y:auto;">
+                <div class="roles-toolbar card" style="margin-bottom:24px;">
+                    <div class="roles-tabs" id="role-tabs">
+                        <button class="role-tab active" data-role="all">الجميع</button>
+                        <!-- سيتم إضافة الأقسام الأخرى تلقائياً عبر الجافاسكربت -->
+                    </div>
+                    <div class="search-bar" style="width:300px;">
+                        <i class="ph ph-magnifying-glass"></i>
+                        <input type="text" id="search-emp" placeholder="البحث بالاسم أو الإقامة...">
+                    </div>
+                </div>
+
+                <div class="staff-grid" id="staff-grid">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+
+            <!-- View: Add/Edit Employee (Full Page) -->
+            <div id="view-add-employee" class="hr-view" style="padding:24px; display:none;">
+                <div class="premium-form" style="max-width: 1000px; margin:0 auto;">
+                    <h2
+                        style="margin-bottom: 24px; display:flex; align-items:center; gap:12px; color:var(--text-primary);">
+                        <i class="ph-fill ph-user-circle-plus" style="color:#ec4899; font-size:32px;"></i>
+                        <span id="form-emp-title">إضافة ملف موظف جديد</span>
+                    </h2>
+
+                    <form id="form-new-emp">
+                        <!-- Avatar Upload -->
+                        <div class="photo-upload-box" id="avatar-dropzone"
+                            onclick="document.getElementById('ne-photo').click()">
+                            <div class="upload-icon">
+                                <i class="ph ph-camera" style="font-size:32px; margin-bottom:8px;"></i>
+                                <span style="font-size:12px; font-weight:700;">صورة الموظف</span>
+                            </div>
+                            <img id="avatar-preview" src="" style="display:none;">
+                            <input type="file" id="ne-photo" accept="image/png, image/jpeg, image/webp">
+                        </div>
+
+                        <div class="form-grid-2">
+                            <!-- Personal Info -->
+                            <div>
+                                <h3 style="color:var(--accent-blue); margin-bottom:16px;"><i
+                                        class="ph ph-identification-card"></i> البيانات الشخصية</h3>
+                                <div class="fm-group">
+                                    <label>الاسم الكامل <span class="required">*</span></label>
+                                    <input type="text" id="ne-name" class="fm-input" required
+                                        placeholder="مثال: أحمد عبدالله صالح">
+                                </div>
+                                <div class="form-grid-2">
+                                    <div class="fm-group">
+                                        <label>الجنسية <span class="required">*</span></label>
+                                        <input type="text" id="ne-nationality" class="fm-input" required
+                                            placeholder="يمني / هندي...">
+                                    </div>
+                                    <div class="fm-group">
+                                        <label>رقم الهاتف <span class="required">*</span></label>
+                                        <input type="text" id="ne-phone" class="fm-input" required
+                                            placeholder="05xxxxxxxx" dir="ltr" style="text-align:right;">
+                                    </div>
+                                </div>
+                                <div class="form-grid-2">
+                                    <div class="fm-group">
+                                        <label>رقم الهوية / الإقامة <span class="required">*</span></label>
+                                        <input type="text" id="ne-iqama" class="fm-input" required
+                                            placeholder="2xxxxxxxxx">
+                                    </div>
+                                    <div class="fm-group">
+                                        <label>تاريخ الانتهاء</label>
+                                        <input type="date" id="ne-expiry" class="fm-input">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Job Info -->
+                            <div>
+                                <h3 style="color:var(--accent-pink); margin-bottom:16px;"><i
+                                        class="ph ph-briefcase"></i> الوظيفة والراتب</h3>
+                                <div class="form-grid-2">
+                                    <div class="fm-group">
+                                        <label>القسم / الوظيفة (اكتب أو اختر) <span class="required">*</span></label>
+                                        <input type="text" id="ne-role" list="role-options" class="fm-input" required
+                                            placeholder="مثال: الإدارة، محاسبة، نظافة...">
+                                        <datalist id="role-options">
+                                            <option value="إدارة">
+                                            <option value="كاشير">
+                                            <option value="مطبخ">
+
+                                            <option value="خدمة">
+                                        </datalist>
+                                    </div>
+                                    <div class="fm-group">
+                                        <label>تاريخ المباشرة</label>
+                                        <input type="date" id="ne-start" class="fm-input">
+                                    </div>
+                                </div>
+                                <div class="form-grid-2">
+                                    <div class="fm-group">
+                                        <label>الوردية / الدوام <span class="required">*</span></label>
+                                        <select id="ne-shift" class="fm-input" required>
+                                            <option value="صباحي">صباحي (Morning)</option>
+                                            <option value="مسائي">مسائي (Evening)</option>
+                                            <option value="كامل">دوام كامل (Full Day)</option>
+                                            <option value="مفتوح">مفتوح / منزلي</option>
+                                        </select>
+                                    </div>
+                                    <div class="fm-group">
+                                        <label>ساعات العمل</label>
+                                        <input type="number" id="ne-hours" class="fm-input" min="1" max="24" value="8"
+                                            placeholder="8 ساعات">
+                                    </div>
+                                </div>
+                                <div class="fm-group">
+                                    <label>الراتب الأساسي (<span class="js-cur-sym">ر.س</span>) <span
+                                            class="required">*</span></label>
+                                    <input type="number" id="ne-salary" class="fm-input" required min="0" step="any"
+                                        placeholder="3000">
+                                </div>
+
+                                <h4
+                                    style="color:var(--text-muted); margin-top:24px; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:8px;">
+                                    بيانات دخول النظام (صلاحيات الكاشير)</h4>
+                                <div class="form-grid-2">
+                                    <div class="fm-group">
+                                        <label>اسم المستخدم (الدخول للنظام)</label>
+                                        <input type="text" id="ne-username" class="fm-input"
+                                            placeholder="مثال: ahmed123">
+                                    </div>
+                                    <div class="fm-group">
+                                        <label>كلمة السر</label>
+                                        <input type="password" id="ne-password" class="fm-input" placeholder="****">
+                                    </div>
+                                </div>
+
+                                <div class="fm-group" style="margin-top:16px;">
+                                    <label>ملاحظات إضافية (أوصاف الوظيفة، شروط)</label>
+                                    <textarea id="ne-notes" class="fm-input" style="height:104px; resize:none;"
+                                        placeholder="أي ملاحظات إضافية عن عقد الموظف..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            style="border-top:1px solid rgba(255,255,255,0.05); margin-top:32px; padding-top:24px; display:flex; gap:16px; justify-content:flex-end;">
+                            <button type="button" onclick="showView('view-employees', 'nav-employees')"
+                                class="hr-btn-solid"
+                                style="background:transparent; border:1px solid var(--text-muted); color:var(--text-primary);">إلغاء
+                                والعودة</button>
+                            <button type="submit" class="hr-btn-solid bg-pink"
+                                style="padding:12px 40px; font-size:16px;"><i class="ph ph-floppy-disk"></i> حفظ في
+                                قاعدة البيانات</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- View: Employee Full Profile -->
+            <div id="view-emp-profile" class="hr-view"
+                style="padding:24px; display:none; max-width:1400px; margin:0 auto;">
+                <button onclick="showView('view-employees', 'nav-employees')" class="hr-btn-solid"
+                    style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-primary); margin-bottom:16px; padding:6px 16px;"><i
+                        class="ph ph-arrow-right"></i> العودة للقائمة</button>
+
+                <div class="profile-header">
+                    <img id="pro-avatar" src="avatar.svg" class="profile-avatar" onerror="this.src='avatar.svg'">
+                    <div class="profile-info">
+                        <h1 id="pro-name">اسم الموظف</h1>
+                        <div class="profile-meta-tags">
+                            <span class="p-tag" style="color:#60a5fa; border:1px solid rgba(59,130,246,0.3)"><i
+                                    class="ph ph-briefcase"></i> <span id="pro-role">وظيفة</span></span>
+                            <span class="p-tag" style="color:#f472b6; border:1px solid rgba(236,72,153,0.3)"><i
+                                    class="ph ph-clock"></i> <span id="pro-shift">صباحي (8 سا)</span></span>
+                            <span class="p-tag" style="color:#a78bfa; border:1px solid rgba(139,92,246,0.3)"><i
+                                    class="ph ph-identification-card"></i> إقامة: <span id="pro-iqama">---</span></span>
+                            <span class="p-tag" style="color:#34d399; border:1px solid rgba(16,185,129,0.3)"
+                                id="pro-status"><i class="ph ph-check-circle"></i> مداوم الآن</span>
+                        </div>
+                        <div class="profile-stats-grid">
+                            <div class="p-stat-card">
+                                <p>الراتب الأساسي</p>
+                                <h3 style="color:#34d399;" id="pro-salary">0.00 <span class="js-cur-sym"
+                                        style="font-size:12px">ر.س</span></h3>
+                            </div>
+                            <div class="p-stat-card">
+                                <p>إجمالي السلف / الخصم</p>
+                                <h3 style="color:#f87171;" id="pro-loans">0.00 <span class="js-cur-sym"
+                                        style="font-size:12px">ر.س</span></h3>
+                            </div>
+                            <div class="p-stat-card">
+                                <p>صافي المستحق للصرف</p>
+                                <h3 style="color:#60a5fa;" id="pro-net">0.00 <span class="js-cur-sym"
+                                        style="font-size:12px">ر.س</span></h3>
+                            </div>
+                            <div class="p-stat-card"
+                                style="background:rgba(236,72,153,0.1); border-color:rgba(236,72,153,0.2);">
+                                <p style="color:#f472b6;">أيام الغياب هذا الشهر</p>
+                                <h3 style="color:#f472b6;" id="pro-absent">0 <span style="font-size:12px">يوم</span>
+                                </h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="position:absolute; top:32px; left:32px; display:flex; gap:8px;">
+                        <button class="icon-btn-subtle" id="pro-btn-edit" title="تعديل الملف"
+                            style="background:rgba(255,255,255,0.1); width:40px; height:40px; border-radius:10px;"><i
+                                class="ph ph-pencil-simple"></i></button>
+                        <button class="icon-btn-subtle" id="pro-btn-print" title="طباعة كشف الحساب"
+                            style="background:rgba(255,255,255,0.1); width:40px; height:40px; border-radius:10px;"><i
+                                class="ph ph-printer"></i></button>
+                        <button class="hr-btn-solid" id="pro-btn-reset" title="تصفير حساب الموظف"
+                            style="background:rgba(245,158,11,0.2); border:1px solid rgba(245,158,11,0.35); color:#fbbf24; height:40px; padding:0 12px;">تصفير
+                            الحساب</button>
+                        <button class="icon-btn-subtle" id="pro-btn-delete" title="حذف الموظف"
+                            style="background:rgba(239,68,68,0.15); color:#ef4444; width:40px; height:40px; border-radius:10px; border:1px solid rgba(239,68,68,0.3);"><i
+                                class="ph ph-trash"></i></button>
+                    </div>
+                </div>
+
+                <!-- Profile Internal Tabs -->
+                <div class="profile-tabs">
+                    <button class="ptab-btn active" onclick="switchProTab('tab-attendance', this)"><i
+                            class="ph ph-calendar-check"></i> سجل الحضور والغياب</button>
+                    <button class="ptab-btn" onclick="switchProTab('tab-finances', this)"><i class="ph ph-money"></i>
+                        السجل المالي والسندات</button>
+                    <button class="ptab-btn" onclick="switchProTab('tab-personal', this)"><i
+                            class="ph ph-identification-card"></i> البيانات والمرفقات</button>
+                    <button class="ptab-btn" id="pro-sales-tab-btn" onclick="switchProTab('tab-sales', this)"
+                        style="display:none;"><i class="ph ph-shopping-cart-simple" style="color:#10b981;"></i> <span
+                            style="color:#10b981;">سجل المبيعات</span></button>
+                </div>
+
+                <div id="tab-attendance" class="ptab-content active card" style="padding:24px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <h3>سجل البصمة / التحضير الذكي</h3>
+                        <div style="display:flex; gap:10px;">
+                            <button class="hr-btn-solid bg-indigo" onclick="markAttendance('حضور')"><i
+                                    class="ph ph-fingerprint"></i> تسجيل حضور الآن</button>
+                            <button class="hr-btn-solid" style="background:var(--accent-red);"
+                                onclick="markAttendance('غياب')"><i class="ph ph-user-minus"></i> تسجيل غياب</button>
+                        </div>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>التاريخ</th>
+                                <th>الوقت</th>
+                                <th>الحالة</th>
+                                <th>بواسطة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pro-attendance-body"></tbody>
+                    </table>
+                </div>
+
+                <div id="tab-finances" class="ptab-content card" style="padding:24px;">
+                    <div class="pro-finances-header no-print"
+                        style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <h3 style="margin:0;">السندات المالية</h3>
+                            <div style="width:1px;height:24px;background:var(--border-color);margin:0 5px;"></div>
+                            <select id="pro-finances-period" class="filter-select"
+                                onchange="window.toggleProFinancesCustomDate(); renderProfileFinances();">
+                                <option value="all">كل الأوقات</option>
+                                <option value="today">اليوم</option>
+                                <option value="week">هذا الأسبوع</option>
+                                <option value="month" selected>هذا الشهر</option>
+                                <option value="last_month">الشهر الماضي</option>
+                                <option value="custom">تاريخ مخصص</option>
+                            </select>
+                            <div id="pro-finances-custom-date"
+                                style="display:none; gap:10px; align-items:center; margin-right:10px;">
+                                <input type="date" id="pro-finances-from" class="filter-select"
+                                    onchange="renderProfileFinances()">
+                                <span style="color:var(--text-muted);">إلى</span>
+                                <input type="date" id="pro-finances-to" class="filter-select"
+                                    onchange="renderProfileFinances()">
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <button class="hr-btn-outline" style="font-size:13px; border-color:#e11d48; color:#e11d48;"
+                                onclick="exportProFinancesPDF()"><i class="ph ph-file-pdf"></i> تصدير (PDF)</button>
+                            <button class="hr-btn-solid bg-pink" onclick="openAdvanceModalForCurrent()"><i
+                                    class="ph ph-plus"></i> إصدار سند جديد</button>
+                        </div>
+                    </div>
+                    <!-- Print only header to show report period -->
+                    <div id="pro-finances-print-info" class="print-only"
+                        style="display:none; text-align:center; margin-bottom:20px;">
+                        <h2 style="margin:0; font-size:18px; color:#000;">كشف حساب الموظف: <span
+                                id="pro-print-emp-name"></span></h2>
+                        <p style="margin:5px 0 0 0; font-size:14px; color:#333;" id="pro-print-period-text"></p>
+                    </div>
+                    <div class="pro-finances-table-wrapper">
+                        <table class="data-table pro-finances-table">
+                            <thead>
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>نوع السند</th>
+                                    <th>المبلغ</th>
+                                    <th>البيان</th>
+                                    <th class="no-print">إجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pro-finances-body"></tbody>
+                            <tfoot id="pro-finances-tfoot"></tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sales Tab -->
+                <div id="tab-sales" class="ptab-content card" style="padding:24px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <h3 style="color:#10b981;"><i class="ph ph-shopping-cart-simple"></i> سجل مبيعات الكاشير</h3>
+                        <div id="pro-sales-kpi" style="display:flex; gap:16px; font-size:13px;"></div>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>رقم الطلب</th>
+                                <th>التاريخ</th>
+                                <th>نوع الطلب</th>
+                                <th>طريقة الدفع</th>
+                                <th>المبلغ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pro-sales-body"></tbody>
+                    </table>
+                </div>
+
+                <div id="tab-personal" class="ptab-content card" style="padding:24px;">
+                    <h3>معلومات إضافية</h3>
+                    <div class="form-grid-3" style="margin-top:20px;">
+                        <div class="fm-group"><label>رقم الهاتف</label>
+                            <div class="fm-input" id="pro-info-phone" style="background:rgba(0,0,0,0.1)">-</div>
+                        </div>
+                        <div class="fm-group"><label>الجنسية</label>
+                            <div class="fm-input" id="pro-info-nat" style="background:rgba(0,0,0,0.1)">-</div>
+                        </div>
+                        <div class="fm-group"><label>تاريخ المباشرة</label>
+                            <div class="fm-input" id="pro-info-start" style="background:rgba(0,0,0,0.1)">-</div>
+                        </div>
+                    </div>
+                    <div class="fm-group" style="margin-top:16px;">
+                        <label>الملاحظات الإدارية لشؤون الموظفين</label>
+                        <div class="fm-input" id="pro-info-notes" style="background:rgba(0,0,0,0.1); height:100px;">-
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View: Payroll -->
+            <div id="view-payroll" class="hr-view" style="padding:24px; display:none;">
+                <div class="card" style="padding:24px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+                        <h3 style="color:var(--text-primary);"><i class="ph ph-money"></i> مسير الرواتب الشهري المجمع
+                        </h3>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <label for="payroll-cycle-start-day" style="font-size:12px; color:var(--text-muted);">بداية
+                                الدورة (يوم بالشهر)</label>
+                            <input id="payroll-cycle-start-day" type="number" min="1" max="28" class="fm-input"
+                                style="width:80px; height:36px; padding:6px 10px;">
+                            <label for="payroll-cycle-length-days" style="font-size:12px; color:var(--text-muted);">مدة
+                                الدورة (أيام)</label>
+                            <input id="payroll-cycle-length-days" type="number" min="1" max="62" class="fm-input"
+                                style="width:80px; height:36px; padding:6px 10px;">
+                            <label for="payroll-next-reset-date"
+                                style="font-size:12px; color:var(--text-muted);">التصفير القادم</label>
+                            <input id="payroll-next-reset-date" type="date" class="fm-input"
+                                style="width:150px; height:36px; padding:6px 10px;">
+                            <button class="hr-btn-solid" id="btn-save-cycle-start"
+                                style="background:rgba(59,130,246,0.2); border:1px solid rgba(59,130,246,0.35); color:#60a5fa;"><i
+                                    class="ph ph-floppy-disk"></i> حفظ البداية</button>
+                            <button class="hr-btn-solid" id="btn-save-next-reset-date"
+                                style="background:rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.35); color:#a5b4fc;">حفظ
+                                موعد التصفير</button>
+                            <div class="toggle-wrap">
+                                <span class="toggle-label" id="auto-reset-toggle-text">التصفير التلقائي: مفعل</span>
+                                <label class="toggle-switch" title="تشغيل/إطفاء التصفير التلقائي">
+                                    <input type="checkbox" id="auto-reset-toggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <button class="hr-btn-solid" id="btn-close-payroll-cycle"
+                                style="background:rgba(16,185,129,0.2); border:1px solid rgba(16,185,129,0.35); color:#34d399;">إقفال
+                                دورة الرواتب</button>
+                            <button class="hr-btn-solid" id="btn-start-new-cycle"
+                                style="background:rgba(245,158,11,0.2); border:1px solid rgba(245,158,11,0.35); color:#fbbf24;"><i
+                                    class="ph ph-arrow-counter-clockwise"></i> بدء شهر جديد (تصفير الكل)</button>
+                            <button class="hr-btn-solid bg-indigo"><i class="ph ph-printer"></i> طباعة المسير</button>
+                        </div>
+                    </div>
+                    <div id="payroll-cycle-meta" style="margin-bottom:16px; font-size:13px; color:var(--text-muted);">
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>الموظف</th>
+                                <th>الوظيفة</th>
+                                <th>الراتب الأساسي</th>
+                                <th>السلف المخصومة</th>
+                                <th>صافي الراتب</th>
+                                <th>الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="payroll-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- View: Vouchers -->
+            <div id="view-vouchers" class="hr-view" style="padding:24px; display:none;">
+                <div class="card" style="padding:24px;">
+                    <h3 style="margin-bottom:20px; color:var(--text-primary);"><i class="ph ph-receipt"></i> سجل أرشيف
+                        السندات</h3>
+                    <div class="search-bar" style="width:320px; margin-bottom:14px;">
+                        <i class="ph ph-magnifying-glass"></i>
+                        <input type="text" id="search-voucher" placeholder="البحث برقم السند أو الموظف أو البيان...">
+                    </div>
                     <table class="data-table">
                         <thead>
                             <tr>
                                 <th>رقم السند</th>
                                 <th>التاريخ</th>
                                 <th>الموظف</th>
-                                <th>نوع العملية</th>
+                                <th>النوع</th>
                                 <th>المبلغ</th>
-                                <th>طريقة الصرف</th>
-                                <th>البيان / السبب</th>
-                                <th>الرصيد المتبقي</th>
-                                <th class="no-print">إجراءات</th>
+                                <th>السبب</th>
+                                <th>إجراء</th>
                             </tr>
                         </thead>
-                        <tbody id="history-tbody">
-                            <!-- JS Populated -->
-                        </tbody>
-                        <tfoot id="history-tfoot">
-                            <!-- JS Populated Summary for PDF -->
-                        </tfoot>
-                    </table>
-                </div>
-
-
-
-                <!-- Empty State -->
-                <div id="history-empty-state" style="display:none; text-align:center; padding:60px 20px;">
-                    <i class="ph ph-clock-counter-clockwise" style="font-size:64px; color:var(--text-muted); opacity:0.3;"></i>
-                    <h3 style="color:var(--text-muted); margin-top:16px;">لا توجد عمليات مطابقة</h3>
-                    <p style="color:var(--text-muted); font-size:13px;">جرب تغيير الفلاتر أو البحث عن شيء آخر</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- View: Staff Totals Report -->
-        <div id="view-staff-totals" class="hr-view" style="display:none;">
-            <div class="card" style="padding:24px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;" class="no-print">
-                    <div>
-                        <h2 style="color:var(--text-primary); margin:0; display:flex; align-items:center; gap:12px;">
-                            <i class="ph-fill ph-calculator" style="color:#3b82f6; font-size:28px;"></i>
-                            اجماليات أرصدة الموظفين
-                        </h2>
-                        <p style="color:var(--text-muted); margin:4px 0 0; font-size:13px;">ملخص الأرصدة المتبقية وتاريخ آخر عملية صرف لكل موظف</p>
-                    </div>
-                    <div style="display:flex; gap:10px;" class="no-print">
-                        <button class="hr-btn-solid" onclick="showView('view-history')" style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-primary);"><i class="ph ph-arrow-right"></i> العودة للسجل</button>
-                        <button class="hr-btn-solid" onclick="exportStaffTotalsPDF()" style="background:rgba(225,29,72,0.1); border:1px solid #e11d48; color:#e11d48;"><i class="ph ph-file-pdf"></i> تصدير PDF الإجماليات</button>
-                    </div>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="data-table" id="staff-totals-table">
-                        <thead>
-                            <tr>
-                                <th>اسم الموظف</th>
-                                <th>الوظيفة</th>
-                                <th>الرصيد المتبقي (المستحق)</th>
-                                <th>تاريخ آخر سداد / صرف</th>
-                            </tr>
-                        </thead>
-                        <tbody id="staff-totals-tbody">
-                            <!-- JS Populated -->
-                        </tbody>
+                        <tbody id="vouchers-tbody"></tbody>
                     </table>
                 </div>
             </div>
-        </div>
 
-        <!-- View: Deductions & Penalties -->
-        <div id="view-deductions" class="hr-view" style="display:none; padding:24px;">
-            <div class="dashboard-header mb-4">
-                <div>
-                    <h1>قواعد وسجل الخصومات</h1>
-                    <p style="color:var(--text-muted)">إدارة قوانين الجزاءات، وعرض السجل التاريخي للخصومات المطبقة</p>
-                </div>
-            </div>
-            
-            <div style="display:grid; grid-template-columns: 1fr 2fr; gap:24px;">
-                <!-- Column 1: Rules -->
+            <!-- View: HR History (Full Operations Log) -->
+            <div id="view-history" class="hr-view" style="padding:24px; display:none;">
                 <div class="card" style="padding:24px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                        <h3 style="color:var(--text-primary); margin:0;"><i class="ph ph-scales" style="color:#ec4899;"></i> قواعد الجزاءات</h3>
-                        <button type="button" class="hr-btn-solid bg-pink" style="padding:6px 12px; font-size:12px;" onclick="openRuleModalForCreate()">
-                            <i class="ph ph-plus"></i> إضافة قاعدة
-                        </button>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+                        <div>
+                            <h2
+                                style="color:var(--text-primary); margin:0; display:flex; align-items:center; gap:12px;">
+                                <i class="ph-fill ph-clock-counter-clockwise"
+                                    style="color:#8b5cf6; font-size:28px;"></i>
+                                السجل الكامل لعمليات الموظفين
+                            </h2>
+                            <p style="color:var(--text-muted); margin:4px 0 0; font-size:13px;">عرض وتتبع جميع العمليات:
+                                الرواتب، السلف، الخصومات، الجزاءات، والمكافآت</p>
+                        </div>
+                        <div style="display:flex; gap:10px;" class="no-print">
+                            <button class="hr-btn-solid" onclick="showView('view-employees', 'nav-employees')"
+                                style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-primary);"><i
+                                    class="ph ph-arrow-right"></i> العودة</button>
+                            <button class="hr-btn-solid bg-indigo" onclick="showView('view-staff-totals')"
+                                style="background:linear-gradient(135deg, #3b82f6, #2563eb);"><i
+                                    class="ph ph-list-numbers"></i> اجماليات الموظفين</button>
+                            <button class="hr-btn-solid" onclick="exportHistoryToPDF()"
+                                style="background:rgba(225,29,72,0.1); border:1px solid #e11d48; color:#e11d48;"><i
+                                    class="ph ph-file-pdf"></i> تصدير PDF</button>
+                            <button class="hr-btn-solid bg-purple" onclick="exportHistoryToExcel()"
+                                style="background:linear-gradient(135deg, #10b981, #059669);"><i
+                                    class="ph ph-file-xls"></i> تصدير Excel</button>
+                        </div>
                     </div>
-                    <div class="table-responsive" style="max-height:400px; overflow-y:auto;">
+
+                    <!-- Filters Section -->
+                    <div class="no-print"
+                        style="background:rgba(139, 92, 246, 0.05); border:1px solid rgba(139, 92, 246, 0.2); border-radius:16px; padding:20px; margin-bottom:24px;">
+                        <h4
+                            style="margin:0 0 16px; color:var(--text-primary); display:flex; align-items:center; gap:8px; font-size:14px;">
+                            <i class="ph ph-faders" style="color:#8b5cf6;"></i> الفلاتر والبحث المتقدم
+                        </h4>
+                        <div
+                            style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px;">
+                            <!-- Date Filter -->
+                            <div class="fm-group" style="margin:0;">
+                                <label style="font-size:12px;"><i class="ph ph-calendar"></i> الفترة الزمنية</label>
+                                <select id="history-date-filter" class="fm-input"
+                                    style="height:40px; padding: 8px 16px; font-size:13px;"
+                                    onchange="applyHistoryFilters()">
+                                    <option value="all">كل الفترات</option>
+                                    <option value="today">اليوم</option>
+                                    <option value="week">هذا الأسبوع</option>
+                                    <option value="month">هذا الشهر</option>
+                                    <option value="custom">تاريخ مخصص</option>
+                                </select>
+                            </div>
+
+                            <!-- Custom Date Range (hidden by default) -->
+                            <div id="history-custom-date" style="display:none; grid-column:span 2;">
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                                    <div class="fm-group" style="margin:0;">
+                                        <label style="font-size:12px;">من تاريخ</label>
+                                        <input type="date" id="history-date-from" class="fm-input"
+                                            style="height:40px; padding: 8px 16px;" onchange="applyHistoryFilters()">
+                                    </div>
+                                    <div class="fm-group" style="margin:0;">
+                                        <label style="font-size:12px;">إلى تاريخ</label>
+                                        <input type="date" id="history-date-to" class="fm-input"
+                                            style="height:40px; padding: 8px 16px;" onchange="applyHistoryFilters()">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Operation Type Filter -->
+                            <div class="fm-group" style="margin:0;">
+                                <label style="font-size:12px;"><i class="ph ph-tag"></i> نوع العملية</label>
+                                <select id="history-type-filter" class="fm-input"
+                                    style="height:40px; padding: 8px 16px; font-size:13px;"
+                                    onchange="applyHistoryFilters()">
+                                    <option value="all">جميع العمليات</option>
+                                    <option value="salary">راتب</option>
+                                    <option value="advance">سلفة</option>
+                                    <option value="bonus">مكافأة</option>
+                                    <option value="خصم / جزاء">خصم / جزاء</option>
+                                </select>
+                            </div>
+
+                            <!-- Employee Filter -->
+                            <div class="fm-group" style="margin:0;">
+                                <label style="font-size:12px;"><i class="ph ph-user"></i> الموظف</label>
+                                <select id="history-employee-filter" class="fm-input"
+                                    style="height:40px; padding: 8px 16px; font-size:13px;"
+                                    onchange="applyHistoryFilters()">
+                                    <option value="all">كل الموظفين</option>
+                                </select>
+                            </div>
+
+                            <!-- Search Input -->
+                            <div class="fm-group" style="margin:0;">
+                                <label style="font-size:12px;"><i class="ph ph-magnifying-glass"></i> بحث</label>
+                                <input type="text" id="history-search" class="fm-input"
+                                    style="height:40px; padding: 8px 16px;" placeholder="رقم السند، البيان..."
+                                    oninput="applyHistoryFilters()">
+                            </div>
+                        </div>
+
+                        <!-- Filter Actions -->
+                        <div style="display:flex; gap:10px; margin-top:16px; justify-content:flex-end;">
+                            <button class="hr-btn-solid" onclick="resetHistoryFilters()"
+                                style="background:transparent; border:1px solid var(--text-muted); color:var(--text-primary); padding:8px 16px; font-size:12px;"><i
+                                    class="ph ph-arrow-counter-clockwise"></i> إعادة تعيين الفلاتر</button>
+                        </div>
+                    </div>
+
+                    <!-- Summary Cards -->
+                    <div class="kpi-cards hr-kpis no-print" style="margin-bottom:24px;">
+                        <div class="card kpi-card hr-kpi-pink">
+                            <div class="kpi-icon pink"><i class="ph-fill ph-list-dashes"></i></div>
+                            <div class="kpi-details">
+                                <p class="kpi-title">إجمالي العمليات</p>
+                                <h3 class="kpi-value hr-glow-pink" id="history-total-count">0</h3>
+                            </div>
+                        </div>
+                        <div class="card kpi-card hr-kpi-indigo">
+                            <div class="kpi-icon indigo"><i class="ph-fill ph-money"></i></div>
+                            <div class="kpi-details">
+                                <p class="kpi-title">إجمالي الرواتب</p>
+                                <h3 class="kpi-value hr-glow-indigo" id="history-total-salary">0 <span
+                                        class="js-cur-sym" style="font-size:14px">ر.س</span></h3>
+                            </div>
+                        </div>
+                        <div class="card kpi-card hr-kpi-orange">
+                            <div class="kpi-icon orange"><i class="ph-fill ph-hand-coins"></i></div>
+                            <div class="kpi-details">
+                                <p class="kpi-title">إجمالي السلف</p>
+                                <h3 class="kpi-value text-orange" id="history-total-advance">0 <span class="js-cur-sym"
+                                        style="font-size:14px">ر.س</span></h3>
+                            </div>
+                        </div>
+                        <div class="card kpi-card" style="border-top:3px solid #10b981;">
+                            <div class="kpi-icon" style="background:rgba(16,185,129,0.1);"><i class="ph-fill ph-gift"
+                                    style="color:#10b981;"></i></div>
+                            <div class="kpi-details">
+                                <p class="kpi-title">إجمالي المكافآت</p>
+                                <h3 class="kpi-value" style="color:#10b981;" id="history-total-bonus">0 <span
+                                        class="js-cur-sym" style="font-size:14px">ر.س</span></h3>
+                            </div>
+                        </div>
+                        <div class="card kpi-card" style="border-top:3px solid #ef4444;">
+                            <div class="kpi-icon" style="background:rgba(239,68,68,0.1);"><i
+                                    class="ph-fill ph-warning-octagon" style="color:#ef4444;"></i></div>
+                            <div class="kpi-details">
+                                <p class="kpi-title">إجمالي الخصومات</p>
+                                <h3 class="kpi-value" style="color:#ef4444;" id="history-total-deduction">0 <span
+                                        class="js-cur-sym" style="font-size:14px">ر.س</span></h3>
+                            </div>
+                        </div>
+                        <div class="card kpi-card" style="border-top:3px solid #3b82f6;">
+                            <div class="kpi-icon" style="background:rgba(59,130,246,0.1);"><i class="ph-fill ph-bank"
+                                    style="color:#3b82f6;"></i></div>
+                            <div class="kpi-details">
+                                <p class="kpi-title">إجمالي المتبقي (صافي)</p>
+                                <h3 class="kpi-value" style="color:#3b82f6;" id="history-total-remaining">0 <span
+                                        class="js-cur-sym" style="font-size:14px">ر.س</span></h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- History Table -->
+                    <div class="table-responsive" style="max-height:600px; overflow-y:auto;">
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>نوع المخالفة</th>
-                                    <th>قيمة الخصم</th>
-                                    <th>إجراء</th>
+                                    <th>رقم السند</th>
+                                    <th>التاريخ</th>
+                                    <th>الموظف</th>
+                                    <th>نوع العملية</th>
+                                    <th>المبلغ</th>
+                                    <th>طريقة الصرف</th>
+                                    <th>البيان / السبب</th>
+                                    <th>الرصيد المتبقي</th>
+                                    <th class="no-print">إجراءات</th>
                                 </tr>
                             </thead>
-                            <tbody id="rules-tbody">
+                            <tbody id="history-tbody">
+                                <!-- JS Populated -->
+                            </tbody>
+                            <tfoot id="history-tfoot">
+                                <!-- JS Populated Summary for PDF -->
+                            </tfoot>
+                        </table>
+                    </div>
+
+
+
+                    <!-- Empty State -->
+                    <div id="history-empty-state" style="display:none; text-align:center; padding:60px 20px;">
+                        <i class="ph ph-clock-counter-clockwise"
+                            style="font-size:64px; color:var(--text-muted); opacity:0.3;"></i>
+                        <h3 style="color:var(--text-muted); margin-top:16px;">لا توجد عمليات مطابقة</h3>
+                        <p style="color:var(--text-muted); font-size:13px;">جرب تغيير الفلاتر أو البحث عن شيء آخر</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View: Staff Totals Report -->
+            <div id="view-staff-totals" class="hr-view" style="display:none;">
+                <div class="card" style="padding:24px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;"
+                        class="no-print">
+                        <div>
+                            <h2
+                                style="color:var(--text-primary); margin:0; display:flex; align-items:center; gap:12px;">
+                                <i class="ph-fill ph-calculator" style="color:#3b82f6; font-size:28px;"></i>
+                                اجماليات أرصدة الموظفين
+                            </h2>
+                            <p style="color:var(--text-muted); margin:4px 0 0; font-size:13px;">ملخص الأرصدة المتبقية
+                                وتاريخ آخر عملية صرف لكل موظف</p>
+                        </div>
+                        <div style="display:flex; gap:10px;" class="no-print">
+                            <button class="hr-btn-solid" onclick="showView('view-history')"
+                                style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-primary);"><i
+                                    class="ph ph-arrow-right"></i> العودة للسجل</button>
+                            <button class="hr-btn-solid" onclick="exportStaffTotalsPDF()"
+                                style="background:rgba(225,29,72,0.1); border:1px solid #e11d48; color:#e11d48;"><i
+                                    class="ph ph-file-pdf"></i> تصدير PDF الإجماليات</button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table" id="staff-totals-table">
+                            <thead>
+                                <tr>
+                                    <th>اسم الموظف</th>
+                                    <th>الوظيفة</th>
+                                    <th>الرصيد المتبقي (المستحق)</th>
+                                    <th>تاريخ آخر سداد / صرف</th>
+                                </tr>
+                            </thead>
+                            <tbody id="staff-totals-tbody">
                                 <!-- JS Populated -->
                             </tbody>
                         </table>
                     </div>
                 </div>
+            </div>
 
-                <!-- Column 2: Log History -->
-                <div class="card" style="padding:24px; border:1px solid rgba(239,68,68,0.3);">
-                    <h3 style="color:var(--text-primary); margin-bottom:20px;"><i class="ph ph-clock-counter-clockwise"></i> السجل الزمني للخصومات</h3>
-                    <div class="table-responsive">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>التاريخ</th>
-                                    <th>الموظف المستهدف</th>
-                                    <th>مبلغ الخصم</th>
-                                    <th>المخالفة / السبب</th>
-                                </tr>
-                            </thead>
-                            <tbody id="deductions-tbody">
-                            </tbody>
-                        </table>
+            <!-- View: Deductions & Penalties -->
+            <div id="view-deductions" class="hr-view" style="display:none; padding:24px;">
+                <div class="dashboard-header mb-4">
+                    <div>
+                        <h1>قواعد وسجل الخصومات</h1>
+                        <p style="color:var(--text-muted)">إدارة قوانين الجزاءات، وعرض السجل التاريخي للخصومات المطبقة
+                        </p>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 2fr; gap:24px;">
+                    <!-- Column 1: Rules -->
+                    <div class="card" style="padding:24px;">
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                            <h3 style="color:var(--text-primary); margin:0;"><i class="ph ph-scales"
+                                    style="color:#ec4899;"></i> قواعد الجزاءات</h3>
+                            <button type="button" class="hr-btn-solid bg-pink" style="padding:6px 12px; font-size:12px;"
+                                onclick="openRuleModalForCreate()">
+                                <i class="ph ph-plus"></i> إضافة قاعدة
+                            </button>
+                        </div>
+                        <div class="table-responsive" style="max-height:400px; overflow-y:auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>نوع المخالفة</th>
+                                        <th>قيمة الخصم</th>
+                                        <th>إجراء</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rules-tbody">
+                                    <!-- JS Populated -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Column 2: Log History -->
+                    <div class="card" style="padding:24px; border:1px solid rgba(239,68,68,0.3);">
+                        <h3 style="color:var(--text-primary); margin-bottom:20px;"><i
+                                class="ph ph-clock-counter-clockwise"></i> السجل الزمني للخصومات</h3>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>التاريخ</th>
+                                        <th>الموظف المستهدف</th>
+                                        <th>مبلغ الخصم</th>
+                                        <th>المخالفة / السبب</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="deductions-tbody">
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-    </main>
-</div>
+        </main>
+    </div>
 
-<!-- Modal: صرف راتب / سلفة -->
-<div class="modal-overlay" id="advance-modal" inert>
-    <div class="modal-content" style="max-width:450px; background:var(--bg-card); border:1px solid rgba(255,255,255,0.1); border-radius:24px; padding:24px;">
-        <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
-            <h3 style="color:var(--text-primary); margin:0;"><i class="ph ph-hand-coins" style="color:#f472b6;"></i> إصدار سند مالي</h3>
-            <button class="close-modal" id="btn-close-advance-modal" style="background:none;border:none;color:#fff;cursor:pointer;"><i class="ph ph-x" style="font-size:20px;"></i></button>
-        </div>
-        <div id="advance-voucher-inline-error" role="alert" aria-live="polite" style="display:none;margin-bottom:14px;padding:12px 14px;border-radius:10px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.45);color:#fecaca;font-size:13px;font-weight:600;white-space:pre-line;line-height:1.5;"></div>
-        <div class="fm-group">
-            <label>اختر الموظف المستفيد</label>
-            <select id="voucher-employee" class="fm-input"><option value="">...</option></select>
-        </div>
-        <div class="fm-group">
-            <label>قيمة المبلغ (<span class="js-cur-sym">ر.س</span>)</label>
-            <input type="number" id="voucher-amount" class="fm-input" step="any" min="0" dir="ltr" placeholder="0.00" style="font-size:24px; font-weight:800; color:#34d399; text-align: right;">
-        </div>
-        <div class="fm-group">
-            <label>البيان / السبب</label>
-            <input type="text" id="voucher-reason" class="fm-input" placeholder="مثال: سلفة نقدية...">
-        </div>
-        <div class="fm-group">
-            <label>صرف المبلغ من</label>
-            <select id="voucher-pay-method" class="fm-input" style="background:rgba(0,0,0,0.3);">
-                <option value="cash">الخزينة (كاش)</option>
-                <option value="bank">حساب البنك / تحويل</option>
-            </select>
-        </div>
-        <div class="fm-group">
-            <label>نوع السند</label>
-            <select id="voucher-type" class="fm-input" style="background:rgba(0,0,0,0.3);">
-                <option value="salary">راتب (له)</option>
-                <option value="bonus">مكافأة (له)</option>
-                <option value="advance">سلفة (عليه)</option>
-            </select>
-        </div>
+    <!-- Modal: صرف راتب / سلفة -->
+    <div class="modal-overlay" id="advance-modal" inert>
+        <div class="modal-content"
+            style="max-width:450px; background:var(--bg-card); border:1px solid rgba(255,255,255,0.1); border-radius:24px; padding:24px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+                <h3 style="color:var(--text-primary); margin:0;"><i class="ph ph-hand-coins" style="color:#f472b6;"></i>
+                    إصدار سند مالي</h3>
+                <button class="close-modal" id="btn-close-advance-modal"
+                    style="background:none;border:none;color:#fff;cursor:pointer;"><i class="ph ph-x"
+                        style="font-size:20px;"></i></button>
+            </div>
+            <div id="advance-voucher-inline-error" role="alert" aria-live="polite"
+                style="display:none;margin-bottom:14px;padding:12px 14px;border-radius:10px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.45);color:#fecaca;font-size:13px;font-weight:600;white-space:pre-line;line-height:1.5;">
+            </div>
+            <div class="fm-group">
+                <label>اختر الموظف المستفيد</label>
+                <select id="voucher-employee" class="fm-input">
+                    <option value="">...</option>
+                </select>
+            </div>
+            <div class="fm-group">
+                <label>قيمة المبلغ (<span class="js-cur-sym">ر.س</span>)</label>
+                <input type="number" id="voucher-amount" class="fm-input" step="any" min="0" dir="ltr"
+                    placeholder="0.00" style="font-size:24px; font-weight:800; color:#34d399; text-align: right;">
+            </div>
+            <div class="fm-group">
+                <label>البيان / السبب</label>
+                <input type="text" id="voucher-reason" class="fm-input" placeholder="مثال: سلفة نقدية...">
+            </div>
+            <div class="fm-group">
+                <label>صرف المبلغ من</label>
+                <select id="voucher-pay-method" class="fm-input" style="background:rgba(0,0,0,0.3);">
+                    <option value="cash">الخزينة (كاش)</option>
+                    <option value="bank">حساب البنك / تحويل</option>
+                </select>
+            </div>
+            <div class="fm-group">
+                <label>نوع السند</label>
+                <select id="voucher-type" class="fm-input" style="background:rgba(0,0,0,0.3);">
+                    <option value="salary">راتب (له)</option>
+                    <option value="bonus">مكافأة (له)</option>
+                    <option value="advance">سلفة (عليه)</option>
+                </select>
+            </div>
 
-        <div style="background:rgba(0,0,0,0.2); padding:16px; border-radius:12px; text-align:center;">
-            <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">حدد النوع ثم اضغط إصدار السند.</p>
-            <button type="button" class="hr-btn-solid bg-pink" style="width:100%; justify-content:center; padding:12px;" onclick="generateVoucherFromSelection()">
-                <i class="ph ph-check-circle"></i> إصدار السند الآن
-            </button>
+            <div style="background:rgba(0,0,0,0.2); padding:16px; border-radius:12px; text-align:center;">
+                <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">حدد النوع ثم اضغط إصدار السند.
+                </p>
+                <button type="button" class="hr-btn-solid bg-pink"
+                    style="width:100%; justify-content:center; padding:12px;" onclick="generateVoucherFromSelection()">
+                    <i class="ph ph-check-circle"></i> إصدار السند الآن
+                </button>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- قالب سند واتساب (html2canvas) -->
-<div id="voucher-print-container" style="position:absolute; top:-9999px; left:-9999px;">
-    <div class="voucher-wrapper" id="voucher-template">
-        <div class="v-header">
-            <div class="v-right-text">
-                <h2>مطابخ ومحائذ Mister Casher</h2>
-                <p>شارع المعارض جوار محطة مزايا</p>
-                <p>0539774699</p>
-            </div>
-            <div class="v-logo-title-block">
-                <div class="v-center-logo">
-                    <img src="2222.png" alt="Logo" onerror="this.src='placeholder.svg'">
+    <!-- قالب سند واتساب (html2canvas) -->
+    <div id="voucher-print-container" style="position:absolute; top:-9999px; left:-9999px;">
+        <div class="voucher-wrapper" id="voucher-template">
+            <div class="v-header">
+                <div class="v-right-text">
+                    <h2>مطابخ ومحائذ Mister Casher</h2>
+                    <p>شارع المعارض جوار محطة مزايا</p>
+                    <p>0539774699</p>
                 </div>
-                <h1 class="v-main-title" id="v-doc-title">سند صرف</h1>
-            </div>
-            <div class="v-left-col">
-                <div class="v-left-box">
-                    <div class="v-row"><span>التاريخ :</span><strong id="v-date"></strong></div>
-                    <div class="v-row"><span>الرقم :</span><strong id="v-number"></strong></div>
+                <div class="v-logo-title-block">
+                    <div class="v-center-logo">
+                        <img src="2222.png" alt="Logo" onerror="this.src='placeholder.svg'">
+                    </div>
+                    <h1 class="v-main-title" id="v-doc-title">سند صرف</h1>
                 </div>
-                <div class="v-balance-box v-balance-under-date"><span id="v-label-balance">الرصيد لكم :</span><strong id="v-balance-text"></strong></div>
+                <div class="v-left-col">
+                    <div class="v-left-box">
+                        <div class="v-row"><span>التاريخ :</span><strong id="v-date"></strong></div>
+                        <div class="v-row"><span>الرقم :</span><strong id="v-number"></strong></div>
+                    </div>
+                    <div class="v-balance-box v-balance-under-date"><span id="v-label-balance">الرصيد لكم
+                            :</span><strong id="v-balance-text"></strong></div>
+                </div>
             </div>
-        </div>
-        <div class="v-body-box">
-            <div class="v-body-inner">
-                <div class="v-line"><span class="v-line-label" id="v-label-recipient">تم صرف للأخ :</span> <span class="v-line-val"><strong id="v-name"></strong></span></div>
-                <div class="v-line"><span class="v-line-label" id="v-label-amount">مبلغ وقدره :</span> <span class="v-line-val"><strong id="v-amt"></strong> <span class="v-sub">(<span id="v-amt-text"></span> <span class="js-cur-label">ريال سعودي</span>)</span></span></div>
-                <div class="v-line"><span class="v-line-label">وذلك مقابل :</span> <span class="v-line-val"><strong id="v-reason-text"></strong></span></div>
+            <div class="v-body-box">
+                <div class="v-body-inner">
+                    <div class="v-line"><span class="v-line-label" id="v-label-recipient">تم صرف للأخ :</span> <span
+                            class="v-line-val"><strong id="v-name"></strong></span></div>
+                    <div class="v-line"><span class="v-line-label" id="v-label-amount">مبلغ وقدره :</span> <span
+                            class="v-line-val"><strong id="v-amt"></strong> <span class="v-sub">(<span
+                                    id="v-amt-text"></span> <span class="js-cur-label">ريال سعودي</span>)</span></span>
+                    </div>
+                    <div class="v-line"><span class="v-line-label">وذلك مقابل :</span> <span class="v-line-val"><strong
+                                id="v-reason-text"></strong></span></div>
+                </div>
+                <div class="v-notes-strip">
+                    <span class="v-notes-label">ملاحظات :</span>
+                    <span class="v-notes-text" id="v-notes"></span>
+                </div>
             </div>
-            <div class="v-notes-strip">
-                <span class="v-notes-label">ملاحظات :</span>
-                <span class="v-notes-text" id="v-notes"></span>
+            <div class="v-bottom-meta">
+                <span class="v-by">By Mister Casher</span>
+                <span class="v-date-foot" id="v-bottom-date"></span>
             </div>
-        </div>
-        <div class="v-bottom-meta">
-            <span class="v-by">By Mister Casher</span>
-            <span class="v-date-foot" id="v-bottom-date"></span>
         </div>
     </div>
-</div>
 
-</div>
-
-<!-- Penalty / Deduction Modal -->
-<div class="modal-overlay" id="penalty-modal" inert>
-    <div class="modal-content" style="max-width:450px; background:var(--bg-card); border:1px solid rgba(239,68,68,0.3); border-radius:24px; padding:24px; box-shadow:0 10px 40px rgba(239,68,68,0.1);">
-        <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
-            <h3 style="color:var(--text-primary); margin:0;"><i class="ph ph-warning-octagon text-red" style="font-size:20px; vertical-align:-3px;"></i> تسجيل جزاء مالي</h3>
-            <button class="close-modal" id="btn-close-penalty-modal" style="background:none;border:none;color:#fff;cursor:pointer;"><i class="ph ph-x" style="font-size:20px;"></i></button>
-        </div>
-        
-        <form id="form-penalty-trx">
-            <div class="fm-group mb-3">
-                <label>الموظف المستهدف</label>
-                <select id="penalty-employee" class="fm-input" required></select>
-            </div>
-            <div class="fm-group mb-3">
-                <label>مبلغ الجزاء (<span class="js-cur-sym">ر.س</span>) *</label>
-                <input type="number" id="penalty-amount" class="fm-input" min="0" step="any" dir="ltr" required placeholder="مثلاً 100" style="font-size:24px; font-weight:800; color:#ef4444; text-align: right;">
-            </div>
-            <div class="fm-group mb-4">
-                <label>السبب أو المخالفة (اختر أو اكتب)</label>
-                <input type="text" id="penalty-reason" list="penalty-reasons-list" class="fm-input" required placeholder="تأخير، غياب، إهمال...">
-                <datalist id="penalty-reasons-list">
-                    <option value="غياب بدون عذر">
-                    <option value="تأخير عن موعد الدوام">
-                    <option value="سوء استخدام معدات / كسر شيء">
-                    <option value="ضعف الأداء والإهمال في العمل">
-                </datalist>
-            </div>
-            
-            <div style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); padding:12px; border-radius:12px; margin-bottom:20px; display:flex; gap:12px;">
-                <i class="ph-fill ph-warning-circle text-red" style="font-size:24px;"></i>
-                <p style="font-size:12px; margin:0; color:#fca5a5; line-height:1.6;">الجزاء سيُخصم من القيمة الصافية لراتب الموظف ولن يؤثر على سيولة الخزينة كونه لم يُصرف كنقدية فعلية (متوافق مع النظام المحاسبي).</p>
-            </div>
-            
-            <button type="submit" class="hr-btn-solid bg-red" style="width:100%; justify-content:center; padding:14px; font-size:16px;">
-                <i class="ph ph-check-circle"></i> تأكيد تطبيق الجزاء
-            </button>
-        </form>
     </div>
-</div>
 
-<!-- Rule Creation Modal -->
-<div class="modal-overlay" id="rule-modal" inert>
-    <div class="modal-content" style="max-width:400px; background:var(--bg-card); border:1px solid rgba(236,72,153,0.3); border-radius:24px; padding:24px;">
-        <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
-            <h3 style="color:var(--text-primary); margin:0;"><i class="ph ph-scales text-pink" style="font-size:20px; vertical-align:-3px;"></i> إضافة قاعدة جزاء</h3>
-            <button class="close-modal" id="btn-close-rule-modal" style="background:none;border:none;color:#fff;cursor:pointer;"><i class="ph ph-x" style="font-size:20px;"></i></button>
+    <!-- Penalty / Deduction Modal -->
+    <div class="modal-overlay" id="penalty-modal" inert>
+        <div class="modal-content"
+            style="max-width:450px; background:var(--bg-card); border:1px solid rgba(239,68,68,0.3); border-radius:24px; padding:24px; box-shadow:0 10px 40px rgba(239,68,68,0.1);">
+            <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+                <h3 style="color:var(--text-primary); margin:0;"><i class="ph ph-warning-octagon text-red"
+                        style="font-size:20px; vertical-align:-3px;"></i> تسجيل جزاء مالي</h3>
+                <button class="close-modal" id="btn-close-penalty-modal"
+                    style="background:none;border:none;color:#fff;cursor:pointer;"><i class="ph ph-x"
+                        style="font-size:20px;"></i></button>
+            </div>
+
+            <form id="form-penalty-trx">
+                <div class="fm-group mb-3">
+                    <label>الموظف المستهدف</label>
+                    <select id="penalty-employee" class="fm-input" required></select>
+                </div>
+                <div class="fm-group mb-3">
+                    <label>مبلغ الجزاء (<span class="js-cur-sym">ر.س</span>) *</label>
+                    <input type="number" id="penalty-amount" class="fm-input" min="0" step="any" dir="ltr" required
+                        placeholder="مثلاً 100"
+                        style="font-size:24px; font-weight:800; color:#ef4444; text-align: right;">
+                </div>
+                <div class="fm-group mb-4">
+                    <label>السبب أو المخالفة (اختر أو اكتب)</label>
+                    <input type="text" id="penalty-reason" list="penalty-reasons-list" class="fm-input" required
+                        placeholder="تأخير، غياب، إهمال...">
+                    <datalist id="penalty-reasons-list">
+                        <option value="غياب بدون عذر">
+                        <option value="تأخير عن موعد الدوام">
+                        <option value="سوء استخدام معدات / كسر شيء">
+                        <option value="ضعف الأداء والإهمال في العمل">
+                    </datalist>
+                </div>
+
+                <div
+                    style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); padding:12px; border-radius:12px; margin-bottom:20px; display:flex; gap:12px;">
+                    <i class="ph-fill ph-warning-circle text-red" style="font-size:24px;"></i>
+                    <p style="font-size:12px; margin:0; color:#fca5a5; line-height:1.6;">الجزاء سيُخصم من القيمة الصافية
+                        لراتب الموظف ولن يؤثر على سيولة الخزينة كونه لم يُصرف كنقدية فعلية (متوافق مع النظام المحاسبي).
+                    </p>
+                </div>
+
+                <button type="submit" class="hr-btn-solid bg-red"
+                    style="width:100%; justify-content:center; padding:14px; font-size:16px;">
+                    <i class="ph ph-check-circle"></i> تأكيد تطبيق الجزاء
+                </button>
+            </form>
         </div>
-        
-        <form id="form-rule-create">
-            <div class="fm-group mb-3">
-                <label>اسم ونص المخالفة</label>
-                <input type="text" id="rule-name" class="fm-input" required placeholder="مثال: غياب بدون عذر">
-            </div>
-            <div class="fm-group mb-4">
-                <label>مبلغ الجزاء (<span class="js-cur-sym">ر.س</span>) *</label>
-                <input type="number" id="rule-amount" class="fm-input" min="0" step="any" dir="ltr" required placeholder="مثلاً 150" style="color:#34d399; font-weight:bold; font-size:20px; text-align: right;">
-            </div>
-            
-            <button type="submit" class="hr-btn-solid bg-pink" style="width:100%; justify-content:center; padding:14px; font-size:16px;">
-                <i class="ph ph-floppy-disk"></i> حفظ القاعدة
-            </button>
-        </form>
     </div>
-</div>
 
-<script src="node_modules/html2canvas/dist/html2canvas.min.js"></script>
+    <!-- Rule Creation Modal -->
+    <div class="modal-overlay" id="rule-modal" inert>
+        <div class="modal-content"
+            style="max-width:400px; background:var(--bg-card); border:1px solid rgba(236,72,153,0.3); border-radius:24px; padding:24px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+                <h3 style="color:var(--text-primary); margin:0;"><i class="ph ph-scales text-pink"
+                        style="font-size:20px; vertical-align:-3px;"></i> إضافة قاعدة جزاء</h3>
+                <button class="close-modal" id="btn-close-rule-modal"
+                    style="background:none;border:none;color:#fff;cursor:pointer;"><i class="ph ph-x"
+                        style="font-size:20px;"></i></button>
+            </div>
+
+            <form id="form-rule-create">
+                <div class="fm-group mb-3">
+                    <label>اسم ونص المخالفة</label>
+                    <input type="text" id="rule-name" class="fm-input" required placeholder="مثال: غياب بدون عذر">
+                </div>
+                <div class="fm-group mb-4">
+                    <label>مبلغ الجزاء (<span class="js-cur-sym">ر.س</span>) *</label>
+                    <input type="number" id="rule-amount" class="fm-input" min="0" step="any" dir="ltr" required
+                        placeholder="مثلاً 150"
+                        style="color:#34d399; font-weight:bold; font-size:20px; text-align: right;">
+                </div>
+
+                <button type="submit" class="hr-btn-solid bg-pink"
+                    style="width:100%; justify-content:center; padding:14px; font-size:16px;">
+                    <i class="ph ph-floppy-disk"></i> حفظ القاعدة
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script src="node_modules/html2canvas/dist/html2canvas.min.js"></script>
     <script src="db-helper.js"></script>
     <script src="currency-helper.js"></script>
     <script src="wa-notification.js"></script>
     <script src="script.js"></script>
-<script src="staff.js"></script>
-<script src="staff-history.js"></script>
-<script src="staff-totals.js"></script>
+    <script src="staff.js"></script>
+    <script src="staff-history.js"></script>
+    <script src="staff-totals.js"></script>
 </body>
-</html>
 
+</html>

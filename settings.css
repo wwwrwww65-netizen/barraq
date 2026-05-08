@@ -116,14 +116,53 @@
 .input-icon-wrapper i { position: absolute; right: 15px; color: var(--text-muted); font-size: 18px; }
 .input-icon-wrapper .input-modern { padding-right: 45px; }
 
+/* Settings Page Tabs & Layout */
+.settings-pages-container {
+    position: relative;
+    width: 100%;
+    min-height: 500px;
+}
+
+.settings-page {
+    display: none;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.settings-page.active {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.settings-actions-bar {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-light);
+}
+
+.settings-tab {
+    cursor: pointer;
+}
+
+.settings-tab.active {
+    background: var(--accent-blue-transparent) !important;
+    color: var(--accent-blue) !important;
+    border-right: 3px solid var(--accent-blue);
+}
+
+body.light-theme .settings-tab.active {
+    background: rgba(59, 130, 246, 0.1) !important;
+    color: #2563eb !important;
+    border-right-color: #2563eb;
+}
+
 /* Actions */
 .settings-actions {
     display: flex;
     justify-content: flex-end;
     gap: 15px;
-    margin-top: 30px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border-light);
 }
 
 .btn-save-settings {
@@ -140,7 +179,7 @@
     inset: 0;
     z-index: 100000;
     background: rgba(2, 6, 23, 0.85);
-    backdrop-filter: blur(8px);
+    /* backdrop-filter: blur(8px); (Disabled for Performance) */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -148,7 +187,7 @@
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
+    transition: opacity 0.08s ease, visibility 0.08s ease;
 }
 .factory-modal-overlay.active {
     opacity: 1;
@@ -351,6 +390,182 @@ body.light-theme button.btn-primary[style*="background:var(--bg-card)"] {
     border-color: #cbd5e1 !important;
 }
 
+body.light-theme .btn-save-settings {
+    color: #ffffff !important;
+}
+
 body.light-theme .settings-actions button i {
     color: inherit !important;
+}
+
+/* --- Support Page Refactored Styles --- */
+.support-hero-card {
+    text-align: center;
+    padding: 2rem;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(37, 99, 235, 0.1) 100%);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 20px;
+    height: 100%; /* Take full height */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Space content evenly */
+    align-items: center;
+    box-sizing: border-box;
+    overflow: hidden; /* Prevent internal scroll */
+}
+body.light-theme .support-hero-card {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(59, 130, 246, 0.1) 100%);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+}
+.support-logo-wrapper {
+    margin-bottom: 1.5vh;
+    flex-shrink: 1;
+}
+.support-logo {
+    width: clamp(80px, 15vh, 140px); /* Responsive size */
+    height: auto;
+    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.2));
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.support-logo:hover {
+    transform: scale(1.1) rotate(5deg);
+}
+.support-title {
+    color: var(--text-primary);
+    font-size: clamp(1.2rem, 3vh, 2rem); /* Responsive title */
+    font-weight: 800;
+    margin-bottom: 0.5vh;
+}
+.support-subtitle {
+    color: var(--text-secondary);
+    font-size: clamp(0.9rem, 2vh, 1.1rem);
+    max-width: 700px;
+    margin: 0 auto 2vh;
+    line-height: 1.6;
+}
+.support-contact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    flex-grow: 1;
+    align-content: center;
+}
+.support-action-btn {
+    text-decoration: none;
+    padding: clamp(1rem, 3vh, 2rem) 1.5rem;
+    border-radius: 20px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
+}
+.support-action-btn:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.3);
+}
+.support-icon-circle {
+    width: clamp(50px, 8vh, 70px);
+    height: clamp(50px, 8vh, 70px);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff !important;
+    font-size: clamp(1.5rem, 4vh, 2.2rem);
+}
+.support-icon-circle i {
+    color: #ffffff !important;
+}
+.support-btn-content h4 {
+    margin: 0;
+    font-size: clamp(1rem, 2.2vh, 1.3rem);
+    font-weight: 700;
+}
+.support-desc {
+    margin: 4px 0 0;
+    color: var(--text-muted);
+    font-size: clamp(0.75rem, 1.6vh, 0.9rem);
+}
+.support-number {
+    margin: 2px 0 0;
+    color: var(--text-muted);
+    font-size: clamp(0.85rem, 1.8vh, 1rem);
+}
+.support-hint {
+    margin: 8px 0 0;
+    font-size: clamp(0.7rem, 1.4vh, 0.8rem);
+    font-weight: bold;
+    opacity: 0.8;
+}
+/* WhatsApp Button */
+.wa-btn {
+    background: rgba(37, 211, 102, 0.1);
+    border: 1px solid rgba(37, 211, 102, 0.3);
+}
+.wa-btn:hover {
+    background: rgba(37, 211, 102, 0.15);
+    border-color: rgba(37, 211, 102, 0.6);
+}
+.wa-btn .support-icon-circle {
+    background: #25D366;
+}
+.wa-btn h4, .wa-btn .support-hint {
+    color: #25D366;
+}
+/* Email Button */
+.email-btn {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+.email-btn:hover {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.6);
+}
+.email-btn .support-icon-circle {
+    background: #3B82F6;
+}
+.email-btn h4, .email-btn .support-hint {
+    color: #3B82F6;
+}
+body.light-theme .wa-btn h4, body.light-theme .wa-btn .support-hint { color: #15803d; }
+body.light-theme .email-btn h4, body.light-theme .email-btn .support-hint { color: #1d4ed8; }
+
+/* Support Footer */
+.support-footer {
+    margin-top: 2vh;
+    width: 100%;
+    padding-top: 2vh;
+    border-top: 1px solid rgba(255,255,255,0.05);
+}
+body.light-theme .support-footer {
+    border-top: 1px solid rgba(0,0,0,0.05);
+}
+.support-version {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-bottom: 4px;
+}
+.support-copyright {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+.highlight-text {
+    color: var(--accent-blue);
+}
+.support-badges {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 1.5vh;
+    color: var(--text-muted);
+}
+.support-badges i {
+    font-size: 24px;
 }

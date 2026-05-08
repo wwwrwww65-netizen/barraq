@@ -22,7 +22,7 @@
 /* Login Container */
 .login-box {
     background: rgba(15, 23, 42, 0.6);
-    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    /* backdrop-filter: blur(20px); (Disabled for Performance) */ -webkit-/* backdrop-filter: blur(20px); (Disabled for Performance) */
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--border-radius-xl);
     padding: 50px 40px;

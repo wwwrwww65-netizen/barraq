@@ -249,7 +249,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.5s ease;
+    transition: transform 0.08s ease;
 }
 .menu-item-card:hover .item-card-image img { transform: scale(1.05); }
 
@@ -265,7 +265,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    backdrop-filter: blur(8px);
+    /* backdrop-filter: blur(8px); (Disabled for Performance) */
     border: 1px solid transparent;
 }
 .status-badge.available { background: rgba(16, 185, 129, 0.85); color: white; border-color: #34d399; }
@@ -277,7 +277,7 @@
     position: absolute;
     inset: 0;
     background: rgba(11, 15, 25, 0.6);
-    backdrop-filter: blur(2px);
+    /* backdrop-filter: blur(2px); (Disabled for Performance) */
     display: flex;
     align-items: center;
     justify-content: center;

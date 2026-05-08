@@ -226,7 +226,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     left: 0;
     right: 250px; /* Width of sidebar */
     background: rgba(11, 15, 25, 0.95);
-    backdrop-filter: blur(10px);
+    /* backdrop-filter: blur(10px); (Disabled for Performance) */
     border-top: 1px solid var(--border-color);
     padding: 20px 32px;
     display: flex;
@@ -301,7 +301,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     z-index: 100;
     margin-top: 5px;
     overflow: hidden;
-    animation: slideDown 0.2s ease-out;
+    animation: slideDown 0.1s ease-out;
 }
 .recipe-dropdown.active {
     display: block;
@@ -347,7 +347,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid rgba(255,255,255,0.02);
-    transition: background 0.2s;
+    transition: background 0.08s;
 }
 .recipe-item-li:hover {
     background: rgba(59, 130, 246, 0.1);

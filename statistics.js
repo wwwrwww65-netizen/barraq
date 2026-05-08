@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const curSym = () => (window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س');
     const curFmt = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
 
-    let currentStatsRange = 'all';
+    let currentStatsRange = 'today';
 
     // --- Date Filter Buttons ---
     const dateBtns = document.querySelectorAll('.date-btn');
@@ -111,10 +111,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // --- Filter by date range for KPIs ---
         if (range !== 'all' && window.isDateInPeriod) {
-            orders     = orders.filter(o => window.isDateInPeriod(o.timestamp || o.dateStr || o.date, range));
+            orders     = orders.filter(o => o.status !== 'returned' && window.isDateInPeriod(o.timestamp || o.dateStr || o.date, range));
             returns    = returns.filter(r => window.isDateInPeriod(r.timestamp || r.date, range));
             hrExpenses = hrExpenses.filter(h => window.isDateInPeriod(h.timestamp || h.date, range));
             purchases  = purchases.filter(p => window.isDateInPeriod(p.date, range));
+        } else {
+            // Even in 'all' view, we should exclude returned orders from the count if we want to match KPIs
+            orders = orders.filter(o => o.status !== 'returned');
         }
 
         // ---- Revenue ----
@@ -440,7 +443,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const items = order.items || [];
             items.forEach(it => {
                 const name = it.name || 'غير محدد';
-                const qty = Number(it.quantity) || 1;
+                const qty = Number(it.qty) || 1;
                 if (!itemMap.has(name)) itemMap.set(name, 0);
                 itemMap.set(name, itemMap.get(name) + qty);
             });
@@ -532,7 +535,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const items = order.items || [];
                 items.forEach(it => {
                     const name = it.name || 'غير محدد';
-                    const qty = Number(it.quantity) || 1;
+                    const qty = Number(it.qty) || 1;
                     if (!itemMap.has(name)) itemMap.set(name, 0);
                     itemMap.set(name, itemMap.get(name) + qty);
                 });

@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const curNum = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.formatNumber(n) : Number(n).toFixed(2));
     const curFmt = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
     
-    let currentPlPeriod = 'month';
+    let currentPlPeriod = 'today';
 
     // Period Filters
     const filterBtns = document.querySelectorAll('.filter-btn');

@@ -7,6 +7,7 @@
     <title>مستر كاشير POS | دليل الموردين</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="inventory.css">
+    <link rel="stylesheet" href="suppliers.css">
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
     <link rel="stylesheet" href="light-theme-fixes.css">
@@ -109,6 +110,59 @@
                     </div>
                 </div>
             </div>
+            <!-- New: Supplier Profile View (Hidden by default) -->
+            <div id="supplier-profile-view" style="display:none; padding:0; margin:0; background:transparent;">
+                <div class="inv-dashboard-grid" style="margin-top:0;">
+                    
+                    <!-- Print Header (Hidden on screen, shown on print via .print-only) -->
+                    <div id="supplier-print-header" class="print-only" style="display:none; text-align:center; border-bottom:2px solid #94a3b8; padding-bottom:20px; margin-bottom:20px;">
+                        <h1 style="margin:0; font-size:24px;">كشف حساب تفصيلي</h1>
+                        <p style="color:#64748b; margin:5px 0;">دليل الموردين - مستر كاشير POS</p>
+                        <div style="display:flex; justify-content:space-between; margin-top:20px; text-align:right;">
+                            <div>
+                                <p style="margin:4px 0;"><strong>اسم المورد:</strong> <span id="print-sup-name"></span></p>
+                                <p style="margin:4px 0;"><strong>رقم الجوال:</strong> <span id="print-sup-phone"></span></p>
+                            </div>
+                            <div style="text-align:left;">
+                                <p style="margin:4px 0;"><strong>التاريخ:</strong> <span id="print-sup-date"></span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Profile KPIs will be injected here -->
+                    <div id="profile-kpis" class="kpi-cards inv-kpis no-print" style="grid-template-columns: repeat(3, 1fr); margin-bottom:20px;"></div>
+                    
+                    <div class="card inv-main-table-card">
+                        <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; padding:20px;">
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <i class="ph-fill ph-article" style="font-size:24px; color:var(--accent-blue);"></i>
+                                <h3 style="margin:0;">كشف حساب تفصيلي (الأستاذ المساعد)</h3>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <button onclick="window.exportSupplierPDF()" class="inv-btn-solid" style="background:transparent; color:#e11d48; border:1px solid #e11d48;"><i class="ph ph-file-pdf"></i> تصدير (PDF)</button>
+                                <button onclick="window.printSupplierStatement()" class="inv-btn-solid" style="background:rgba(255,255,255,0.05); color:var(--text-primary); border:1px solid var(--border-color);"><i class="ph ph-printer"></i> طباعة كشف الحساب</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table inv-table">
+                                <thead>
+                                    <tr>
+                                        <th>التاريخ</th>
+                                        <th>البيان / التفاصيل</th>
+                                        <th>النوع</th>
+                                        <th>طريقة الدفع</th>
+                                        <th>المبلغ</th>
+                                        <th>الرصيد المتبقي</th>
+                                        <th>المرجع</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="profile-tx-tbody"></tbody>
+                                <tfoot id="profile-tx-tfoot"></tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -140,13 +194,6 @@
                         <input type="number" step="0.01" id="sup-balance" class="input-modern" value="0">
                     </div>
                 </div>
-                <!-- Payment field for existing suppliers to document exact offset instead of free balancing -->
-                <div class="form-group-row" id="docPaymentAmountGroup" style="display:none; margin-top:20px; border-top:1px solid rgba(255,255,255,0.1); padding-top:20px;">
-                    <div class="form-group">
-                        <label style="color:var(--accent-green)"><i class="ph ph-money"></i> تسجيل دفعة سداد (تنقيص الدين)</label>
-                        <input type="number" step="0.01" id="sup-payment" class="input-modern" placeholder="المبلغ المسدد هنا...">
-                    </div>
-                </div>
                 <div class="modal-actions mt-3">
                     <button type="button" class="btn-cancel btn-cancel-modal">إلغاء</button>
                     <button type="submit" id="btn-save-sup" class="btn-save-role bg-blue">حفظ المورد في دليل الحسابات</button>
@@ -154,6 +201,50 @@
             </form>
         </div>
     </div>
+
+    <!-- New: Payment Modal for Suppliers -->
+    <div id="paymentModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 500px;">
+            <div class="modal-header" style="background:var(--accent-green); color:white;">
+                <h3><i class="ph ph-money"></i> تسجيل دفعة سداد للمورد</h3>
+                <button type="button" class="btn-close-payment" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;"><i class="ph ph-x"></i></button>
+            </div>
+            <form id="form-payment" class="modal-body">
+                <input type="hidden" id="pay-sup-id">
+                <div class="payment-summary" style="background:rgba(16,185,129,0.1); padding:15px; border-radius:10px; margin-bottom:20px; text-align:center;">
+                    <p style="margin:0; font-size:14px; color:var(--text-muted);">الرصيد المستحق الحالي</p>
+                    <h2 id="pay-current-balance" style="margin:5px 0; color:var(--accent-red);">0.00 ر.س</h2>
+                </div>
+                <div class="form-group">
+                    <label>مبلغ الدفعة المسددة</label>
+                    <input type="number" step="0.01" id="pay-amount" class="input-modern" required style="font-size:20px; font-weight:bold; text-align:center;">
+                </div>
+                <div class="form-group-row">
+                    <div class="form-group">
+                        <label>طريقة الدفع</label>
+                        <select id="pay-method" class="input-modern">
+                            <option value="cash">نقدي (من الخزينة)</option>
+                            <option value="bank">حوالة بنكية / شبكة</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>التاريخ</label>
+                        <input type="date" id="pay-date" class="input-modern">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>ملاحظات إضافية</label>
+                    <textarea id="pay-notes" class="input-modern" rows="2" placeholder="مثلاً: دفعة عن فاتورة رقم..."></textarea>
+                </div>
+                <div class="modal-actions" style="margin-top:20px;">
+                    <button type="button" class="btn-cancel btn-close-payment">إلغاء</button>
+                    <button type="submit" class="btn-save-role" style="background:var(--accent-green); border:none; color:white;">تأكيد السداد وحفظ السند</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- The supplier profile view is now moved up, inside the main tag -->
 
     <script src="db-helper.js"></script>
     <script src="suppliers.js"></script>

@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="light-theme-fixes.css">
     <link rel="stylesheet" href="purchases.css">
+    <link rel="stylesheet" href="purchases_modern.css">
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
 </head>
@@ -61,7 +62,7 @@
             </header>
 
             <div style="padding: 30px;">
-                <div class="pur-kpis">
+                <div class="pur-kpis no-print">
                     <div class="kpi-card">
                         <div class="kpi-icon indigo"><i class="ph-fill ph-receipt"></i></div>
                         <div>
@@ -109,12 +110,15 @@
                             <th>إجمالي الفاتورة</th>
                             <th>طريقة الدفع</th>
                             <th>حالة الإدخال للمخزن</th>
-                            <th>إجراءات</th>
+                            <th class="no-print">إجراءات</th>
                         </tr>
                     </thead>
                     <tbody id="pur-tbody">
                         <!-- Filled by JS -->
                     </tbody>
+                    <tfoot id="pur-tfoot">
+                        <!-- Totals will be injected here -->
+                    </tfoot>
                 </table>
             </div>
         </main>
@@ -122,8 +126,8 @@
 
     <!-- Modal: New Purchase Invoice -->
     <div class="modal-overlay" id="invoiceModal">
-        <div class="modal-box">
-            <div class="modal-header">
+        <div class="modal-box" style="max-width:900px;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#10b981,#059669);">
                 <h3><i class="ph-fill ph-receipt"></i> إصدار فاتورة مشتريات وتوريد بضاعة</h3>
                 <button class="btn-close-modal"><i class="ph ph-x"></i></button>
             </div>
@@ -137,8 +141,8 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>رقم الفاتورة المرجعي (فاتورة المورد)</label>
-                        <input type="text" id="inv-ref" class="input-modern" placeholder="مثال: فا-99238" required>
+                        <label>رقم الفاتورة المرجعي (فاتورة المورد) <span style="font-size:11px; color:var(--text-muted);">(اختياري)</span></label>
+                        <input type="text" id="inv-ref" class="input-modern" placeholder="مثال: فا-99238">
                     </div>
                     <div class="form-group">
                         <label>تاريخ الفاتورة</label>
@@ -176,9 +180,18 @@
 
                 <!-- Totals -->
                 <div class="invoice-totals">
+                    <div class="modal-settings-bar">
+                        <div class="setting-item">
+                            <label class="premium-switch">
+                                <input type="checkbox" id="inv-apply-vat" checked>
+                                <span class="switch-slider"></span>
+                            </label>
+                            <span class="setting-label">تطبيق ضريبة القيمة المضافة (15%)</span>
+                        </div>
+                    </div>
                     <div class="totals-box">
                         <div class="tot-line"><span>الإجمالي الفرعي:</span> <strong id="subtotal">0.00</strong></div>
-                        <div class="tot-line"><span id="pur-tax-label">ضريبة القيمة المضافة (15%):</span> <strong id="tax">0.00</strong></div>
+                        <div class="tot-line" id="tax-line" style="display:none;"><span id="pur-tax-label">ضريبة القيمة المضافة (15%):</span> <strong id="tax">0.00</strong></div>
                         <div class="tot-line grand"><span>الإجمالي النهائي:</span> <span id="grandtotal">0.00 <span class="js-cur-sym">ر.س</span></span></div>
                     </div>
                 </div>
@@ -210,8 +223,8 @@
                         <select id="edit-inv-supplier" class="input-modern" required></select>
                     </div>
                     <div class="form-group">
-                        <label>رقم الفاتورة المرجعي</label>
-                        <input type="text" id="edit-inv-ref" class="input-modern" placeholder="مثال: فا-99238" required>
+                        <label>رقم الفاتورة المرجعي <span style="font-size:11px; color:var(--text-muted);">(اختياري)</span></label>
+                        <input type="text" id="edit-inv-ref" class="input-modern" placeholder="مثال: فا-99238">
                     </div>
                     <div class="form-group">
                         <label>تاريخ الفاتورة</label>
@@ -246,11 +259,20 @@
                 </div>
 
                 <!-- Totals -->
-                <div class="invoice-totals" style="margin:0 20px;">
-                    <div class="totals-box">
+                <div class="invoice-totals">
+                    <div class="modal-settings-bar" style="margin-right: 20px;">
+                        <div class="setting-item">
+                            <label class="premium-switch">
+                                <input type="checkbox" id="edit-inv-apply-vat" checked>
+                                <span class="switch-slider"></span>
+                            </label>
+                            <span class="setting-label">تطبيق ضريبة القيمة المضافة (15%)</span>
+                        </div>
+                    </div>
+                    <div class="totals-box" style="margin:20px; background:#f1f5f9; padding:15px; border-radius:10px;">
                         <div class="tot-line"><span>الإجمالي الفرعي:</span> <strong id="edit-subtotal">0.00</strong></div>
-                        <div class="tot-line"><span>ضريبة القيمة المضافة:</span> <strong id="edit-tax">0.00</strong></div>
-                        <div class="tot-line grand"><span>الإجمالي النهائي:</span> <span id="edit-grandtotal">0.00 ر.س</span></div>
+                        <div class="tot-line" id="edit-tax-line" style="display:none;"><span id="edit-pur-tax-label">الضريبة:</span> <strong id="edit-tax">0.00</strong></div>
+                        <div class="tot-line grand"><span>الإجمالي النهائي:</span> <span id="edit-grandtotal">0.00 <span class="js-cur-sym">ر.س</span></span></div>
                     </div>
                 </div>
 
@@ -270,11 +292,15 @@
                 <select class="input-modern item-sku" required></select>
             </div>
             <div class="form-group">
-                <label>الكمية المستلمة</label>
-                <input type="number" step="0.01" min="0.01" class="input-modern item-qty" placeholder="0" required>
+                <label>الكمية</label>
+                <input type="number" step="any" min="0.0001" class="input-modern item-qty" placeholder="0" required>
             </div>
             <div class="form-group">
-                <label>سعر شراء الوحدة</label>
+                <label>الإنتاجية (القدرة الكلية)</label>
+                <input type="number" step="any" min="0" class="input-modern item-yield" placeholder="تلقائي">
+            </div>
+            <div class="form-group">
+                <label>سعر الشراء</label>
                 <input type="number" step="0.01" min="0.01" class="input-modern item-price" placeholder="0.00" required>
             </div>
             <div class="form-group">

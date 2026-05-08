@@ -640,6 +640,16 @@ function updateDateTime() {
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 🛡️ حماية التركيز عند تبديل اللغة
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Alt') {
+            const activeEl = document.activeElement;
+            if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+                setTimeout(() => activeEl.focus(), 0);
+            }
+        }
+    });
+
     // استعادة localStorage من نسخة احتياطية إذا وجدت
     try {
         const restoreData = localStorage.getItem('_restore_pending');

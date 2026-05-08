@@ -188,11 +188,64 @@
     border: 1px solid var(--border-color);
 }
 
+/* Table Styling Refinements */
+.inv-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+.inv-table th {
+    background: linear-gradient(180deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9)) !important;
+    color: #94a3b8 !important;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 16px 12px !important;
+    text-align: center;
+    border-bottom: 2px solid var(--border-light);
+    border-left: 1px solid rgba(255,255,255,0.03);
+}
+
+.inv-table td {
+    padding: 14px 12px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    border-left: 1px solid rgba(255,255,255,0.02);
+    vertical-align: middle;
+    font-size: 14px;
+}
+
+.inv-table tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.01);
+}
+
+.inv-table tr:hover td {
+    background: rgba(59, 130, 246, 0.04) !important;
+    color: white !important;
+}
+
+/* New Highlighted Columns */
+.physical-col {
+    color: #38bdf8 !important; /* Sky Blue */
+    font-weight: 800;
+    background: rgba(56, 189, 248, 0.02);
+}
+
+.capacity-col {
+    color: #fbbf24 !important; /* Amber/Orange */
+    font-weight: 800;
+    background: rgba(251, 191, 36, 0.02);
+}
+
 /* Quantities columns */
 .qty-col {
-    font-size: 16px;
-    font-weight: 900;
+    font-size: 15px;
+    font-weight: 700;
     text-align: center;
+    background: rgba(255, 255, 255, 0.01);
 }
 .qty-col.low { color: var(--accent-orange); }
 .qty-col.safe { color: var(--accent-green); }
@@ -254,7 +307,7 @@
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(11, 15, 25, 0.85);
-    backdrop-filter: blur(5px);
+    /* backdrop-filter: blur(5px); (Disabled for Performance) */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -297,7 +350,7 @@
 }
 
 .modal-header h3 { font-size: 18px; font-weight: 700; color: var(--text-primary); }
-.btn-cancel-modal { background: none; border: none; font-size: 20px; color: var(--text-secondary); cursor: pointer; transition: 0.2s;}
+.btn-cancel-modal { background: none; border: none; font-size: 20px; color: var(--text-secondary); cursor: pointer; transition: 0.08s;}
 .btn-cancel-modal:hover { color: var(--accent-red); transform: rotate(90deg); }
 
 .modal-body { display: flex; flex-direction: column; gap: 16px; }
@@ -475,85 +528,51 @@
 }
 
 /* =========================================
-   LIGHT THEME OVERRIDES FOR INVENTORY
+   LIGHT THEME OVERRIDES FOR INVENTORY (Eye-Comfort)
    ========================================= */
+body.light-theme .inv-table {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.light-theme .inv-table th {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+    border-left: 1px solid #e2e8f0 !important;
+}
+
+body.light-theme .inv-table td {
+    border-bottom: 1px solid #f1f5f9 !important;
+    border-left: 1px solid #f1f5f9 !important;
+    color: #1e293b !important;
+}
+
+body.light-theme .inv-table tr:nth-child(even) {
+    background: #f8fafc !important;
+}
+
+body.light-theme .inv-table tr:hover td {
+    background: #eff6ff !important;
+    color: #1e40af !important;
+}
+
+/* Specific Readable Colors for Light Theme */
+body.light-theme .physical-col {
+    color: #0284c7 !important; /* Darker Sky Blue for Contrast */
+    background: rgba(2, 132, 199, 0.03) !important;
+}
+
+body.light-theme .capacity-col {
+    color: #b45309 !important; /* Darker Amber/Orange for Contrast */
+    background: rgba(180, 83, 9, 0.03) !important;
+}
+
+body.light-theme .qty-col {
+    background: transparent !important;
+}
+
 body.light-theme .inv-header {
     background: #fff !important;
     border-bottom: 1px solid rgba(0,0,0,0.05);
-}
-
-body.light-theme .warehouse-tab {
-    background: #fff !important;
-    border-color: #e2e8f0 !important;
-    color: #1e293b !important;
-}
-
-body.light-theme .warehouse-tab:hover:not(.active) {
-    background: #f8fafc !important;
-    border-color: #cbd5e1 !important;
-}
-
-body.light-theme .wh-icon {
-    background: #f1f5f9 !important;
-}
-
-body.light-theme .inv-main-table-card {
-    background: #fff !important;
-}
-
-body.light-theme .search-box {
-    background: #f1f5f9 !important;
-    border-color: #cbd5e1 !important;
-    color: #1e293b !important;
-}
-
-body.light-theme .search-box input {
-    color: #1e293b !important;
-}
-
-body.light-theme .inv-btn-outline {
-    background: #f1f5f9 !important;
-    border-color: #cbd5e1 !important;
-    color: #475569 !important;
-}
-
-body.light-theme .inv-btn-outline:hover {
-    background: #e2e8f0 !important;
-    border-color: #94a3b8 !important;
-    color: #1e293b !important;
-}
-
-body.light-theme .modal-box {
-    background: #ffffff !important;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1) !important;
-}
-
-body.light-theme .input-modern {
-    background: #ffffff !important;
-    border-color: #cbd5e1 !important;
-    color: #0f172a !important;
-}
-
-body.light-theme .badge-barcode {
-    background: #f1f5f9 !important;
-    color: #475569 !important;
-    border-color: #e2e8f0 !important;
-}
-
-body.light-theme .modal-overlay {
-    background: rgba(15, 23, 42, 0.6) !important;
-}
-
-body.light-theme .btn-cancel {
-    background: #f1f5f9 !important;
-    color: #475569 !important;
-}
-
-body.light-theme .inv-glow-indigo,
-body.light-theme .inv-glow-red {
-    text-shadow: none !important;
-}
-
-body.light-theme .inv-header h2 {
-    color: #1e293b !important;
 }

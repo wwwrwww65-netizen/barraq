@@ -138,18 +138,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         let countNew=0, countPrep=0, countReady=0;
 
         orders.forEach(o => {
-            if(o.kitchenStatus === 'done' || o.kitchenStatus === 'archived') return;
+            // Robust status detection
+            let status = (o.kitchenStatus || 'new').toString().toLowerCase();
+            if (status === 'undefined' || status === 'null') status = 'new';
+
+            // Skip completed or archived
+            if (status === 'done' || status === 'archived') return;
 
             let colContainer, actionHtml;
-            if(o.kitchenStatus === 'new') {
-                colContainer = colNew; countNew++;
-                actionHtml = `<button class="btn-kds-act to-prep" onclick="updateKDSStatus('${o.orderId}', 'prep')"><i class="ph-bold ph-fire"></i> استلام وبدء التحضير</button>`;
-            } else if(o.kitchenStatus === 'prep') {
-                colContainer = colPrep; countPrep++;
+            
+            // Map status to column and button
+            if(status === 'prep') {
+                colContainer = colPrep; 
+                countPrep++;
                 actionHtml = `<button class="btn-kds-act to-ready" onclick="updateKDSStatus('${o.orderId}', 'ready')"><i class="ph-bold ph-check"></i> جاهز للاستلام</button>`;
-            } else if(o.kitchenStatus === 'ready') {
-                colContainer = colReady; countReady++;
+            } else if(status === 'ready') {
+                colContainer = colReady; 
+                countReady++;
                 actionHtml = `<button class="btn-kds-act to-done" onclick="updateKDSStatus('${o.orderId}', 'done')"><i class="ph-bold ph-check-circle"></i> تم التسليم للعميل/ويتر</button>`;
+            } else {
+                // ANY other status (new, pending, empty, etc.) goes to NEW column with the button
+                colContainer = colNew; 
+                countNew++;
+                actionHtml = `<button class="btn-kds-act to-prep" onclick="updateKDSStatus('${o.orderId}', 'prep')"><i class="ph-bold ph-fire"></i> استلام وبدء التحضير</button>`;
             }
             if(!colContainer) return;
 
@@ -182,7 +193,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                     <div class="kds-ticket-items">
                         ${itemsHtml}
-                        ${o.note ? `<p style="margin-top:10px; color:var(--accent-orange); font-size:12px; font-weight:bold; background:rgba(249,115,22,0.1); padding:5px; border-radius:4px;"><i class="ph-fill ph-warning-circle"></i> ${o.note}</p>` : ''}
+                        ${o.note ? `<p class="kds-order-note"><i class="ph-fill ph-warning-circle"></i> ${o.note}</p>` : ''}
                     </div>
                     <div class="kds-ticket-action">${actionHtml}</div>
                 </div>

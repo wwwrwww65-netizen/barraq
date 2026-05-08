@@ -27,36 +27,20 @@
         <aside class="sidebar">
             <div class="logo">
                 <img src="2222.png" alt="Mister Casher" class="restaurant-logo">
-                <span>Mister Casher <span class="highlight">POS</span></span>
+                <span>إعدادات <span class="highlight">النظام</span></span>
             </div>
             
             <nav class="nav-menu">
-                <a href="index.html" class="nav-item"><i class="ph ph-squares-four"></i><span>الرئيسية</span></a>
-                <a href="pos.html" class="nav-item"><i class="ph ph-monitor"></i><span>نقطة البيع (الكاشير)</span></a>
-                <a href="kitchen-production.html" class="nav-item"><i class="ph ph-cooking-pot"></i><span>المطبخ والإنتاج</span></a>
-                <a href="orders.html" class="nav-item"><i class="ph ph-list-numbers"></i><span>سجل الطلبات</span></a>
-                <a href="sales.html" class="nav-item"><i class="ph ph-receipt"></i><span>المبيعات</span></a>
-                <a href="menu.html" class="nav-item"><i class="ph ph-list-dashes"></i><span>الأصناف والمنيو</span></a>
-                
+                <a href="index.html" class="nav-item"><i class="ph ph-arrow-right"></i><span>العودة للرئيسية</span></a>
                 
                 <div class="nav-divider"></div>
-                <p class="nav-label">شركات التوصيل</p>
-                <a href="hungerstation.html" class="nav-item" id="nav-hs"><i class="ph ph-motorcycle"></i><span>هنقرستيشن</span></a>
-                <div id="dynamic-delivery-companies-nav"></div>
-                <div class="nav-divider"></div>
-                <p class="nav-label">العمليات والمخزون</p>
-                <a href="inventory.html" class="nav-item"><i class="ph ph-package"></i><span>المخازن والمستودعات</span></a>
-                <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>المشتريات والموردين</span></a>
-                <a href="returns.html" class="nav-item"><i class="ph ph-arrow-u-down-left"></i><span>المرتجعات</span></a>
+                <p class="nav-label">أقسام الإعدادات</p>
                 
-                <div class="nav-divider"></div>
-                <p class="nav-label">الإدارة والتقارير</p>
-                <a href="staff.html" class="nav-item"><i class="ph ph-users"></i><span>الموظفين والعمال</span></a>
-                <a href="customers.html" class="nav-item"><i class="ph ph-users-three"></i><span>العملاء</span></a>
-                <a href="accounting.html" class="nav-item"><i class="ph ph-calculator"></i><span>النظام المحاسبي</span></a>
-                <a href="statistics.html" class="nav-item"><i class="ph ph-chart-pie"></i><span>الإحصائيات</span></a>
-                    <a href="profit-loss.html" class="nav-item"><i class="ph ph-scales"></i><span>الأرباح والخسائر</span></a>
-                <a href="settings.html" class="nav-item active"><i class="ph ph-gear"></i><span>الإعدادات</span></a>
+                <a href="#" class="nav-item active settings-tab" data-target="page-info"><i class="ph ph-info"></i><span>المعلومات والبيانات</span></a>
+                <a href="#" class="nav-item settings-tab" data-target="page-whatsapp"><i class="ph ph-whatsapp-logo"></i><span>الربط مع واتساب</span></a>
+                <a href="#" class="nav-item settings-tab" data-target="page-backup"><i class="ph ph-hard-drives"></i><span>التخزين والنسخ</span></a>
+                <a href="#" class="nav-item settings-tab" data-target="page-advanced"><i class="ph ph-warning"></i><span>خيارات متقدمة</span></a>
+                <a href="#" class="nav-item settings-tab" data-target="page-support"><i class="ph ph-headset"></i><span>الدعم الفني والخدمات</span></a>
             </nav>
         </aside>
 
@@ -68,7 +52,7 @@
                     <div class="breadcrumbs pt-0">
                         <h2>إعدادات النظام المركزية</h2>
                         <span class="separator">/</span>
-                        <span>شاشة تخصيص الهوية والفواتير</span>
+                        <span id="current-tab-title">المعلومات والبيانات</span>
                     </div>
                 </div>
                 
@@ -87,441 +71,515 @@
             <div class="settings-container">
                 
                 <form id="settings-form">
-                    <div class="settings-grid">
+                    <div class="settings-pages-container">
                         
-                        <!-- Col 1: Brand & Basic Info -->
-                        <div class="settings-card">
-                            <div class="sc-header">
-                                <i class="ph-fill ph-storefront"></i>
-                                <h3>هوية وبيانات المطعم الأساسية</h3>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>شعار المطعم الجديد (Drag & Drop)</label>
-                                <div class="logo-upload-box" id="drop-zone">
-                                    <i class="ph-fill ph-upload-simple upload-icon"></i>
-                                    <div class="upload-text">اسحب وأفلت صورة الشعار هنا</div>
-                                    <div class="upload-hint">أو انقر لتصفح الملفات من جهازك (JPG/PNG)</div>
-                                    <input type="file" id="logo-input" accept="image/*">
-                                    <img id="preview-logo" src="" alt="Live Preview">
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label>اسم المطعم الرسمي</label>
-                                <div class="input-icon-wrapper">
-                                    <i class="ph-fill ph-check-circle" style="color:var(--accent-green)"></i>
-                                    <input type="text" id="set-name" class="input-modern" placeholder="مثال: مطاعم ومطابخ السعادة">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label>اسم الفرع أو الوصف التفصيلي</label>
-                                <div class="input-icon-wrapper">
-                                    <i class="ph-fill ph-map-pin"></i>
-                                    <input type="text" id="set-branch" class="input-modern" placeholder="شارع الملك عبدالعزيز - حي النسيم">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Col 2: Tax & Contact Info -->
-                        <div class="settings-card">
-                            <div class="sc-header">
-                                <i class="ph-fill ph-receipt"></i>
-                                <h3>إعدادات الفواتير والضرائب</h3>
-                            </div>
-
-                            <div class="form-group">
-                                <label>الرقم الضريبي (VAT Number)</label>
-                                <div class="input-icon-wrapper">
-                                    <i class="ph-fill ph-barcode"></i>
-                                    <input type="text" id="set-tax" class="input-modern" placeholder="3000xxxxxxxxxxx3">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label>نسبة ضريبة القيمة المضافة (%)</label>
-                                <div class="input-icon-wrapper" style="position:relative;">
-                                    <i class="ph-fill ph-percent" style="color:var(--accent-orange)"></i>
-                                    <input type="number" id="set-tax-rate" class="input-modern" placeholder="15" min="0" max="100" step="0.01" value="15" style="padding-left: 55px;">
-                                    <span style="position:absolute; left:16px; top:50%; transform:translateY(-50%); color:var(--accent-orange); font-weight:800; font-size:18px; pointer-events:none;">%</span>
-                                </div>
-                                <small style="color:var(--text-muted); font-size:12px; margin-top:5px; display:block;">
-                                    <i class="ph ph-info"></i> تُطبَّق هذه النسبة تلقائياً على الكاشير وجميع الفواتير في النظام
-                                </small>
-                            </div>
-
-                            <div class="form-group">
-                                <label>رقم هاتف المتجر الموحد</label>
-                                <div class="input-icon-wrapper">
-                                    <i class="ph-fill ph-phone-call"></i>
-                                    <input type="text" id="set-phone" class="input-modern" placeholder="9200xxxx">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label>رقم الواتساب الخاص بالطلبات (WhatsApp)</label>
-                                <div class="input-icon-wrapper">
-                                    <i class="ph-fill ph-whatsapp-logo" style="color:var(--accent-green)"></i>
-                                    <input type="text" id="set-whatsapp" class="input-modern" placeholder="05xxxxxxxx">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label>رسالة ترحيبية أسفل الفاتورة (Footer Message)</label>
-                                <div class="input-icon-wrapper">
-                                    <i class="ph-fill ph-text-align-center"></i>
-                                    <input type="text" id="set-footer" class="input-modern" placeholder="شكرًا لزيارتكم.. نتشرف بخدمتكم دائماً">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label>طابعة الكاشير الرئيسية (لفواتير العميل وفتح الدرج)</label>
-                                <div class="input-icon-wrapper">
-                                    <i class="ph-fill ph-printer"></i>
-                                    <select id="set-cashier-printer" class="input-modern" style="padding-right: 40px; width: 100%; border: none; background: transparent; outline: none; color: var(--text-primary); font-family: 'Cairo', sans-serif;">
-                                        <option value="" style="color: #000;">الطابعة الافتراضية للويندوز (Default)</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label>عملة العرض في النظام</label>
-                                <select id="set-currency-preset" class="input-modern" style="width:100%;">
-                                    <option value="SAR">ريال سعودي (ر.س)</option>
-                                    <option value="USD">دولار أمريكي ($)</option>
-                                    <option value="EUR">يورو (€)</option>
-                                    <option value="YER">ريال يمني (ر.ي)</option>
-                                    <option value="CUSTOM">مخصص — رمز واسم بالكتابة</option>
-                                </select>
-                                <small style="color:var(--text-muted); font-size:12px; margin-top:6px; display:block;">الكاشير، التقارير، المخزون، الموظفين، المحاسبة، والإيصالات.</small>
-                            </div>
-                            <div id="set-currency-custom-wrap" class="form-group" style="display:none;">
-                                <label>رمز العملة الظاهر بجانب الأرقام</label>
-                                <input type="text" id="set-currency-symbol" class="input-modern" dir="ltr" placeholder="مثال: د.ك" maxlength="16">
-                                <label style="margin-top:10px; display:block;">الاسم الكامل في السندات (نص قانوني)</label>
-                                <input type="text" id="set-currency-label" class="input-modern" placeholder="مثال: دينار كويتي">
-                            </div>
-                        </div>
-
-                        <!-- Col 1.5: WhatsApp Integration -->
-                        <div class="settings-card" style="grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
-                            <div>
-                                <div class="sc-header">
-                                    <i class="ph-fill ph-whatsapp-logo" style="color: #25D366;"></i>
-                                    <h3>ربط واتساب (طابعة رقمية)</h3>
-                                </div>
-                                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
-                                    اختر طريقة إرسال الواتساب المناسبة لجهازك.
-                                </p>
-
-                                <!-- WhatsApp Connection Info -->
-                                <div style="background:rgba(37,211,102,0.05); border:1px solid rgba(37,211,102,0.2); border-radius:12px; padding:16px; margin-bottom:16px; display:flex; align-items:center; gap:14px;">
-                                    <div style="width:48px; height:48px; border-radius:50%; background:rgba(37,211,102,0.1); display:flex; justify-content:center; align-items:center; flex-shrink:0;">
-                                        <i class="ph-fill ph-app-window" style="color:#25D366; font-size:24px;"></i>
+                        <!-- Page 1: Information & Data -->
+                        <div id="page-info" class="settings-page active">
+                            <div class="settings-grid">
+                                <!-- Col 1: Brand & Basic Info -->
+                                <div class="settings-card">
+                                    <div class="sc-header">
+                                        <i class="ph-fill ph-storefront"></i>
+                                        <h3>هوية وبيانات المطعم الأساسية</h3>
                                     </div>
-                                    <div style="flex:1;">
-                                        <h4 style="margin:0 0 4px; font-size:15px; display:flex; align-items:center; gap:8px;">
-                                            واتساب (النافذة المتخفية)
-                                            <span id="wa-connection-badge" style="background:rgba(239,68,68,0.15); color:#ef4444; font-size:11px; padding:3px 8px; border-radius:20px; font-weight:bold; display:inline-flex; align-items:center; gap:4px; transition: all 0.3s;">
-                                                <span id="wa-connection-dot" style="width:6px; height:6px; border-radius:50%; background:#ef4444; display:inline-block; transition: all 0.3s; box-shadow: 0 0 5px #ef4444;"></span>
-                                                <span id="wa-connection-status-text">غير متصل</span>
-                                            </span>
-                                        </h4>
-                                        <p style="color:var(--text-secondary); font-size:12px; margin:0; line-height:1.6;">
-                                            واتساب ويب يعمل في الخلفية تلقائياً لإرسال الرسائل والصور. يتطلب مسح QR مرة واحدة.
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <!-- لوحة الحالة والأزرار -->
-                                <div id="wa-status-panel" style="background: var(--bg-card); padding:16px; border-radius:12px; border:1px solid var(--border-color); text-align:center; position: relative; overflow: hidden;">
-                                    <div id="wa-qr-container" style="display:none; margin-bottom:12px; justify-content: center;"></div>
-                                    <h4 id="wa-status-text" style="color:var(--text-muted); margin-bottom:15px; font-size:14px;">جاري التحقق من حالة الاتصال...</h4>
                                     
-                                    <button type="button" class="btn btn-primary" id="btn-wa-link" style="background: #25D366; border: none; width: 100%; display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom:10px; transition: all 0.2s; box-shadow: 0 4px 12px rgba(37,211,102,0.2);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(37,211,102,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(37,211,102,0.2)';">
-                                        <i class="ph-bold ph-app-window" id="btn-wa-link-icon"></i>
-                                        <span id="btn-wa-link-text">فتح نافذة واتساب</span>
-                                    </button>
+                                    <div class="form-group">
+                                        <label>شعار المطعم الجديد (Drag & Drop)</label>
+                                        <div class="logo-upload-box" id="drop-zone">
+                                            <i class="ph-fill ph-upload-simple upload-icon"></i>
+                                            <div class="upload-text">اسحب وأفلت صورة الشعار هنا</div>
+                                            <div class="upload-hint">أو انقر لتصفح الملفات من جهازك (JPG/PNG)</div>
+                                            <input type="file" id="logo-input" accept="image/*">
+                                            <img id="preview-logo" src="" alt="Live Preview">
+                                        </div>
+                                    </div>
                                     
-                                    <div style="display:flex; gap:8px;">
-                                        <button type="button" id="btn-wa-refresh" style="flex:1; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.4); color:#f59e0b; border-radius:8px; padding:8px; font-family:Cairo,sans-serif; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition: all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.2)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.background='rgba(245,158,11,0.1)'; this.style.transform='translateY(0)';">
-                                            <i class="ph ph-arrows-clockwise"></i> تحديث
-                                        </button>
-                                        <button type="button" id="btn-wa-disconnect" style="flex:1; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.4); color:#ef4444; border-radius:8px; padding:8px; font-family:Cairo,sans-serif; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.2)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.background='rgba(239,68,68,0.1)'; this.style.transform='translateY(0)';">
-                                            <i class="ph ph-plugs-connected"></i> الغاء الربط
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div style="padding-top:20px;">
-                                <div class="form-group">
-                                    <label>رقم هاتف المحاسب/الإدارة لاستلام الإشعارات والسندات (مطلوب)</label>
-                                    <div class="input-icon-wrapper">
-                                        <i class="ph-fill ph-phone" style="color:var(--accent-blue)"></i>
-                                        <input type="text" id="set-wa-admin" class="input-modern" placeholder="+966xxxxxxxxx" value="+966539774699" dir="ltr" style="font-size:16px;">
-                                    </div>
-                                </div>
-                                <div class="form-group mt-3" style="background:rgba(16,185,129,0.06); padding:15px; border-radius:8px; border:1px solid rgba(16,185,129,0.2);">
-                                    <label>عنوان IP لجهاز واتساب المركزي (اختياري — للأجهزة الفرعية على الشبكة)</label>
-                                    <p style="font-size:12px; color:var(--text-muted); margin:6px 0 10px;">اتركه فارغاً على الجهاز الذي يُرسل منه واتساب مباشرة. على الأجهزة الفرعية يُفضَّل تركه فارغاً أيضاً: يُكتشف تلقائياً من مزامنة الشبكة عندما يكون الجهاز الرئيسي متصلاً بواتساب. يمكنك التعبئة يدوياً (مثل 192.168.1.10) إذا لم يُكتشف العنوان.</p>
-                                    <div class="input-icon-wrapper">
-                                        <i class="ph-fill ph-wifi-high" style="color:#10b981"></i>
-                                        <input type="text" id="set-wa-hub-ip" class="input-modern" placeholder="مثال: 192.168.1.10" dir="ltr" style="font-size:15px;">
-                                    </div>
-                                </div>
-                                <div class="form-group mt-3" style="background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); margin-bottom:15px;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                                        <div>
-                                            <h4 style="margin:0; font-size:15px;">إرسال سندات السلف والرواتب للموظفين عبر واتساب</h4>
-                                            <span style="font-size:13px; color:var(--text-secondary);">إرسال صورة السند تلقائياً إلى واتساب الموظف المستفيد.</span>
+                                    <div class="form-group">
+                                        <label>اسم المطعم الرسمي</label>
+                                        <div class="input-icon-wrapper">
+                                            <i class="ph-fill ph-check-circle" style="color:var(--accent-green)"></i>
+                                            <input type="text" id="set-name" class="input-modern" placeholder="مثال: مطاعم ومطابخ السعادة">
                                         </div>
-                                        <label class="switch">
-                                            <input type="checkbox" id="set-wa-loans" checked>
-                                            <span class="slider round"></span>
-                                        </label>
                                     </div>
-                                </div>
 
-                                <div class="form-group mt-3" style="background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); margin-bottom:15px;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                                        <div>
-                                            <h4 style="margin:0; font-size:15px;">إرسال سندات المصروفات للإدارة عبر واتساب</h4>
-                                            <span style="font-size:13px; color:var(--text-secondary);">إرسال صورة سند عمليات المصروفات وسحبيات المطعم لرقم الإدارة أعلاه.</span>
+                                    <div class="form-group">
+                                        <label>اسم الفرع أو الوصف التفصيلي</label>
+                                        <div class="input-icon-wrapper">
+                                            <i class="ph-fill ph-map-pin"></i>
+                                            <input type="text" id="set-branch" class="input-modern" placeholder="شارع الملك عبدالعزيز - حي النسيم">
                                         </div>
-                                        <label class="switch">
-                                            <input type="checkbox" id="set-wa-expenses" checked>
-                                            <span class="slider round"></span>
-                                        </label>
                                     </div>
                                 </div>
-                                
-                                <div class="form-group" style="background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
-                                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                                        <div>
-                                            <h4 style="margin:0; font-size:15px;">إرسال تقرير المبيعات اليومية</h4>
-                                            <span style="font-size:13px; color:var(--text-secondary);">إرسال ملخص الوردية (الشيفت) عند إغلاقه.</span>
+
+                                <!-- Col 2: Tax & Contact Info -->
+                                <div class="settings-card">
+                                    <div class="sc-header">
+                                        <i class="ph-fill ph-receipt"></i>
+                                        <h3>إعدادات الفواتير والضرائب</h3>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>الرقم الضريبي (VAT Number)</label>
+                                        <div class="input-icon-wrapper">
+                                            <i class="ph-fill ph-barcode"></i>
+                                            <input type="text" id="set-tax" class="input-modern" placeholder="3000xxxxxxxxxxx3">
                                         </div>
-                                        <label class="switch">
-                                            <input type="checkbox" id="set-wa-reports" checked>
-                                            <span class="slider round"></span>
-                                        </label>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
 
-                        <!-- Col 3: Cloud & Network Sync -->
-                        <div class="settings-card" style="grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                            <div>
-                                <div class="sc-header">
-                                    <i class="ph-fill ph-google-drive-logo" style="color: #4285F4;"></i>
-                                    <h3>المزامنة مع جوجل درايف (Google Drive)</h3>
-                                </div>
-                                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">قم بربط حساب جوجل درايف الخاص بالمطعم للاحتفاظ بنسخة احتياطية آمنة من قاعدة البيانات، والمزامنة السحابية.</p>
-
-                                <div class="cloud-status-box" id="google-drive-status" style="background: rgba(66, 133, 244, 0.1); border: 1px solid rgba(66, 133, 244, 0.3); border-radius: 8px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; gap: 15px;">
-                                    <i class="ph-fill ph-cloud-slash" style="color: #EA4335; font-size: 24px;" id="gd-icon"></i>
-                                    <div>
-                                        <h4 style="margin: 0;" id="gd-title">غير متصل</h4>
-                                        <span style="font-size: 0.8rem; color: var(--text-muted);" id="gd-subtitle">لم يتم ربط أي حساب حتى الآن</span>
+                                    <div class="form-group">
+                                        <label>نسبة ضريبة القيمة المضافة (%)</label>
+                                        <div class="input-icon-wrapper" style="position:relative;">
+                                            <i class="ph-fill ph-percent" style="color:var(--accent-orange)"></i>
+                                            <input type="number" id="set-tax-rate" class="input-modern" placeholder="15" min="0" max="100" step="0.01" value="15" style="padding-left: 55px;">
+                                            <span style="position:absolute; left:16px; top:50%; transform:translateY(-50%); color:var(--accent-orange); font-weight:800; font-size:18px; pointer-events:none;">%</span>
+                                        </div>
+                                        <small style="color:var(--text-muted); font-size:12px; margin-top:5px; display:block;">
+                                            <i class="ph ph-info"></i> تُطبَّق هذه النسبة تلقائياً على الكاشير وجميع الفواتير في النظام
+                                        </small>
                                     </div>
-                                </div>
 
-                                <div class="form-group">
-                                    <button type="button" class="btn btn-primary" id="btn-google-login" style="background: #4285F4; border: none; width: 100%; display: flex; justify-content: center; align-items: center; gap: 10px;">
-                                        <i class="ph-fill ph-google-logo"></i> تسجيل الدخول بحساب Google
-                                    </button>
-                                </div>
-                                <div class="form-group" style="display: flex; gap: 10px;">
-                                    <button type="button" class="btn btn-primary" id="btn-gd-backup" style="flex: 1; background: var(--bg-card); display: none; color: white; border: 1px solid var(--border-light);">
-                                        <i class="ph-fill ph-cloud-arrow-up"></i> رفع نسخة احتياطية
-                                    </button>
-                                    <button type="button" class="btn btn-primary" id="btn-gd-restore" style="flex: 1; background: var(--bg-card); display: none; color: white; border: 1px solid var(--border-light);">
-                                        <i class="ph-fill ph-cloud-arrow-down"></i> استعادة النسخة
-                                    </button>
-                                </div>
-                                <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);">
-                                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color: var(--text-secondary); font-size: 14px;">
-                                        <input type="checkbox" id="gd-auto-enabled" style="width:18px; height:18px;">
-                                        <span>نسخ احتياطي تلقائي إلى Google Drive</span>
-                                    </label>
-                                    <p style="color: var(--text-muted); font-size: 0.82rem; margin: 10px 0 8px 28px;">يُرفع تلقائياً (قاعدة البيانات + إعدادات المتصفح) حسب الفاصل أدناه. يتطلب حساب Google مربوطاً.</p>
-                                    <div style="display:flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-right: 28px;">
-                                        <label for="gd-auto-interval" style="color: var(--text-secondary); font-size: 13px;">كل:</label>
-                                        <select id="gd-auto-interval" class="input-modern" style="max-width: 220px; padding: 8px 12px;">
-                                            <option value="60">ساعة واحدة</option>
-                                            <option value="360" selected>6 ساعات</option>
-                                            <option value="720">12 ساعة</option>
-                                            <option value="1440">24 ساعة (يومياً)</option>
-                                            <option value="10080">أسبوعياً</option>
+                                    <div class="form-group">
+                                        <label>رقم هاتف المتجر الموحد</label>
+                                        <div class="input-icon-wrapper">
+                                            <i class="ph-fill ph-phone-call"></i>
+                                            <input type="text" id="set-phone" class="input-modern" placeholder="9200xxxx">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>رقم الواتساب الخاص بالطلبات (WhatsApp)</label>
+                                        <div class="input-icon-wrapper">
+                                            <i class="ph-fill ph-whatsapp-logo" style="color:var(--accent-green)"></i>
+                                            <input type="text" id="set-whatsapp" class="input-modern" placeholder="05xxxxxxxx">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>رسالة ترحيبية أسفل الفاتورة (Footer Message)</label>
+                                        <div class="input-icon-wrapper">
+                                            <i class="ph-fill ph-text-align-center"></i>
+                                            <input type="text" id="set-footer" class="input-modern" placeholder="شكرًا لزيارتكم.. نتشرف بخدمتكم دائماً">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>طابعة الكاشير الرئيسية (لفواتير العميل وفتح الدرج)</label>
+                                        <div class="input-icon-wrapper">
+                                            <i class="ph-fill ph-printer"></i>
+                                            <select id="set-cashier-printer" class="input-modern" style="padding-right: 40px; width: 100%; border: none; background: transparent; outline: none; color: var(--text-primary); font-family: 'Cairo', sans-serif;">
+                                                <option value="" style="color: #000;">الطابعة الافتراضية للويندوز (Default)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>عملة العرض في النظام</label>
+                                        <select id="set-currency-preset" class="input-modern" style="width:100%;">
+                                            <option value="SAR">ريال سعودي (ر.س)</option>
+                                            <option value="USD">دولار أمريكي ($)</option>
+                                            <option value="EUR">يورو (€)</option>
+                                            <option value="YER">ريال يمني (ر.ي)</option>
+                                            <option value="CUSTOM">مخصص — رمز واسم بالكتابة</option>
                                         </select>
+                                        <small style="color:var(--text-muted); font-size:12px; margin-top:6px; display:block;">الكاشير، التقارير، المخزون، الموظفين، المحاسبة، والإيصالات.</small>
                                     </div>
-                                    <p id="gd-auto-last" style="color: var(--text-muted); font-size: 0.78rem; margin: 10px 28px 0 0;"></p>
+                                    <div id="set-currency-custom-wrap" class="form-group" style="display:none;">
+                                        <label>رمز العملة الظاهر بجانب الأرقام</label>
+                                        <input type="text" id="set-currency-symbol" class="input-modern" dir="ltr" placeholder="مثال: د.ك" maxlength="16">
+                                        <label style="margin-top:10px; display:block;">الاسم الكامل في السندات (نص قانوني)</label>
+                                        <input type="text" id="set-currency-label" class="input-modern" placeholder="مثال: دينار كويتي">
+                                    </div>
                                 </div>
                             </div>
-                            
-                            <div>
-                                <div class="sc-header">
-                                    <i class="ph-fill ph-wifi-high" style="color: var(--accent-green);"></i>
-                                    <h3>المزامنة المحلية (LAN / Wi-Fi)</h3>
-                                </div>
-                                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
-                                    البرنامج يقوم بصورة تلقائية بتزامن البيانات فوريًا ومباشرًا مع الأجهزة المتواجدة على نفس الشبكة المحلية (عبر البث المباشر UDP).
-                                </p>
+                        </div>
 
-                                <div class="cloud-status-box" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; gap: 15px;">
-                                    <i class="ph-fill ph-broadcast" style="color: var(--accent-green); font-size: 24px;" id="lan-icon"></i>
+                        <!-- Page 2: WhatsApp Integration -->
+                        <div id="page-whatsapp" class="settings-page">
+                            <div class="settings-grid" style="grid-template-columns: 1fr;">
+                                <div class="settings-card" style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
                                     <div>
-                                        <h4 style="margin: 0;">المزامنة التلقائية نشطة</h4>
-                                        <span style="font-size: 0.8rem; color: var(--text-muted);" id="lan-status-text">تتم مزامنة الأصناف والمبيعات والفواتير لحظياً</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- منطقة خطرة — يظهر للمدير العام فقط -->
-                        <div id="settings-factory-reset-wrap" class="settings-card" style="grid-column: 1 / -1; display: none; border-color: rgba(239, 68, 68, 0.45); background: rgba(127, 29, 29, 0.12);">
-                            <div class="sc-header" style="border-bottom-color: rgba(239, 68, 68, 0.25);">
-                                <i class="ph-fill ph-warning-octagon" style="color: #ef4444;"></i>
-                                <h3 style="color: #fecaca;">منطقة خطرة — إعادة ضبط البيانات</h3>
-                            </div>
-
-                            <!-- زر 1: تصفير العمليات فقط -->
-                            <div style="background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3); border-radius: 10px; padding: 16px; margin-bottom: 14px;">
-                                <div style="display:flex; align-items:flex-start; gap:14px;">
-                                    <i class="ph-fill ph-eraser" style="color:#f59e0b; font-size:26px; flex-shrink:0; margin-top:2px;"></i>
-                                    <div style="flex:1;">
-                                        <h4 style="margin:0 0 6px; color:#fde68a; font-size:15px;">تصفير العمليات الحسابية فقط</h4>
-                                        <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6; margin: 0 0 12px;">
-                                            يحذف <strong style="color:#fde68a;">جميع العمليات التجريبية</strong>: الطلبات، المبيعات، المشتريات، المرتجعات، المصروفات، السحبيات، حركات المخزون، القيود المحاسبية، سجل الحضور والغياب. <br>
-                                            <strong style="color:#86efac;">✓ تبقى:</strong> الأصناف، المنتجات، الصور، المنيو، الموردين، الموظفين، المخزون الحالي، وجميع الإعدادات كما هي.
+                                        <div class="sc-header">
+                                            <i class="ph-fill ph-whatsapp-logo" style="color: #25D366;"></i>
+                                            <h3>ربط واتساب (طابعة رقمية)</h3>
+                                        </div>
+                                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
+                                            اختر طريقة إرسال الواتساب المناسبة لجهازك.
                                         </p>
-                                        <button type="button" id="btn-ops-reset-open" class="btn btn-primary" style="background: #d97706; border: none; color: white; display:inline-flex; align-items:center; gap:8px;">
-                                            <i class="ph-fill ph-eraser"></i> تصفير العمليات الحسابية
-                                        </button>
+
+                                        <!-- WhatsApp Connection Info -->
+                                        <div style="background:rgba(37,211,102,0.05); border:1px solid rgba(37,211,102,0.2); border-radius:12px; padding:16px; margin-bottom:16px; display:flex; align-items:center; gap:14px;">
+                                            <div style="width:48px; height:48px; border-radius:50%; background:rgba(37,211,102,0.1); display:flex; justify-content:center; align-items:center; flex-shrink:0;">
+                                                <i class="ph-fill ph-app-window" style="color:#25D366; font-size:24px;"></i>
+                                            </div>
+                                            <div style="flex:1;">
+                                                <h4 style="margin:0 0 4px; font-size:15px; display:flex; align-items:center; gap:8px;">
+                                                    واتساب (النافذة المتخفية)
+                                                    <span id="wa-connection-badge" style="background:rgba(239,68,68,0.15); color:#ef4444; font-size:11px; padding:3px 8px; border-radius:20px; font-weight:bold; display:inline-flex; align-items:center; gap:4px; transition: all 0.3s;">
+                                                        <span id="wa-connection-dot" style="width:6px; height:6px; border-radius:50%; background:#ef4444; display:inline-block; transition: all 0.3s; box-shadow: 0 0 5px #ef4444;"></span>
+                                                        <span id="wa-connection-status-text">غير متصل</span>
+                                                    </span>
+                                                </h4>
+                                                <p style="color:var(--text-secondary); font-size:12px; margin:0; line-height:1.6;">
+                                                    واتساب ويب يعمل في الخلفية تلقائياً لإرسال الرسائل والصور. يتطلب مسح QR مرة واحدة.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <!-- لوحة الحالة والأزرار -->
+                                        <div id="wa-status-panel" style="background: var(--bg-card); padding:16px; border-radius:12px; border:1px solid var(--border-color); text-align:center; position: relative; overflow: hidden;">
+                                            <div id="wa-qr-container" style="display:none; margin-bottom:12px; justify-content: center;"></div>
+                                            <h4 id="wa-status-text" style="color:var(--text-muted); margin-bottom:15px; font-size:14px;">جاري التحقق من حالة الاتصال...</h4>
+                                            
+                                            <button type="button" class="btn btn-primary" id="btn-wa-link" style="background: #25D366; border: none; width: 100%; display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom:10px; transition: all 0.2s; box-shadow: 0 4px 12px rgba(37,211,102,0.2);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(37,211,102,0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(37,211,102,0.2)';">
+                                                <i class="ph-bold ph-app-window" id="btn-wa-link-icon"></i>
+                                                <span id="btn-wa-link-text">فتح نافذة واتساب</span>
+                                            </button>
+                                            
+                                            <div style="display:flex; gap:8px;">
+                                                <button type="button" id="btn-wa-refresh" style="flex:1; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.4); color:#f59e0b; border-radius:8px; padding:8px; font-family:Cairo,sans-serif; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition: all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.2)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.background='rgba(245,158,11,0.1)'; this.style.transform='translateY(0)';">
+                                                    <i class="ph ph-arrows-clockwise"></i> تحديث
+                                                </button>
+                                                <button type="button" id="btn-wa-disconnect" style="flex:1; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.4); color:#ef4444; border-radius:8px; padding:8px; font-family:Cairo,sans-serif; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.2)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.background='rgba(239,68,68,0.1)'; this.style.transform='translateY(0)';">
+                                                    <i class="ph ph-plugs-connected"></i> الغاء الربط
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style="padding-top:20px;">
+                                        <div class="form-group">
+                                            <label>رقم هاتف المحاسب/الإدارة لاستلام الإشعارات والسندات (مطلوب)</label>
+                                            <div class="input-icon-wrapper">
+                                                <i class="ph-fill ph-phone" style="color:var(--accent-blue)"></i>
+                                                <input type="text" id="set-wa-admin" class="input-modern" placeholder="+966xxxxxxxxx" value="+966539774699" dir="ltr" style="font-size:16px;">
+                                            </div>
+                                        </div>
+                                        <div class="form-group mt-3" style="background:rgba(16,185,129,0.06); padding:15px; border-radius:8px; border:1px solid rgba(16,185,129,0.2);">
+                                            <label>عنوان IP لجهاز واتساب المركزي (اختياري — للأجهزة الفرعية على الشبكة)</label>
+                                            <p style="font-size:12px; color:var(--text-muted); margin:6px 0 10px;">اتركه فارغاً على الجهاز الذي يُرسل منه واتساب مباشرة. على الأجهزة الفرعية يُفضَّل تركه فارغاً أيضاً: يُكتشف تلقائياً من مزامنة الشبكة عندما يكون الجهاز الرئيسي متصلاً بواتساب. يمكنك التعبئة يدوياً (مثل 192.168.1.10) إذا لم يُكتشف العنوان.</p>
+                                            <div class="input-icon-wrapper">
+                                                <i class="ph-fill ph-wifi-high" style="color:#10b981"></i>
+                                                <input type="text" id="set-wa-hub-ip" class="input-modern" placeholder="مثال: 192.168.1.10" dir="ltr" style="font-size:15px;">
+                                            </div>
+                                        </div>
+                                        <div class="form-group mt-3" style="background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); margin-bottom:15px;">
+                                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                                <div>
+                                                    <h4 style="margin:0; font-size:15px;">إرسال سندات السلف والرواتب للموظفين عبر واتساب</h4>
+                                                    <span style="font-size:13px; color:var(--text-secondary);">إرسال صورة السند تلقائياً إلى واتساب الموظف المستفيد.</span>
+                                                </div>
+                                                <label class="switch">
+                                                    <input type="checkbox" id="set-wa-loans" checked>
+                                                    <span class="slider round"></span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group mt-3" style="background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); margin-bottom:15px;">
+                                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                                <div>
+                                                    <h4 style="margin:0; font-size:15px;">إرسال سندات المصروفات للإدارة عبر واتساب</h4>
+                                                    <span style="font-size:13px; color:var(--text-secondary);">إرسال صورة سند عمليات المصروفات وسحبيات المطعم لرقم الإدارة أعلاه.</span>
+                                                </div>
+                                                <label class="switch">
+                                                    <input type="checkbox" id="set-wa-expenses" checked>
+                                                    <span class="slider round"></span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="form-group" style="background:rgba(255,255,255,0.02); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+                                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                                <div>
+                                                    <h4 style="margin:0; font-size:15px;">إرسال تقرير المبيعات اليومية</h4>
+                                                    <span style="font-size:13px; color:var(--text-secondary);">إرسال ملخص الوردية (الشيفت) عند إغلاقه.</span>
+                                                </div>
+                                                <label class="switch">
+                                                    <input type="checkbox" id="set-wa-reports" checked>
+                                                    <span class="slider round"></span>
+                                                </label>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- زر 2: تصفير النظام بالكامل -->
-                            <div style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3); border-radius: 10px; padding: 16px;">
-                                <div style="display:flex; align-items:flex-start; gap:14px;">
-                                    <i class="ph-fill ph-trash" style="color:#ef4444; font-size:26px; flex-shrink:0; margin-top:2px;"></i>
-                                    <div style="flex:1;">
-                                        <h4 style="margin:0 0 6px; color:#fecaca; font-size:15px;">تصفير النظام بالكامل (فاكتوري ريست)</h4>
-                                        <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6; margin: 0 0 12px;">
-                                            حذف <strong style="color:#fca5a5;">جميع</strong> بيانات العمل: الطلبات، الأصناف، المخزون، الموظفين، المحاسبة، الإعدادات المحفوظة محلياً، وغيرها. يبقى فقط اسم المستخدم وكلمة سر المدير العام. يُنصح بأخذ نسخة احتياطية قبل التنفيذ.
+                        <!-- Page 3: Storage & Backup -->
+                        <div id="page-backup" class="settings-page">
+                            <div class="settings-grid">
+                                <div class="settings-card" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; grid-column: 1 / -1;">
+                                    <div>
+                                        <div class="sc-header">
+                                            <i class="ph-fill ph-google-drive-logo" style="color: #4285F4;"></i>
+                                            <h3>المزامنة مع جوجل درايف (Google Drive)</h3>
+                                        </div>
+                                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">قم بربط حساب جوجل درايف الخاص بالمطعم للاحتفاظ بنسخة احتياطية آمنة من قاعدة البيانات، والمزامنة السحابية.</p>
+
+                                        <div class="cloud-status-box" id="google-drive-status" style="background: rgba(66, 133, 244, 0.1); border: 1px solid rgba(66, 133, 244, 0.3); border-radius: 8px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; gap: 15px;">
+                                            <i class="ph-fill ph-cloud-slash" style="color: #EA4335; font-size: 24px;" id="gd-icon"></i>
+                                            <div>
+                                                <h4 style="margin: 0;" id="gd-title">غير متصل</h4>
+                                                <span style="font-size: 0.8rem; color: var(--text-muted);" id="gd-subtitle">لم يتم ربط أي حساب حتى الآن</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <button type="button" class="btn btn-primary" id="btn-google-login" style="background: #4285F4; border: none; width: 100%; display: flex; justify-content: center; align-items: center; gap: 10px;">
+                                                <i class="ph-fill ph-google-logo"></i> تسجيل الدخول بحساب Google
+                                            </button>
+                                        </div>
+                                        <div class="form-group" style="display: flex; gap: 10px;">
+                                            <button type="button" class="btn btn-primary" id="btn-gd-backup" style="flex: 1; background: var(--bg-card); display: none; color: white; border: 1px solid var(--border-light);">
+                                                <i class="ph-fill ph-cloud-arrow-up"></i> رفع نسخة احتياطية
+                                            </button>
+                                            <button type="button" class="btn btn-primary" id="btn-gd-restore" style="flex: 1; background: var(--bg-card); display: none; color: white; border: 1px solid var(--border-light);">
+                                                <i class="ph-fill ph-cloud-arrow-down"></i> استعادة النسخة
+                                            </button>
+                                        </div>
+                                        <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);">
+                                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color: var(--text-secondary); font-size: 14px;">
+                                                <input type="checkbox" id="gd-auto-enabled" style="width:18px; height:18px;">
+                                                <span>نسخ احتياطي تلقائي إلى Google Drive</span>
+                                            </label>
+                                            <p style="color: var(--text-muted); font-size: 0.82rem; margin: 10px 0 8px 28px;">يُرفع تلقائياً (قاعدة البيانات + إعدادات المتصفح) حسب الفاصل أدناه. يتطلب حساب Google مربوطاً.</p>
+                                            <div style="display:flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-right: 28px;">
+                                                <label for="gd-auto-interval" style="color: var(--text-secondary); font-size: 13px;">كل:</label>
+                                                <select id="gd-auto-interval" class="input-modern" style="max-width: 220px; padding: 8px 12px;">
+                                                    <option value="60">ساعة واحدة</option>
+                                                    <option value="360" selected>6 ساعات</option>
+                                                    <option value="720">12 ساعة</option>
+                                                    <option value="1440">24 ساعة (يومياً)</option>
+                                                    <option value="10080">أسبوعياً</option>
+                                                </select>
+                                            </div>
+                                            <p id="gd-auto-last" style="color: var(--text-muted); font-size: 0.78rem; margin: 10px 28px 0 0;"></p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <div class="sc-header">
+                                            <i class="ph-fill ph-wifi-high" style="color: var(--accent-green);"></i>
+                                            <h3>المزامنة المحلية (LAN / Wi-Fi)</h3>
+                                        </div>
+                                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
+                                            البرنامج يقوم بصورة تلقائية بتزامن البيانات فوريًا ومباشرًا مع الأجهزة المتواجدة على نفس الشبكة المحلية (عبر البث المباشر UDP).
                                         </p>
-                                        <button type="button" id="btn-factory-reset-open" class="btn btn-primary" style="background: #b91c1c; border: none; color: white; display:inline-flex; align-items:center; gap:8px;">
-                                            <i class="ph-fill ph-trash"></i> تصفير النظام بالكامل
+
+                                        <div class="cloud-status-box" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; gap: 15px;">
+                                            <i class="ph-fill ph-broadcast" style="color: var(--accent-green); font-size: 24px;" id="lan-icon"></i>
+                                            <div>
+                                                <h4 style="margin: 0;">المزامنة التلقائية نشطة</h4>
+                                                <span style="font-size: 0.8rem; color: var(--text-muted);" id="lan-status-text">تتم مزامنة الأصناف والمبيعات والفواتير لحظياً</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="settings-card" style="grid-column: 1 / -1;">
+                                    <div class="sc-header">
+                                        <i class="ph-fill ph-hard-drives" style="color: #ea580c;"></i>
+                                        <h3>نسخ احتياطي على قرص محلي أو USB</h3>
+                                    </div>
+                                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">يحفظ قاعدة البيانات وإعدادات النظام في مجلد تختاره (قرص آخر أو فلاشة). يُنشأ مجلد فرعي بتاريخ ووقت كل نسخة.</p>
+                                    <div class="form-group">
+                                        <label style="color: var(--text-secondary);">المجلد الهدف</label>
+                                        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                                            <code id="local-backup-path" dir="ltr" style="flex:1; min-width:200px; display:block; padding:10px 12px; background:rgba(0,0,0,0.25); border-radius:8px; font-size:12px; word-break:break-all;">لم يُحدد بعد</code>
+                                            <button type="button" class="btn btn-primary" id="btn-local-backup-browse" style="background: var(--bg-card); border: 1px solid var(--border-light);">
+                                                <i class="ph-fill ph-folder-open"></i> اختيار مجلد
+                                            </button>
+                                            <button type="button" class="btn btn-primary" id="btn-local-backup-open" style="background: transparent; border: 1px solid var(--border-light); display:none;">
+                                                <i class="ph-fill ph-folder-notch-open"></i> فتح في المستكشف
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="form-group" style="display:flex; gap:10px; flex-wrap:wrap;">
+                                        <button type="button" class="btn btn-primary" id="btn-local-backup-now" style="background: #ea580c; border: none;">
+                                            <i class="ph-fill ph-floppy-disk-back"></i> نسخ الآن
                                         </button>
+                                        <button type="button" class="btn btn-primary" id="btn-local-backup-restore" style="background: #16a34a; border: none;">
+                                            <i class="ph-fill ph-download-simple"></i> استعادة نسخة احتياطية
+                                        </button>
+                                    </div>
+                                    <div id="restore-backup-section" style="display:none; margin-top: 20px; padding: 20px; background: rgba(22, 163, 74, 0.1); border-radius: 12px; border: 1px solid rgba(22, 163, 74, 0.3);">
+                                        <h4 style="color: #16a34a; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                                            <i class="ph-fill ph-download-simple"></i>
+                                            استعادة نسخة احتياطية
+                                        </h4>
+                                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 16px;">
+                                            اختر مجلد النسخة الاحتياطية التي تريد استعادتها. سيتم استبدال قاعدة البيانات الحالية بالنسخة المحددة.
+                                        </p>
+                                        <div class="form-group">
+                                            <label style="color: var(--text-secondary);">مجلد النسخة الاحتياطية</label>
+                                            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                                                <code id="restore-backup-path" dir="ltr" style="flex:1; min-width:200px; display:block; padding:10px 12px; background:rgba(0,0,0,0.25); border-radius:8px; font-size:12px; word-break:break-all;">لم يتم اختيار مجلد بعد</code>
+                                                <button type="button" class="btn btn-primary" id="btn-restore-browse" style="background: #16a34a; border: none;">
+                                                    <i class="ph-fill ph-folder-open"></i> اختيار مجلد النسخة
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div id="restore-backup-info" style="display:none; margin-top: 16px; padding: 16px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                                            <h5 style="color: var(--text-primary); margin-bottom: 12px;">معلومات النسخة:</h5>
+                                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 0.85rem;">
+                                                <div>
+                                                    <span style="color: var(--text-muted);">تاريخ الإنشاء:</span><br>
+                                                    <strong id="restore-info-date" style="color: var(--text-primary);">-</strong>
+                                                </div>
+                                                <div>
+                                                    <span style="color: var(--text-muted);">عدد الطلبات:</span><br>
+                                                    <strong id="restore-info-orders" style="color: var(--text-primary);">-</strong>
+                                                </div>
+                                                <div>
+                                                    <span style="color: var(--text-muted);">عدد المنتجات:</span><br>
+                                                    <strong id="restore-info-products" style="color: var(--text-primary);">-</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div style="display:flex; gap:10px; margin-top: 16px; flex-wrap:wrap;">
+                                            <button type="button" class="btn btn-primary" id="btn-restore-confirm" style="background: #16a34a; border: none; flex: 1;">
+                                                <i class="ph-fill ph-check-circle"></i> تأكيد الاستعادة
+                                            </button>
+                                            <button type="button" class="btn btn-primary" id="btn-restore-cancel" style="background: transparent; border: 1px solid var(--border-light);">
+                                                <i class="ph-fill ph-x-circle"></i> إلغاء
+                                            </button>
+                                        </div>
+                                        <p style="color: #ef4444; font-size: 0.78rem; margin-top: 12px; display: flex; align-items: center; gap: 6px;">
+                                            <i class="ph-fill ph-warning-circle"></i>
+                                            ⚠️ تحذير: سيتم استبدال قاعدة البيانات الحالية بالكامل!
+                                        </p>
+                                    </div>
+                                    <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);">
+                                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color: var(--text-secondary); font-size: 14px;">
+                                            <input type="checkbox" id="local-backup-auto-enabled" style="width:18px; height:18px;">
+                                            <span>نسخ تلقائي إلى نفس المجلد</span>
+                                        </label>
+                                        <p style="color: var(--text-muted); font-size: 0.82rem; margin: 10px 0 8px 28px;">يُنشأ مجلد نسخة جديد في كل مرة. عطّل الخيار إن لم يكن القرص متصلاً دائماً.</p>
+                                        <div style="display:flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-right: 28px;">
+                                            <label for="local-backup-auto-interval" style="color: var(--text-secondary); font-size: 13px;">كل:</label>
+                                            <select id="local-backup-auto-interval" class="input-modern" style="max-width: 220px; padding: 8px 12px;">
+                                                <option value="60">ساعة واحدة</option>
+                                                <option value="360" selected>6 ساعات</option>
+                                                <option value="720">12 ساعة</option>
+                                                <option value="1440">24 ساعة (يومياً)</option>
+                                                <option value="10080">أسبوعياً</option>
+                                            </select>
+                                        </div>
+                                        <p id="local-backup-auto-last" style="color: var(--text-muted); font-size: 0.78rem; margin: 10px 28px 0 0;"></p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="settings-card" style="grid-column: 1 / -1;">
-                            <div class="sc-header">
-                                <i class="ph-fill ph-hard-drives" style="color: #ea580c;"></i>
-                                <h3>نسخ احتياطي على قرص محلي أو USB</h3>
-                            </div>
-                            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">يحفظ قاعدة البيانات وإعدادات النظام في مجلد تختاره (قرص آخر أو فلاشة). يُنشأ مجلد فرعي بتاريخ ووقت كل نسخة.</p>
-                            <div class="form-group">
-                                <label style="color: var(--text-secondary);">المجلد الهدف</label>
-                                <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                                    <code id="local-backup-path" dir="ltr" style="flex:1; min-width:200px; display:block; padding:10px 12px; background:rgba(0,0,0,0.25); border-radius:8px; font-size:12px; word-break:break-all;">لم يُحدد بعد</code>
-                                    <button type="button" class="btn btn-primary" id="btn-local-backup-browse" style="background: var(--bg-card); border: 1px solid var(--border-light);">
-                                        <i class="ph-fill ph-folder-open"></i> اختيار مجلد
-                                    </button>
-                                    <button type="button" class="btn btn-primary" id="btn-local-backup-open" style="background: transparent; border: 1px solid var(--border-light); display:none;">
-                                        <i class="ph-fill ph-folder-notch-open"></i> فتح في المستكشف
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="form-group" style="display:flex; gap:10px; flex-wrap:wrap;">
-                                <button type="button" class="btn btn-primary" id="btn-local-backup-now" style="background: #ea580c; border: none;">
-                                    <i class="ph-fill ph-floppy-disk-back"></i> نسخ الآن
-                                </button>
-                                <button type="button" class="btn btn-primary" id="btn-local-backup-restore" style="background: #16a34a; border: none;">
-                                    <i class="ph-fill ph-download-simple"></i> استعادة نسخة احتياطية
-                                </button>
-                            </div>
-                            <div id="restore-backup-section" style="display:none; margin-top: 20px; padding: 20px; background: rgba(22, 163, 74, 0.1); border-radius: 12px; border: 1px solid rgba(22, 163, 74, 0.3);">
-                                <h4 style="color: #16a34a; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                                    <i class="ph-fill ph-download-simple"></i>
-                                    استعادة نسخة احتياطية
-                                </h4>
-                                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 16px;">
-                                    اختر مجلد النسخة الاحتياطية التي تريد استعادتها. سيتم استبدال قاعدة البيانات الحالية بالنسخة المحددة.
-                                </p>
-                                <div class="form-group">
-                                    <label style="color: var(--text-secondary);">مجلد النسخة الاحتياطية</label>
-                                    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                                        <code id="restore-backup-path" dir="ltr" style="flex:1; min-width:200px; display:block; padding:10px 12px; background:rgba(0,0,0,0.25); border-radius:8px; font-size:12px; word-break:break-all;">لم يتم اختيار مجلد بعد</code>
-                                        <button type="button" class="btn btn-primary" id="btn-restore-browse" style="background: #16a34a; border: none;">
-                                            <i class="ph-fill ph-folder-open"></i> اختيار مجلد النسخة
-                                        </button>
+                        <!-- Page 4: Advanced -->
+                        <div id="page-advanced" class="settings-page">
+                            <div class="settings-grid">
+                                <!-- منطقة خطرة — يظهر للمدير العام فقط -->
+                                <div id="settings-factory-reset-wrap" class="settings-card" style="grid-column: 1 / -1; display: none; border-color: rgba(239, 68, 68, 0.45); background: rgba(127, 29, 29, 0.12);">
+                                    <div class="sc-header" style="border-bottom-color: rgba(239, 68, 68, 0.25);">
+                                        <i class="ph-fill ph-warning-octagon" style="color: #ef4444;"></i>
+                                        <h3 style="color: #fecaca;">منطقة خطرة — إعادة ضبط البيانات</h3>
                                     </div>
-                                </div>
-                                <div id="restore-backup-info" style="display:none; margin-top: 16px; padding: 16px; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                                    <h5 style="color: var(--text-primary); margin-bottom: 12px;">معلومات النسخة:</h5>
-                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 0.85rem;">
-                                        <div>
-                                            <span style="color: var(--text-muted);">تاريخ الإنشاء:</span><br>
-                                            <strong id="restore-info-date" style="color: var(--text-primary);">-</strong>
+
+                                    <!-- زر 1: تصفير العمليات فقط -->
+                                    <div style="background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3); border-radius: 10px; padding: 16px; margin-bottom: 14px;">
+                                        <div style="display:flex; align-items:flex-start; gap:14px;">
+                                            <i class="ph-fill ph-eraser" style="color:#f59e0b; font-size:26px; flex-shrink:0; margin-top:2px;"></i>
+                                            <div style="flex:1;">
+                                                <h4 style="margin:0 0 6px; color:#fde68a; font-size:15px;">تصفير العمليات الحسابية فقط</h4>
+                                                <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6; margin: 0 0 12px;">
+                                                    يحذف <strong style="color:#fde68a;">جميع العمليات التجريبية</strong>: الطلبات، المبيعات، المشتريات، المرتجعات، المصروفات، السحبيات، حركات المخزون، القيود المحاسبية، سجل الحضور والغياب. <br>
+                                                    <strong style="color:#86efac;">✓ تبقى:</strong> الأصناف، المنتجات، الصور، المنيو، الموردين، الموظفين، المخزون الحالي، وجميع الإعدادات كما هي.
+                                                </p>
+                                                <button type="button" id="btn-ops-reset-open" class="btn btn-primary" style="background: #d97706; border: none; color: white; display:inline-flex; align-items:center; gap:8px;">
+                                                    <i class="ph-fill ph-eraser"></i> تصفير العمليات الحسابية
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <span style="color: var(--text-muted);">عدد الطلبات:</span><br>
-                                            <strong id="restore-info-orders" style="color: var(--text-primary);">-</strong>
-                                        </div>
-                                        <div>
-                                            <span style="color: var(--text-muted);">عدد المنتجات:</span><br>
-                                            <strong id="restore-info-products" style="color: var(--text-primary);">-</strong>
+                                    </div>
+
+                                    <!-- زر 2: تصفير النظام بالكامل -->
+                                    <div style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3); border-radius: 10px; padding: 16px;">
+                                        <div style="display:flex; align-items:flex-start; gap:14px;">
+                                            <i class="ph-fill ph-trash" style="color:#ef4444; font-size:26px; flex-shrink:0; margin-top:2px;"></i>
+                                            <div style="flex:1;">
+                                                <h4 style="margin:0 0 6px; color:#fecaca; font-size:15px;">تصفير النظام بالكامل (فاكتوري ريست)</h4>
+                                                <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6; margin: 0 0 12px;">
+                                                    حذف <strong style="color:#fca5a5;">جميع</strong> بيانات العمل: الطلبات، الأصناف، المخزون، الموظفين، المحاسبة، الإعدادات المحفوظة محلياً، وغيرها. يبقى فقط اسم المستخدم وكلمة سر المدير العام. يُنصح بأخذ نسخة احتياطية قبل التنفيذ.
+                                                </p>
+                                                <button type="button" id="btn-factory-reset-open" class="btn btn-primary" style="background: #b91c1c; border: none; color: white; display:inline-flex; align-items:center; gap:8px;">
+                                                    <i class="ph-fill ph-trash"></i> تصفير النظام بالكامل
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div style="display:flex; gap:10px; margin-top: 16px; flex-wrap:wrap;">
-                                    <button type="button" class="btn btn-primary" id="btn-restore-confirm" style="background: #16a34a; border: none; flex: 1;">
-                                        <i class="ph-fill ph-check-circle"></i> تأكيد الاستعادة
-                                    </button>
-                                    <button type="button" class="btn btn-primary" id="btn-restore-cancel" style="background: transparent; border: 1px solid var(--border-light);">
-                                        <i class="ph-fill ph-x-circle"></i> إلغاء
-                                    </button>
-                                </div>
-                                <p style="color: #ef4444; font-size: 0.78rem; margin-top: 12px; display: flex; align-items: center; gap: 6px;">
-                                    <i class="ph-fill ph-warning-circle"></i>
-                                    ⚠️ تحذير: سيتم استبدال قاعدة البيانات الحالية بالكامل!
-                                </p>
-                            </div>
-                            <div class="form-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);">
-                                <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color: var(--text-secondary); font-size: 14px;">
-                                    <input type="checkbox" id="local-backup-auto-enabled" style="width:18px; height:18px;">
-                                    <span>نسخ تلقائي إلى نفس المجلد</span>
-                                </label>
-                                <p style="color: var(--text-muted); font-size: 0.82rem; margin: 10px 0 8px 28px;">يُنشأ مجلد نسخة جديد في كل مرة. عطّل الخيار إن لم يكن القرص متصلاً دائماً.</p>
-                                <div style="display:flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-right: 28px;">
-                                    <label for="local-backup-auto-interval" style="color: var(--text-secondary); font-size: 13px;">كل:</label>
-                                    <select id="local-backup-auto-interval" class="input-modern" style="max-width: 220px; padding: 8px 12px;">
-                                        <option value="60">ساعة واحدة</option>
-                                        <option value="360" selected>6 ساعات</option>
-                                        <option value="720">12 ساعة</option>
-                                        <option value="1440">24 ساعة (يومياً)</option>
-                                        <option value="10080">أسبوعياً</option>
-                                    </select>
-                                </div>
-                                <p id="local-backup-auto-last" style="color: var(--text-muted); font-size: 0.78rem; margin: 10px 28px 0 0;"></p>
                             </div>
                         </div>
 
-                        <!-- Full Width Action Bar -->
-                        <div style="grid-column: 1 / -1; margin-top:-10px">
+                        <!-- Page 5: Support -->
+                        <div id="page-support" class="settings-page">
+                            <div class="settings-grid" style="grid-template-columns: 1fr;">
+                                <div class="settings-card support-hero-card">
+                                    <div class="support-logo-wrapper">
+                                        <img src="2222.png" alt="Mister Casher" class="support-logo">
+                                    </div>
+                                    
+                                    <h2 class="support-title">نظام مستر كاشير <span class="highlight">Mister Casher</span></h2>
+                                    <p class="support-subtitle">
+                                        نحن هنا لخدمتكم وضمان سير عملكم بأفضل طريقة ممكنة. يمكنك التواصل معنا عبر قنوات الدعم المباشرة للحصول على المساعدة التقنية أو الاستفسارات.
+                                    </p>
+
+                                    <div class="support-contact-grid">
+                                        <!-- WhatsApp Support -->
+                                        <a href="#" id="wa-support-link" class="support-action-btn wa-btn">
+                                            <div class="support-icon-circle">
+                                                <i class="ph-fill ph-whatsapp-logo"></i>
+                                            </div>
+                                            <div class="support-btn-content">
+                                                <h4>دعم واتساب المباشر</h4>
+                                                <p class="support-desc">تواصل فوري مع فريق الدعم</p>
+                                                <p class="support-number" dir="ltr">+967 777 310 606</p>
+                                                <p class="support-hint">(انقر هنا للتواصل)</p>
+                                            </div>
+                                        </a>
+
+                                        <!-- Email Support -->
+                                        <a href="mailto:Mister.Casher@jeeey.com" id="email-support-link" class="support-action-btn email-btn" target="_blank">
+                                            <div class="support-icon-circle">
+                                                <i class="ph-fill ph-envelope-simple"></i>
+                                            </div>
+                                            <div class="support-btn-content">
+                                                <h4>البريد الإلكتروني</h4>
+                                                <p class="support-desc">Mister.Casher@jeeey.com</p>
+                                                <p class="support-hint">(انقر هنا للتواصل)</p>
+                                            </div>
+                                        </a>
+                                    </div>
+
+                                    <div class="support-footer">
+                                        <p class="support-version">الإصدار الحالي: 2.5.0 Premium</p>
+                                        <p class="support-copyright">
+                                            جميع حقوق نظام مستر كاشير محفوظة لدى شركة <span class="highlight-text">جي كم للتسوق الإلكتروني</span> &copy; 2026
+                                        </p>
+                                        <div class="support-badges">
+                                            <i class="ph ph-shield-check"></i>
+                                            <i class="ph ph-copyright"></i>
+                                            <i class="ph ph-globe"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Global Footer Actions (Save / Reset) -->
+                        <div class="settings-actions-bar">
                             <div class="settings-actions">
                                 <button type="button" id="btn-reset-settings" class="btn btn-primary" style="background:transparent; border: 1px solid var(--border-light);"><i class="ph ph-arrow-counter-clockwise"></i> استعادة الافتراضية</button>
                                 <button type="submit" class="btn-save-settings"><i class="ph-fill ph-floppy-disk"></i> حفظ وتطبيق الإعدادات على جميع الأنظمة</button>
                             </div>
                         </div>
+
                     </div>
                 </form>
 

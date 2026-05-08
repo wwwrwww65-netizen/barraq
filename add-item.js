@@ -128,12 +128,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const recipeSearch = document.getElementById('recipe-search-input');
     const recipeInvList = document.getElementById('recipe-inv-list');
 
-    function renderRecipeItem(name, qtyPerUnit) {
+    function renderRecipeItem(name, qtyPerUnit, sku = '') {
         const div = document.createElement('div');
         div.className = 'modifier-item';
+        div.dataset.sku = sku || '';
         div.innerHTML = `
-            <input type="text" class="input-modern mod-name recipe-raw-name" value="${name}" readonly style="flex:2;">
-            <input type="number" class="recipe-qty-input" value="${qtyPerUnit}" step="0.0001" min="0" required placeholder="الكمية">
+            <div style="flex:2; display:flex; flex-direction:column; gap:2px;">
+                <input type="text" class="input-modern mod-name recipe-raw-name" value="${name}" readonly style="width:100%;">
+                ${sku ? `<span style="font-size:10px; color:var(--accent-blue); margin-right:5px;">SKU: ${sku}</span>` : ''}
+            </div>
+            <input type="number" class="recipe-qty-input" value="${qtyPerUnit}" step="any" min="0" required placeholder="الكمية">
             <span style="color:var(--text-muted); font-size:12px; margin:0 10px;">وحدة استهلاك</span>
             <button type="button" class="btn-icon remove" title="إزالة"><i class="ph ph-trash"></i></button>
         `;
@@ -142,7 +146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (editingProduct && editingProduct.rawMaterials && Array.isArray(editingProduct.rawMaterials)) {
-        editingProduct.rawMaterials.forEach(rm => renderRecipeItem(rm.name, rm.qtyPerUnit));
+        editingProduct.rawMaterials.forEach(rm => renderRecipeItem(rm.name, rm.qtyPerUnit, rm.sku || ''));
     }
 
     // --- Dynamic Modifiers (الاضافات) ---
@@ -174,34 +178,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(!recipeInvList) return;
         recipeInvList.innerHTML = '';
         const query = (recipeSearch.value || '').toLowerCase();
-        const filtered = inventoryItems.filter(i => i.name.toLowerCase().includes(query));
+        let filtered = inventoryItems.filter(i => i.name.toLowerCase().includes(query));
         
+        // Deduplicate items based on sku or name so it doesn't repeat across warehouses
+        const uniqueMap = new Map();
+        filtered.forEach(item => {
+            const key = item.sku || item.name;
+            if(!uniqueMap.has(key)) {
+                uniqueMap.set(key, item);
+            }
+        });
+        filtered = Array.from(uniqueMap.values());
+
         if (filtered.length === 0) {
             recipeInvList.innerHTML = '<li style="padding:10px;text-align:center;color:var(--text-muted);font-size:12px;">لا يوجد صنف مطابق بالمخزن</li>';
             return;
         }
 
         filtered.forEach(item => {
-            const whMap = {
-                'main': 'المستودع الرئيسي',
-                'restaurant': 'مخزن المطعم',
-                'beverages': 'مخزن المشروبات'
-            };
-            const whBadge = whMap[item.warehouseId] || 'المستودع الرئيسي';
-            
             const li = document.createElement('li');
             li.className = 'recipe-item-li';
+            
+            let badgeText = item.sku ? `SKU: ${item.sku}` : 'منتج مخزني';
+            badgeText += ` | ${item.unit || 'وحدة'}`;
+
             li.innerHTML = `
                 <span class="inv-name">${item.name}</span>
-                <span class="inv-badge">${whBadge} | ${item.unit || 'وحدة'}</span>
+                <span class="inv-badge">${badgeText}</span>
             `;
             li.addEventListener('click', () => {
-                // Check duplicate
-                const existing = Array.from(recipeList.querySelectorAll('.recipe-raw-name')).find(inp => inp.value === item.name);
+                // Check duplicate (by name or SKU)
+                const existing = Array.from(recipeList.querySelectorAll('.modifier-item')).find(div => {
+                    const nameMatch = div.querySelector('.recipe-raw-name').value === item.name;
+                    const skuMatch = item.sku && div.dataset.sku === item.sku;
+                    return nameMatch || skuMatch;
+                });
+                
                 if (existing) {
                     alert('هذا المكون مضاف مسبقاً للوصفة!');
                 } else {
-                    renderRecipeItem(item.name, 1);
+                    renderRecipeItem(item.name, 1, item.sku || '');
                 }
                 recipeDropdown.classList.remove('active');
                 recipeSearch.value = '';
@@ -270,8 +286,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             recipeList.querySelectorAll('.modifier-item').forEach(row => {
                 const name = row.querySelector('.recipe-raw-name').value;
                 const qtyPerUnit = parseFloat(row.querySelector('.recipe-qty-input').value) || 0;
+                const sku = row.dataset.sku || '';
                 if (name && qtyPerUnit > 0) {
-                    rawMaterials.push({ name, qtyPerUnit });
+                    rawMaterials.push({ name, qtyPerUnit, sku });
                 }
             });
         }

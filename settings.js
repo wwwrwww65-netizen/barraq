@@ -1109,4 +1109,99 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     })();
 
+    // --- Settings Tab Switching ---
+    const tabs = document.querySelectorAll('.settings-tab');
+    const pages = document.querySelectorAll('.settings-page');
+    const tabTitle = document.getElementById('current-tab-title');
+
+    if (tabs.length > 0) {
+        tabs.forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = tab.getAttribute('data-target');
+                if (!targetId) return;
+
+                // Update Active Tab
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Update Active Page
+                pages.forEach(p => {
+                    p.classList.remove('active');
+                });
+                
+                const targetPage = document.getElementById(targetId);
+                if (targetPage) {
+                    targetPage.classList.add('active');
+                }
+
+                // Update Title in Header
+                if (tabTitle) {
+                    tabTitle.textContent = tab.querySelector('span').textContent;
+                }
+
+                // Hide Action Buttons if on Support Page
+                const actionBar = document.querySelector('.settings-actions-bar');
+                if (actionBar) {
+                    actionBar.style.display = (targetId === 'page-support') ? 'none' : 'flex';
+                }
+
+                // If support page, update WhatsApp link with restaurant name
+                if (targetId === 'page-support') {
+                    const waSupportLink = document.getElementById('wa-support-link');
+                    if (waSupportLink) {
+                        let restaurantName = 'غير محدد';
+                        try {
+                            const saved = localStorage.getItem('restaurant_settings');
+                            if (saved) {
+                                const d = JSON.parse(saved);
+                                restaurantName = d.name || 'غير محدد';
+                            }
+                        } catch (e) {}
+                        
+                        const message = `السلام عليكم، أحتاج دعم فني لنظام مستر كاشير.\nاسم المطعم: ${restaurantName}`;
+                        const encodedMessage = encodeURIComponent(message);
+                        
+                        // Use direct web.whatsapp.com URL so the native window handles it smoothly without wa.me redirects
+                        const waWebUrl = `https://web.whatsapp.com/send?phone=967777310606&text=${encodedMessage}`;
+                        waSupportLink.href = `https://wa.me/967777310606?text=${encodedMessage}`;
+                        
+                        // Add click event for "Direct" experience in the internal window
+                        waSupportLink.onclick = (e) => {
+                            e.preventDefault();
+                            
+                            try {
+                                const { ipcRenderer } = require('electron');
+                                // Just show the window and let the URL pre-fill the text.
+                                // Do NOT use wa-send-message here, as its automation will auto-hide the window when done.
+                                ipcRenderer.send('wa-show-window', waWebUrl);
+                            } catch (err) {
+                                window.open(waSupportLink.href, '_blank');
+                            }
+                        };
+                    }
+
+                    // Explicitly handle Email support link to open Gmail in browser
+                    const emailSupportLink = document.getElementById('email-support-link');
+                    if (emailSupportLink) {
+                        emailSupportLink.onclick = (e) => {
+                            e.preventDefault();
+                            
+                            // Use Gmail web composer URL instead of mailto to force opening in browser
+                            const gmailUrl = 'https://mail.google.com/mail/?view=cm&fs=1&to=Mister.Casher@jeeey.com';
+                            
+                            try {
+                                const { shell } = require('electron');
+                                shell.openExternal(gmailUrl);
+                            } catch (err) {
+                                window.open(gmailUrl, '_blank');
+                            }
+                        };
+                    }
+                }
+            });
+
+        });
+    }
+
 });

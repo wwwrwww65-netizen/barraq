@@ -6,16 +6,29 @@ const {
   shell,
   screen,
   globalShortcut,
+  Menu,
 } = require('electron');
+
+// ══════════════════════════════════════════════════════════════════════
+// 🛡️ حماية الأجهزة الضعيفة من (الشاشة السوداء والتجمد)
+// يجب استدعاء هذه الأوامر قبل app.whenReady() لمنع انهيار كرت الشاشة
+// ══════════════════════════════════════════════════════════════════════
+app.disableHardwareAcceleration(); // إيقاف تسريع الرسوميات (الحل الجذري للشاشة السوداء)
+app.commandLine.appendSwitch('disable-software-rasterizer');
+app.commandLine.appendSwitch('disable-gpu'); // تأكيد إيقاف الـ GPU بالكامل
+app.commandLine.appendSwitch('disable-gpu-compositing');
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=4096'); // منع انهيار الذاكرة (Memory Leak)
 
 // تحسين الأداء: إعدادات GPU آمنة لمنع الشاشة السوداء
 // ملاحظة: تم حذف ignore-gpu-blocklist و enable-hardware-overlays لأنها كانت تسبب الشاشة السوداء
 // على بعض أجهزة Windows عند التعارض مع مشغلات كروت الشاشة
 
-// 🔒 Single Instance Lock - منع تشغيل أكثر من نسخة في نفس الوقت
+// 🔒 Single Instance Lock - منع تشغيل أكثر من نسخة واحدة في نفس الوقت
+// (نفس النهج المستخدم في VS Code و Slack و Discord)
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
-  console.log('[MisterCasherPOS] ⚠️ Another instance is already running. Quitting.');
+  // النسخة الأولى ستستقبل حدث second-instance وتُحضر نافذتها للواجهة
+  console.log('[MisterCasherPOS] ⚠️ Another instance is already running — focusing existing window.');
   app.quit();
 } else {
   app.on('second-instance', (event, commandLine, workingDirectory) => {
@@ -273,7 +286,7 @@ function scheduleSilentPrint(html, printerName) {
         frame: false,
         skipTaskbar: true,
         focusable: true,
-        autoHideMenuBar: true,
+        autoHideMenuBar: false,
         webPreferences: {
           nodeIntegration: false,
           contextIsolation: true,
@@ -494,14 +507,14 @@ function fetchDatabaseFromPeer(ip, callback) {
       try {
         const parsed = JSON.parse(body);
         const dbPath = path.join(app.getPath('userData'), 'pos_database.json');
-        
+
         // 🔒 PROTECTION: Check if we already have local data
         try {
           if (fs.existsSync(dbPath)) {
             const localDb = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
             const hasLocalOrders = localDb.orders && localDb.orders.length > 0;
             const hasLocalProducts = localDb.products && localDb.products.length > 0;
-            
+
             if (hasLocalOrders || hasLocalProducts) {
               console.warn('[HTTP Sync] ⚠️ Local database has data - skipping automatic overwrite');
               console.warn('[HTTP Sync] Local orders:', localDb.orders?.length || 0, ', Products:', localDb.products?.length || 0);
@@ -517,7 +530,7 @@ function fetchDatabaseFromPeer(ip, callback) {
         } catch (checkErr) {
           console.warn('[HTTP Sync] Could not check local DB:', checkErr.message);
         }
-        
+
         // 🛡️ Create backup before writing
         try {
           if (fs.existsSync(dbPath)) {
@@ -525,7 +538,7 @@ function fetchDatabaseFromPeer(ip, callback) {
             fs.copyFileSync(dbPath, backupPath);
             console.log('[HTTP Sync] 💾 Backup created:', backupPath);
             writeAuditLog('SYNC_BACKUP_CREATED', { peerIp: ip, backupPath });
-            
+
             // Keep only last 5 backups
             const backups = fs.readdirSync(path.dirname(dbPath))
               .filter(f => f.startsWith('pos_database.json.backup.'))
@@ -540,15 +553,33 @@ function fetchDatabaseFromPeer(ip, callback) {
         } catch (backupErr) {
           console.warn('[HTTP Sync] Backup warning:', backupErr.message);
         }
-        
+
         writeAuditLog('SYNC_FROM_PEER_START', { peerIp: ip });
-        
+
         // ✍️ Atomic write: write to temp file first, then rename
         const tempPath = dbPath + '.tmp';
-        fs.promises.writeFile(tempPath, JSON.stringify(parsed, null, 2)).then(() => {
-          fs.renameSync(tempPath, dbPath);
+        fs.promises.writeFile(tempPath, JSON.stringify(parsed, null, 2)).then(async () => {
+          // Robust rename with retries for Windows
+          let success = false;
+          for (let i = 0; i < 5; i++) {
+            try {
+              if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
+              fs.renameSync(tempPath, dbPath);
+              success = true;
+              break;
+            } catch (renameErr) {
+              console.warn(`[HTTP Sync] Rename attempt ${i + 1} failed, retrying...`);
+              await new Promise(r => setTimeout(r, 200));
+            }
+          }
+          if (!success) throw new Error('Could not rename sync file after retries');
+
           console.log(`[HTTP Sync] ✅ Database pulled and saved from ${ip} (atomic write)`);
-          writeAuditLog('SYNC_FROM_PEER_SUCCESS', { 
+
+          // ⚡ Refresh cache immediately after sync
+          _refreshDbCache().catch(e => console.error('[HTTP Sync] Cache refresh failed:', e.message));
+
+          writeAuditLog('SYNC_FROM_PEER_SUCCESS', {
             peerIp: ip,
             orders: parsed.orders?.length || 0,
             products: parsed.products?.length || 0
@@ -564,7 +595,7 @@ function fetchDatabaseFromPeer(ip, callback) {
           console.error('[HTTP Sync] ❌ Write error from', ip, ':', e.message);
           writeAuditLog('SYNC_FROM_PEER_ERROR', { peerIp: ip, error: e.message });
           // Clean up temp file if exists
-          try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch(e) {}
+          try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch (e) { }
           if (cb) cb(e);
         });
       } catch (e) {
@@ -679,7 +710,7 @@ function setupNetworkSync() {
 
   server.on('error', (err) => {
     console.error(`UDP error:\n${err.stack}`);
-    try { server.close(); } catch(e){}
+    try { server.close(); } catch (e) { }
   });
 
   server.on('message', (msg, rinfo) => {
@@ -695,7 +726,7 @@ function setupNetworkSync() {
           try {
             const dbNotif = Buffer.from(JSON.stringify({ type: 'db_changed', instanceId: myInstanceId }));
             server.send(dbNotif, 0, dbNotif.length, PORT, BROADCAST_ADDR);
-          } catch(e) {}
+          } catch (e) { }
         }, 800);
 
       } else if (data.type === 'peer_ping') {
@@ -724,7 +755,7 @@ function setupNetworkSync() {
           try {
             const dbNotif = Buffer.from(JSON.stringify({ type: 'db_changed', instanceId: myInstanceId }));
             server.send(dbNotif, 0, dbNotif.length, PORT, BROADCAST_ADDR);
-          } catch(e) {}
+          } catch (e) { }
         }, delay);
 
       } else if (data.type === 'sync_response_part') {
@@ -771,18 +802,18 @@ function setupNetworkSync() {
             writeAuditLog('DB_CHANGED_FETCH_PEER', { peerIp: rinfo.address, reason: 'no_db_file' });
             fetchDatabaseFromPeer(rinfo.address);
           }
-        } catch(e) {
+        } catch (e) {
           writeAuditLog('DB_CHANGED_FETCH_PEER', { peerIp: rinfo.address, reason: 'check_error', error: e.message });
           fetchDatabaseFromPeer(rinfo.address);
         }
       } else if (data.type === 'lan_factory_reset_ls' && data.hubIp && typeof data.hubIp === 'string') {
         // 🔒 FACTORY RESET PROTECTION: Require explicit confirmation
         console.warn('[Factory reset LAN] Received factory reset request from:', data.hubIp);
-        writeAuditLog('FACTORY_RESET_REQUEST_RECEIVED', { 
+        writeAuditLog('FACTORY_RESET_REQUEST_RECEIVED', {
           hubIp: data.hubIp,
           requesterInstanceId: data.instanceId
         });
-        
+
         // Show confirmation dialog to user
         const { dialog } = require('electron');
         BrowserWindow.getAllWindows().forEach((win) => {
@@ -825,14 +856,14 @@ function setupNetworkSync() {
           win.webContents.send('network-sync-update', data);
         });
       }
-    } catch(e) {}
+    } catch (e) { }
   });
 
   server.on('listening', () => {
     try {
       server.setBroadcast(true);
       console.log('Network Sync listening on ' + PORT);
-    } catch(e) {}
+    } catch (e) { }
   });
 
   try {
@@ -846,11 +877,11 @@ function setupNetworkSync() {
   // Handle outgoing syncs from renderers
   ipcMain.on('network-sync-send', (event, data) => {
     try {
-      if(!server) return;
+      if (!server) return;
       data.instanceId = myInstanceId;
       const message = Buffer.from(JSON.stringify(data));
       server.send(message, 0, message.length, PORT, BROADCAST_ADDR);
-    } catch(e) {
+    } catch (e) {
       console.error(e);
     }
   });
@@ -866,7 +897,7 @@ function setupNetworkSync() {
         })
       );
       server.send(msg, 0, msg.length, PORT, BROADCAST_ADDR);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   ipcMain.on('lan-broadcast-presence', () => broadcastPeerPresence());
@@ -877,46 +908,46 @@ function setupNetworkSync() {
   // Handle direct PDF Export saving
   ipcMain.handle('export-pdf', async (event, filename) => {
     try {
-        const { filePath } = await dialog.showSaveDialog({
-            title: 'حفظ التقرير كـ PDF',
-            defaultPath: filename || 'report.pdf',
-            filters: [{ name: 'PDF', extensions: ['pdf'] }]
+      const { filePath } = await dialog.showSaveDialog({
+        title: 'حفظ التقرير كـ PDF',
+        defaultPath: filename || 'report.pdf',
+        filters: [{ name: 'PDF', extensions: ['pdf'] }]
+      });
+
+      if (filePath) {
+        // A4 standard dimensions: 210mm x 297mm (8.26" x 11.69")
+        const pdfData = await event.sender.printToPDF({
+          printBackground: true,
+          landscape: false,  // Portrait (vertical)
+          marginsType: 0, // Custom margins
+          margins: {
+            top: 0.04,      // 1mm
+            bottom: 0.04,   // 1mm
+            left: 0.08,     // 2mm
+            right: 0.08     // 2mm
+          },
+          pageSize: 'A4'
         });
-        
-        if (filePath) {
-            // A4 standard dimensions: 210mm x 297mm (8.26" x 11.69")
-            const pdfData = await event.sender.printToPDF({
-                printBackground: true,
-                landscape: false,  // Portrait (vertical)
-                marginsType: 0, // Custom margins
-                margins: {
-                    top: 0.04,      // 1mm
-                    bottom: 0.04,   // 1mm
-                    left: 0.08,     // 2mm
-                    right: 0.08     // 2mm
-                },
-                pageSize: 'A4'
-            });
-            await fs.promises.writeFile(filePath, pdfData);
-            return { success: true, path: filePath };
-        }
-        return { success: false, cancel: true };
+        await fs.promises.writeFile(filePath, pdfData);
+        return { success: true, path: filePath };
+      }
+      return { success: false, cancel: true };
     } catch (e) {
-        console.error('PDF export failed:', e);
-        return { success: false, error: e.message };
+      console.error('PDF export failed:', e);
+      return { success: false, error: e.message };
     }
   });
 
   ipcMain.handle('get-instance-id', () => myInstanceId);
   ipcMain.handle('get-local-ip', () => getLocalIP());
   ipcMain.handle('get-hostname', () => os.hostname());
-  
+
   // Open folder in file explorer
   ipcMain.handle('open-folder', async (event, folderPath) => {
     try {
       await shell.openPath(folderPath);
       return { success: true };
-    } catch(e) {
+    } catch (e) {
       console.error('Failed to open folder:', e);
       return { success: false, error: e.message };
     }
@@ -924,7 +955,7 @@ function setupNetworkSync() {
   ipcMain.handle('get-printers', async (event) => {
     try {
       return await event.sender.getPrintersAsync();
-    } catch(e) {
+    } catch (e) {
       console.error('Error getting printers:', e);
       return [];
     }
@@ -1010,16 +1041,16 @@ function broadcastDBChanged() {
       BrowserWindow.getAllWindows().forEach(win => {
         if (!win.isDestroyed()) win.webContents.send('db-file-updated');
       });
-    } catch(e) {}
+    } catch (e) { }
   }, 500);
 }
 
 ipcMain.on('notify-db-changed', () => {
-    broadcastDBChanged();
+  broadcastDBChanged();
 });
 
 ipcMain.on('get-db-path', (event) => {
-    event.returnValue = path.join(app.getPath('userData'), 'pos_database.json');
+  event.returnValue = path.join(app.getPath('userData'), 'pos_database.json');
 });
 
 // === Database IPC Handlers ===
@@ -1027,25 +1058,25 @@ const dbAPI = require('./database');
 
 ipcMain.handle('db-save-order', async (event, data) => {
   const result = dbAPI.saveOrder(data);
-  
+
   // ⚡ تحديث الكاش فوراً لأن dbAPI قام بالكتابة للقرص بشكل مستقل
   await _refreshDbCache();
 
   // 🚨 Broadcast immediately so kitchen + all devices see the new order NOW
   broadcastDBChanged();
-  
+
   // ZATCA Direct Auto-Sync
   setTimeout(async () => {
-      try {
-          if(typeof zatcaService !== 'undefined' && zatcaService.isReady) {
-              const dbData = zatcaService.getDbData();
-              if(dbData.zatca_csid && dbData.zatca_csid.onboarded) {
-                  await zatcaService.reportInvoice(data);
-              }
-          }
-      } catch(e) {}
+    try {
+      if (typeof zatcaService !== 'undefined' && zatcaService.isReady) {
+        const dbData = zatcaService.getDbData();
+        if (dbData.zatca_csid && dbData.zatca_csid.onboarded) {
+          await zatcaService.reportInvoice(data);
+        }
+      }
+    } catch (e) { }
   }, 1000);
-  
+
   return result;
 });
 ipcMain.handle('db-get-orders', async () => {
@@ -1091,7 +1122,7 @@ ipcMain.handle('db-save-inventory', async (event, item) => {
 // Async full-DB read/write — used by renderer files to avoid blocking readFileSync on UI thread
 const _dbPath = path.join(app.getPath('userData'), 'pos_database.json');
 const _auditLogPath = path.join(app.getPath('userData'), 'pos_database_audit.log');
-const _emptyDB = { orders:[], products:[], categories:[], inventory:[], purchases:[], suppliers:[], inventoryTx:[], returns:[], expenses:[], bankTransfers:[], hrExpenses:[], otherIncome:[], employees:[], attendance:[], penaltyRules:[], chartOfAccounts:[], journalEntries:[], systemNotifications:[], inventoryAlertState:{}, deliveryCompanies:[] };
+const _emptyDB = { orders: [], products: [], categories: [], inventory: [], purchases: [], suppliers: [], inventoryTx: [], returns: [], expenses: [], bankTransfers: [], hrExpenses: [], otherIncome: [], employees: [], attendance: [], penaltyRules: [], chartOfAccounts: [], journalEntries: [], systemNotifications: [], inventoryAlertState: {}, deliveryCompanies: [] };
 
 // ⚡ In-Memory Cache — يُخزَّن في الذاكرة لتجنب قراءة القرص في كل مرة
 let _dbCache = null;
@@ -1103,7 +1134,7 @@ async function _loadDbIntoCache() {
     _dbCache = JSON.parse(data);
     _dbCacheReady = true;
     console.log('[DB Cache] ✅ Database loaded into memory cache.');
-  } catch(e) {
+  } catch (e) {
     console.warn('[DB Cache] ⚠️ Could not load DB into cache, using empty:', e.message);
     _dbCache = JSON.parse(JSON.stringify(_emptyDB));
     _dbCacheReady = true;
@@ -1130,7 +1161,7 @@ function writeAuditLog(action, details) {
     };
     const logLine = JSON.stringify(logEntry) + '\n';
     fs.appendFileSync(_auditLogPath, logLine, 'utf8');
-    
+
     // Keep log file under 10MB (rotate if needed)
     try {
       const stats = fs.statSync(_auditLogPath);
@@ -1140,69 +1171,40 @@ function writeAuditLog(action, details) {
         fs.renameSync(_auditLogPath, oldPath);
         console.log('[Audit] Log rotated');
       }
-    } catch(e) {}
-  } catch(e) {
+    } catch (e) { }
+  } catch (e) {
     console.error('[Audit] Failed to write log:', e.message);
   }
 }
 // ⚡ قراءة فورية من الذاكرة (Cache) بدلاً من القرص في كل مرة
 ipcMain.handle('db-read-full', async () => {
   try {
-    // إذا كانت الكاش جاهزة — أرجعها فوراً بدون I/O
-    if (_dbCacheReady && _dbCache) {
+    // إذا كانت الكاش جاهزة ومكتملة — أرجعها فوراً بدون I/O
+    if (_dbCacheReady && _dbCache && _dbCache.inventory) {
       return _dbCache;
     }
-    // Fallback: قراءة من القرص إذا لم تكن الكاش جاهزة بعد
+    // Fallback: قراءة من القرص إذا لم تكن الكاش جاهزة بعد أو كانت ناقصة
     const data = await fs.promises.readFile(_dbPath, 'utf8');
-    _dbCache = JSON.parse(data);
-    _dbCacheReady = true;
-    return _dbCache;
-  } catch(e) {
+    const parsed = JSON.parse(data);
+    if (parsed && parsed.inventory) {
+      _dbCache = parsed;
+      _dbCacheReady = true;
+    }
+    return _dbCache || parsed;
+  } catch (e) {
     console.error('[DB Read] Error reading database:', e.message);
     writeAuditLog('DB_READ_ERROR', { error: e.message });
-    return _emptyDB;
+    // لا ترجع null أبداً إذا كان هناك كاش قديم
+    return (_dbCache && _dbCache.inventory) ? _dbCache : _emptyDB;
   }
 });
 ipcMain.handle('db-write-full', async (event, data, opts) => {
   try {
-    // ⚡ تحديث الكاش فوراً قبل الكتابة للقرص — لضمان أن أي قراءة بعدها تكون فورية
     _dbCache = data;
     _dbCacheReady = true;
 
-    // 🛡️ عمل نسخة احتياطية في الخلفية (لا توقف الواجهة) — مرة كل 5 كتابات
-    if (!opts || opts.skipBackup !== true) {
-      // عداد الكتابات لتقليل عدد النسخ الاحتياطية
-      if (!ipcMain._writeCount) ipcMain._writeCount = 0;
-      ipcMain._writeCount++;
-      if (ipcMain._writeCount % 5 === 0) {
-        // تشغيل النسخ في الخلفية بعد الانتهاء من الكتابة الرئيسية
-        setImmediate(async () => {
-          try {
-            if (fs.existsSync(_dbPath)) {
-              const backupPath = _dbPath + `.backup.${Date.now()}`;
-              await fs.promises.copyFile(_dbPath, backupPath);
-              const dbDir = path.dirname(_dbPath);
-              const files = await fs.promises.readdir(dbDir);
-              const backups = files
-                .filter(f => f.startsWith('pos_database.json.backup.'))
-                .sort((a, b) => b.localeCompare(a));
-              if (backups.length > 5) {
-                for (const old of backups.slice(5)) {
-                  await fs.promises.unlink(path.join(dbDir, old)).catch(() => {});
-                }
-              }
-            }
-          } catch(backupErr) {
-            console.warn('[DB Write] Backup warning:', backupErr.message);
-          }
-        });
-      }
-    }
-
-    // ✍️ Atomic write: write to temp file first, then rename
-    const tempPath = _dbPath + '.tmp';
-    await fs.promises.writeFile(tempPath, JSON.stringify(data, null, 2));
-    await fs.promises.rename(tempPath, _dbPath);
+    // Direct write to the primary database file
+    fs.writeFileSync(_dbPath, JSON.stringify(data, null, 2), 'utf8');
 
     const broadcast = !opts || opts.broadcast !== false;
     if (broadcast) broadcastDBChanged();
@@ -1210,11 +1212,6 @@ ipcMain.handle('db-write-full', async (event, data, opts) => {
   } catch (e) {
     console.error('[DB Write] ❌ Error:', e.message);
     writeAuditLog('DB_WRITE_ERROR', { error: e.message });
-    // Clean up temp file if exists
-    try {
-      const tempPath = _dbPath + '.tmp';
-      if (fs.existsSync(tempPath)) await fs.promises.unlink(tempPath);
-    } catch(cleanupErr) {}
     return false;
   }
 });
@@ -1355,7 +1352,7 @@ ipcMain.handle('restore-backup-get-info', async (event, backupFolder) => {
 
     // قراءة معلومات قاعدة البيانات
     const dbData = JSON.parse(fs.readFileSync(dbFile, 'utf8'));
-    
+
     // استخراج التاريخ من اسم المجلد
     const folderName = path.basename(folder);
     const dateMatch = folderName.match(/MisterCasherPOS_backup_(.+)/);
@@ -1364,7 +1361,7 @@ ipcMain.handle('restore-backup-get-info', async (event, backupFolder) => {
       try {
         const datePart = dateMatch[1].replace(/-/g, '/').replace('T', ' ');
         dateStr = new Date(datePart).toLocaleString('ar-SA');
-      } catch(e) {
+      } catch (e) {
         dateStr = folderName;
       }
     }
@@ -1420,17 +1417,17 @@ ipcMain.handle('restore-backup-execute', async (event, options) => {
     if (!backupDb || typeof backupDb !== 'object') {
       return { success: false, error: 'تنسيق قاعدة البيانات غير صحيح' };
     }
-    
+
     console.log('[Restore] Starting restore from:', backupFolder);
-    
+
     // إنشاء backup للقاعدة الحالية قبل الاستعادة
     try {
       if (fs.existsSync(_dbPath)) {
         const currentBackup = _dbPath + `.pre-restore.${Date.now()}`;
         await fs.promises.copyFile(_dbPath, currentBackup);
-        writeAuditLog('RESTORE_BACKUP_CREATED', { 
+        writeAuditLog('RESTORE_BACKUP_CREATED', {
           backupPath: currentBackup,
-          restoreFrom: backupFolder 
+          restoreFrom: backupFolder
         });
       }
     } catch (backupErr) {
@@ -1440,15 +1437,15 @@ ipcMain.handle('restore-backup-execute', async (event, options) => {
     // استعادة قاعدة البيانات (atomic write)
     try {
       const tempPath = _dbPath + '.tmp';
-      
+
       // التأكد من حذف الملف المؤقت إذا كان موجوداً
       if (fs.existsSync(tempPath)) {
         await fs.promises.unlink(tempPath);
       }
-      
+
       await fs.promises.writeFile(tempPath, JSON.stringify(backupDb, null, 2));
       await fs.promises.rename(tempPath, _dbPath);
-      
+
       console.log('[Restore] ✅ Database restored successfully from:', backupFolder);
       writeAuditLog('DATABASE_RESTORED', {
         from: backupFolder,
@@ -1458,15 +1455,15 @@ ipcMain.handle('restore-backup-execute', async (event, options) => {
     } catch (writeErr) {
       console.error('[Restore] ❌ Failed to write database:', writeErr.message);
       writeAuditLog('RESTORE_WRITE_ERROR', { error: writeErr.message });
-      
+
       // تنظيف الملف المؤقت إذا وجد
       try {
         const tempPath = _dbPath + '.tmp';
         if (fs.existsSync(tempPath)) {
           await fs.promises.unlink(tempPath);
         }
-      } catch(e) {}
-      
+      } catch (e) { }
+
       return { success: false, error: 'فشل كتابة قاعدة البيانات:\n' + writeErr.message };
     }
 
@@ -1475,7 +1472,7 @@ ipcMain.handle('restore-backup-execute', async (event, options) => {
       try {
         const raw = fs.readFileSync(lsFile, 'utf8');
         const lsData = JSON.parse(raw);
-        
+
         if (lsData && typeof lsData === 'object') {
           // إرسال البيانات للواجهة لاستعادتها
           BrowserWindow.getAllWindows().forEach((win) => {
@@ -1495,9 +1492,9 @@ ipcMain.handle('restore-backup-execute', async (event, options) => {
   } catch (e) {
     console.error('[Restore] ❌ Fatal error:', e.message);
     console.error('[Restore] Stack:', e.stack);
-    writeAuditLog('RESTORE_ERROR', { 
+    writeAuditLog('RESTORE_ERROR', {
       error: e.message,
-      stack: e.stack 
+      stack: e.stack
     });
     return { success: false, error: 'خطأ غير متوقع:\n' + e.message };
   }
@@ -1546,7 +1543,7 @@ function startLocalDiskAutoScheduler(appRef, BrowserWindowRef) {
           BrowserWindowRef.getAllWindows().forEach((win) => {
             if (!win.isDestroyed()) win.webContents.send('local-disk-auto-backup', { ok: true, destDir: res.destDir });
           });
-        } catch (_) {}
+        } catch (_) { }
       } else {
         next.lastAutoError = res.error || 'backup_failed';
         saveLocalDiskBackupSettings(next);
@@ -1565,24 +1562,24 @@ const ZatcaEngine = require('./zatca-engine');
 const zatcaService = new ZatcaEngine(_dbPath);
 
 ipcMain.handle('zatca-init', async (event, data) => {
-    try {
-        return await zatcaService.initializeEGS(data.vatNumber, data.companyName, data.branchName);
-    } catch(e) { return { success: false, error: e.message }; }
+  try {
+    return await zatcaService.initializeEGS(data.vatNumber, data.companyName, data.branchName);
+  } catch (e) { return { success: false, error: e.message }; }
 });
 
 ipcMain.handle('zatca-onboard', async (event, data) => {
-    try {
-        return await zatcaService.onboardDevice(data.otp);
-    } catch(e) { return { success: false, error: e.message }; }
+  try {
+    return await zatcaService.onboardDevice(data.otp);
+  } catch (e) { return { success: false, error: e.message }; }
 });
 
-function createWindow () {
+function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
     show: false, // لا تظهر النافذة فوراً لمنع الوميض الأبيض
     backgroundColor: '#0b0f19', // لون خلفية مظلم يطابق لون التطبيق
-    autoHideMenuBar: true,
+    autoHideMenuBar: false,
     icon: path.join(__dirname, '2222.png'),
     webPreferences: {
       nodeIntegration: true,
@@ -1592,21 +1589,37 @@ function createWindow () {
     }
   });
 
+  // 🛡️ Disable menu bar completely to prevent Alt key glitch
+  Menu.setApplicationMenu(null);
   win.setMenuBarVisibility(false);
   win.webContents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return;
+
+    // 🔄 Ctrl+R - Reload
+    if (input.control && (input.code === 'KeyR' || input.key === 'r' || input.key === 'R')) {
+      win.reload();
+      event.preventDefault();
+    }
+
+    // 🛠️ Ctrl+Shift+I - DevTools
     if (input.control && input.shift && (input.code === 'KeyI' || input.key === 'I' || input.key === 'i')) {
       win.webContents.toggleDevTools();
       event.preventDefault();
     }
+
+    // 🛡️ منع مفتاح Alt من تنشيط أي وظائف في النافذة قد تسبب فقدان التركيز
+    if (input.key === 'Alt') {
+      event.preventDefault();
+      return;
+    }
   });
-  
+
   win.loadFile('login.html');
-  
+
   // قم بتكبير النافذة برمجياً وهي لا تزال في حالة الإخفاء 
   // هذا يمنع ظهور المربع الأسود الصغير قبل عملية التكبير (Maximize Animation)
   win.maximize();
-  
+
   win.once('ready-to-show', () => {
     // إظهار النافذة وهي مجهزة مسبقاً بالشاشة الكاملة
     win.show();
@@ -1614,61 +1627,113 @@ function createWindow () {
 }
 
 app.whenReady().then(() => {
-  setupGoogleDriveIpc(ipcMain, app, () =>
-    path.join(app.getPath('userData'), 'pos_database.json')
-  );
-  startGoogleDriveAutoScheduler(
-    app,
-    () => path.join(app.getPath('userData'), 'pos_database.json'),
-    BrowserWindow
-  );
-  startLocalDiskAutoScheduler(app, BrowserWindow);
-  setupNetworkSync();
-  setupHTTPServer();
+  // ══════════════════════════════════════════════════════════════
+  // 🚀 استراتيجية الفتح السريع — نفس نهج VS Code و Spotify و Discord
+  //   المرحلة 1: النافذة تظهر فوراً (أولوية قصوى)
+  //   المرحلة 2: الخدمات الثقيلة تبدأ في الخلفية بعد ظهور النافذة
+  // ══════════════════════════════════════════════════════════════
+
+  // ─── المرحلة 1: النافذة أولاً — بدون أي انتظار ────────────────
   createWindow();
 
+  // ─── اختصارات النظام (Reload & DevTools) ──────────────────────
   try {
+    // Ctrl+R - Reload
+    globalShortcut.register('CommandOrControl+R', () => {
+      const win = BrowserWindow.getFocusedWindow();
+      if (win && !win.isDestroyed()) win.reload();
+    });
+
+    // Ctrl+Shift+I - DevTools
     const devOk = globalShortcut.register('CommandOrControl+Shift+I', () => {
       const focused = BrowserWindow.getFocusedWindow();
-      if (focused && !focused.isDestroyed()) {
-        focused.webContents.toggleDevTools();
-        return;
-      }
+      if (focused && !focused.isDestroyed()) { focused.webContents.toggleDevTools(); return; }
       const list = BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed());
-      if (list.length) {
-        list[0].webContents.toggleDevTools();
-        list[0].focus();
-      }
+      if (list.length) { list[0].webContents.toggleDevTools(); list[0].focus(); }
     });
-    if (!devOk) {
-      console.warn('[MisterCasherPOS] لم يُسجَّل اختصار Ctrl+Shift+I (قد يكون محجوزاً لتطبيق آخر)');
-    }
-  } catch (e) {
-    console.warn('[MisterCasherPOS] globalShortcut DevTools:', e.message);
-  }
+    if (!devOk) console.warn('[MisterCasherPOS] اختصار Ctrl+Shift+I محجوز بتطبيق آخر');
+  } catch (e) { console.warn('[MisterCasherPOS] globalShortcut:', e.message); }
 
-  // Auto-start WhatsApp disabled — now starts only when user clicks connect in settings
-  // This prevents Chrome/Puppeteer from starting automatically and freezing the app
-  // setTimeout(() => { setImmediate(() => startWhatsApp()); }, 15000);
+  // ─── المرحلة 2: الخدمات الثقيلة في الخلفية ───────────────────
+  // setImmediate: يضمن رسم النافذة أولاً ثم تبدأ الخدمات
+  setImmediate(() => {
+    // 🌐 UDP Network Sync — الأهم للمزامنة بين الأجهزة
+    try { setupNetworkSync(); } catch (e) { console.error('[Startup] NetworkSync:', e.message); }
+
+    // 🌍 HTTP Server — بعد 300ms
+    setTimeout(() => {
+      try { setupHTTPServer(); } catch (e) { console.error('[Startup] HTTPServer:', e.message); }
+    }, 300);
+
+    // ☁️ Google Drive IPC — بعد 600ms (لا يؤثر على الواجهة)
+    setTimeout(() => {
+      try {
+        setupGoogleDriveIpc(ipcMain, app,
+          () => path.join(app.getPath('userData'), 'pos_database.json')
+        );
+      } catch (e) { console.error('[Startup] GoogleDriveIpc:', e.message); }
+    }, 600);
+
+    // ⏰ المجدولات التلقائية — بعد 1200ms (أخف الخدمات تأثيراً)
+    setTimeout(() => {
+      try {
+        startGoogleDriveAutoScheduler(
+          app,
+          () => path.join(app.getPath('userData'), 'pos_database.json'),
+          BrowserWindow
+        );
+      } catch (e) { console.error('[Startup] DriveScheduler:', e.message); }
+      try { startLocalDiskAutoScheduler(app, BrowserWindow); }
+      catch (e) { console.error('[Startup] DiskScheduler:', e.message); }
+    }, 1200);
+  });
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
+// ============================================================
+// Graceful Shutdown — نفس النهج المستخدم في تطبيقات الإنتاج
+// الترتيب الصحيح: 1) إغلاق Shortcuts → 2) إغلاق Servers → 3) تحرير Lock
+// ============================================================
+app.on('will-quit', (event) => {
+  // 1️⃣ إلغاء تسجيل جميع الاختصارات العامة فوراً
+  try { globalShortcut.unregisterAll(); } catch (_) { }
 
-app.on('will-quit', () => {
-  try {
-    // 🛑 إغلاق الخوادم بشكل صريح لمنع بقاء العمليات عالقة في الخلفية
-    if (server) {
-      try { server.close(); console.log('[Network Sync] UDP server closed'); } catch(e) {}
-    }
-    if (httpServer) {
-      try { httpServer.close(); console.log('[HTTP Sync] HTTP server closed'); } catch(e) {}
-    }
-    globalShortcut.unregisterAll();
-  } catch (_) { /* ignore */ }
+  // 2️⃣ إغلاق خادم UDP بشكل نظيف
+  if (server) {
+    try {
+      server.close(() => console.log('[MisterCasherPOS] ✅ UDP server closed gracefully.'));
+    } catch (_) { }
+    server = null;
+  }
+
+  // 3️⃣ إغلاق خادم HTTP بشكل نظيف
+  if (httpServer) {
+    try {
+      httpServer.close(() => console.log('[MisterCasherPOS] ✅ HTTP server closed gracefully.'));
+    } catch (_) { }
+    httpServer = null;
+  }
+
+  // 4️⃣ تحرير Single Instance Lock صراحةً — يسمح بإعادة الفتح الفوري
+  // هذا هو المعيار الصحيح وفق Electron Docs (مثل VS Code: src/main.js)
+  try { app.releaseSingleInstanceLock(); } catch (_) { }
+
+  console.log('[MisterCasherPOS] 👋 App shutdown complete.');
+});
+
+// ============================================================
+// 🪟 Windows Fix: إغلاق كامل عند إغلاق آخر نافذة
+// بدون هذا الحدث، تبقى العملية حية في الخلفية على Windows
+// وهذا هو السبب الحقيقي لاضطرار المستخدم لإعادة تشغيل الجهاز!
+// ============================================================
+app.on('window-all-closed', () => {
+  // على macOS التطبيقات تبقى نشطة حتى Cmd+Q
+  // على Windows/Linux نُغلق فوراً عند إغلاق آخر نافذة
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
 });
 
 // --- WhatsApp Bot Integration (Auto-Start + QR Caching) ---
@@ -1687,11 +1752,11 @@ async function teardownWaClient() {
   try {
     if (waClient) {
       if (waClient.pupBrowser) {
-        await waClient.pupBrowser.close().catch(() => {});
+        await waClient.pupBrowser.close().catch(() => { });
       }
-      await waClient.destroy().catch(() => {});
+      await waClient.destroy().catch(() => { });
     }
-  } catch (_) {}
+  } catch (_) { }
   // إضافة انتظار بسيط للسماح لنظام التشغيل بتحرير ملفات القفل (Lockfiles)
   await new Promise(r => setTimeout(r, 1000));
   waClient = null;
@@ -1724,7 +1789,7 @@ function findChromePath() {
   ];
   const fs = require('fs');
   for (const c of candidates) {
-    try { if (fs.existsSync(c)) return c; } catch(_) {}
+    try { if (fs.existsSync(c)) return c; } catch (_) { }
   }
   return null;
 }
@@ -1848,7 +1913,7 @@ function startWhatsApp() {
       try {
         if (!waClient) return;
         const st = await waClient.getState().catch(() => null);
-        
+
         if (!st) {
           _hbFailures += 1;
           if (_hbFailures >= 3) {
@@ -1859,22 +1924,22 @@ function startWhatsApp() {
           }
           return;
         }
-        
+
         _hbFailures = 0;
-        
+
         // كشف الجلسات العالقة: نفس الحالة تتكرر بدون تغيير
         if (st === _lastState) {
           _hbStuckCount++;
           if (_hbStuckCount >= 6) { // بعد 90 ثانية (6 * 15) من نفس الحالة
             console.warn('[WA] Session appears stuck on state:', st, '- Force refreshing...');
-            
+
             // محاولة إعادة تنشيط الجلسة أولاً
             try {
               // إرسال حدث فارغ لإجبار واتساب على التحديث
               await waClient.pupPage.evaluate(() => {
                 window.dispatchEvent(new Event('resize'));
-              }).catch(() => {});
-              
+              }).catch(() => { });
+
               console.log('[WA] Force refresh triggered, waiting for recovery...');
               _hbStuckCount = 0;
             } catch (e) {
@@ -1889,7 +1954,7 @@ function startWhatsApp() {
           _hbStuckCount = 0;
           _lastState = st;
         }
-        
+
         // تحديث waReady إذا كانت الحالة CONNECTED
         if (st === 'CONNECTED' && !waReady) {
           console.log('[WA] Heartbeat detected CONNECTED state, updating ready flag');
@@ -1937,7 +2002,7 @@ function startWhatsApp() {
       scheduleWhatsAppRestart(`initialize_error: ${msg}`, isDetachedFrame ? 4000 : 10000);
     });
 
-  } catch(e) {
+  } catch (e) {
     console.error('[WA] Fatal error:', e);
     waClient = null;
     waInitializing = false;
@@ -1972,13 +2037,13 @@ ipcMain.handle('wa-wait-ready', async (event, timeout = 30000) => {
   if (waReady && waClient) {
     return { ready: true, state: 'CONNECTED' };
   }
-  
+
   const start = Date.now();
   while (Date.now() - start < timeout) {
     if (waReady && waClient) {
       return { ready: true, state: 'CONNECTED' };
     }
-    
+
     // تحقق من الحالة الفعلية
     if (waClient) {
       try {
@@ -1991,10 +2056,10 @@ ipcMain.handle('wa-wait-ready', async (event, timeout = 30000) => {
         // تجاهل
       }
     }
-    
+
     await new Promise(resolve => setTimeout(resolve, 500));
   }
-  
+
   return { ready: false, state: waClient ? 'LOADING' : 'NOT_INITIALIZED' };
 });
 
@@ -2024,17 +2089,17 @@ ipcMain.on('wa-disconnect', async () => {
     clearTimeout(waRestartTimer);
     waRestartTimer = null;
   }
-  
+
   if (waNativeWin) {
     try {
       await waNativeWin.webContents.session.clearStorageData();
       waNativeWin.destroy();
-    } catch(e) {}
+    } catch (e) { }
     waNativeWin = null;
     waNativeReady = false;
   }
 
-  try { if (waClient) await waClient.logout().catch(() => {}); } catch(e) {}
+  try { if (waClient) await waClient.logout().catch(() => { }); } catch (e) { }
   await teardownWaClient();
   // Delete session folder so next start requires fresh QR
   try {
@@ -2043,7 +2108,7 @@ ipcMain.on('wa-disconnect', async () => {
       fs.rmSync(sessionDir, { recursive: true, force: true });
       console.log('[WA] Session folder cleared.');
     }
-  } catch(e) { console.error('[WA] Could not clear session folder:', e.message); }
+  } catch (e) { console.error('[WA] Could not clear session folder:', e.message); }
   BrowserWindow.getAllWindows().forEach(win => win.webContents.send('wa-disconnected', 'manual_disconnect'));
 });
 
@@ -2055,13 +2120,13 @@ ipcMain.on('wa-refresh', async () => {
     clearTimeout(waRestartTimer);
     waRestartTimer = null;
   }
-  
+
   if (waNativeWin) {
     waNativeWin.reload();
     setTimeout(() => {
       waNativeReady = true;
       BrowserWindow.getAllWindows().forEach(win => {
-        if(win !== waNativeWin && !win.isDestroyed()) win.webContents.send('wa-ready');
+        if (win !== waNativeWin && !win.isDestroyed()) win.webContents.send('wa-ready');
       });
     }, 4500);
     return;
@@ -2080,18 +2145,18 @@ ipcMain.on('wa-refresh', async () => {
 async function deliverWhatsAppMessage(data) {
   // تحقق ديناميكي من جاهزية واتساب قبل الإرسال
   if (!waClient) return { ok: false, error: 'no_client', code: 'NO_CLIENT' };
-  
+
   // انتظار ذكي حتى يصبح واتساب جاهزاً (بدلاً من المهلة الزمنية الثابتة)
   if (!waReady) {
     console.log('[WA] Not ready yet, waiting for ready state...');
     const maxWait = 60000; // حد أقصى 60 ثانية
     const checkInterval = 500; // تحقق كل نصف ثانية
     let waited = 0;
-    
+
     while (!waReady && waited < maxWait) {
       await new Promise(resolve => setTimeout(resolve, checkInterval));
       waited += checkInterval;
-      
+
       // تحقق إضافي من حالة الجلسة
       try {
         const state = await waClient.getState().catch(() => null);
@@ -2104,7 +2169,7 @@ async function deliverWhatsAppMessage(data) {
         // تجاهل الأخطاء أثناء الانتظار
       }
     }
-    
+
     if (!waReady) {
       console.warn('[WA] Timeout waiting for ready state after', maxWait, 'ms');
       return { ok: false, error: 'not_ready_timeout', code: 'NOT_READY_TIMEOUT' };
@@ -2206,13 +2271,14 @@ function relayWaHttp(host, payload) {
 // Handle sending messages from any renderer window (محلياً أو عبر جهاز مركزي على الشبكة)
 // ── نافذة واتساب المخفية (وضع النافذة الداخلية) ──────────────────────────
 
-ipcMain.on('wa-show-window', () => {
+ipcMain.on('wa-show-window', (event, phoneUrl) => {
   if (waNativeWin) {
+    if (phoneUrl) waNativeWin.loadURL(phoneUrl);
     waNativeWin.setOpacity(1);
     waNativeWin.show();
     waNativeWin.focus();
   } else {
-    startNativeWaWindow();
+    startNativeWaWindow(phoneUrl);
     if (waNativeWin) {
       waNativeWin.setOpacity(1);
       waNativeWin.show();
@@ -2221,9 +2287,10 @@ ipcMain.on('wa-show-window', () => {
   }
 });
 
-function startNativeWaWindow() {
+function startNativeWaWindow(initialUrl) {
   if (waNativeWin) {
     waNativeWin.show();
+    if (initialUrl && initialUrl.startsWith('https://')) waNativeWin.loadURL(initialUrl, { userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' });
     return;
   }
 
@@ -2246,7 +2313,7 @@ function startNativeWaWindow() {
   waNativeWin.setSkipTaskbar(true);
   waNativeWin.setMenu(null);
 
-  waNativeWin.loadURL('https://web.whatsapp.com', {
+  waNativeWin.loadURL(initialUrl || 'https://web.whatsapp.com', {
     userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
   });
 
@@ -2272,6 +2339,7 @@ function startNativeWaWindow() {
 
 let waMessageQueue = [];
 let isWaProcessing = false;
+let waLastSentCache = new Map(); // { key: phone-text, value: timestamp }
 
 async function processWaQueue() {
   if (isWaProcessing || waMessageQueue.length === 0) return;
@@ -2280,6 +2348,13 @@ async function processWaQueue() {
   try {
     while (waMessageQueue.length > 0) {
       const { event, data } = waMessageQueue.shift();
+      
+      // التنظيف الدوري للكاش (إزالة ما هو أقدم من 30 ثانية)
+      const now = Date.now();
+      for (const [k, ts] of waLastSentCache.entries()) {
+        if (now - ts > 30000) waLastSentCache.delete(k);
+      }
+
       await handleWaSendMessage(event, data);
 
       // ─── زيادة وقت الانتظار بين الرسائل لمنع Race Condition ───
@@ -2293,6 +2368,30 @@ async function processWaQueue() {
 }
 
 ipcMain.on('wa-send-message', (event, data) => {
+  if (!data || !data.number) return;
+
+  // ── منع التكرار في قائمة الانتظار ──
+  const dedupeKey = `${data.number}-${(data.text || '').trim()}`;
+  const now = Date.now();
+  
+  if (waLastSentCache.has(dedupeKey)) {
+    const lastTime = waLastSentCache.get(dedupeKey);
+    if (now - lastTime < 15000) { // منع التكرار خلال 15 ثانية
+      console.warn(`[WA][QUEUE] Duplicate message detected for ${data.number}, ignoring.`);
+      return;
+    }
+  }
+
+  // التحقق من وجود نفس الرسالة حالياً في الطابور
+  const existsInQueue = waMessageQueue.find(item => {
+    return item.data.number === data.number && (item.data.text || '').trim() === (data.text || '').trim();
+  });
+  if (existsInQueue) {
+    console.warn(`[WA][QUEUE] Message already in queue for ${data.number}, ignoring.`);
+    return;
+  }
+
+  waLastSentCache.set(dedupeKey, now);
   waMessageQueue.push({ event, data });
   processWaQueue();
 });
@@ -2584,11 +2683,11 @@ async function handleWaSendMessage(event, data) {
     const maxWait = 60000;
     const checkInterval = 500;
     let waited = 0;
-    
+
     while (!waReady && waited < maxWait) {
       await new Promise(resolve => setTimeout(resolve, checkInterval));
       waited += checkInterval;
-      
+
       // تحقق من الحالة الفعلية
       try {
         const state = await waClient.getState().catch(() => null);
@@ -2600,14 +2699,14 @@ async function handleWaSendMessage(event, data) {
       } catch (e) {
         // تجاهل
       }
-      
+
       // تحقق من وجود النافذة
       if (waNativeWin && waNativeWin.webContents && !waNativeWin.webContents.isLoading()) {
         console.log('[WA][NATIVE] Native window ready');
         break;
       }
     }
-    
+
     if (!waReady && !waNativeWin) {
       console.warn('[WA][NATIVE] Timeout waiting for ready state');
       sendResult.error = 'WhatsApp not ready after 60s';
@@ -2636,7 +2735,7 @@ async function handleWaSendMessage(event, data) {
 
       fs.writeFileSync(vbsPath, vbs, 'utf8');
       require('child_process').exec(`cscript //nologo "${vbsPath}"`, () => {
-        try { fs.unlinkSync(vbsPath); } catch (e) {}
+        try { fs.unlinkSync(vbsPath); } catch (e) { }
       });
 
       console.log(`[WA][BROWSER] macro sent for ${phone}`);
@@ -2670,7 +2769,7 @@ async function handleWaSendMessage(event, data) {
           'utf8'
         );
         require('child_process').exec(`cscript //nologo "${vbsPath}"`, () => {
-          try { fs.unlinkSync(vbsPath); } catch (e) {}
+          try { fs.unlinkSync(vbsPath); } catch (e) { }
         });
       } else {
         const vbsPath = path.join(os.tmpdir(), `wa_dt_${Date.now()}.vbs`);
@@ -2680,7 +2779,7 @@ async function handleWaSendMessage(event, data) {
           'utf8'
         );
         require('child_process').exec(`cscript //nologo "${vbsPath}"`, () => {
-          try { fs.unlinkSync(vbsPath); } catch (e) {}
+          try { fs.unlinkSync(vbsPath); } catch (e) { }
         });
       }
 
@@ -2797,9 +2896,9 @@ async function handleWaSendMessage(event, data) {
     try {
       const { clipboard, nativeImage } = require('electron');
       let phone = normalizePhoneNumber(data.number || '');
-      
+
       // ✅ إذا كانت هناك صورة، لا نضع النص في URL (سنكتبه كـ caption لاحقاً)
-      const url = hasImage 
+      const url = hasImage
         ? `https://web.whatsapp.com/send?phone=${phone}`
         : `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(data.text || '')}`;
 
@@ -2852,7 +2951,7 @@ async function handleWaSendMessage(event, data) {
               window.onbeforeunload = null;
               if (window.__beforeUnloadOverrides) window.__beforeUnloadOverrides = null;
             } catch (e) {}
-          `).catch(() => {});
+          `).catch(() => { });
 
           await waNativeWin.loadURL(url, {
             userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -2880,7 +2979,7 @@ async function handleWaSendMessage(event, data) {
           const img = await waNativeWin.webContents.capturePage();
           require('fs').writeFileSync('e:\\baraaq\\wa_error.png', img.toPNG());
           console.log('[WA][NATIVE] Screenshot saved to', 'e:\\baraaq\\wa_error.png');
-        } catch (e) {}
+        } catch (e) { }
         if (wasHidden) waNativeWin.hide();
 
         sendResult.error = 'Chat not loaded';
@@ -2909,13 +3008,13 @@ async function handleWaSendMessage(event, data) {
           waNativeWin.show();
           await new Promise(r => setTimeout(r, 300));
         }
-        
+
         if (!waNativeWin.isFocused()) {
           console.log('[WA][NATIVE] Window not focused, calling focus()...');
           waNativeWin.focus();
           await new Promise(r => setTimeout(r, 500));
         }
-        
+
         // تأكيد نهائي
         console.log('[WA][NATIVE] Window state - Visible:', waNativeWin.isVisible(), 'Focused:', waNativeWin.isFocused());
 
@@ -2928,7 +3027,7 @@ async function handleWaSendMessage(event, data) {
           // كتابة الصورة في الحافظة
           clipboard.writeImage(nativeImage.createFromDataURL(data.image));
           await new Promise(r => setTimeout(r, 300));
-          
+
           // ✅ لصق الصورة باستخدام Ctrl+V (أكثر موثوقية)
           waNativeWin.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'V', modifiers: ['control'] });
           waNativeWin.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'V', modifiers: ['control'] });
@@ -3012,7 +3111,7 @@ async function handleWaSendMessage(event, data) {
             })()
           `);
           console.log('[WA][NATIVE] DEBUG after paste:', JSON.stringify(debugInfo, null, 2));
-          
+
           // screenshot للـ debug
           try {
             const debugScreenshot = await waNativeWin.webContents.capturePage();
@@ -3059,7 +3158,7 @@ async function handleWaSendMessage(event, data) {
                 return isActive && hasText;
               })()
             `);
-            
+
             if (visualCheck) {
               console.log('[WA][NATIVE] Visual check PASSED - assuming paste succeeded');
               imagePreviewCheck = 'IMAGE_PREVIEW_FOUND';
@@ -3106,7 +3205,7 @@ async function handleWaSendMessage(event, data) {
           !!document.querySelector('[data-testid="media-caption-input-container"]') ||
           !!document.querySelector('img[src^="blob:"][draggable="true"]')
         `);
-        
+
         if (!isMediaMode) {
           console.error('[WA][NATIVE] Not in media mode - aborting send');
           sendResult.success = false;
@@ -3115,14 +3214,14 @@ async function handleWaSendMessage(event, data) {
           if (event && event.sender) event.sender.send('wa-send-result', sendResult);
           return;
         }
-        
+
         console.log('[WA][NATIVE] Media mode confirmed ✓');
 
         // ✅ كتابة النص كـ caption للصورة إذا كان هناك نص
         if (data.text && data.text.trim()) {
           console.log('[WA][NATIVE] Writing text as image caption...');
           await new Promise(r => setTimeout(r, 500));
-          
+
           // البحث عن حقل caption في وضع الوسائط
           const captionWritten = await waNativeWin.webContents.executeJavaScript(`
             (function() {
@@ -3185,7 +3284,7 @@ async function handleWaSendMessage(event, data) {
             })()
           `);
 
-          
+
           if (captionWritten) {
             console.log('[WA][NATIVE] Caption written successfully ✓');
             await new Promise(r => setTimeout(r, 500));
@@ -3238,7 +3337,7 @@ async function handleWaSendMessage(event, data) {
       console.log(`[WA][NATIVE] sent for ${phone}`);
 
       sendResult.success = true;
-      
+
       // إخفاء النافذة إذا كانت مخفية أصلاً
       if (wasHidden) {
         waNativeWin.hide();

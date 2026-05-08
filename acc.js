@@ -2,7 +2,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
 
     let accChart = null;
-    let currentAccPeriod = 'this_month';
+    let currentAccPeriod = 'today';
 
     async function loadAccountingData(period = 'this_month') {
         const xf = (n) =>
@@ -899,102 +899,108 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
                 
                 // واتساب - تأجيل أكثر لعدم التداخل مع renderExp
-                setTimeout(() => {
-                    (async () => {
+                setTimeout(async () => {
+                    try {
+                        const waRaw = localStorage.getItem('wa_settings');
+                        if (!waRaw) return;
+                        const waSettings = JSON.parse(waRaw);
+                        if (!waSettings.expenses || !waSettings.admin) return;
+                        const adminPhone = String(waSettings.admin);
+
+                        const sysRaw = localStorage.getItem('restaurant_settings');
+                        const sysSet = sysRaw ? JSON.parse(sysRaw) : {};
+                        const todayStr = newExp.date || new Date().toISOString().split('T')[0];
+                        const displayDate = String(todayStr).replace(/-/g, '/');
+
+                        if(document.getElementById('ev-date')) document.getElementById('ev-date').innerText = displayDate;
+                        if(document.getElementById('ev-foot-date')) document.getElementById('ev-foot-date').innerText = displayDate;
+                        if(document.getElementById('ev-number')) document.getElementById('ev-number').innerText = newExp.id;
+                        if(document.getElementById('ev-cat')) document.getElementById('ev-cat').innerText = newExp.cat;
+                        if(document.getElementById('ev-amt')) document.getElementById('ev-amt').innerText = xf(newExp.amount);
+                        if(document.getElementById('ev-amt-balance')) document.getElementById('ev-amt-balance').innerText = xf(newExp.amount);
+                        if(document.getElementById('ev-desc')) document.getElementById('ev-desc').innerText = newExp.desc;
+                        if(document.getElementById('ev-pay')) document.getElementById('ev-pay').innerText = newExp.pMethod === 'cash' ? 'كاش' : 'حوالة بنكية';
+                        if(document.getElementById('ev-notes')) document.getElementById('ev-notes').innerText = newExp.desc || 'سند مصروف معتمد من النظام';
+                        if(document.getElementById('ev-rest-name')) document.getElementById('ev-rest-name').innerText = sysSet.name || '';
+                        if(document.getElementById('ev-branch')) document.getElementById('ev-branch').innerText = sysSet.branch || '';
+                        if(document.getElementById('ev-phone')) document.getElementById('ev-phone').innerText = sysSet.phone || '';
+                        const logoEl = document.getElementById('ev-logo');
+                        if(logoEl && sysSet.logo && sysSet.logo !== '2222.png') logoEl.src = sysSet.logo;
+
+                        const voucherEl = document.getElementById('exp-voucher-template');
+                        const container = document.getElementById('exp-voucher-container');
+                        if (!voucherEl || !container) return;
                         try {
-                            const waRaw = localStorage.getItem('wa_settings');
-                            if (!waRaw) return;
-                            const waSettings = JSON.parse(waRaw);
-                            if (!waSettings.expenses || !waSettings.admin) return;
-                            const adminPhone = String(waSettings.admin);
+                            container.style.position = 'fixed';
+                            container.style.top = '-9999px';
+                            container.style.left = '0';
+                            container.style.width = '840px';
+                            voucherEl.style.width = '800px';
+                            await new Promise(r => setTimeout(r, 150));
 
-                            const sysRaw = localStorage.getItem('restaurant_settings');
-                            const sysSet = sysRaw ? JSON.parse(sysRaw) : {};
-                            const todayStr = newExp.date || new Date().toISOString().split('T')[0];
-                            const displayDate = String(todayStr).replace(/-/g, '/');
+                            const canvas = await html2canvas(voucherEl, { scale:2, useCORS:true, backgroundColor:'#fff', width:800, windowWidth:1200, logging:false });
 
-                            if(document.getElementById('ev-date')) document.getElementById('ev-date').innerText = displayDate;
-                            if(document.getElementById('ev-foot-date')) document.getElementById('ev-foot-date').innerText = displayDate;
-                            if(document.getElementById('ev-number')) document.getElementById('ev-number').innerText = newExp.id;
-                            if(document.getElementById('ev-cat')) document.getElementById('ev-cat').innerText = newExp.cat;
-                            if(document.getElementById('ev-amt')) document.getElementById('ev-amt').innerText = xf(newExp.amount);
-                            if(document.getElementById('ev-amt-balance')) document.getElementById('ev-amt-balance').innerText = xf(newExp.amount);
-                            if(document.getElementById('ev-desc')) document.getElementById('ev-desc').innerText = newExp.desc;
-                            if(document.getElementById('ev-pay')) document.getElementById('ev-pay').innerText = newExp.pMethod === 'cash' ? 'كاش' : 'حوالة بنكية';
-                            if(document.getElementById('ev-notes')) document.getElementById('ev-notes').innerText = newExp.desc || 'سند مصروف معتمد من النظام';
-                            if(document.getElementById('ev-rest-name')) document.getElementById('ev-rest-name').innerText = sysSet.name || '';
-                            if(document.getElementById('ev-branch')) document.getElementById('ev-branch').innerText = sysSet.branch || '';
-                            if(document.getElementById('ev-phone')) document.getElementById('ev-phone').innerText = sysSet.phone || '';
-                            const logoEl = document.getElementById('ev-logo');
-                            if(logoEl && sysSet.logo && sysSet.logo !== '2222.png') logoEl.src = sysSet.logo;
+                            const fc = document.createElement('canvas'); fc.width=1600; fc.height=1132;
+                            const ctx2 = fc.getContext('2d');
+                            ctx2.fillStyle='#fff'; ctx2.fillRect(0,0,1600,1132);
+                            ctx2.drawImage(canvas, 0, 0, 1600, 1132);
+                            const imgData = fc.toDataURL('image/jpeg', 0.95);
 
-                            const voucherEl = document.getElementById('exp-voucher-template');
-                            const container = document.getElementById('exp-voucher-container');
-                            if (!voucherEl || !container) return;
-                            try {
-                                container.style.position = 'fixed';
-                                container.style.top = '-9999px';
-                                container.style.left = '0';
-                                container.style.width = '840px';
-                                voucherEl.style.width = '800px';
-                                await new Promise(r => setTimeout(r, 150));
-
-                                const canvas = await html2canvas(voucherEl, { scale:2, useCORS:true, backgroundColor:'#fff', width:800, windowWidth:1200, logging:false });
-
-                                const fc = document.createElement('canvas'); fc.width=1600; fc.height=1132;
-                                const ctx2 = fc.getContext('2d');
-                                ctx2.fillStyle='#fff'; ctx2.fillRect(0,0,1600,1132);
-                                ctx2.drawImage(canvas, 0, 0, 1600, 1132);
-                                const imgData = fc.toDataURL('image/jpeg', 0.95);
-
-                                const captionMsg = [
-                                    `📌 إشعار إداري — سند مصروف`,
-                                    `───────────────────`,
-                                    `رقم السند: ${newExp.id}`,
-                                    ``,
-                                    `📂 التصنيف: ${newExp.cat}`,
-                                    `💰 المبلغ: ${xf(newExp.amount)}`,
-                                    `🗒 البيان: ${newExp.desc}`,
-                                ].join('\n');
-                                const { ipcRenderer } = require('electron');
-                                const hubIp =
-                                    typeof window.resolveWaHubIp === 'function'
-                                        ? window.resolveWaHubIp(waSettings)
-                                        : (waSettings.hubIp && String(waSettings.hubIp).trim()) || '';
-                                ipcRenderer.send('wa-send-message', {
-                                    number: adminPhone,
-                                    text: captionMsg,
-                                    image: imgData,
-                                    waHubIp: hubIp,
-                                    wa_mode: localStorage.getItem('wa_mode') || 'browser'
-                                });
-                                console.log('Sent expense voucher image to admin:', adminPhone);
-                            } finally {
-                                container.style.position = 'absolute';
-                                container.style.top = '-9999px';
-                                container.style.left = '-9999px';
-                                container.style.width = '';
-                                voucherEl.style.width = '';
-                                document.querySelectorAll('iframe.html2canvas-container').forEach((f) => {
-                                    try {
-                                        f.remove();
-                                    } catch (_) { /* ignore */ }
-                                });
+                            const captionMsg = [
+                                `📌 إشعار إداري — سند مصروف`,
+                                `───────────────────`,
+                                `رقم السند: ${newExp.id}`,
+                                ``,
+                                `📂 التصنيف: ${newExp.cat}`,
+                                `💰 المبلغ: ${xf(newExp.amount)}`,
+                                `🗒 البيان: ${newExp.desc}`,
+                            ].join('\n');
+                            const { ipcRenderer } = require('electron');
+                            const hubIp =
+                                typeof window.resolveWaHubIp === 'function'
+                                    ? window.resolveWaHubIp(waSettings)
+                                    : (waSettings.hubIp && String(waSettings.hubIp).trim()) || '';
+                            ipcRenderer.send('wa-send-message', {
+                                number: adminPhone,
+                                text: captionMsg,
+                                image: imgData,
+                                waHubIp: hubIp,
+                                wa_mode: localStorage.getItem('wa_mode') || 'browser'
+                            });
+                            console.log('Sent expense voucher image to admin:', adminPhone);
+                        } finally {
+                            container.style.position = 'absolute';
+                            container.style.top = '-9999px';
+                            container.style.left = '-9999px';
+                            container.style.width = '';
+                            voucherEl.style.width = '';
+                            document.querySelectorAll('iframe.html2canvas-container').forEach((f) => {
+                                try { f.remove(); } catch (_) { }
+                            });
+                        }
+                    } catch (sqError) {
+                        console.error('Error sending expense WA voucher', sqError);
+                    } finally {
+                        // تحرير القفل وإعادة تفعيل الزر بعد انتهاء عملية الواتساب بالكامل
+                        setTimeout(() => {
+                            _expenseWaSending = false;
+                            if (submitBtn) {
+                                submitBtn.disabled = false;
+                                submitBtn.innerHTML = '<i class="ph ph-check-circle"></i> اعتماد سند الصرف وحفظه';
                             }
-                        } catch (sqError) { console.error('Error sending expense WA voucher', sqError); }
-                    })();
-                }, 300);
+                        }, 1000);
+                    }
+                }, 400);
+
             } catch (error) {
                 console.error('Error saving expense:', error);
                 alert('حدث خطأ أثناء حفظ سند الصرف');
-            } finally {
-                // إعادة تفعيل الزر فوراً، لكن علم الواتساب يظل مقفلاً حتى ينتهي الإرسال
+                // في حالة الخطأ في الحفظ، نحرر القفل فوراً
+                _expenseWaSending = false;
                 if (submitBtn) {
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = '<i class="ph ph-check-circle"></i> اعتماد سند الصرف وحفظه';
                 }
-                // رفع علم التأمين بعد انتهاء الواتساب (300ms + وقت التنفيذ)
-                setTimeout(() => { _expenseWaSending = false; }, 2000);
             }
         });
 

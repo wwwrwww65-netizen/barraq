@@ -7,6 +7,7 @@ const xf = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) 
 
 let db = {};
 let voucherSearchQuery = '';
+let isVoucherGenerating = false;
 
 function formatVoucherNo(n) {
     const num = Math.max(1, Number(n) || 1);
@@ -134,7 +135,7 @@ async function persistDb() {
 
 function getEmpPaidSalary(empName) {
     let lastReset = db.hrCycle?.lastResetAt || 0;
-    
+
     // Find the latest individual 'تصفير حساب' for this employee
     const expenses = db.hrExpenses || [];
     let lastIndividualReset = 0;
@@ -144,7 +145,7 @@ function getEmpPaidSalary(empName) {
             break;
         }
     }
-    
+
     // Use the most recent reset timestamp (global or individual)
     lastReset = Math.max(lastReset, lastIndividualReset);
 
@@ -191,29 +192,29 @@ function openHrModal(modalId) {
     if (modalId === 'advance-modal') hideAdvanceVoucherError();
     m.removeAttribute('inert');
     m.classList.add('active');
-    
+
     // Safely transfer focus inside the modal after it renders
     setTimeout(() => {
         const firstInput = m.querySelector('input:not([type="hidden"]), select, textarea');
         if (firstInput) {
-            try { firstInput.focus({ preventScroll: true }); } catch(e){}
+            try { firstInput.focus({ preventScroll: true }); } catch (e) { }
         }
     }, 150);
 }
 
 // ── Role Config ───────────────────────────────────────────────
 const roleConfig = {
-    'إدارة':  { badge: 'role-admin',    icon: 'ph-crown',         color: '#8b5cf6' },
-    'كاشير':  { badge: 'role-cashier',  icon: 'ph-cash-register', color: '#3b82f6' },
-    'مطبخ':   { badge: 'role-kitchen',  icon: 'ph-cooking-pot',   color: '#f59e0b' },
+    'إدارة': { badge: 'role-admin', icon: 'ph-crown', color: '#8b5cf6' },
+    'كاشير': { badge: 'role-cashier', icon: 'ph-cash-register', color: '#3b82f6' },
+    'مطبخ': { badge: 'role-kitchen', icon: 'ph-cooking-pot', color: '#f59e0b' },
 
-    'خدمة':   { badge: 'role-service',  icon: 'ph-broom',         color: '#ec4899' }
+    'خدمة': { badge: 'role-service', icon: 'ph-broom', color: '#ec4899' }
 };
 
 const statusConfig = {
-    'active': { label: 'مداوم الآن',        class: 'status-online'  },
-    'leave':  { label: 'إجازة / خارج',      class: 'status-offline' },
-    'end':    { label: 'منتهية الخدمة',     class: 'status-offline' }
+    'active': { label: 'مداوم الآن', class: 'status-online' },
+    'leave': { label: 'إجازة / خارج', class: 'status-offline' },
+    'end': { label: 'منتهية الخدمة', class: 'status-offline' }
 };
 
 // ── Nav & Views Logic ─────────────────────────────────────────
@@ -221,44 +222,44 @@ const statusConfig = {
 
 
 const EMP_PAGE_SIZE = 24;
-let empCurrentPage  = 1;
+let empCurrentPage = 1;
 let _empSearchTimer;
-window.showView = function(viewId, navId) {
+window.showView = function (viewId, navId) {
     // Close any active modals when switching views to prevent focus traps or blocking overlays
     document.querySelectorAll('.modal-overlay.active').forEach(m => closeHrModal(m));
 
     document.querySelectorAll('.hr-view').forEach(v => v.style.display = 'none');
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    
+
     const targetView = document.getElementById(viewId);
     if (targetView) {
         targetView.style.display = 'block';
     }
-    
-    if(navId) document.getElementById(navId)?.classList.add('active');
 
-    if(viewId === 'view-employees') renderEmployees();
-    if(viewId === 'view-payroll') renderPayroll();
-    if(viewId === 'view-vouchers') renderVouchers();
-    if(viewId === 'view-deductions') void renderDeductions();
-    if(viewId === 'view-history') loadHistoryData();
-    
-    if(viewId === 'view-add-employee') {
-        if(navId === 'nav-new-emp') {
+    if (navId) document.getElementById(navId)?.classList.add('active');
+
+    if (viewId === 'view-employees') renderEmployees();
+    if (viewId === 'view-payroll') renderPayroll();
+    if (viewId === 'view-vouchers') renderVouchers();
+    if (viewId === 'view-deductions') void renderDeductions();
+    if (viewId === 'view-history') loadHistoryData();
+
+    if (viewId === 'view-add-employee') {
+        if (navId === 'nav-new-emp') {
             document.getElementById('form-new-emp').reset();
             document.getElementById('avatar-preview').style.display = 'none';
             delete document.getElementById('form-new-emp').dataset.editId;
             document.getElementById('form-emp-title').innerText = 'إضافة ملف موظف جديد';
         }
-        
+
         // Dinamically link Job Titles to System Roles
         try {
             const sysRoles = JSON.parse(localStorage.getItem('system_roles') || '[]');
             const opts = document.getElementById('role-options');
-            if(opts && sysRoles.length > 0) {
+            if (opts && sysRoles.length > 0) {
                 opts.innerHTML = sysRoles.map(r => `<option value="${r.name}">`).join('');
             }
-        } catch(e) { }
+        } catch (e) { }
 
         // Explicitly set focus to the first field after a short delay for Electron rendering
         setTimeout(() => {
@@ -268,13 +269,13 @@ window.showView = function(viewId, navId) {
                     firstInput.focus({ preventScroll: true });
                     // Simulate click to ensure focus is active in all Electron versions
                     firstInput.click();
-                } catch(e) { console.warn("Focus failed", e); }
+                } catch (e) { console.warn("Focus failed", e); }
             }
         }, 300);
     }
 };
 
-window.switchProTab = function(tabId, btn) {
+window.switchProTab = function (tabId, btn) {
     document.querySelectorAll('.ptab-content').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('.ptab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
@@ -286,12 +287,12 @@ const photoInput = document.getElementById('ne-photo');
 const photoPreview = document.getElementById('avatar-preview');
 let currentAvatarBase64 = '';
 
-if(photoInput) {
+if (photoInput) {
     photoInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
-        if(!file) return;
+        if (!file) return;
         const reader = new FileReader();
-        reader.onload = function(evt) {
+        reader.onload = function (evt) {
             currentAvatarBase64 = evt.target.result;
             photoPreview.src = currentAvatarBase64;
             photoPreview.style.display = 'block';
@@ -302,16 +303,16 @@ if(photoInput) {
 
 // ── KPIs ─────────────────────────────────────────────────────
 function updateKPIs() {
-    const active    = db.employees.filter(e => e.status === 'active').length;
+    const active = db.employees.filter(e => e.status === 'active').length;
     const totalLoan = db.employees.reduce((s, e) => s + (e.loans || 0), 0);
-    const payroll   = db.employees.reduce((s, e) => {
+    const payroll = db.employees.reduce((s, e) => {
         const paid = getEmpPaidSalary(e.name);
         return s + Math.max(0, (e.salary || 0) - (e.loans || 0) - paid);
     }, 0);
-    
-    document.getElementById('kpi-total').innerHTML     = `${db.employees.length} <span style="font-size:14px">موظف</span>`;
-    document.getElementById('kpi-loans').innerHTML      = `${xfNum(totalLoan)} <span style="font-size:14px">${curSym()}</span>`;
-    document.getElementById('kpi-payroll').innerHTML    = `${xfNum(payroll)} <span style="font-size:14px">${curSym()}</span>`;
+
+    document.getElementById('kpi-total').innerHTML = `${db.employees.length} <span style="font-size:14px">موظف</span>`;
+    document.getElementById('kpi-loans').innerHTML = `${xfNum(totalLoan)} <span style="font-size:14px">${curSym()}</span>`;
+    document.getElementById('kpi-payroll').innerHTML = `${xfNum(payroll)} <span style="font-size:14px">${curSym()}</span>`;
 }
 
 // ── Render Employees Grid ─────────────────────────────────────
@@ -324,9 +325,9 @@ function renderEmployees() {
     if (!grid) return;
 
     let filtered = db.employees.filter(e => {
-        const matchRole   = activeRoleFilter === 'all' || e.role === activeRoleFilter;
+        const matchRole = activeRoleFilter === 'all' || e.role === activeRoleFilter;
         const matchSearch = e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            (e.iqama || '').includes(searchQuery);
+            (e.iqama || '').includes(searchQuery);
         return matchRole && matchSearch;
     });
 
@@ -352,10 +353,10 @@ function renderEmployees() {
     }
 
     // ── Pagination ─────────────────────────────────────────────────
-    const total      = filtered.length;
+    const total = filtered.length;
     const totalPages = Math.max(1, Math.ceil((total + 1) / EMP_PAGE_SIZE)); // +1 for add-card
     if (empCurrentPage > totalPages) empCurrentPage = totalPages;
-    const start     = (empCurrentPage - 1) * EMP_PAGE_SIZE;
+    const start = (empCurrentPage - 1) * EMP_PAGE_SIZE;
     const pageItems = filtered.slice(start, start + EMP_PAGE_SIZE);
 
     const todayStr = new Date().toLocaleDateString('ar-SA');
@@ -433,21 +434,21 @@ function _renderEmpPagination(page, totalPages, total, grid) {
     }
     if (totalPages <= 1) { bar.innerHTML = ''; return; }
 
-    const bs = (active) => `background:${active?'var(--accent-blue)':'var(--bg-card)'};color:${active?'#fff':'var(--text-secondary)'};border:1px solid ${active?'var(--accent-blue)':'var(--border-color)'};border-radius:8px;padding:6px 16px;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;transition:background-color 0.15s ease;`;
+    const bs = (active) => `background:${active ? 'var(--accent-blue)' : 'var(--bg-card)'};color:${active ? '#fff' : 'var(--text-secondary)'};border:1px solid ${active ? 'var(--accent-blue)' : 'var(--border-color)'};border-radius:8px;padding:6px 16px;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;transition:background-color 0.15s ease;`;
 
     let html = `<span style="color:var(--text-muted);font-size:13px">صفحة ${page}/${totalPages} — ${total} موظف</span>`;
-    html += `<button style="${bs(false)}" id="ep-first" ${page===1?'disabled':''}>«</button>`;
-    html += `<button style="${bs(false)}" id="ep-prev"  ${page===1?'disabled':''}>‹</button>`;
-    for (let i = Math.max(1, page-2); i <= Math.min(totalPages, page+2); i++)
-        html += `<button style="${bs(i===page)}" class="ep-num" data-p="${i}">${i}</button>`;
-    html += `<button style="${bs(false)}" id="ep-next" ${page===totalPages?'disabled':''}>›</button>`;
-    html += `<button style="${bs(false)}" id="ep-last" ${page===totalPages?'disabled':''}>»</button>`;
+    html += `<button style="${bs(false)}" id="ep-first" ${page === 1 ? 'disabled' : ''}>«</button>`;
+    html += `<button style="${bs(false)}" id="ep-prev"  ${page === 1 ? 'disabled' : ''}>‹</button>`;
+    for (let i = Math.max(1, page - 2); i <= Math.min(totalPages, page + 2); i++)
+        html += `<button style="${bs(i === page)}" class="ep-num" data-p="${i}">${i}</button>`;
+    html += `<button style="${bs(false)}" id="ep-next" ${page === totalPages ? 'disabled' : ''}>›</button>`;
+    html += `<button style="${bs(false)}" id="ep-last" ${page === totalPages ? 'disabled' : ''}>»</button>`;
 
     bar.innerHTML = html;
     bar.querySelector('#ep-first')?.addEventListener('click', () => { empCurrentPage = 1; renderEmployees(); });
-    bar.querySelector('#ep-prev' )?.addEventListener('click', () => { empCurrentPage--; renderEmployees(); });
-    bar.querySelector('#ep-next' )?.addEventListener('click', () => { empCurrentPage++; renderEmployees(); });
-    bar.querySelector('#ep-last' )?.addEventListener('click', () => { empCurrentPage = totalPages; renderEmployees(); });
+    bar.querySelector('#ep-prev')?.addEventListener('click', () => { empCurrentPage--; renderEmployees(); });
+    bar.querySelector('#ep-next')?.addEventListener('click', () => { empCurrentPage++; renderEmployees(); });
+    bar.querySelector('#ep-last')?.addEventListener('click', () => { empCurrentPage = totalPages; renderEmployees(); });
     bar.querySelectorAll('.ep-num').forEach(b =>
         b.addEventListener('click', () => { empCurrentPage = Number(b.dataset.p); renderEmployees(); })
     );
@@ -457,7 +458,7 @@ function _renderEmpPagination(page, totalPages, total, grid) {
 // ── Open Employee Profile (Full Page) ────────────────────────
 let currentProfileId = null;
 
-window.openFullProfile = function(id) {
+window.openFullProfile = function (id) {
     const emp = db.employees.find(e => e.id === id);
     if (!emp) return;
     currentProfileId = id;
@@ -478,28 +479,28 @@ window.openFullProfile = function(id) {
 
     // Header Details
     const proAvatar = document.getElementById('pro-avatar');
-    if(proAvatar) proAvatar.src = emp.avatar || 'avatar.svg';
-    
-    document.getElementById('pro-name').innerText   = emp.name;
-    document.getElementById('pro-role').innerText   = emp.role;
-    
+    if (proAvatar) proAvatar.src = emp.avatar || 'avatar.svg';
+
+    document.getElementById('pro-name').innerText = emp.name;
+    document.getElementById('pro-role').innerText = emp.role;
+
     const proShiftEl = document.getElementById('pro-shift');
-    if(proShiftEl) proShiftEl.innerText = `${shiftType} (${hours} سا)`;
-    
+    if (proShiftEl) proShiftEl.innerText = `${shiftType} (${hours} سا)`;
+
     const proIqamaEl = document.getElementById('pro-iqama');
-    if(proIqamaEl) proIqamaEl.innerText  = emp.iqama || 'غير مسجل';
-    
+    if (proIqamaEl) proIqamaEl.innerText = emp.iqama || 'غير مسجل';
+
     const proStatusEl = document.getElementById('pro-status');
-    if(proStatusEl) proStatusEl.outerHTML = `<span class="p-tag" id="pro-status">${statusHtml}</span>`;
-    
+    if (proStatusEl) proStatusEl.outerHTML = `<span class="p-tag" id="pro-status">${statusHtml}</span>`;
+
     document.getElementById('pro-salary').innerHTML = `${xfNum(emp.salary || 0)} <span style="font-size:12px">${curSym()}</span>`;
-    document.getElementById('pro-loans').innerHTML  = `${xfNum(emp.loans || 0)} <span style="font-size:12px">${curSym()}</span>`;
-    document.getElementById('pro-net').innerHTML    = `${xfNum(netSalary)} <span style="font-size:12px">${curSym()}</span>`;
+    document.getElementById('pro-loans').innerHTML = `${xfNum(emp.loans || 0)} <span style="font-size:12px">${curSym()}</span>`;
+    document.getElementById('pro-net').innerHTML = `${xfNum(netSalary)} <span style="font-size:12px">${curSym()}</span>`;
     document.getElementById('pro-absent').innerHTML = `${absentDays} <span style="font-size:12px">يوم</span>`;
 
     // Personal Details
     document.getElementById('pro-info-phone').innerText = emp.phone || '—';
-    document.getElementById('pro-info-nat').innerText   = emp.nationality || '—';
+    document.getElementById('pro-info-nat').innerText = emp.nationality || '—';
     document.getElementById('pro-info-start').innerText = emp.startDate || '—';
     document.getElementById('pro-info-notes').innerText = emp.notes || 'لا يوجد ملاحظات.';
 
@@ -527,7 +528,7 @@ window.openFullProfile = function(id) {
                     const posDb = ipcRenderer.sendSync('db-read');
                     allOrders = (posDb && posDb.orders) || [];
                 }
-            } catch(e) { console.error('Sales load failed', e); }
+            } catch (e) { console.error('Sales load failed', e); }
 
             // Match orders to this employee by name (cashier field or legacy)
             const myOrders = allOrders.filter(o => {
@@ -536,7 +537,7 @@ window.openFullProfile = function(id) {
             });
 
             const salesBody = document.getElementById('pro-sales-body');
-            const salesKpi  = document.getElementById('pro-sales-kpi');
+            const salesKpi = document.getElementById('pro-sales-kpi');
             if (!salesBody) return;
 
             const totalSales = myOrders.reduce((s, o) => s + (o.total || 0), 0);
@@ -589,7 +590,7 @@ window.openFullProfile = function(id) {
             const users = JSON.parse(localStorage.getItem('system_users') || '[]');
             const updated = users.filter(u => u.username !== emp.username && u.name !== emp.name);
             localStorage.setItem('system_users', JSON.stringify(updated));
-        } catch(e) {}
+        } catch (e) { }
 
         // Save and navigate
         await persistDb();
@@ -601,12 +602,12 @@ window.openFullProfile = function(id) {
 
     document.getElementById('pro-btn-reset').onclick = async () => {
         const openLoans = Number(emp.loans) || 0;
-        
+
         // استخدام confirm مخصص بدل native dialog لتجنب مشاكل Electron
         const confirmed = await new Promise((resolve) => {
             const overlay = document.createElement('div');
             overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;';
-            
+
             const dialog = document.createElement('div');
             dialog.style.cssText = 'background:var(--bg-card);border:1px solid var(--border-color);border-radius:24px;padding:32px;max-width:400px;width:90%;';
             dialog.innerHTML = `
@@ -620,23 +621,23 @@ window.openFullProfile = function(id) {
                     <button id="confirm-reset-no" style="flex:1;padding:12px;background:rgba(255,255,255,0.1);color:var(--text-primary);border:1px solid var(--border-color);border-radius:12px;font-weight:700;cursor:pointer;font-size:14px;">إلغاء</button>
                 </div>
             `;
-            
+
             overlay.appendChild(dialog);
             document.body.appendChild(overlay);
-            
+
             document.getElementById('confirm-reset-yes').onclick = () => {
                 document.body.removeChild(overlay);
                 resolve(true);
             };
-            
+
             document.getElementById('confirm-reset-no').onclick = () => {
                 document.body.removeChild(overlay);
                 resolve(false);
             };
         });
-        
+
         if (!confirmed) return;
-        
+
         emp.loans = 0;
         if (!db.hrExpenses) db.hrExpenses = [];
         db.hrExpenses.push({
@@ -662,20 +663,20 @@ window.openFullProfile = function(id) {
 
     // Bind edit button
     document.getElementById('pro-btn-edit').onclick = () => {
-        document.getElementById('ne-name').value        = emp.name || '';
-        document.getElementById('ne-role').value        = emp.role || '';
+        document.getElementById('ne-name').value = emp.name || '';
+        document.getElementById('ne-role').value = emp.role || '';
         document.getElementById('ne-nationality').value = emp.nationality || '';
-        document.getElementById('ne-phone').value       = emp.phone || '';
-        document.getElementById('ne-iqama').value       = emp.iqama || '';
-        document.getElementById('ne-expiry').value      = emp.expiry || '';
-        document.getElementById('ne-shift').value       = emp.shiftType || 'صباحي';
-        document.getElementById('ne-hours').value       = emp.workHours || 8;
-        document.getElementById('ne-salary').value      = emp.salary || '';
-        document.getElementById('ne-start').value       = emp.startDate || '';
-        document.getElementById('ne-notes').value       = emp.notes || '';
-        document.getElementById('ne-username').value    = emp.username || '';
-        document.getElementById('ne-password').value    = emp.password || '';
-        if(emp.avatar) {
+        document.getElementById('ne-phone').value = emp.phone || '';
+        document.getElementById('ne-iqama').value = emp.iqama || '';
+        document.getElementById('ne-expiry').value = emp.expiry || '';
+        document.getElementById('ne-shift').value = emp.shiftType || 'صباحي';
+        document.getElementById('ne-hours').value = emp.workHours || 8;
+        document.getElementById('ne-salary').value = emp.salary || '';
+        document.getElementById('ne-start').value = emp.startDate || '';
+        document.getElementById('ne-notes').value = emp.notes || '';
+        document.getElementById('ne-username').value = emp.username || '';
+        document.getElementById('ne-password').value = emp.password || '';
+        if (emp.avatar) {
             photoPreview.src = emp.avatar;
             photoPreview.style.display = 'block';
             currentAvatarBase64 = emp.avatar;
@@ -689,11 +690,11 @@ window.openFullProfile = function(id) {
     };
 };
 
-window.exportProFinancesPDF = function() {
-    if(!currentProfileId) return;
+window.exportProFinancesPDF = function () {
+    if (!currentProfileId) return;
     const emp = db.employees.find(e => e.id === currentProfileId);
-    if(!emp) return;
-    
+    if (!emp) return;
+
     let restName = "الموظفين";
     try {
         const sysRaw = localStorage.getItem('restaurant_settings');
@@ -703,19 +704,48 @@ window.exportProFinancesPDF = function() {
                 restName = sys.name.trim().replace(/\s+/g, '_');
             }
         }
-    } catch(e) {}
-    
+    } catch (e) { }
+
     const d = new Date();
-    const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    
+    const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+    // ── Prepare print layout ──
+    const allViews = document.querySelectorAll('.hr-view');
+    const prevDisplayMap = new Map();
+    allViews.forEach(v => {
+        prevDisplayMap.set(v, v.style.display);
+        v.style.display = 'none';
+    });
+
+    const profileView = document.getElementById('view-emp-profile');
+    if (profileView) profileView.style.display = 'block';
+
+    const prevDataView = document.body.dataset.currentView;
+    document.body.dataset.currentView = 'view-emp-profile';
+    document.body.classList.add('print-mode-profile');
+
+    const printInfo = document.getElementById('pro-finances-print-info');
+    if (printInfo) printInfo.style.display = 'block';
+
+    const restore = () => {
+        allViews.forEach(v => v.style.display = prevDisplayMap.get(v) || '');
+        document.body.dataset.currentView = prevDataView || 'view-emp-profile';
+        document.body.classList.remove('print-mode-profile');
+        if (printInfo) printInfo.style.display = 'none';
+    };
+
     if (typeof window.exportPageToPDF === 'function') {
-        window.exportPageToPDF('كشف_حساب_' + emp.name.replace(/\s+/g, '_') + '_' + dateStr + '.pdf');
+        setTimeout(() => {
+            window.exportPageToPDF('كشف_حساب_' + emp.name.replace(/\s+/g, '_') + '_' + dateStr + '.pdf')
+                .finally(restore);
+        }, 100);
     } else {
         window.print();
+        setTimeout(restore, 1500);
     }
 };
 
-window.toggleProFinancesCustomDate = function() {
+window.toggleProFinancesCustomDate = function () {
     const periodSelect = document.getElementById('pro-finances-period');
     const customDateDiv = document.getElementById('pro-finances-custom-date');
     if (periodSelect && customDateDiv) {
@@ -723,29 +753,29 @@ window.toggleProFinancesCustomDate = function() {
     }
 };
 
-window.renderProfileFinances = function(empName) {
-    if(!empName && currentProfileId) {
+window.renderProfileFinances = function (empName) {
+    if (!empName && currentProfileId) {
         const e = db.employees.find(x => x.id === currentProfileId);
-        if(e) empName = e.name;
+        if (e) empName = e.name;
     }
-    if(!empName) return;
+    if (!empName) return;
 
     let myVouchers = (db.hrExpenses || [])
         .map((h, idx) => ({ h, idx }))
         .filter(({ h }) => h.employee === empName);
-        
+
     const periodSelect = document.getElementById('pro-finances-period');
     const filterVal = periodSelect ? periodSelect.value : 'all';
-    
+
     // Date Filtering Logic
     if (filterVal === 'custom') {
         const fDate = document.getElementById('pro-finances-from')?.value;
         const tDate = document.getElementById('pro-finances-to')?.value;
-        
+
         myVouchers = myVouchers.filter(({ h }) => {
             const d = new Date(h.timestamp || h.date);
             if (isNaN(d)) return true; // Keep old records without proper dates
-            
+
             let match = true;
             if (fDate) {
                 const start = new Date(fDate);
@@ -767,7 +797,7 @@ window.renderProfileFinances = function(empName) {
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         myVouchers = myVouchers.filter(({ h }) => {
             let d = new Date(h.timestamp || h.date);
-            if(isNaN(d)) return true;
+            if (isNaN(d)) return true;
             if (filterVal === 'today') return d >= today;
             if (filterVal === 'week') {
                 const weekAgo = new Date(today);
@@ -776,7 +806,7 @@ window.renderProfileFinances = function(empName) {
             }
             if (filterVal === 'month') return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
             if (filterVal === 'last_month') {
-                const lm = new Date(today.getFullYear(), today.getMonth()-1, 1);
+                const lm = new Date(today.getFullYear(), today.getMonth() - 1, 1);
                 const lme = new Date(today.getFullYear(), today.getMonth(), 0);
                 return d >= lm && d <= lme;
             }
@@ -786,8 +816,8 @@ window.renderProfileFinances = function(empName) {
 
     const tbody = document.getElementById('pro-finances-body');
     const tfoot = document.getElementById('pro-finances-tfoot');
-    if(!tbody) return;
-    
+    if (!tbody) return;
+
     // Set Print Header Info
     const printEmpName = document.getElementById('pro-print-emp-name');
     const printPeriod = document.getElementById('pro-print-period-text');
@@ -808,15 +838,15 @@ window.renderProfileFinances = function(empName) {
         printPeriod.textContent = periodText;
     }
 
-    if(myVouchers.length === 0) {
+    if (myVouchers.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px;">لا توجد حركات مالية مسجلة في هذه الفترة.</td></tr>';
-        if(tfoot) tfoot.innerHTML = '';
+        if (tfoot) tfoot.innerHTML = '';
         return;
     }
-    
+
     let totalDeductions = 0; // خصم/سلفة
     let totalPayments = 0;   // صرف راتب/مكافأة
-    
+
     myVouchers.forEach(({ h }) => {
         if (h.type === 'تصفير حساب') {
             totalDeductions = 0;
@@ -824,14 +854,14 @@ window.renderProfileFinances = function(empName) {
         } else {
             const amt = Number(h.amount) || 0;
             const isDeduction = h.type.includes('سلفة') || h.type.includes('عليه') || h.type.includes('خصم') || h.type.includes('جزاء');
-            if(isDeduction) totalDeductions += amt;
+            if (isDeduction) totalDeductions += amt;
             else totalPayments += amt;
         }
     });
-    
+
     tbody.innerHTML = [...myVouchers].reverse().map(({ h, idx }) => {
         if (h.type === 'تصفير حساب') {
-             return `
+            return `
              <tr style="background:rgba(255,255,255,0.05); border-top:2px dashed var(--border-color); border-bottom:2px dashed var(--border-color);">
                  <td dir="ltr" style="text-align:right; font-size:12px; color:var(--text-muted);">${h.date}</td>
                  <td colspan="3" style="text-align:center; color:#f59e0b; font-weight:bold;">
@@ -845,7 +875,7 @@ window.renderProfileFinances = function(empName) {
 
         const amt = Number(h.amount) || 0;
         const isDeduction = h.type.includes('سلفة') || h.type.includes('عليه') || h.type.includes('خصم') || h.type.includes('جزاء');
-        
+
         return `
         <tr>
             <td dir="ltr" style="text-align:right">${h.date}</td>
@@ -858,15 +888,15 @@ window.renderProfileFinances = function(empName) {
             </td>
         </tr>`;
     }).join('');
-    
+
     // Render Tfoot summary
-    if(tfoot) {
+    if (tfoot) {
         const empObj = db.employees.find(e => e.name === empName);
         const currentSalary = empObj ? (empObj.salary || 0) : 0;
         const currentLoans = empObj ? (empObj.loans || 0) : 0;
         const paidSalary = getEmpPaidSalary(empName);
         const netPayable = Math.max(0, currentSalary - currentLoans - paidSalary);
-        
+
         const sym = window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س';
         const netAmount = totalPayments - totalDeductions;
         tfoot.innerHTML = `
@@ -921,11 +951,11 @@ window.renderProfileFinances = function(empName) {
                 <td colspan="2" class="print-only-cell" style="display:none;"></td>
             </tr>
         `;
-        
+
         // CSS trick to handle colspan mismatch in print vs screen because of .no-print column
         const styleId = 'pro-finances-print-style';
         let styleEl = document.getElementById(styleId);
-        if(!styleEl) {
+        if (!styleEl) {
             styleEl = document.createElement('style');
             styleEl.id = styleId;
             document.head.appendChild(styleEl);
@@ -941,8 +971,8 @@ window.renderProfileFinances = function(empName) {
 function renderProfileAttendance(empId) {
     const myAtt = db.attendance.filter(a => a.empId === empId);
     const tbody = document.getElementById('pro-attendance-body');
-    if(!tbody) return;
-    if(myAtt.length === 0) {
+    if (!tbody) return;
+    if (myAtt.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px;">لا توجد سجلات حضور مسجلة.</td></tr>';
         return;
     }
@@ -950,49 +980,49 @@ function renderProfileAttendance(empId) {
         <tr>
             <td dir="ltr" style="text-align:right">${a.date}</td>
             <td>${a.time || '—'}</td>
-            <td style="color:${a.status === 'حضور'?'#34d399':'#f87171'}; font-weight:700;">${a.status}</td>
+            <td style="color:${a.status === 'حضور' ? '#34d399' : '#f87171'}; font-weight:700;">${a.status}</td>
             <td>المدير</td>
         </tr>`).join('');
 }
 
-window.markAttendanceQuick = async function(empId, status) {
-    if(!empId) return;
+window.markAttendanceQuick = async function (empId, status) {
+    if (!empId) return;
     const now = new Date();
     const dateStr = now.toLocaleDateString('ar-SA');
-    
+
     // Check if already marked today
     const exists = db.attendance.find(a => a.empId === empId && a.date === dateStr);
-    if(exists) {
-        if(!confirm(`تم تسجيل (${exists.status}) لهذا الموظف اليوم مسبقاً، هل تريد تغييرها لتصبح (${status})؟`)) return;
+    if (exists) {
+        if (!confirm(`تم تسجيل (${exists.status}) لهذا الموظف اليوم مسبقاً، هل تريد تغييرها لتصبح (${status})؟`)) return;
         exists.status = status;
         exists.time = now.toLocaleTimeString('ar-SA');
     } else {
         db.attendance.push({ empId, date: dateStr, time: now.toLocaleTimeString('ar-SA'), status, timestamp: Date.now() });
     }
-    
+
     // Save attendance immediately
     await persistDb();
     renderEmployees();
-    
-    if(currentProfileId === empId) {
+
+    if (currentProfileId === empId) {
         renderProfileAttendance(empId);
         openFullProfile(empId);
     }
-    
+
     // Smart Penalty Integration for Absence
-    if(status === 'غياب') {
+    if (status === 'غياب') {
         const emp = db.employees.find(e => e.id === empId);
-        if(emp && db.penaltyRules) {
+        if (emp && db.penaltyRules) {
             const absenceRule = db.penaltyRules.find(r => r.type === 'absence');
-            if(absenceRule) {
+            if (absenceRule) {
                 setTimeout(async () => {
-                    if(confirm(`هل تريد تطبيق خصم آلي (جزاء غياب) بقيمة ${xf(absenceRule.amount)} على الموظف؟`)) {
+                    if (confirm(`هل تريد تطبيق خصم آلي (جزاء غياب) بقيمة ${xf(absenceRule.amount)} على الموظف؟`)) {
                         // استخدام دالة generateVoucher لإنشاء السند وإرسال الواتساب
                         try {
                             // فتح النموذج أولاً
                             const modal = document.getElementById('advance-modal');
                             if (modal) delete modal.dataset.editIndex;
-                            
+
                             // ملء قائمة الموظفين
                             const empSelect = document.getElementById('voucher-employee');
                             if (empSelect) {
@@ -1002,28 +1032,28 @@ window.markAttendanceQuick = async function(empId, status) {
                                 });
                                 empSelect.value = emp.name;
                             }
-                            
+
                             // ملء المبلغ
                             const amountInput = document.getElementById('voucher-amount');
                             if (amountInput) {
                                 amountInput.value = absenceRule.amount;
                             }
-                            
+
                             // ملء السبب
                             const reasonInput = document.getElementById('voucher-reason');
                             if (reasonInput) {
                                 reasonInput.value = absenceRule.name + ` (تسجيل آلي بتاريخ ${dateStr})`;
                             }
-                            
+
                             // اختيار النوع (عليه خصم)
                             const typeSelect = document.getElementById('voucher-type');
                             if (typeSelect) {
                                 typeSelect.value = 'advance';
                             }
-                            
+
                             // فتح النموذج
                             openHrModal('advance-modal');
-                            
+
                             // انتظار بسيط ثم استدعاء دالة إنشاء السند
                             await new Promise(r => setTimeout(r, 300));
                             await window.generateVoucher('خصم / جزاء');
@@ -1031,7 +1061,7 @@ window.markAttendanceQuick = async function(empId, status) {
                             console.error('Error generating absence penalty voucher:', err);
                             // Fallback: حفظ يدوي في حالة الخطأ
                             emp.loans = (emp.loans || 0) + absenceRule.amount;
-                            if(!db.hrExpenses) db.hrExpenses = [];
+                            if (!db.hrExpenses) db.hrExpenses = [];
                             db.hrExpenses.push({
                                 employee: emp.name,
                                 amount: absenceRule.amount,
@@ -1043,7 +1073,7 @@ window.markAttendanceQuick = async function(empId, status) {
                             await persistDb();
                             updateKPIs();
                             renderEmployees();
-                            if(document.getElementById('view-deductions').style.display==='block') await renderDeductions();
+                            if (document.getElementById('view-deductions').style.display === 'block') await renderDeductions();
                         }
                         alert('تم خصم الجزاء على الموظف بنجاح!');
                     }
@@ -1054,13 +1084,13 @@ window.markAttendanceQuick = async function(empId, status) {
 };
 
 // wrapper for the profile page buttons
-window.markAttendance = function(status) {
+window.markAttendance = function (status) {
     markAttendanceQuick(currentProfileId, status);
 };
 
-window.openAdvanceModalForCurrent = function() {
+window.openAdvanceModalForCurrent = function () {
     const emp = db.employees.find(e => e.id === currentProfileId);
-    if(emp) {
+    if (emp) {
         populateEmpSelect();
         document.getElementById('voucher-employee').value = emp.name;
         document.getElementById('voucher-employee').disabled = true;
@@ -1068,13 +1098,13 @@ window.openAdvanceModalForCurrent = function() {
         setTimeout(() => {
             const a = document.getElementById('voucher-amount');
             try {
-                if(a) {
+                if (a) {
                     a.disabled = false;
                     a.removeAttribute('readonly');
                     a.focus({ preventScroll: true });
                     a.click();
                 }
-            } catch (_) {}
+            } catch (_) { }
         }, 150);
     }
 };
@@ -1082,34 +1112,34 @@ window.openAdvanceModalForCurrent = function() {
 // ── Save New / Edit Employee ──────────────────────────────────
 document.getElementById('form-new-emp')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
+
     // منع الإرسال المزدوج
     const submitBtn = e.target.querySelector('button[type="submit"]');
     if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري الحفظ...';
     }
-    
+
     try {
         const editId = e.target.dataset.editId;
         const empData = {
-            id:          editId || 'EMP-' + Math.floor(Math.random()*90000+10000),
-            name:        document.getElementById('ne-name').value.trim(),
-            role:        document.getElementById('ne-role').value,
+            id: editId || 'EMP-' + Math.floor(Math.random() * 90000 + 10000),
+            name: document.getElementById('ne-name').value.trim(),
+            role: document.getElementById('ne-role').value,
             nationality: document.getElementById('ne-nationality').value.trim(),
-            phone:       document.getElementById('ne-phone').value.trim(),
-            iqama:       document.getElementById('ne-iqama').value.trim(),
-            expiry:      document.getElementById('ne-expiry').value,
-            shiftType:   document.getElementById('ne-shift').value,
-            workHours:   Number(document.getElementById('ne-hours').value) || 8,
-            salary:      Number(document.getElementById('ne-salary').value) || 0,
-            startDate:   document.getElementById('ne-start').value || new Date().toISOString().split('T')[0],
-            notes:       document.getElementById('ne-notes').value.trim(),
-            username:    document.getElementById('ne-username').value.trim() || undefined,
-            password:    document.getElementById('ne-password').value.trim() || undefined,
-            loans:       editId ? (db.employees.find(e => e.id === editId)?.loans || 0) : 0,
-            status:      'active',
-            avatar:      currentAvatarBase64
+            phone: document.getElementById('ne-phone').value.trim(),
+            iqama: document.getElementById('ne-iqama').value.trim(),
+            expiry: document.getElementById('ne-expiry').value,
+            shiftType: document.getElementById('ne-shift').value,
+            workHours: Number(document.getElementById('ne-hours').value) || 8,
+            salary: Number(document.getElementById('ne-salary').value) || 0,
+            startDate: document.getElementById('ne-start').value || new Date().toISOString().split('T')[0],
+            notes: document.getElementById('ne-notes').value.trim(),
+            username: document.getElementById('ne-username').value.trim() || undefined,
+            password: document.getElementById('ne-password').value.trim() || undefined,
+            loans: editId ? (db.employees.find(e => e.id === editId)?.loans || 0) : 0,
+            status: 'active',
+            avatar: currentAvatarBase64
         };
 
         if (editId) {
@@ -1123,12 +1153,18 @@ document.getElementById('form-new-emp')?.addEventListener('submit', async (e) =>
         e.target.reset();
         currentAvatarBase64 = '';
         delete e.target.dataset.editId;
-        
+
         // تأجيل إعادة التحميل لمنع الشاشة السوداء
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-                alert(`✅ تم ${editId ? 'تعديل' : 'حفظ'} ملف الموظف "${empData.name}" بنجاح!`);
-                if(editId) { openFullProfile(editId); } else { showView('view-employees', 'nav-employees'); }
+                // استخدام Toast بدلاً من alert لمنع تجميد حقول الإدخال في Electron
+                const toast = document.createElement('div');
+                toast.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#10b981;color:white;padding:12px 24px;border-radius:8px;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,0.3);font-weight:bold;transition:0.5s;';
+                toast.innerHTML = `<i class="ph ph-check-circle"></i> تم ${editId ? 'تعديل' : 'حفظ'} ملف الموظف "${empData.name}" بنجاح!`;
+                document.body.appendChild(toast);
+                setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000);
+
+                if (editId) { openFullProfile(editId); } else { showView('view-employees', 'nav-employees'); }
             });
         });
     } catch (error) {
@@ -1180,7 +1216,7 @@ function openVoucherEditor(voucherIndex) {
 }
 
 document.getElementById('btn-open-advance-modal')?.addEventListener('click', (e) => {
-    if(e) e.preventDefault();
+    if (e) e.preventDefault();
     const modal = document.getElementById('advance-modal');
     if (modal) delete modal.dataset.editIndex;
     populateEmpSelect();
@@ -1193,7 +1229,7 @@ document.getElementById('btn-close-advance-modal')?.addEventListener('click', ()
     closeHrModal('advance-modal');
 });
 
-window.generateVoucherFromSelection = function() {
+window.generateVoucherFromSelection = function () {
     const sel = document.getElementById('voucher-type');
     const v = (sel && sel.value) || 'salary';
     if (v === 'advance') return generateVoucher('عليه (سلفة)');
@@ -1205,7 +1241,7 @@ window.generateVoucherFromSelection = function() {
 // ── Payroll & Vouchers Views ─────────────────────────────────
 function renderPayroll() {
     const tbody = document.getElementById('payroll-tbody');
-    if(!tbody) return;
+    if (!tbody) return;
     ensurePayrollCycleConfig();
     let html = '';
     let totalPayroll = 0;
@@ -1281,7 +1317,7 @@ function renderVouchers() {
             <td><strong dir="ltr">${h.voucherNo || '—'}</strong></td>
             <td dir="ltr" style="text-align:right">${h.date}</td>
             <td><strong>${h.employee}</strong></td>
-            <td style="color:${h.type.includes('سلفة')||h.type.includes('عليه')||h.type.includes('جزاء') ? '#f87171' : '#34d399'}; font-weight:700;">${h.type}</td>
+            <td style="color:${h.type.includes('سلفة') || h.type.includes('عليه') || h.type.includes('جزاء') ? '#f87171' : '#34d399'}; font-weight:700;">${h.type}</td>
             <td style="font-weight:800; font-size:16px;">${xf(h.amount)}</td>
             <td>${h.reason || '—'}</td>
             <td>
@@ -1315,7 +1351,7 @@ function refreshHrViewsAfterVoucherChange() {
     }
 }
 
-window.deleteHrVoucher = async function(index) {
+window.deleteHrVoucher = async function (index) {
     const voucher = (db.hrExpenses || [])[index];
     if (!voucher) return;
     const ok = confirm(
@@ -1335,7 +1371,7 @@ window.deleteHrVoucher = async function(index) {
     alert('تم حذف العملية المالية بنجاح.');
 };
 
-window.editHrVoucher = function(index) {
+window.editHrVoucher = function (index) {
     openVoucherEditor(index);
 };
 
@@ -1344,7 +1380,7 @@ async function renderDeductions() {
     // 1. Render Rules
     const rulesTbody = document.getElementById('rules-tbody');
     if (rulesTbody) {
-        if(!db.penaltyRules || !db.penaltyRules[0]?.id) {
+        if (!db.penaltyRules || !db.penaltyRules[0]?.id) {
             db.penaltyRules = [
                 { id: 'rule_absence', name: 'غياب بدون عذر', amount: 150, type: 'absence', isSystem: true },
                 { id: 'rule_delay', name: 'تأخير عن الدوام', amount: 50, type: 'delay', isSystem: true },
@@ -1352,7 +1388,7 @@ async function renderDeductions() {
             ];
             await persistDb();
         }
-        if(db.penaltyRules.length === 0) {
+        if (db.penaltyRules.length === 0) {
             rulesTbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:15px;color:var(--text-muted);">لا توجد قواعد مسجلة.</td></tr>';
         } else {
             rulesTbody.innerHTML = db.penaltyRules.map((r, i) => `
@@ -1370,9 +1406,9 @@ async function renderDeductions() {
 
     // 2. Render History Log
     const tbody = document.getElementById('deductions-tbody');
-    if(!tbody) return;
+    if (!tbody) return;
     const deductions = (db.hrExpenses || []).filter(h => h.type === 'خصم / جزاء');
-    if(deductions.length === 0) {
+    if (deductions.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted);">لا توجد جزاءات أو خصومات مسجلة. الموظفون مثاليون!</td></tr>';
         return;
     }
@@ -1388,8 +1424,8 @@ async function renderDeductions() {
     tbody.innerHTML = html;
 }
 
-window.deletePenaltyRule = async function(index) {
-    if(!confirm('هل أنت متأكد من حذف هذه القاعدة؟')) return;
+window.deletePenaltyRule = async function (index) {
+    if (!confirm('هل أنت متأكد من حذف هذه القاعدة؟')) return;
     db.penaltyRules.splice(index, 1);
     await persistDb();
     await renderDeductions();
@@ -1406,7 +1442,7 @@ document.getElementById('btn-open-penalty-modal')?.addEventListener('click', () 
 
     // Populate penalty reasons from rules
     const rulesList = document.getElementById('penalty-reasons-list');
-    if(rulesList && db.penaltyRules) {
+    if (rulesList && db.penaltyRules) {
         rulesList.innerHTML = db.penaltyRules.map(r => `<option value="${r.name}">`).join('');
     }
 
@@ -1428,9 +1464,9 @@ document.getElementById('btn-open-penalty-modal')?.addEventListener('click', () 
 // Auto-fill penalty amount when a configured reason is picked
 document.getElementById('penalty-reason')?.addEventListener('input', (e) => {
     const reasonValue = e.target.value;
-    if(!db.penaltyRules) return;
+    if (!db.penaltyRules) return;
     const matchedRule = db.penaltyRules.find(r => r.name === reasonValue);
-    if(matchedRule) {
+    if (matchedRule) {
         document.getElementById('penalty-amount').value = matchedRule.amount;
     }
 });
@@ -1442,21 +1478,34 @@ document.getElementById('btn-close-penalty-modal')?.addEventListener('click', ()
 document.getElementById('form-penalty-trx')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const employee = document.getElementById('penalty-employee').value;
-    const amount   = Number(document.getElementById('penalty-amount').value);
-    const reason   = document.getElementById('penalty-reason').value;
+    const amount = Number(document.getElementById('penalty-amount').value);
+    const reason = document.getElementById('penalty-reason').value;
 
     if (!employee || !amount || !reason) return alert('الرجاء إكمال البيانات');
-    
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري الحفظ...';
+    }
+
     // إغلاق نموذج الجزاءات
     closeHrModal('penalty-modal');
     e.target.reset();
-    
+
+    if (submitBtn) {
+        setTimeout(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="ph ph-check-circle"></i> تأكيد تطبيق الجزاء';
+        }, 2000);
+    }
+
     // استخدام دالة generateVoucher لإنشاء السند وإرسال الواتساب
     try {
         // ملء نموذج السندات بالبيانات
         const modal = document.getElementById('advance-modal');
         if (modal) delete modal.dataset.editIndex;
-        
+
         // ملء قائمة الموظفين
         const empSelect = document.getElementById('voucher-employee');
         if (empSelect) {
@@ -1466,28 +1515,28 @@ document.getElementById('form-penalty-trx')?.addEventListener('submit', async (e
             });
             empSelect.value = employee;
         }
-        
+
         // ملء المبلغ
         const amountInput = document.getElementById('voucher-amount');
         if (amountInput) {
             amountInput.value = amount;
         }
-        
+
         // ملء السبب
         const reasonInput = document.getElementById('voucher-reason');
         if (reasonInput) {
             reasonInput.value = reason;
         }
-        
+
         // اختيار النوع (عليه خصم)
         const typeSelect = document.getElementById('voucher-type');
         if (typeSelect) {
             typeSelect.value = 'advance';
         }
-        
+
         // فتح نموذج السندات
         openHrModal('advance-modal');
-        
+
         // انتظار بسيط ثم إنشاء السند
         await new Promise(r => setTimeout(r, 300));
         await window.generateVoucher('خصم / جزاء');
@@ -1495,8 +1544,8 @@ document.getElementById('form-penalty-trx')?.addEventListener('submit', async (e
         console.error('Error generating penalty voucher:', err);
         // Fallback: حفظ يدوي عند الخطأ
         const emp = db.employees.find(e => e.name === employee);
-        if(emp) emp.loans = (emp.loans || 0) + amount;
-        if(!db.hrExpenses) db.hrExpenses = [];
+        if (emp) emp.loans = (emp.loans || 0) + amount;
+        if (!db.hrExpenses) db.hrExpenses = [];
         db.hrExpenses.push({
             employee: employee,
             amount: amount,
@@ -1508,13 +1557,13 @@ document.getElementById('form-penalty-trx')?.addEventListener('submit', async (e
         await persistDb();
         updateKPIs();
         renderEmployees();
-        if(document.getElementById('view-deductions').style.display==='block') await renderDeductions();
+        if (document.getElementById('view-deductions').style.display === 'block') await renderDeductions();
         alert('تم حفظ الخصم (بدون سند)');
     }
 });
 
 // ── Rule Modal Submit ────────────────────────────────────────
-window.openRuleModalForCreate = function() {
+window.openRuleModalForCreate = function () {
     const form = document.getElementById('form-rule-create');
     if (form) delete form.dataset.editIndex;
     const n = document.getElementById('rule-name');
@@ -1533,7 +1582,7 @@ window.openRuleModalForCreate = function() {
     });
 };
 
-window.editPenaltyRule = function(index) {
+window.editPenaltyRule = function (index) {
     const r = db.penaltyRules[index];
     document.getElementById('rule-name').value = r.name;
     document.getElementById('rule-amount').value = r.amount;
@@ -1558,23 +1607,23 @@ document.getElementById('btn-close-rule-modal')?.addEventListener('click', () =>
 
 document.getElementById('form-rule-create')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if(!db.penaltyRules) db.penaltyRules = [];
+    if (!db.penaltyRules) db.penaltyRules = [];
     const rxName = document.getElementById('rule-name').value;
     const rxAmt = Number(document.getElementById('rule-amount').value);
-    
-    if(!rxName || !rxAmt) return;
-    
+
+    if (!rxName || !rxAmt) return;
+
     const editIndex = e.target.dataset.editIndex;
-    if(editIndex !== undefined && editIndex !== '') {
+    if (editIndex !== undefined && editIndex !== '') {
         db.penaltyRules[editIndex].name = rxName;
         db.penaltyRules[editIndex].amount = rxAmt;
         delete e.target.dataset.editIndex;
     } else {
         db.penaltyRules.push({ id: Date.now().toString(), name: rxName, amount: rxAmt, type: 'custom', isSystem: false });
     }
-    
+
     await persistDb();
-    
+
     closeHrModal('rule-modal');
     e.target.reset();
     await renderDeductions();
@@ -1582,10 +1631,15 @@ document.getElementById('form-rule-create')?.addEventListener('submit', async (e
 
 
 // ── Generate Voucher ─────────────────────────────────────────
-window.generateVoucher = async function(typeStr) {
+window.generateVoucher = async function (typeStr) {
+    if (isVoucherGenerating) {
+        console.warn('[Staff] Already generating a voucher, ignoring request.');
+        return;
+    }
+
     const employee = (document.getElementById('voucher-employee')?.value || '').trim();
-    const amount   = String(document.getElementById('voucher-amount')?.value || '').trim();
-    const reason   = (document.getElementById('voucher-reason')?.value || '').trim();
+    const amount = String(document.getElementById('voucher-amount')?.value || '').trim();
+    const reason = (document.getElementById('voucher-reason')?.value || '').trim();
 
     if (!employee || !amount || !reason) {
         const lines = ['يرجى إكمال البيانات التالية:'];
@@ -1596,8 +1650,8 @@ window.generateVoucher = async function(typeStr) {
         const target = !employee
             ? document.getElementById('voucher-employee')
             : !amount
-              ? document.getElementById('voucher-amount')
-              : document.getElementById('voucher-reason');
+                ? document.getElementById('voucher-amount')
+                : document.getElementById('voucher-reason');
         requestAnimationFrame(() => {
             try {
                 target?.focus({ preventScroll: true });
@@ -1609,6 +1663,14 @@ window.generateVoucher = async function(typeStr) {
     }
 
     hideAdvanceVoucherError();
+    isVoucherGenerating = true;
+
+    // تعطيل زر الإصدار في المودال
+    const modalBtn = document.querySelector('#advance-modal button[onclick*="generateVoucherFromSelection"]');
+    if (modalBtn) {
+        modalBtn.disabled = true;
+        modalBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري إصدار السند...';
+    }
 
     const todayStr = new Date().toISOString().split('T')[0].replace(/-/g, '/');
     if (document.getElementById('v-date')) document.getElementById('v-date').innerText = todayStr;
@@ -1624,9 +1686,9 @@ window.generateVoucher = async function(typeStr) {
         const loans = Number(emp?.loans) || 0;
         const amtNum = Number(amount);
         let netRemaining;
-        
+
         const paidCurrent = getEmpPaidSalary(employee);
-        
+
         // حساب الرصيد حسب نوع السند
         if (typeStr.includes('خصم') || typeStr.includes('جزاء')) {
             // للخصم: الرصيد المتبقي بعد الخصم من الراتب
@@ -1642,7 +1704,7 @@ window.generateVoucher = async function(typeStr) {
             // افتراضي
             netRemaining = Math.max(0, salary - loans - paidCurrent - amtNum);
         }
-        
+
         const netFmt = netRemaining.toLocaleString('en-US', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
@@ -1664,7 +1726,7 @@ window.generateVoucher = async function(typeStr) {
     const labelRecipient = document.getElementById('v-label-recipient');
     const labelAmount = document.getElementById('v-label-amount');
     const labelBalance = document.getElementById('v-label-balance');
-    
+
     if (typeStr.includes('خصم') || typeStr.includes('جزاء')) {
         // للخصم/الجزاء
         if (labelRecipient) labelRecipient.textContent = 'يُخصم من الأخ :';
@@ -1704,10 +1766,10 @@ window.generateVoucher = async function(typeStr) {
 
     const printContainer = document.getElementById('voucher-print-container');
     let voucherEl = null;
-    printContainer.style.top     = '0';
-    printContainer.style.left    = '0';
+    printContainer.style.top = '0';
+    printContainer.style.left = '0';
     printContainer.style.opacity = '1';
-    printContainer.style.zIndex  = '-100';
+    printContainer.style.zIndex = '-100';
 
     try {
         // Populate dynamic restaurant settings before render
@@ -1727,7 +1789,7 @@ window.generateVoucher = async function(typeStr) {
                     await new Promise(resolve => { logoEl.onload = resolve; logoEl.onerror = resolve; setTimeout(resolve, 500); });
                 }
             }
-        } catch(e) {}
+        } catch (e) { }
 
         closeHrModal('advance-modal');
         const vAmt = document.getElementById('voucher-amount');
@@ -1763,7 +1825,7 @@ window.generateVoucher = async function(typeStr) {
         const TARGET_W = 1600;
         const TARGET_H = 1132;
         const finalCanvas = document.createElement('canvas');
-        finalCanvas.width  = TARGET_W;
+        finalCanvas.width = TARGET_W;
         finalCanvas.height = TARGET_H;
         const ctx = finalCanvas.getContext('2d');
         ctx.fillStyle = '#ffffff';
@@ -1808,14 +1870,14 @@ window.generateVoucher = async function(typeStr) {
         await persistDb();
         updateKPIs();
         renderEmployees();
-        
+
         // Refresh specific views if active
-        if(currentProfileId) {
-            const p = db.employees.find(e=>e.id === currentProfileId);
-            if(p && p.name === employee) { openFullProfile(currentProfileId); }
+        if (currentProfileId) {
+            const p = db.employees.find(e => e.id === currentProfileId);
+            if (p && p.name === employee) { openFullProfile(currentProfileId); }
         }
-        if(document.getElementById('view-payroll').style.display==='block') renderPayroll();
-        if(document.getElementById('view-vouchers').style.display==='block') renderVouchers();
+        if (document.getElementById('view-payroll').style.display === 'block') renderPayroll();
+        if (document.getElementById('view-vouchers').style.display === 'block') renderVouchers();
 
         if (advanceModal) delete advanceModal.dataset.editIndex;
         alert(isEditMode ? '✅ تم تعديل الحركة المالية بنجاح.' : '✅ تم قيد الحركة المالية بنجاح في النظام المحاسبي.');
@@ -1824,7 +1886,7 @@ window.generateVoucher = async function(typeStr) {
         try {
             const { ipcRenderer } = require('electron');
             const waDbg = (level, message) => {
-                try { ipcRenderer.send('wa-debug-log', { level, message }); } catch (_) {}
+                try { ipcRenderer.send('wa-debug-log', { level, message }); } catch (_) { }
             };
             waDbg('info', `[Voucher] Start WA flow voucherNo=${voucherNo} employee="${employee}" editMode=${isEditMode}`);
 
@@ -1846,7 +1908,7 @@ window.generateVoucher = async function(typeStr) {
                         const adminCandidate = String(rs?.whatsapp || rs?.phone || '').trim();
                         if (adminCandidate) waFallback.admin = adminCandidate;
                     }
-                } catch (_) {}
+                } catch (_) { }
 
                 localStorage.setItem('wa_settings', JSON.stringify(waFallback));
                 waDbg('warn', `[Voucher] wa_settings missing -> created fallback (admin=${waFallback.admin ? 'yes' : 'no'})`);
@@ -1868,7 +1930,7 @@ window.generateVoucher = async function(typeStr) {
                                 waDbg('warn', '[Voucher] Admin missing in wa_settings -> recovered from restaurant_settings (whatsapp/phone)');
                             }
                         }
-                    } catch (_) {}
+                    } catch (_) { }
                 }
                 waDbg('info', `[Voucher] wa_settings loaded loans=${waSettings.loans} admin=${waSettings.admin ? 'yes' : 'no'}`);
                 // Default behavior: enabled unless explicitly disabled.
@@ -1885,7 +1947,7 @@ window.generateVoucher = async function(typeStr) {
                     if (empObj && empObj.phone) {
                         let phoneNum = String(empObj.phone).replace(/^0/, '+966');
                         const captionMsg = `مرحباً ${empObj.name}،\n${actionText} (${voucherNo})\nالنوع: ${typeStr}\nالقيمة: ${xf(amount)}\nالبيان: ${reason}`;
-                        
+
                         ipcRenderer.send('wa-send-message', {
                             number: phoneNum,
                             text: captionMsg,
@@ -1903,7 +1965,7 @@ window.generateVoucher = async function(typeStr) {
                     if (waSettings.admin) {
                         let adminPhone = String(waSettings.admin).replace(/^0/, '+966');
                         const adminCaptionMsg = `إشعار إداري:\n${actionText} (${voucherNo})\nالنوع: ${typeStr}\nالموظف: ${employee}\nالقيمة: ${xf(amount)}\nالبيان: ${reason}`;
-                        
+
                         ipcRenderer.send('wa-send-message', {
                             number: adminPhone,
                             text: adminCaptionMsg,
@@ -1920,8 +1982,8 @@ window.generateVoucher = async function(typeStr) {
                     waDbg('warn', '[Voucher] WA loans toggle is disabled -> skipping WA send');
                 }
             }
-        } catch(e) { console.error('Error auto-sending WA voucher', e); }
-    } catch(err) {
+        } catch (e) { console.error('Error auto-sending WA voucher', e); }
+    } catch (err) {
         console.error('Voucher Error', err);
         alert('حدث خطأ أثناء التوليد.');
     } finally {
@@ -1940,6 +2002,13 @@ window.generateVoucher = async function(typeStr) {
                 f.remove();
             } catch (_) { /* ignore */ }
         });
+
+        isVoucherGenerating = false;
+        const modalBtn = document.querySelector('#advance-modal button[onclick*="generateVoucherFromSelection"]');
+        if (modalBtn) {
+            modalBtn.disabled = false;
+            modalBtn.innerHTML = '<i class="ph ph-check-circle"></i> إصدار السند الآن';
+        }
     }
 };
 
@@ -1956,8 +2025,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (db.employees.length === 0) {
         db.employees = [
-            { id:'EMP-001', name:'أحمد الكاشير', role:'كاشير', nationality:'يمني', phone:'0551234567', iqama:'2100001111', expiry:'2026-08-14', salary:4500, loans:200, status:'active', startDate:'2024-01-15', notes:'', avatar:'' },
-            { id:'EMP-002', name:'محمد علي صالح', role:'مطبخ', nationality:'مصري', phone:'0501112223', iqama:'2200002222', expiry:'2027-01-02', salary:5200, loans:0, status:'active', startDate:'2023-06-10', notes:'شيف رئيسي' }
+            { id: 'EMP-001', name: 'أحمد الكاشير', role: 'كاشير', nationality: 'يمني', phone: '0551234567', iqama: '2100001111', expiry: '2026-08-14', salary: 4500, loans: 200, status: 'active', startDate: '2024-01-15', notes: '', avatar: '' },
+            { id: 'EMP-002', name: 'محمد علي صالح', role: 'مطبخ', nationality: 'مصري', phone: '0501112223', iqama: '2200002222', expiry: '2027-01-02', salary: 5200, loans: 0, status: 'active', startDate: '2023-06-10', notes: 'شيف رئيسي' }
         ];
         await persistDb();
     }

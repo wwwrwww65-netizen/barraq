@@ -206,7 +206,7 @@ body.light-theme .order-modal-actions {
     border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 15px;
-    transition: all 0.2s;
+    transition: opacity 0.08s, visibility 0.08s, transform 0.08s, background-color 0.08s, border-color 0.08s, box-shadow 0.08s;
     cursor: pointer;
     display: flex;
     flex-direction: column;
@@ -291,7 +291,7 @@ body.light-theme .order-modal-actions {
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: opacity 0.08s, visibility 0.08s, transform 0.08s, background-color 0.08s, border-color 0.08s, box-shadow 0.08s;
     font-family: inherit;
     display: flex;
     align-items: center;
@@ -314,7 +314,7 @@ body.light-theme .order-modal-actions {
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: opacity 0.08s, visibility 0.08s, transform 0.08s, background-color 0.08s, border-color 0.08s, box-shadow 0.08s;
     font-family: inherit;
     display: flex;
     align-items: center;
@@ -330,7 +330,7 @@ body.light-theme .order-modal-actions {
 .order-modal {
     position: fixed; inset: 0; z-index: 1000;
     background: rgba(0,0,0,0.8);
-    backdrop-filter: blur(8px);
+    /* backdrop-filter: blur(8px); (Disabled for Performance) */
     display: flex; align-items: center; justify-content: center;
 }
 

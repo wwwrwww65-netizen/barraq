@@ -38,15 +38,32 @@ body.light-theme i {
     color: inherit;
 }
 
-/* Button Text & Icons */
-body.light-theme button,
-body.light-theme .btn {
+/* Button Text & Icons - Protected for Premium Buttons */
+body.light-theme button:not(.pur-btn):not(.p-btn):not(.inv-btn-solid):not(.btn-save-role):not(.btn-primary):not([class*="kp-"]):not(.btn-close-payment):not([style*="background"]),
+body.light-theme .btn:not(.pur-btn):not(.p-btn):not(.inv-btn-solid):not(.btn-save-role):not(.btn-primary):not([class*="kp-"]):not(.btn-close-payment):not([style*="background"]) {
     color: #0f172a;
 }
 
-body.light-theme button i,
-body.light-theme .btn i {
+body.light-theme button:not(.pur-btn):not(.p-btn):not(.inv-btn-solid):not(.btn-save-role):not(.btn-primary):not([class*="kp-"]):not(.btn-close-payment):not([style*="background"]) i,
+body.light-theme .btn:not(.pur-btn):not(.p-btn):not(.inv-btn-solid):not(.btn-save-role):not(.btn-primary):not([class*="kp-"]):not(.btn-close-payment):not([style*="background"]) i {
     color: #0f172a;
+}
+
+/* Ensure white text for buttons with explicit styles or premium classes */
+body.light-theme .btn-close-payment,
+body.light-theme .btn-close-modal,
+body.light-theme .close-modal,
+body.light-theme button[style*="color:white"],
+body.light-theme button[style*="color: white"],
+body.light-theme .btn[style*="color:white"],
+body.light-theme .btn[style*="color: white"] {
+    color: white !important;
+}
+
+body.light-theme .btn-close-payment i,
+body.light-theme button[style*="color:white"] i,
+body.light-theme button[style*="color: white"] i {
+    color: white !important;
 }
 
 /* Input Fields */
@@ -116,16 +133,33 @@ body.light-theme .modal-header {
 }
 
 body.light-theme .modal-header h3 {
-    color: #0f172a !important;
+    color: #0f172a;
+}
+
+/* Ensure white text if header has background */
+body.light-theme .modal-header[style*="background"] h3,
+body.light-theme .modal-header[style*="background-image"] h3,
+body.light-theme .modal-header[style*="background-color"] h3 {
+    color: white !important;
 }
 
 body.light-theme .close-modal,
-body.light-theme .btn-close-modal {
-    color: #94a3b8 !important;
+body.light-theme .btn-close-modal,
+body.light-theme .btn-close-payment {
+    color: #94a3b8;
+}
+
+/* If the close button is inside a colored header, make it white */
+body.light-theme .modal-header[style*="background"] .btn-close-payment,
+body.light-theme .modal-header[style*="background"] .btn-close-modal,
+body.light-theme .modal-header[style*="background"] .btn-close-payment i,
+body.light-theme .modal-header[style*="background"] .btn-close-modal i {
+    color: white !important;
 }
 
 body.light-theme .close-modal:hover,
-body.light-theme .btn-close-modal:hover {
+body.light-theme .btn-close-modal:hover,
+body.light-theme .btn-close-payment:hover {
     color: #ef4444 !important;
 }
 
@@ -164,52 +198,6 @@ body.light-theme .nav-item.active {
 
 body.light-theme .nav-label {
     color: #94a3b8 !important;
-}
-
-/* Header */
-body.light-theme .top-header {
-    background: rgba(255, 255, 255, 0.95) !important;
-    border-bottom-color: rgba(0, 0, 0, 0.08) !important;
-}
-
-body.light-theme .search-bar {
-    background: rgba(0, 0, 0, 0.03) !important;
-    border-color: rgba(0, 0, 0, 0.08) !important;
-}
-
-body.light-theme .search-bar input {
-    color: #0f172a !important;
-}
-
-body.light-theme .search-bar input::placeholder {
-    color: #94a3b8 !important;
-}
-
-body.light-theme .search-bar i {
-    color: #94a3b8 !important;
-}
-
-body.light-theme .icon-btn {
-    background: rgba(0, 0, 0, 0.03) !important;
-    border-color: rgba(0, 0, 0, 0.08) !important;
-    color: #475569 !important;
-}
-
-body.light-theme .icon-btn:hover {
-    background: rgba(0, 0, 0, 0.06) !important;
-    color: #0f172a !important;
-}
-
-body.light-theme .datetime {
-    color: #64748b !important;
-}
-
-body.light-theme .user-name {
-    color: #0f172a !important;
-}
-
-body.light-theme .user-role {
-    color: #64748b !important;
 }
 
 /* Scrollbar */
@@ -353,6 +341,183 @@ body.light-theme .kp-input {
 
 body.light-theme .kp-select {
     color: var(--text-primary) !important;
+}
+
+/* Kitchen Production Dashboard Fixes */
+body.light-theme .kp-pending-wrapper {
+    background: linear-gradient(135deg, #fefce8, #fffbeb) !important;
+    border-color: #fef08a !important;
+}
+body.light-theme .kp-pending-title {
+    color: #854d0e !important;
+}
+body.light-theme .kp-pending-item {
+    background: #ffffff !important;
+    border-color: #fde68a !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
+}
+body.light-theme .kp-pending-item:hover {
+    background: #fffbeb !important;
+    border-color: #fcd34d !important;
+}
+body.light-theme .kp-pending-name {
+    color: #1e293b !important;
+}
+body.light-theme .kp-pending-id {
+    background: #fef9c3 !important;
+    color: #a16207 !important;
+}
+body.light-theme .kp-pending-info,
+body.light-theme .kp-pending-unit {
+    color: #64748b !important;
+}
+body.light-theme .kp-pending-info i {
+    color: #ca8a04 !important;
+}
+
+/* Fix Kitchen, KDS, Inventory, Purchases & Suppliers Buttons Text Color (should be white on colored bg) */
+body.light-theme .kp-action-btn,
+body.light-theme .kp-confirm-btn,
+body.light-theme .btn-kds-act.to-prep,
+body.light-theme .btn-kds-act.to-ready,
+body.light-theme .k-qty,
+body.light-theme .inv-btn-solid,
+body.light-theme .wh-receive-btn,
+body.light-theme .btn-save-role,
+body.light-theme .pur-btn,
+body.light-theme .p-btn,
+body.light-theme .pur-btn-receive,
+body.light-theme .pur-btn-edit,
+body.light-theme .pur-btn-delete,
+body.light-theme .pur-btn-cancel,
+body.light-theme .p-btn-pay,
+body.light-theme .p-btn-profile,
+body.light-theme .p-btn-solid {
+    color: white !important;
+}
+body.light-theme .kp-action-btn i,
+body.light-theme .kp-confirm-btn i,
+body.light-theme .btn-kds-act.to-prep i,
+body.light-theme .btn-kds-act.to-ready i,
+body.light-theme .inv-btn-solid i,
+body.light-theme .wh-receive-btn i,
+body.light-theme .pur-btn i,
+body.light-theme .p-btn i {
+    color: white !important;
+}
+
+/* Inventory Pending Badge Fix */
+body.light-theme #pending-count-badge {
+    color: #92400e !important;
+    background: rgba(234, 179, 8, 0.15) !important;
+    border-color: rgba(234, 179, 8, 0.4) !important;
+}
+
+body.light-theme #pending-receipts-list strong {
+    color: #0f172a !important;
+}
+
+body.light-theme #pending-receipts-list strong[style*="color:#fbbf24"] {
+    color: #ca8a04 !important; /* Darker yellow/gold for visibility */
+}
+
+/* Inventory Documents Labels Fix */
+body.light-theme .lbl-in {
+    color: #059669 !important; /* Darker green */
+    background: rgba(16, 185, 129, 0.1) !important;
+}
+body.light-theme .lbl-out {
+    color: #dc2626 !important; /* Darker red */
+    background: rgba(239, 68, 68, 0.1) !important;
+}
+body.light-theme .lbl-transfer {
+    color: #2563eb !important; /* Darker blue */
+    background: rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Fix Kitchen, KDS, Inventory, Purchases & Suppliers Buttons Text Color (should be white on colored bg) */
+body.light-theme .kp-action-btn,
+body.light-theme .kp-confirm-btn,
+body.light-theme .btn-kds-act.to-prep,
+body.light-theme .btn-kds-act.to-ready,
+body.light-theme .k-qty,
+body.light-theme .inv-btn-solid.bg-blue,
+body.light-theme .inv-btn-solid.bg-green,
+body.light-theme .inv-btn-solid.bg-red,
+body.light-theme .inv-btn-solid.bg-orange,
+body.light-theme .wh-receive-btn,
+body.light-theme .btn-save-role,
+body.light-theme .pur-btn:not(.pur-btn-print),
+body.light-theme .p-btn,
+body.light-theme .pur-btn-receive,
+body.light-theme .pur-btn-edit,
+body.light-theme .pur-btn-delete,
+body.light-theme .pur-btn-cancel,
+body.light-theme .p-btn-pay,
+body.light-theme .p-btn-profile,
+body.light-theme .p-btn-solid,
+body.light-theme .btn-primary,
+body.light-theme .bg-blue,
+body.light-theme .bg-green,
+body.light-theme .bg-red {
+    color: white !important;
+}
+body.light-theme .kp-action-btn i,
+body.light-theme .kp-confirm-btn i,
+body.light-theme .btn-kds-act.to-prep i,
+body.light-theme .btn-kds-act.to-ready i,
+body.light-theme .inv-btn-solid.bg-blue i,
+body.light-theme .inv-btn-solid.bg-green i,
+body.light-theme .inv-btn-solid.bg-red i,
+body.light-theme .wh-receive-btn i,
+body.light-theme .pur-btn:not(.pur-btn-print) i,
+body.light-theme .p-btn i,
+body.light-theme .btn-primary i,
+body.light-theme .bg-blue i,
+body.light-theme .bg-green i,
+body.light-theme .bg-red i {
+    color: white !important;
+}
+
+/* Stats Cards in Light Mode */
+/* Neutral Buttons (Print, Outline) in Light Mode */
+body.light-theme .pur-btn-print,
+body.light-theme .inv-btn-solid:not(.bg-blue):not(.bg-green):not(.bg-red):not(.bg-orange) {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    border: 1px solid #cbd5e1 !important;
+}
+body.light-theme .pur-btn-print i,
+body.light-theme .inv-btn-solid:not(.bg-blue):not(.bg-green):not(.bg-red):not(.bg-orange) i {
+    color: #475569 !important;
+}
+body.light-theme .pur-btn-print:hover,
+body.light-theme .inv-btn-solid:not(.bg-blue):not(.bg-green):not(.bg-red):not(.bg-orange):hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+body.light-theme .kp-stat-card {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
+}
+body.light-theme .kp-stat-card:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1) !important;
+    border-color: #cbd5e1 !important;
+}
+body.light-theme .kp-stat-card h3 {
+    color: #0f172a !important;
+}
+body.light-theme .kp-stat-card p {
+    color: #64748b !important;
+}
+
+/* KDS Specific Fixes */
+body.light-theme .t-timer {
+    color: #ef4444 !important;
+}
+body.light-theme .k-qty {
+    color: white !important;
 }
 
 body.light-theme .kds-header-left h1 {
@@ -724,10 +889,18 @@ body.light-theme .btn-on-him,
 body.light-theme .btn-on-him:hover,
 body.light-theme .btn-save-staff,
 body.light-theme .btn-save-staff:hover,
+body.light-theme .btn-save-staff:hover,
 body.light-theme a.btn-primary,
 body.light-theme a.btn-primary:hover,
 body.light-theme a.menu-btn-primary,
-body.light-theme a.menu-btn-primary:hover {
+body.light-theme a.menu-btn-primary:hover,
+body.light-theme .kp-action-btn,
+body.light-theme .kp-confirm-btn,
+body.light-theme .btn-kds-act.to-prep,
+body.light-theme .btn-kds-act.to-ready,
+body.light-theme .inv-btn-solid,
+body.light-theme .wh-receive-btn,
+body.light-theme .btn-save-role {
     color: white !important;
 }
 

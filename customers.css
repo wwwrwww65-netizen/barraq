@@ -159,7 +159,7 @@ body.light-theme .cust-kpi-card:hover {
     border: 1px solid var(--border-light);
     border-radius: var(--border-radius-xl);
     padding: 24px;
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: opacity 0.08s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.08s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.08s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.08s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.08s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     position: relative;
     display: flex;
     flex-direction: column;
@@ -260,9 +260,9 @@ body.light-theme .cust-kpi-card:hover {
 /* Copy essential modal styles directly here to keep module independent */
 .modal-overlay {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px);
+    background: rgba(0, 0, 0, 0.7); /* backdrop-filter: blur(5px); (Disabled for Performance) */
     display: flex; align-items: center; justify-content: center;
-    z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s ease;
+    z-index: 1000; opacity: 0; visibility: hidden; transition: opacity 0.08s ease, visibility 0.08s ease, transform 0.08s ease, background-color 0.08s ease, border-color 0.08s ease, box-shadow 0.08s ease;
     pointer-events: none;
 }
 .modal-overlay.active { opacity: 1; visibility: visible; pointer-events: auto; }
@@ -270,7 +270,7 @@ body.light-theme .cust-kpi-card:hover {
     background: var(--bg-card); border: 1px solid var(--border-color);
     border-radius: var(--border-radius-xl); width: 90%; max-width: 500px;
     box-shadow: 0 25px 50px rgba(0,0,0,0.5);
-    transform: translateY(-20px) scale(0.95); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform: translateY(-20px) scale(0.95); transition: opacity 0.08s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.08s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.08s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.08s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.08s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 .modal-overlay.active .modal-content { transform: translateY(0) scale(1); }
 .modal-header {

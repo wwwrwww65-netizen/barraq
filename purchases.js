@@ -86,35 +86,54 @@ document.addEventListener('DOMContentLoaded', async () => {
             let pColor = p.payMethod === 'credit' ? 'color:var(--accent-red)' : 'color:var(--accent-green)';
 
             const isReceived  = p.status === 'مستلمة بالمخزن';
+            const isPendingWh = p.status === 'قيد الاستلام';
             const isCancelled = p.status === 'ملغاة';
 
             let statusTag;
             if (isReceived)       statusTag = `<span class="inv-tag tag-safe"><i class="ph-fill ph-check-circle"></i> مُستلمة بالمخزن</span>`;
             else if (isCancelled) statusTag = `<span class="inv-tag" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid #ef4444;"><i class="ph-fill ph-x-circle"></i> ملغاة</span>`;
-            else                  statusTag = `<span class="inv-tag tag-low"><i class="ph ph-clock"></i> قيد الاستلام</span>`;
+            else if (isPendingWh) statusTag = `<span class="inv-tag tag-low" style="background:rgba(234,179,8,0.15); color:#d97706; border-color:#fbbf24;"><i class="ph ph-hourglass"></i> بانتظار تأكيد المخزن</span>`;
+            else                  statusTag = `<span class="inv-tag tag-low"><i class="ph ph-clock"></i> بانتظار التوريد</span>`;
 
             const tr = document.createElement('tr');
             if (isCancelled) tr.style.opacity = '0.5';
             tr.innerHTML = `
-                <td><strong>${p.id}</strong> <div style="font-size:11px;color:var(--text-muted)">مرجع: ${p.ref}</div></td>
-                <td>${p.supName}</td>
-                <td>${p.date}</td>
-                <td style="font-weight:700">${xf(p.total)}</td>
-                <td style="${pColor}">${pLabel}</td>
+                <td>
+                    <div class="inv-id-cell">
+                        <strong>${p.id}</strong>
+                        <span class="inv-ref-label">مرجع: ${p.ref}</span>
+                    </div>
+                </td>
+                <td style="font-weight:600;">${p.supName}</td>
+                <td style="color:var(--text-secondary);">${p.date}</td>
+                <td style="font-weight:800; font-size:16px;">${xf(p.total)}</td>
+                <td style="${pColor}; font-weight:700;">${pLabel}</td>
                 <td>${statusTag}</td>
                 <td>
-                    <div class="tbl-actions" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-                        ${!isReceived && !isCancelled ? `<button class="btn-receive-pur" data-id="${p.id}" title="تأكيد الاستلام وإضافة للمخزون" style="background:var(--accent-green);color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;"><i class="ph ph-check"></i> استلام</button>` : ''}
-                        ${!isReceived && !isCancelled ? `<button class="btn-edit-pur" data-id="${p.id}" title="تعديل الفاتورة" style="background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;"><i class="ph ph-pencil"></i> تعديل</button>` : ''}
-                        ${!isReceived && !isCancelled ? `<button class="btn-delete-pur" data-id="${p.id}" title="حذف الفاتورة" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;"><i class="ph ph-trash"></i> حذف</button>` : ''}
-                        ${isReceived  ? `<button class="btn-cancel-pur" data-id="${p.id}" title="إلغاء الفاتورة" style="background:#f97316;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;"><i class="ph ph-arrow-u-up-left"></i> إلغاء</button>` : ''}
-                        <button class="print-pur" data-id="${p.id}" style="background:rgba(255,255,255,0.1);color:var(--text-secondary);border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;"><i class="ph ph-printer"></i></button>
+                    <div class="pur-btn-group">
+                        ${!isReceived && !isCancelled && !isPendingWh ? `<button class="pur-btn pur-btn-receive btn-receive-pur" data-id="${p.id}" title="إبلاغ المخازن بالوصول"><i class="ph ph-truck"></i> استلام</button>` : ''}
+                        ${!isReceived && !isCancelled ? `<button class="pur-btn pur-btn-edit btn-edit-pur" data-id="${p.id}" title="تعديل"><i class="ph ph-pencil"></i></button>` : ''}
+                        ${!isReceived && !isCancelled ? `<button class="pur-btn pur-btn-delete btn-delete-pur" data-id="${p.id}" title="حذف"><i class="ph ph-trash"></i></button>` : ''}
+                        ${isReceived  ? `<button class="pur-btn pur-btn-cancel btn-cancel-pur" data-id="${p.id}" title="إلغاء"><i class="ph ph-arrow-u-up-left"></i> إلغاء</button>` : ''}
+                        <button class="pur-btn pur-btn-print print-pur" data-id="${p.id}" title="طباعة"><i class="ph ph-printer"></i></button>
                     </div>
                 </td>
             `;
             fragment.appendChild(tr);
         });
         tbody.appendChild(fragment);
+        
+        const tfoot = document.getElementById('pur-tfoot');
+        if (tfoot) {
+            const sumTotal = filtered.reduce((s, p) => s + (p.total || 0), 0);
+            tfoot.innerHTML = `
+                <tr style="background:#f8fafc; border-top:2px solid #94a3b8; font-weight:bold;">
+                    <td colspan="3" style="text-align:left; padding:12px;">الإجمالي الكلي للفواتير المحددة بالبحث:</td>
+                    <td colspan="4" style="font-size:16px; color:#10b981; padding:12px;">${xf(sumTotal)}</td>
+                </tr>
+            `;
+        }
+
         _renderPurPagination(purCurrentPage, totalPages, total, tbody);
 
         // ربط الأحداث
@@ -128,8 +147,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.addEventListener('click', async e => {
                 const pur = purchases.find(x => x.id === e.currentTarget.dataset.id);
                 if (!pur) return;
-                if (!confirm(`هل تؤكد استلام الفاتورة ${pur.id} وإضافة الكميات للمخزون؟`)) return;
-                await receivePurchaseToInventory(pur);
+                if (!confirm(`هل تريد إبلاغ المستودع بوصول الفاتورة ${pur.id} لبدء إجراءات الفحص والاستلام؟`)) return;
+                await notifyWarehouseOfArrival(pur);
             });
         });
         tbody.querySelectorAll('.btn-edit-pur').forEach(btn => {
@@ -164,7 +183,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const start = (page - 1) * PUR_PAGE_SIZE + 1;
         const end   = Math.min(page * PUR_PAGE_SIZE, total);
-        const bs = (active) => `background:${active?'var(--accent-blue)':'var(--bg-card)'};color:${active?'#fff':'var(--text-secondary)'};border:1px solid ${active?'var(--accent-blue)':'var(--border-color)'};border-radius:8px;padding:6px 14px;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;transition:background-color 0.15s ease;`;
+        const bs = (active) => `
+            background: ${active ? 'linear-gradient(135deg, var(--pur-accent-blue), #1e40af)' : 'rgba(255,255,255,0.05)'};
+            color: ${active ? '#fff' : 'var(--text-secondary)'};
+            border: 1px solid ${active ? 'transparent' : 'rgba(255,255,255,0.1)'};
+            border-radius: 12px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 700;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            box-shadow: ${active ? '0 4px 10px rgba(59, 130, 246, 0.3)' : 'none'};
+        `;
 
         let html = `<span style="color:var(--text-muted);font-size:13px">صفحة ${page}/${totalPages} (فاتورة ${start}–${end} من ${total})</span>`;
         html += `<button style="${bs(false)}" id="pp-first" ${page===1?'disabled':''}>«</button>`;
@@ -213,6 +244,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     const itemsContainer = document.getElementById('items-container');
     const tpl = document.getElementById('item-row-tpl');
 
+    // Caching SKU options for performance
+    let cachedSkuOptionsHtml = '';
+    function updateSkuCache() {
+        const uniqueSkus = [];
+        const seenNames = new Set();
+        inventory.forEach(i => {
+            if(!seenNames.has(i.name)) {
+                seenNames.add(i.name);
+                uniqueSkus.push(i);
+            }
+        });
+        if (!uniqueSkus.length) {
+            cachedSkuOptionsHtml = '<option value="">— لا توجد أصناف في المخزون —</option>';
+        } else {
+            cachedSkuOptionsHtml = uniqueSkus.map(i => `<option value="${i.sku}" data-name="${i.name}">${i.name} (${i.unit})</option>`).join('');
+        }
+    }
+
     // Setup Modals
     document.getElementById('btn-new-invoice').addEventListener('click', () => {
         const supSel = document.getElementById('inv-supplier');
@@ -223,9 +272,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         document.getElementById('inv-date').valueAsDate = new Date();
+        updateSkuCache(); // Refresh cache when opening modal
 
         itemsContainer.innerHTML = '';
         addRow();
+
+        // Apply VAT preference
+        const vatCheckbox = document.getElementById('inv-apply-vat');
+        if (vatCheckbox) {
+            const savedVatPref = localStorage.getItem('pur_apply_tax_default');
+            if (savedVatPref !== null) {
+                vatCheckbox.checked = savedVatPref === 'true';
+            }
+        }
 
         calculateTotals();
         modal.classList.add('active');
@@ -236,29 +295,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         form.reset();
     }));
 
+    // --- VAT Persistence Logic ---
+    const vatCheckbox = document.getElementById('inv-apply-vat');
+    if (vatCheckbox) {
+        // Load preference
+        const savedVatPref = localStorage.getItem('pur_apply_tax_default');
+        if (savedVatPref !== null) {
+            vatCheckbox.checked = savedVatPref === 'true';
+        }
+
+        // Save preference and recalculate
+        vatCheckbox.addEventListener('change', () => {
+            localStorage.setItem('pur_apply_tax_default', vatCheckbox.checked);
+            calculateTotals();
+        });
+    }
+
+    const editVatCheckbox = document.getElementById('edit-inv-apply-vat');
+    if (editVatCheckbox) {
+        editVatCheckbox.addEventListener('change', () => {
+            calculateEditTotals();
+        });
+    }
+
     // Row Logic
     function addRow() {
         const clone = tpl.content.cloneNode(true);
         const row = clone.querySelector('.item-row');
         
-        // Fill SKUs mapping all available raw items
         const skuSel = row.querySelector('.item-sku');
-        // Let's get unique items from inventory ignoring warehouse duplicates for simplicity, just name and category
-        const uniqueSkus = [];
-        const seenNames = new Set();
-        inventory.forEach(i => {
-            if(!seenNames.has(i.name)) {
-                seenNames.add(i.name);
-                uniqueSkus.push(i);
-            }
-        });
-
-        // Add "New Item" logic ? For now just pick existing
-        if (!uniqueSkus.length) {
-            skuSel.innerHTML = '<option value="">— لا توجد أصناف في المخزون —</option>';
-        } else {
-            skuSel.innerHTML = uniqueSkus.map(i => `<option value="${i.sku}" data-name="${i.name}">${i.name} (${i.unit})</option>`).join('');
-        }
+        skuSel.innerHTML = cachedSkuOptionsHtml;
         
         // Events
         row.querySelector('.btn-remove-row').addEventListener('click', () => {
@@ -293,13 +359,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             sub += t;
         });
 
-        const taxPct = getSystemTaxRate(); // dynamic from settings
-        const tax = sub * (taxPct / 100);
+        const vatCheckbox = document.getElementById('inv-apply-vat');
+        const applyTax = vatCheckbox ? vatCheckbox.checked : true;
+        const taxPct = getSystemTaxRate(); 
+        const tax = applyTax ? (sub * (taxPct / 100)) : 0;
         const grand = sub + tax;
 
         document.getElementById('subtotal').innerText = sub.toFixed(2);
         document.getElementById('tax').innerText = tax.toFixed(2);
         document.getElementById('grandtotal').innerText = xf(grand);
+
+        // Show/Hide tax line
+        const taxLine = document.getElementById('tax-line');
+        if (taxLine) taxLine.style.display = applyTax ? 'flex' : 'none';
 
         // Update label text to show current rate
         const purTaxLabel = document.getElementById('pur-tax-label');
@@ -337,9 +409,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 const qty = Number(r.querySelector('.item-qty').value);
                 const price = Number(r.querySelector('.item-price').value);
+                const yieldVal = Number(r.querySelector('.item-yield').value) || 0;
                 if (qty <= 0) isQtyMissing = true;
 
-                purItems.push({ sku, name, qty, price });
+                purItems.push({ sku, name, qty, price, yield: yieldVal });
             });
 
             if (badLine) {
@@ -371,7 +444,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 total: grandTot,
                 payMethod: pMethod,
                 items: purItems,
-                status: 'قيد الاستلام',
+                status: 'بانتظار التوريد',
                 destWh: document.getElementById('inv-warehouse').value
             };
 
@@ -398,7 +471,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     renderKPIs();
                     renderTable();
                     printPurchaseInvoice(newPurchase);
-                    alert('✅ تم حفظ فاتورة المشتريات بنجاح.\n\nملاحظة: الكميات لم تُضف للمخزون بعد. اضغط زر "استلام" بجانب الفاتورة عند استلام البضاعة فعلياً.');
+                    alert('✅ تم حفظ فاتورة المشتريات بنجاح.\n\nملاحظة: الفاتورة الآن في حالة "بانتظار التوريد". يرجى النقر على زر "استلام" عند وصول البضاعة لإرسال إشعار للمخازن.');
                 });
             });
         } catch (error) {
@@ -412,74 +485,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // --- Receive Purchase: Add to Inventory (called when clicking Receive button) ---
-    async function receivePurchaseToInventory(pur) {
-        const taxPct = getSystemTaxRate();
-        const destWh = pur.destWh || 'main';
-
-        pur.items.forEach(buyItem => {
-            // Unit price BEFORE tax (cost price for inventory)
-            const unitCostBeforeTax = buyItem.price / (1 + taxPct / 100);
-
-            // Find existing item in the target warehouse
-            let invItem = inventory.find(i => i.sku === buyItem.sku && (i.warehouseId || 'main') === destWh);
-
-            if (invItem) {
-                // Add received qty to existing stock
-                invItem.qty = (Number(invItem.qty) || 0) + buyItem.qty;
-                // Update cost using weighted average price (or just latest price)
-                invItem.cost = unitCostBeforeTax;
-            } else {
-                // Item exists in another warehouse? Clone it
-                let sourceItem = inventory.find(i => i.sku === buyItem.sku);
-                if (sourceItem) {
-                    let clone = { ...sourceItem };
-                    clone.warehouseId = destWh;
-                    clone.qty = buyItem.qty;
-                    clone.cost = unitCostBeforeTax;
-                    inventory.push(clone);
-                } else {
-                    // Item not in inventory at all - create new entry
-                    inventory.push({
-                        sku: buyItem.sku,
-                        name: buyItem.name,
-                        category: '',
-                        unit: '',
-                        cost: unitCostBeforeTax,
-                        qty: buyItem.qty,
-                        minQty: 0,
-                        warehouseId: destWh
-                    });
-                }
-            }
-
-            // Log the inventory 'in' transaction
-            inventoryTx.push({
-                id: 'TX-' + Math.floor(Math.random() * 90000 + 10000),
-                type: 'in',
-                total: buyItem.qty * unitCostBeforeTax,
-                date: Date.now(),
-                fromWh: 'SUPPLIER',
-                toWh: destWh,
-                sku: buyItem.sku,
-                refInvoice: pur.id
-            });
-        });
-
-        // Mark the purchase as received
-        pur.status = 'مستلمة بالمخزن';
+    // --- Notify Warehouse: Change status only, warehouse confirms later ---
+    async function notifyWarehouseOfArrival(pur) {
+        // Mark the purchase as pending warehouse confirmation
+        pur.status = 'قيد الاستلام';
 
         db.purchases = purchases;
-        db.inventory = inventory;
-        db.inventoryTx = inventoryTx;
         await saveDB(db);
 
         renderKPIs();
         renderTable();
 
-        // Auto-print: Goods Received Note + Purchase Invoice
-        printReceiveNote(pur);
-        printPurchaseInvoice(pur);
+        alert(`✅ تم إرسال إشعار للمستودع (${pur.destWh}) بخصوص الفاتورة ${pur.id}.\n\nالآن يجب على أمين المستودع تأكيد الاستلام الفعلي من صفحة المخازن لتحديث الكميات.`);
     }
 
     // ═══════════════════════════════════════════════════
@@ -531,9 +548,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const unitCostBeforeTax = buyItem.price / (1 + taxPct / 100);
             let invItem = inventory.find(i => i.sku === buyItem.sku && (i.warehouseId || 'main') === destWh);
             if (invItem) {
-                const newQty = (Number(invItem.qty) || 0) - buyItem.qty;
+                const standardYield = invItem.standardYield || 1;
+                const actualYield = Number(buyItem.yield) || 0;
+                const qtyToRemove = actualYield > 0 ? (actualYield / standardYield) : buyItem.qty;
+
+                const newQty = (Number(invItem.qty) || 0) - qtyToRemove;
                 if (newQty < 0) {
-                    warnings.push(`${buyItem.name}: الكمية الحالية (${invItem.qty}) أقل من المطلوب خصمه (${buyItem.qty})`);
+                    warnings.push(`${buyItem.name}: الكمية الحالية (${invItem.qty.toFixed(2)}) أقل من المطلوب خصمه (${qtyToRemove.toFixed(2)})`);
                 }
                 invItem.qty = Math.max(0, newQty);
             }
@@ -599,6 +620,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         editItemsContainer.innerHTML = '';
         (pur.items || []).forEach(item => addEditRow(item));
 
+        // Determine if VAT was applied (if tax > 0 or based on total vs subtotal)
+        // Since we don't store tax boolean in DB, we guess or check if tax > 0
+        const taxPct = getSystemTaxRate();
+        const editVatCheckbox = document.getElementById('edit-inv-apply-vat');
+        if (editVatCheckbox) {
+            // If the saved total matches subtotal + tax, then it was applied.
+            // But usually we just default to the current system setting or true.
+            // Better: if it's an existing invoice, we can see if it had tax.
+            // For now, let's just make it toggleable.
+            editVatCheckbox.checked = pur.taxAmount > 0 || (pur.total > (pur.total / (1 + taxPct/100)));
+        }
+
         calculateEditTotals();
         editModal.classList.add('active');
     }
@@ -655,15 +688,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             row.querySelector('.item-row-total').value = t.toFixed(2);
             sub += t;
         });
+
+        const editVatCheckbox = document.getElementById('edit-inv-apply-vat');
+        const applyTax = editVatCheckbox ? editVatCheckbox.checked : true;
         const taxPct = getSystemTaxRate();
-        const tax = sub * (taxPct / 100);
+        const tax = applyTax ? (sub * (taxPct / 100)) : 0;
         const grand = sub + tax;
+
         const el = document.getElementById('edit-grandtotal');
         if (el) el.innerText = xf(grand);
         const taxEl = document.getElementById('edit-tax');
         if (taxEl) taxEl.innerText = tax.toFixed(2);
         const subEl = document.getElementById('edit-subtotal');
         if (subEl) subEl.innerText = sub.toFixed(2);
+
+        const taxLine = document.getElementById('edit-tax-line');
+        if (taxLine) taxLine.style.display = applyTax ? 'flex' : 'none';
     }
 
     // أزرار إضافة صنف وإغلاق modal التعديل

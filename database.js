@@ -28,15 +28,43 @@ function loadDB() {
 }
 
 function saveDB(dbData) {
-    fs.writeFileSync(getDbPath(), JSON.stringify(dbData, null, 2));
+    const dbPath = getDbPath();
+    const tempPath = dbPath + '.tmp';
+    try {
+        const jsonContent = JSON.stringify(dbData, null, 2);
+        fs.writeFileSync(tempPath, jsonContent, 'utf8');
+        
+        // Use synchronous rename for simplicity in this synchronous-looking function
+        // but ensure we handle potential Windows file locks
+        let success = false;
+        for (let i = 0; i < 5; i++) {
+            try {
+                if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
+                fs.renameSync(tempPath, dbPath);
+                success = true;
+                break;
+            } catch (e) {
+                console.warn(`[DB Save] Rename attempt ${i+1} failed, retrying...`, e.message);
+                // Simple busy wait
+                const start = Date.now();
+                while (Date.now() - start < 100) {} 
+            }
+        }
+        if (!success) throw new Error('Failed to rename temp database file after 5 attempts');
+    } catch (e) {
+        console.error('[DB] Atomic save failed:', e.message);
+        // Fallback to direct write if atomic fails for some reason
+        fs.writeFileSync(dbPath, JSON.stringify(dbData, null, 2));
+    }
 }
 
 // Helper methods exposed to IPC
 /**
  * بناء قائمة خصومات مخزون لسطر فاتورة: وصفة اختيارية على المنتج أو مطابقة اسم الصنف المباع.
  * @param {string|undefined} warehouseId - إن وُجدت: البحث فقط داخل هذا المستودع (وضع المطبخ التلقائي)
+ * @param {string} orderId - رقم الفاتورة للتوثيق
  */
-function buildLineDeductions(db, lineItem, warehouseId) {
+function buildLineDeductions(db, lineItem, warehouseId, orderId = '') {
     const qtySold = Number(lineItem.qty) || 1;
     const soldName = lineItem.name || lineItem.nameAr;
     const useWh = warehouseId != null && warehouseId !== '';
@@ -53,25 +81,98 @@ function buildLineDeductions(db, lineItem, warehouseId) {
             const n = r.name || r.inventoryName;
             const per = Number(r.qtyPerUnit) || Number(r.qty) || 0;
             const q = per * qtySold;
-            if (n && q > 0) lines.push({ name: n, qty: q });
+            const s = r.sku || '';
+            if (n && q > 0) lines.push({ name: n, qty: q, sku: s });
         }
     } else if (soldName) {
-        lines.push({ name: soldName, qty: qtySold });
+        lines.push({ name: soldName, qty: qtySold, sku: lineItem.sku || '' });
     }
 
-    const findInv = (invName) => {
-        if (useWh) {
-            return db.inventory.find(
-                (inv) => inv.name === invName && (inv.warehouseId || 'main') === warehouseId
-            );
+    const findInv = (invName, invSku = '') => {
+        const cleanName = (invName || "").trim();
+        const cleanSku = (invSku || "").trim();
+        
+        // POS deduction priority: Restaurant (Kitchen) -> Beverages -> Main
+        const priorities = ['restaurant', 'beverages', 'main'];
+        
+        // 1. Try matching by SKU (if provided) in priority warehouses
+        if (cleanSku) {
+            for (const p of priorities) {
+                const match = (db.inventory || []).find(
+                    (inv) => (inv.sku || "").trim() === cleanSku && (inv.warehouseId || 'main') === p
+                );
+                if (match) return match;
+            }
         }
-        return db.inventory.find((inv) => inv.name === invName);
+
+        // 2. Try matching by Name in priority warehouses
+        for (const p of priorities) {
+            const match = (db.inventory || []).find(
+                (inv) => (inv.name || "").trim() === cleanName && (inv.warehouseId || 'main') === p
+            );
+            if (match) return match;
+        }
+
+        // 3. Fallback to requested wh or any match (SKU first, then Name)
+        if (useWh) {
+            if (cleanSku) {
+                const skuMatch = (db.inventory || []).find(
+                    (inv) => (inv.sku || "").trim() === cleanSku && (inv.warehouseId || 'main') === warehouseId
+                );
+                if (skuMatch) return skuMatch;
+            }
+            const nameMatch = (db.inventory || []).find(
+                (inv) => (inv.name || "").trim() === cleanName && (inv.warehouseId || 'main') === warehouseId
+            );
+            if (nameMatch) return nameMatch;
+        }
+
+        // Final fallback: any restaurant match or any general match
+        const resMatch = (db.inventory || []).find((inv) => (
+            (cleanSku && (inv.sku || "").trim() === cleanSku) || 
+            (cleanName && (inv.name || "").trim() === cleanName)
+        ) && (inv.warehouseId || 'main') === 'restaurant');
+        
+        if (resMatch) return resMatch;
+
+        return (db.inventory || []).find((inv) => (
+            (cleanSku && (inv.sku || "").trim() === cleanSku) || 
+            (cleanName && (inv.name || "").trim() === cleanName)
+        ));
     };
 
     for (const d of lines) {
-        const row = findInv(d.name);
+        const row = findInv(d.name, d.sku);
         if (row) {
-            row.qty = (Number(row.qty) || 0) - d.qty;
+            const oldQty = Number(row.qty) || 0;
+            const deduction = Number(d.qty) || 0;
+            
+            if (row.physicalQty != null) {
+                const oldPhys = Number(row.physicalQty) || 0;
+                if (oldQty > 0) {
+                    // Deduct physical count proportionally to the normalized quantity
+                    row.physicalQty = oldPhys - (deduction * (oldPhys / oldQty));
+                } else {
+                    // Fallback if normalized qty is already 0
+                    row.physicalQty = oldPhys - deduction; 
+                }
+            }
+            row.qty = oldQty - deduction;
+            
+            // Record kitchen transaction if deducted from restaurant warehouse
+            if ((row.warehouseId || 'main') === 'restaurant') {
+                if (!db.kitchenTx) db.kitchenTx = [];
+                db.kitchenTx.push({
+                    id: 'SALE-' + Date.now() + '-' + Math.floor(Math.random()*1000),
+                    type: 'pos_sale',
+                    itemName: row.name,
+                    itemSku: row.sku || '',
+                    qty: d.qty,
+                    unit: row.unit || '',
+                    date: new Date().toISOString(),
+                    notes: `خصم مبيعات POS - فاتورة #${orderId || 'Direct'}`
+                });
+            }
         }
     }
 }
@@ -94,7 +195,7 @@ module.exports = {
 
             if (orderData.items) {
                 for (let item of orderData.items) {
-                    buildLineDeductions(db, item, wh);
+                    buildLineDeductions(db, item, wh, orderData.orderId);
                 }
             }
 
