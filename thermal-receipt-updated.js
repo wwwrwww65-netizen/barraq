@@ -76,8 +76,8 @@ async function printCustomerReceipt(receiptSnap) {
         try {
             const s = JSON.parse(sysSet);
             if (s.name) restName = s.name;
-            if (s.taxNumber) {
-                restTax = s.taxNumber;
+            if (s.taxNumber || s.tax) {
+                restTax = s.taxNumber || s.tax;
                 console.log('   ✓ Tax number loaded from settings:', restTax);
             } else {
                 console.warn('   ⚠️ No tax number in settings, using default:', restTax);

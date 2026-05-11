@@ -239,88 +239,108 @@ function generateTxId(prefix) {
 
 // UI Actions API bound to window so they work from generic HTML strings
 window.confirmKitchenReceiveOrder = async function(orderId) {
-    const db = await window.dbRead();
-    if (!db.issueOrders) return;
-    
-    const orderIdx = db.issueOrders.findIndex(o => o.id === orderId);
-    if (orderIdx === -1) return;
-    const order = db.issueOrders[orderIdx];
-    
-    if (!confirm(`هل أنت متأكد من استلام الصنف "${order.itemName}" (الكمية: ${order.qty}) من ${order.fromWhName}؟`)) return;
+    try {
+        const db = await window.dbRead();
+        if (!db.issueOrders) return;
+        
+        const orderIdx = db.issueOrders.findIndex(o => o.id === orderId);
+        if (orderIdx === -1) return;
+        const order = db.issueOrders[orderIdx];
+        
+        if (!await ModernDialog.confirm(`هل أنت متأكد من استلام الصنف "${order.itemName}" (الكمية: ${order.qty} ${order.unit || ''}) من ${order.fromWhName}؟`)) return;
 
-    // 1. Mark order as received
-    db.issueOrders[orderIdx].status = 'مستلم بالمطبخ';
+        // 1. Mark order as received
+        db.issueOrders[orderIdx].status = 'مستلم بالمطبخ';
 
-    // 2. Create Kitchen TX (Receive)
-    const newTx = {
-        id: generateTxId('IN'),
-        type: 'receive',
-        itemName: order.itemName,
-        itemSku: order.sku,
-        qty: order.qty,
-        unit: order.unit || '',
-        notes: `استلام أوامر المخزن - ${order.id}`,
-        date: new Date().toISOString(),
-        user: "الشيف المناوب",
-        warehouseQtyBefore: 0, 
-        warehouseQtyAfter: 0, 
-        sourceWarehouse: order.fromWh
-    };
+        const physQty = Number(order.qty) || 0;
+        const stdQty = order.stdQty != null ? Number(order.stdQty) : (physQty * (order.standardYield || 1));
 
-    if (!db.kitchenTx) db.kitchenTx = [];
-    db.kitchenTx.push(newTx);
-
-    // 3. Add to kitchen internal stock tracker AND inventory (for POS deduction)
-    if (!db.kitchenStock) db.kitchenStock = [];
-    const kIdx = db.kitchenStock.findIndex(k => (k.sku && k.sku === order.sku) || k.name === order.itemName);
-    if (kIdx !== -1) {
-        db.kitchenStock[kIdx].qty = (Number(db.kitchenStock[kIdx].qty) || 0) + order.qty;
-    } else {
-        db.kitchenStock.push({
-            name: order.itemName,
-            sku: order.sku,
+        // 2. Create Kitchen TX (Receive)
+        const newTx = {
+            id: generateTxId('IN'),
+            type: 'receive',
+            itemName: order.itemName,
+            itemSku: order.sku,
+            qty: stdQty,
             unit: order.unit || '',
-            qty: order.qty,
-            standardYield: order.standardYield || 1,
-            minQty: 3 // Default minimum
-        });
-    }
+            notes: `استلام أوامر المخزن - ${order.id}`,
+            date: new Date().toISOString(),
+            user: "الشيف المناوب",
+            warehouseQtyBefore: 0, 
+            warehouseQtyAfter: 0, 
+            sourceWarehouse: order.fromWh
+        };
 
-    // --- Sync with db.inventory (warehouseId: 'restaurant') ---
-    if (!db.inventory) db.inventory = [];
-    let invIdx = db.inventory.findIndex(i => i.sku === order.sku && i.warehouseId === 'restaurant');
-    if (invIdx === -1) {
-        // Try by name as fallback
-        invIdx = db.inventory.findIndex(i => i.name === order.itemName && i.warehouseId === 'restaurant');
-    }
+        if (!db.kitchenTx) db.kitchenTx = [];
+        db.kitchenTx.push(newTx);
 
-    if (invIdx !== -1) {
-        db.inventory[invIdx].qty = (Number(db.inventory[invIdx].qty) || 0) + order.qty;
-        db.inventory[invIdx].physicalQty = (Number(db.inventory[invIdx].physicalQty) || 0) + order.qty;
-        db.inventory[invIdx].standardYield = order.standardYield || 1;
-    } else {
-        db.inventory.push({
-            name: order.itemName,
-            sku: order.sku,
-            qty: order.qty,
-            physicalQty: order.qty,
-            unit: order.unit || '',
-            warehouseId: 'restaurant',
-            cost: order.cost || 0,
-            standardYield: order.standardYield || 1
-        });
-    }
+        // 3. Add to kitchen internal stock tracker
+        if (!db.kitchenStock) db.kitchenStock = [];
+        const kIdx = db.kitchenStock.findIndex(k => (k.sku && k.sku === order.sku) || k.name === order.itemName);
+        if (kIdx !== -1) {
+            db.kitchenStock[kIdx].qty = (Number(db.kitchenStock[kIdx].qty) || 0) + stdQty;
+        } else {
+            db.kitchenStock.push({
+                name: order.itemName,
+                sku: order.sku,
+                unit: order.unit || '',
+                qty: stdQty,
+                minQty: 3
+            });
+        }
 
-    await window.dbWrite(db);
-    currentDb = db;
+        // 4. Sync to db.inventory (warehouseId: 'restaurant') with full metadata
+        if (!db.inventory) db.inventory = [];
+        let invIdx = db.inventory.findIndex(i => i.sku === order.sku && i.warehouseId === 'restaurant');
+        if (invIdx === -1) invIdx = db.inventory.findIndex(i => i.name === order.itemName && i.warehouseId === 'restaurant');
 
-    const prefs = getKitchenPrefs();
-    if (prefs.autoPrintReceive) {
-        printKitchenReceiveReceipt(newTx, 1);
+        if (invIdx !== -1) {
+            const oldQty = Number(db.inventory[invIdx].qty) || 0;
+            const oldPhysicalQty = Number(db.inventory[invIdx].physicalQty) || 0;
+            const oldCost = Number(db.inventory[invIdx].cost) || 0;
+            const newCost = Number(order.cost) || 0;
+            const totalValue = (oldQty * oldCost) + (stdQty * newCost);
+            const totalQty = oldQty + stdQty;
+            const oldPhysicalCost = Number(db.inventory[invIdx].physicalCost) || (oldCost * (db.inventory[invIdx].standardYield || 1));
+            const newPhysicalCost = newCost * (order.standardYield || 1);
+            const totalPhysicalValue = (oldPhysicalQty * oldPhysicalCost) + (physQty * newPhysicalCost);
+            const totalPhysicalQty = oldPhysicalQty + physQty;
+            db.inventory[invIdx].qty = totalQty;
+            db.inventory[invIdx].physicalQty = totalPhysicalQty;
+            db.inventory[invIdx].cost = totalQty > 0 ? (totalValue / totalQty) : newCost;
+            db.inventory[invIdx].physicalCost = totalPhysicalQty > 0 ? (totalPhysicalValue / totalPhysicalQty) : newPhysicalCost;
+            db.inventory[invIdx].standardYield = order.standardYield || 1;
+        } else {
+            const srcItem = db.inventory.find(i => i.sku === order.sku && i.warehouseId === order.fromWh) || {};
+            db.inventory.push({
+                ...srcItem,
+                name: order.itemName,
+                sku: order.sku,
+                qty: stdQty,
+                physicalQty: physQty,
+                unit: order.unit || '',
+                warehouseId: 'restaurant',
+                cost: order.cost || 0,
+                physicalCost: order.cost * (order.standardYield || 1),
+                standardYield: order.standardYield || 1,
+                minQty: srcItem.minQty != null ? srcItem.minQty : 3
+            });
+        }
+
+        await window.dbWrite(db);
+        currentDb = db;
+
+        const prefs = getKitchenPrefs();
+        if (prefs.autoPrintReceive) {
+            printKitchenReceiveReceipt(newTx, 1);
+        }
+        
+        alert(`✅ تم استلام البضاعة (أمر صرف #${order.id}) وإضافتها لمخزون المطبخ بنجاح!`);
+        await switchTab('dashboard');
+    } catch (e) {
+        console.error(e);
+        alert('حدث خطأ أثناء تأكيد الاستلام: ' + e.message);
     }
-    
-    alert(`✅ تم استلام البضاعة (أمر صرف #${order.id}) وإضافتها لمخزون المطبخ بنجاح!`);
-    await switchTab('dashboard');
 };
 
 window.saveKitchenReceive = async function() {
@@ -473,7 +493,13 @@ function renderDashboard() {
     const txs = (currentDb && currentDb.kitchenTx) ? currentDb.kitchenTx : [];
     
     // --- Pending Issue Orders from Warehouse ---
-    const pendingOrders = (currentDb && currentDb.issueOrders) ? currentDb.issueOrders.filter(o => o.status === 'قيد الاستلام') : [];
+    const kitchenDestinations = ['restaurant', 'kitchen_main', 'kitchen', 'kitchen_cold', 'kitchen_grills', 'kitchen_pastry', 'production'];
+    const pendingOrders = (currentDb && currentDb.issueOrders)
+        ? currentDb.issueOrders.filter(o =>
+            o.status === 'قيد الاستلام' &&
+            (kitchenDestinations.includes(o.destWh) || kitchenDestinations.includes(o.destKey))
+          )
+        : [];
     
     // Update Sidebar Navigation Badge
     const navLink = document.getElementById('kp-nav-pending');
@@ -522,19 +548,45 @@ function renderDashboard() {
     }
     // -----------------------------------------
 
-    const receivedCount = txs.filter(t => t.type === 'receive').reduce((sum, t) => sum + t.qty, 0);
-    const handoverCount = txs.filter(t => t.type === 'handover').reduce((sum, t) => sum + t.qty, 0);
+    const receivedCount = Number((txs.filter(t => t.type === 'receive').reduce((sum, t) => sum + (Number(t.qty)||0), 0)).toFixed(2));
+    const handoverCount = Number((txs.filter(t => t.type === 'handover').reduce((sum, t) => sum + (Number(t.qty)||0), 0)).toFixed(2));
+
+    let receivedPhysicalCount = 0;
+    txs.filter(t => t.type === 'receive').forEach(t => {
+        let yld = 1;
+        if (currentDb && currentDb.inventory) {
+            const invItem = currentDb.inventory.find(i => (i.sku === t.itemSku || i.name === t.itemName) && i.warehouseId === 'restaurant');
+            if (invItem && invItem.standardYield) {
+                yld = Number(invItem.standardYield);
+            }
+        }
+        receivedPhysicalCount += (Number(t.qty) || 0) / yld;
+    });
+    receivedPhysicalCount = Number(receivedPhysicalCount.toFixed(2));
 
     let rowsHTML = txs.slice(-10).reverse().map(t => {
         let badge = t.type === 'receive' ? '<span class="kp-badge status-in">استلام</span>' : '<span class="kp-badge status-out">تسليم</span>';
         let dateObj = new Date(t.date);
         let timeStr = dateObj.toLocaleTimeString('ar-SA') + ' - ' + dateObj.toLocaleDateString('ar-SA');
+        
+        // Lookup standardYield to calculate physicalQty
+        let yld = 1;
+        if (currentDb && currentDb.inventory) {
+            const invItem = currentDb.inventory.find(i => (i.sku === t.itemSku || i.name === t.itemName) && i.warehouseId === 'restaurant');
+            if (invItem && invItem.standardYield) {
+                yld = Number(invItem.standardYield);
+            }
+        }
+        const stdQty = Number(t.qty) || 0;
+        const physQty = Number((stdQty / yld).toFixed(2));
+
         return `
             <tr>
                 <td>#${t.id}</td>
                 <td>${badge}</td>
                 <td>${t.itemName}</td>
-                <td>${t.qty}</td>
+                <td><strong style="color:var(--accent-orange)">${Number(stdQty.toFixed(2))}</strong></td>
+                <td><strong style="color:var(--accent-green)">${physQty}</strong></td>
                 <td>${timeStr}</td>
                 <td>${t.user || '-'}</td>
                 <td>مكتمل</td>
@@ -543,7 +595,7 @@ function renderDashboard() {
     }).join("");
 
     if (rowsHTML === "") {
-        rowsHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">لا يوجد سجل عمليات بعد.</td></tr>`;
+        rowsHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--text-muted);">لا يوجد سجل عمليات بعد.</td></tr>`;
     }
 
     return `
@@ -555,8 +607,17 @@ function renderDashboard() {
                     <i class="ph-fill ph-download-simple"></i>
                 </div>
                 <div class="kp-stat-details">
-                    <p>إجمالي المستلم (وحده)</p>
+                    <p>إجمالي المستلم (نفر/طبق)</p>
                     <h3>${receivedCount} وحدة</h3>
+                </div>
+            </div>
+            <div class="kp-stat-card">
+                <div class="kp-icon-box green">
+                    <i class="ph-fill ph-package"></i>
+                </div>
+                <div class="kp-stat-details">
+                    <p>إجمالي المستلم (كمية فعلية)</p>
+                    <h3>${receivedPhysicalCount} حبة</h3>
                 </div>
             </div>
             <div class="kp-stat-card">
@@ -596,7 +657,8 @@ function renderDashboard() {
                         <th>رقم السند</th>
                         <th>النوع</th>
                         <th>الصنف</th>
-                        <th>الكمية</th>
+                        <th>الكمية (نفر/طبق)</th>
+                        <th>الكمية الفعلية</th>
                         <th>الوقت</th>
                         <th>المسؤول</th>
                         <th>الحالة</th>
@@ -614,7 +676,13 @@ function renderDashboard() {
  * ريندر لصفحة مستقلة مخصصة فقط للأوامر المعلقة (عند الضغط من السايدبار)
  */
 function renderPendingIssues() {
-    const pendingOrders = (currentDb && currentDb.issueOrders) ? currentDb.issueOrders.filter(o => o.status === 'قيد الاستلام') : [];
+    const kitchenDestinations = ['restaurant', 'kitchen_main', 'kitchen'];
+    const pendingOrders = (currentDb && currentDb.issueOrders)
+        ? currentDb.issueOrders.filter(o =>
+            o.status === '\u0642\u064a\u062f \u0627\u0644\u0627\u0633\u062a\u0644\u0627\u0645' &&
+            (kitchenDestinations.includes(o.destWh) || kitchenDestinations.includes(o.destKey))
+          )
+        : [];
     
     if (pendingOrders.length === 0) {
         return `
@@ -1196,17 +1264,25 @@ function renderStock() {
     inv.forEach(i => {
         const n = i.name.trim();
         if (!grouped[n]) {
-            grouped[n] = { ...i, qty: 0 };
+            grouped[n] = { ...i, qty: 0, physicalQty: 0 };
         }
         grouped[n].qty += (Number(i.qty) || 0);
+        grouped[n].physicalQty += (Number(i.physicalQty) || 0);
     });
 
     const items = Object.values(grouped).sort((a,b) => a.qty - b.qty);
 
     let cardsHTML = items.map(i => {
         const min = i.minQty != null ? i.minQty : 3;
-        const isLow = Number(i.qty) <= min;
+        const yld = Number(i.standardYield) || 1;
+        const stdQty = Number(i.qty) || 0;
+        // إذا كانت physicalQty غير مسجلة، نحسبها من qty ÷ standardYield
+        const physQty = (i.physicalQty != null && Number(i.physicalQty) > 0)
+            ? Number(i.physicalQty)
+            : stdQty / yld;
+        const isLow = physQty <= min;
         const totalIn = txs.filter(t => t.type === 'receive' && t.itemName.trim() === i.name.trim()).reduce((s, t) => s + (Number(t.qty)||0), 0);
+        const fmt = (n) => Number(Number(n).toFixed(2));
         
         return `
             <div class="kp-stock-card">
@@ -1223,15 +1299,15 @@ function renderStock() {
 
                 <div class="kp-stock-main">
                     <span class="kp-qty-large" style="color: ${isLow ? '#f59e0b' : '#10b981'}">
-                        ${Math.ceil(Number(i.qty))}
+                        ${fmt(physQty)}
                         <span class="kp-qty-unit">${i.unit || 'وحدة'}</span>
                     </span>
-                    <span class="kp-qty-label">العدد الحالي (رؤوس/قطع)</span>
+                    <span class="kp-qty-label">الكمية الفعلية الحالية</span>
                 </div>
 
                 <div class="kp-stock-main" style="margin-top: 10px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 10px;">
                     <span class="kp-qty-large" style="color: var(--accent-orange); font-size: 24px;">
-                        ${parseFloat((Number(i.qty) * (i.standardYield || 1)).toFixed(2))}
+                        ${fmt(stdQty)}
                         <span class="kp-qty-unit">نفر/طبق</span>
                     </span>
                     <span class="kp-qty-label">السعة التشغيلية (جاهز للبيع)</span>
@@ -1240,7 +1316,7 @@ function renderStock() {
                 <div class="kp-stock-footer">
                     <div class="kp-audit-info">
                         <i class="ph ph-list-checks"></i>
-                        مجموع المستلم: ${totalIn}
+                        مجموع المستلم: ${fmt(totalIn)}
                     </div>
                     <div style="font-size: 11px; color: var(--text-muted)">
                         الحد الأدنى: ${min}
@@ -1270,109 +1346,26 @@ function renderStock() {
     `;
 }
 
-// Ensures that kitchenStock is always mirrored in inventory for correct POS deductions
+// Syncs kitchenStock purely from the global inventory (the master source of truth)
 async function syncKitchenStockToInventory(forceFromLog = false) {
     const db = await window.dbRead();
-    if (!db.kitchenTx) return;
-    
     let changed = false;
-    if (!db.kitchenStock) { db.kitchenStock = []; changed = true; }
-    if (!db.inventory) { db.inventory = []; changed = true; }
-
-    // 1. Audit Kitchen Transactions (In - Out)
-    const txTotals = {}; // key: sku || name
-    const txMetadata = {}; // key -> { name, sku, unit }
-
-    if (db.kitchenTx) {
-        db.kitchenTx.forEach(tx => {
-            const name = (tx.itemName || "").trim();
-            const sku = (tx.itemSku || "").trim();
-            const key = sku || name;
-            if (!key) return;
-
-            if (!txMetadata[key]) {
-                txMetadata[key] = { name, sku, unit: tx.unit || '' };
-            }
-
-            const qty = Number(tx.qty) || 0;
-            if (tx.type === 'receive') {
-                txTotals[key] = (txTotals[key] || 0) + qty;
-            } else if (tx.type === 'pos_sale' || tx.type === 'waste') {
-                // We exclude 'handover' here because it typically refers to finished products,
-                // while kitchenStock tracks raw materials/ingredients.
-                txTotals[key] = (txTotals[key] || 0) - qty;
-            }
-        });
-    }
-
-    if (forceFromLog) {
-        // Aggressively rebuild kitchenStock from Log
-        db.kitchenStock = Object.keys(txTotals).map(key => {
-            const meta = txMetadata[key];
-            return {
-                name: meta.name,
-                sku: meta.sku,
-                qty: txTotals[key],
-                unit: meta.unit,
-                minQty: 3
-            };
-        });
+    if (!db.inventory) { db.inventory = []; }
+    const restaurantInv = db.inventory.filter(i => i.warehouseId === 'restaurant');
+    const newStock = restaurantInv.map(i => ({
+        name: i.name,
+        sku: i.sku,
+        qty: i.qty,
+        unit: i.unit || '',
+        minQty: i.minQty != null ? i.minQty : 3
+    }));
+    if (JSON.stringify(db.kitchenStock) !== JSON.stringify(newStock)) {
+        db.kitchenStock = newStock;
         changed = true;
-    } else {
-        // Rebuild kitchenStock directly from txTotals (The source of truth)
-        // This ensures ghost items (like products with only handover records) are purged.
-        const newStock = Object.keys(txTotals).map(key => {
-            const meta = txMetadata[key];
-            return {
-                name: meta.name,
-                sku: meta.sku,
-                qty: txTotals[key],
-                unit: meta.unit,
-                minQty: 3
-            };
-        });
-
-        // Only update if something actually changed to avoid unnecessary writes
-        if (JSON.stringify(db.kitchenStock) !== JSON.stringify(newStock)) {
-            db.kitchenStock = newStock;
-            changed = true;
-        }
     }
-
-    // 4. Sync to Global Inventory (and deduplicate it for restaurant)
-    const otherWhInv = (db.inventory || []).filter(i => i.warehouseId !== 'restaurant');
-    const newRestaurantInv = [];
-
-    db.kitchenStock.forEach(ks => {
-        if (ks.qty === 0 && !db.kitchenTx.find(t => (t.itemName === ks.name || t.itemSku === ks.sku) && t.type === 'receive')) {
-            // Skip 0-qty items that were never received (likely artifacts)
-            return;
-        }
-        // Pull standardYield from other warehouse items if available
-        const srcItem = otherWhInv.find(i => i.sku === ks.sku || i.name === ks.name);
-        const stdY = (srcItem ? srcItem.standardYield : 0) || (ks.standardYield || 1);
-
-        newRestaurantInv.push({
-            name: ks.name,
-            sku: ks.sku,
-            qty: ks.qty,
-            unit: ks.unit || '',
-            warehouseId: 'restaurant',
-            cost: 0,
-            minQty: ks.minQty || 3,
-            standardYield: stdY
-        });
-    });
-
-    db.inventory = [...otherWhInv, ...newRestaurantInv];
-    changed = true;
-
     if (changed) {
         await window.dbWrite(db);
-        currentDb = db;
-        if (typeof switchTab === 'function') {
-            await switchTab(kpActiveTab);
-        }
+        if (typeof currentDb !== 'undefined') { currentDb = db; }
     }
 }
 

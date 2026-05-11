@@ -15,9 +15,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(30, 41, 59, 0.5);
-    /* backdrop-filter: blur(12px); (Disabled for Performance) */
-    -webkit-/* backdrop-filter: blur(12px); (Disabled for Performance) */
+    background: rgba(30, 41, 59, 0.75);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 16px;
     padding: 16px 24px;
@@ -107,9 +105,7 @@
 }
 
 .glass-card {
-    background: rgba(30, 41, 59, 0.4);
-    /* backdrop-filter: blur(16px); (Disabled for Performance) */
-    -webkit-/* backdrop-filter: blur(16px); (Disabled for Performance) */
+    background: rgba(30, 41, 59, 0.72);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 20px;
     padding: 24px;

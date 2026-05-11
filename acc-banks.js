@@ -224,7 +224,7 @@
         };
         document.getElementById('bm-title').innerHTML = titles[type] || 'معاملة مالية';
         dGroup.style.display = type === 'transfer' ? 'block' : 'none';
-        m.classList.add('active');
+        window.openModalLayer(m);
     };
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -256,7 +256,7 @@
                 if (!db.bankTransfers) db.bankTransfers = [];
                 db.bankTransfers.push(trx);
                 await window.dbWrite(db);
-                document.getElementById('bank-modal').classList.remove('active');
+                window.closeModalLayer(document.getElementById('bank-modal'));
                 
                 // تأجيل إعادة التحميل لمنع الشاشة السوداء
                 requestAnimationFrame(() => {
@@ -306,7 +306,7 @@
                 if (!db.otherIncome) db.otherIncome = [];
                 db.otherIncome.push(row);
                 await window.dbWrite(db);
-                document.getElementById('other-income-modal').classList.remove('active');
+                window.closeModalLayer(document.getElementById('other-income-modal'));
                 e.target.reset();
                 
                 // تأجيل إعادة التحميل لمنع الشاشة السوداء
@@ -327,10 +327,14 @@
         });
 
         document.getElementById('btn-open-other-income')?.addEventListener('click', () => {
-            document.getElementById('other-income-modal')?.classList.add('active');
+            const oim = document.getElementById('other-income-modal');
+            if (oim) window.openModalLayer(oim);
         });
         document.querySelectorAll('.btn-close-oi').forEach((b) =>
-            b.addEventListener('click', () => document.getElementById('other-income-modal')?.classList.remove('active')),
+            b.addEventListener('click', () => {
+                const oim = document.getElementById('other-income-modal');
+                if (oim) window.closeModalLayer(oim);
+            }),
         );
 
         if (typeof window.registerPosDatabaseRefresh === 'function') {

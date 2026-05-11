@@ -55,6 +55,16 @@ body {
                       radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.05), transparent 40%);
 }
 
+/* Prevent theme flash during page navigation before body class is applied */
+html[data-theme='light'] body {
+    background-color: #f1f5f9;
+    color: #0f172a;
+}
+html[data-theme='dark'] body {
+    background-color: #0b0f19;
+    color: #ffffff;
+}
+
 .app-container {
     display: flex;
     height: 100vh;
@@ -491,10 +501,10 @@ body {
 }
 
 .kpi-card {
-    padding: 24px;
+    padding: 20px 16px; /* Reduced side padding to give more room for numbers */
     display: flex;
     align-items: flex-start;
-    gap: 16px;
+    gap: 12px;
 }
 
 .kpi-icon {
@@ -527,18 +537,23 @@ body {
 }
 
 .kpi-value {
-    font-size: 28px;
+    font-size: clamp(16px, 3.2vw, 26px); /* More aggressive shrinking */
     font-weight: 800;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     display: flex;
     align-items: baseline;
+    justify-content: flex-start;
     gap: 4px;
+    flex-wrap: wrap; /* Fallback: allow currency to go below if absolutely no room */
+    width: 100%;
 }
 
 .currency, .total, .text-sm {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 0.55em; /* Scale relative to number size */
+    font-weight: 700;
     color: var(--text-secondary);
+    opacity: 0.8;
+    flex-shrink: 0; /* Never squash the currency symbol */
 }
 
 .kpi-trend {
@@ -1213,8 +1228,16 @@ body:not(.light-theme) .theme-toggle-btn:hover {
 /* ── Phone (≤ 640px) ── */
 @media (max-width: 640px) {
     .kpi-cards { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    .kpi-card { padding: 14px 10px; }
-    .kpi-value { font-size: 18px; }
+    .kpi-card { 
+        padding: 12px 10px; 
+        flex-direction: column; /* Stack icon and text to save horizontal space */
+        align-items: center;
+        text-align: center;
+        gap: 8px;
+    }
+    .kpi-value { 
+        justify-content: center; /* Center since we stacked vertically */
+    }
     .card-title { font-size: 15px; }
     /* الأزرار في الهيدر: إخفاء النص والاحتفاظ بالأيقونة */
     .dashboard-top-bar .btn span:not(.sr-only),
@@ -1233,9 +1256,10 @@ body:not(.light-theme) .theme-toggle-btn:hover {
 
 /* ── Small Phone (≤ 480px) ── */
 @media (max-width: 480px) {
-    .kpi-cards { grid-template-columns: 1fr 1fr; gap: 8px; }
-    .kpi-value { font-size: 16px; }
-    .currency { font-size: 11px; }
+    .kpi-cards { grid-template-columns: 1fr 1fr; gap: 6px; }
+    .kpi-card { padding: 10px 8px; }
+    .kpi-value { /* keep clamp() from base */ }
+    .currency { font-size: 10px; }
     .dashboard-grid { padding: 8px; gap: 8px; }
     /* الـ modal: عرض كامل تقريباً */
     .modal-box, .modal-content {

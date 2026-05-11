@@ -8,6 +8,13 @@ const xf = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) 
 let db = {};
 let voucherSearchQuery = '';
 let isVoucherGenerating = false;
+function getVoucherCaptureScale() {
+    const cores = Number(navigator.hardwareConcurrency) || 2;
+    const mem = Number(navigator.deviceMemory) || 0;
+    if (cores <= 2 || (mem > 0 && mem <= 2)) return 1.4;
+    if (cores <= 4 || (mem > 0 && mem <= 4)) return 1.7;
+    return 2;
+}
 
 function formatVoucherNo(n) {
     const num = Math.max(1, Number(n) || 1);
@@ -167,10 +174,7 @@ function hideAdvanceVoucherError() {
 /** رسالة تحقق داخل المودال — بدون window.alert (في Electron يكسر التركيز والكتابة). */
 function showAdvanceVoucherError(message) {
     const modal = document.getElementById('advance-modal');
-    if (modal) {
-        modal.removeAttribute('inert');
-        modal.classList.add('active');
-    }
+    if (modal) window.openModalLayer(modal);
     const el = document.getElementById('advance-voucher-inline-error');
     if (el) {
         el.textContent = message;
@@ -182,24 +186,14 @@ function closeHrModal(modalOrId) {
     const modal = typeof modalOrId === 'string' ? document.getElementById(modalOrId) : modalOrId;
     if (!modal) return;
     if (modal.id === 'advance-modal') hideAdvanceVoucherError();
-    modal.classList.remove('active');
-    modal.setAttribute('inert', '');
+    window.closeModalLayer(modal);
 }
 
 function openHrModal(modalId) {
     const m = document.getElementById(modalId);
     if (!m) return;
     if (modalId === 'advance-modal') hideAdvanceVoucherError();
-    m.removeAttribute('inert');
-    m.classList.add('active');
-
-    // Safely transfer focus inside the modal after it renders
-    setTimeout(() => {
-        const firstInput = m.querySelector('input:not([type="hidden"]), select, textarea');
-        if (firstInput) {
-            try { firstInput.focus({ preventScroll: true }); } catch (e) { }
-        }
-    }, 150);
+    window.openModalLayer(m);
 }
 
 // ── Role Config ───────────────────────────────────────────────
@@ -261,17 +255,17 @@ window.showView = function (viewId, navId) {
             }
         } catch (e) { }
 
-        // Explicitly set focus to the first field after a short delay for Electron rendering
-        setTimeout(() => {
-            const firstInput = document.getElementById('ne-name');
-            if (firstInput) {
-                try {
-                    firstInput.focus({ preventScroll: true });
-                    // Simulate click to ensure focus is active in all Electron versions
-                    firstInput.click();
-                } catch (e) { console.warn("Focus failed", e); }
-            }
-        }, 300);
+        // تركيز الحقل الأول بعد رسم اللوحة — بدون .click() الاصطناعي (يكسر الكتابة على أجهزة بطيئة / Electron)
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const firstInput = document.getElementById('ne-name');
+                if (firstInput) {
+                    try {
+                        firstInput.focus({ preventScroll: true });
+                    } catch (e) { console.warn('Focus failed', e); }
+                }
+            });
+        });
     }
 };
 
@@ -606,6 +600,7 @@ window.openFullProfile = function (id) {
         // استخدام confirm مخصص بدل native dialog لتجنب مشاكل Electron
         const confirmed = await new Promise((resolve) => {
             const overlay = document.createElement('div');
+            overlay.className = 'js-modal-layer-root';
             overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;';
 
             const dialog = document.createElement('div');
@@ -624,14 +619,17 @@ window.openFullProfile = function (id) {
 
             overlay.appendChild(dialog);
             document.body.appendChild(overlay);
+            window.syncModalBodyScroll();
 
             document.getElementById('confirm-reset-yes').onclick = () => {
                 document.body.removeChild(overlay);
+                window.syncModalBodyScroll();
                 resolve(true);
             };
 
             document.getElementById('confirm-reset-no').onclick = () => {
                 document.body.removeChild(overlay);
+                window.syncModalBodyScroll();
                 resolve(false);
             };
         });
@@ -1813,7 +1811,7 @@ window.generateVoucher = async function (typeStr) {
         await new Promise(r => setTimeout(r, 150));
 
         const canvas = await html2canvas(voucherEl, {
-            scale: 2,
+            scale: getVoucherCaptureScale(),
             useCORS: true,
             backgroundColor: '#ffffff',
             width: 800,
@@ -2176,43 +2174,35 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!db.attendance) db.attendance = [];
             ensureVoucherConfig();
             if (ensureVoucherNumbersOnDb()) await persistDb();
-            updateKPIs();
-            renderEmployees();
-            renderPayroll();
-            renderVouchers();
-            await renderDeductions();
-            populateEmpSelect();
-            loadHistoryData();
+
+            // لا تعيد رسم شبكة الموظفين الثقيلة وأنت في نموذج الإضافة/التعديل أو ملف الموظف —
+            // ذلك كان يجمّد الواجهة على الأجهزة الضعيفة ويمنع الكتابة في الحقول.
+            const addEmpOpen = document.getElementById('view-add-employee')?.style.display === 'block';
+            const profileOpen = document.getElementById('view-emp-profile')?.style.display === 'block';
+            const skipHeavyEmpGrid = addEmpOpen || profileOpen;
+            const employeesListOpen = document.getElementById('view-employees')?.style.display !== 'none';
+
+            const payrollOpen = document.getElementById('view-payroll')?.style.display === 'block';
+            const vouchersOpen = document.getElementById('view-vouchers')?.style.display === 'block';
+            const deductionsOpen = document.getElementById('view-deductions')?.style.display === 'block';
+            const historyOpen = document.getElementById('view-history')?.style.display === 'block';
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    updateKPIs();
+                    if (!skipHeavyEmpGrid && employeesListOpen) renderEmployees();
+                    if (payrollOpen) renderPayroll();
+                    if (vouchersOpen) renderVouchers();
+                    if (deductionsOpen) void renderDeductions();
+                    if (historyOpen) loadHistoryData();
+                    populateEmpSelect();
+                });
+            });
         });
     }
 
-    // ── Enhanced Modal Touch/Scroll Support for Mobile ──────────────────────────────────────
-    // Prevent body scroll when modal is open
-    const modalObserver = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            if (mutation.attributeName === 'class') {
-                const modal = mutation.target;
-                if (modal.classList.contains('modal-overlay')) {
-                    if (modal.classList.contains('active')) {
-                        document.body.style.overflow = 'hidden';
-                    } else {
-                        document.body.style.overflow = '';
-                    }
-                }
-            }
-        });
-    });
-
-    // Observe all modal overlays
-    document.querySelectorAll('.modal-overlay').forEach((modal) => {
-        modalObserver.observe(modal, { attributes: true });
-    });
-
-    // Enable smooth scrolling in modal content
     document.querySelectorAll('.modal-content').forEach((modalContent) => {
         modalContent.style.scrollBehavior = 'smooth';
-        // NOTE: We intentionally do NOT preventDefault on touchend here
-        // because it breaks text input focus on slow/touch devices in Electron
     });
 
     // Close modal when clicking outside (on overlay)

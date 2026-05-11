@@ -7,11 +7,30 @@ async function saveDB(db) {
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-    // --- Time Clock ---
-    setInterval(() => {
-        document.getElementById('kds-live-clock').innerText =
-            new Date().toLocaleTimeString('en-US', {hour12:true, hour:'2-digit', minute:'2-digit', second:'2-digit'});
-    }, 1000);
+    // --- Time Clock (يتوقف عند إخفاء النافذة لتوفير المعالج) ---
+    let kdsClockTimer = null;
+    function tickKdsClock() {
+        const el = document.getElementById('kds-live-clock');
+        if (!el || document.hidden) return;
+        el.innerText = new Date().toLocaleTimeString('en-US', {
+            hour12: true,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+        });
+    }
+    function startKdsClock() {
+        if (kdsClockTimer != null) return;
+        tickKdsClock();
+        kdsClockTimer = setInterval(tickKdsClock, 1000);
+    }
+    function stopKdsClock() {
+        if (kdsClockTimer != null) {
+            clearInterval(kdsClockTimer);
+            kdsClockTimer = null;
+        }
+    }
+    startKdsClock();
 
     // --- Load Settings ---
     const savedSet = localStorage.getItem('restaurant_settings');
@@ -131,9 +150,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const colReady = document.getElementById('col-ready');
         if(!colNew) return;
 
-        colNew.innerHTML = '';
-        colPrep.innerHTML = '';
-        colReady.innerHTML = '';
+        const colNewTickets = [];
+        const colPrepTickets = [];
+        const colReadyTickets = [];
 
         let countNew=0, countPrep=0, countReady=0;
 
@@ -145,24 +164,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Skip completed or archived
             if (status === 'done' || status === 'archived') return;
 
-            let colContainer, actionHtml;
+            let targetTickets, actionHtml;
             
             // Map status to column and button
             if(status === 'prep') {
-                colContainer = colPrep; 
+                targetTickets = colPrepTickets;
                 countPrep++;
                 actionHtml = `<button class="btn-kds-act to-ready" onclick="updateKDSStatus('${o.orderId}', 'ready')"><i class="ph-bold ph-check"></i> جاهز للاستلام</button>`;
             } else if(status === 'ready') {
-                colContainer = colReady; 
+                targetTickets = colReadyTickets;
                 countReady++;
                 actionHtml = `<button class="btn-kds-act to-done" onclick="updateKDSStatus('${o.orderId}', 'done')"><i class="ph-bold ph-check-circle"></i> تم التسليم للعميل/ويتر</button>`;
             } else {
                 // ANY other status (new, pending, empty, etc.) goes to NEW column with the button
-                colContainer = colNew; 
+                targetTickets = colNewTickets;
                 countNew++;
                 actionHtml = `<button class="btn-kds-act to-prep" onclick="updateKDSStatus('${o.orderId}', 'prep')"><i class="ph-bold ph-fire"></i> استلام وبدء التحضير</button>`;
             }
-            if(!colContainer) return;
+            if(!targetTickets) return;
 
             const otype = (o.type && o.type.includes('سفري')) ? 'سفري' : 'محلي (صالة)';
             const elapsedMins = Math.floor((Date.now() - (o.createdAt || o.timestamp || Date.now())) / 60000);
@@ -181,7 +200,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 itemsHtml = `<p style="color:var(--text-muted); font-size:12px;">(تفاصيل الطلب غير متوفرة)</p>`;
             }
 
-            colContainer.insertAdjacentHTML('beforeend', `
+            targetTickets.push(`
                 <div class="kds-ticket" id="ticket-${o.orderId}">
                     <div class="kds-ticket-head">
                         <span class="t-id"><i class="ph-fill ph-receipt text-blue"></i> ${o.orderId}</span>
@@ -200,6 +219,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             `);
         });
 
+        colNew.innerHTML = colNewTickets.join('');
+        colPrep.innerHTML = colPrepTickets.join('');
+        colReady.innerHTML = colReadyTickets.join('');
+
         document.getElementById('count-new').innerText = countNew;
         document.getElementById('count-prep').innerText = countPrep;
         document.getElementById('count-ready').innerText = countReady;
@@ -217,7 +240,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // ✅ Auto Refresh KDS every 10 seconds as backup
+    // ✅ تحديث دوري — يتوقف أثناء إخفاء النافذة (توفير موارد على الأجهزة الضعيفة)
+    let kdsPollTimer = null;
+    function startKdsPolling() {
+        if (kdsPollTimer != null) return;
+        kdsPollTimer = setInterval(fetchOrders, 10000);
+    }
+    function stopKdsPolling() {
+        if (kdsPollTimer != null) {
+            clearInterval(kdsPollTimer);
+            kdsPollTimer = null;
+        }
+    }
+    document.addEventListener('visibilitychange', async () => {
+        if (document.hidden) {
+            stopKdsClock();
+            stopKdsPolling();
+        } else {
+            startKdsClock();
+            await fetchOrders();
+            startKdsPolling();
+        }
+    });
+
     await fetchOrders();
-    setInterval(fetchOrders, 10000);
+    startKdsPolling();
 });

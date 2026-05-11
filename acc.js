@@ -802,36 +802,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         };
 
+        function getVoucherCaptureScale() {
+            const cores = Number(navigator.hardwareConcurrency) || 2;
+            const mem = Number(navigator.deviceMemory) || 0;
+            if (cores <= 2 || (mem > 0 && mem <= 2)) return 1.4;
+            if (cores <= 4 || (mem > 0 && mem <= 4)) return 1.7;
+            return 2;
+        }
+        const voucherCaptureScale = getVoucherCaptureScale();
         const modal = document.getElementById('expenseModal');
         function closeExpenseModal() {
             if (!modal) return;
-            modal.classList.remove('active');
-            modal.setAttribute('inert', '');
             const ae = document.activeElement;
             if (ae && modal.contains(ae)) {
                 try {
                     ae.blur();
                 } catch (_) { /* ignore */ }
             }
-            try {
-                document.body.setAttribute('tabindex', '-1');
-                document.body.focus({ preventScroll: true });
-                document.body.removeAttribute('tabindex');
-            } catch (_) { /* ignore */ }
+            window.closeModalLayer(modal);
         }
         document.getElementById('btn-add-expense')?.addEventListener('click', () => {
-            modal.removeAttribute('inert');
-            modal.classList.add('active');
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    const el = document.getElementById('exp-category');
-                    try {
-                        el?.focus({ preventScroll: true });
-                    } catch (_) {
-                        el?.focus();
-                    }
-                });
-            });
+            window.openModalLayer(modal, '#exp-category');
         });
         document.querySelectorAll('.btn-close-modal').forEach(b => b.addEventListener('click', () => closeExpenseModal()));
         if(document.getElementById('exp-date')) {
@@ -840,10 +831,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('exp-date').value = localYMD;
         }
 
+        const expenseForm = document.getElementById('form-expense');
+        if (expenseForm && expenseForm.__expenseSubmitHandler) {
+            expenseForm.removeEventListener('submit', expenseForm.__expenseSubmitHandler);
+        }
         // ── علم تأمين لمنع إرسال سند المصروف أكثر من مرة ──
         let _expenseWaSending = false;
-
-        document.getElementById('form-expense')?.addEventListener('submit', async (ev) => {
+        const expenseSubmitHandler = async (ev) => {
             ev.preventDefault();
 
             // منع الإرسال المزدوج بالكامل
@@ -938,7 +932,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             voucherEl.style.width = '800px';
                             await new Promise(r => setTimeout(r, 150));
 
-                            const canvas = await html2canvas(voucherEl, { scale:2, useCORS:true, backgroundColor:'#fff', width:800, windowWidth:1200, logging:false });
+                            const canvas = await html2canvas(voucherEl, { scale:voucherCaptureScale, useCORS:true, backgroundColor:'#fff', width:800, windowWidth:1200, logging:false });
 
                             const fc = document.createElement('canvas'); fc.width=1600; fc.height=1132;
                             const ctx2 = fc.getContext('2d');
@@ -1002,7 +996,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     submitBtn.innerHTML = '<i class="ph ph-check-circle"></i> اعتماد سند الصرف وحفظه';
                 }
             }
-        });
+        };
+        if (expenseForm) {
+            expenseForm.__expenseSubmitHandler = expenseSubmitHandler;
+            expenseForm.addEventListener('submit', expenseSubmitHandler);
+        }
 
         document.getElementById('search-exp')?.addEventListener('input', renderExp);
         document.getElementById('exp-period-filter')?.addEventListener('change', renderExp);
@@ -1126,7 +1124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 voucherEl.style.width = '800px';
                 await new Promise(r => setTimeout(r, 150));
 
-                const canvas = await html2canvas(voucherEl, { scale:2, useCORS:true, backgroundColor:'#fff', width:800, windowWidth:1200, logging:false });
+                const canvas = await html2canvas(voucherEl, { scale:voucherCaptureScale, useCORS:true, backgroundColor:'#fff', width:800, windowWidth:1200, logging:false });
 
                 const fc = document.createElement('canvas'); 
                 fc.width = 1600; 
@@ -1265,8 +1263,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('edit-exp-date').value = expRec.date || '';
             document.getElementById('edit-exp-payment').value = expRec.pMethod || 'cash';
 
-            editExpModal.removeAttribute('inert');
-            editExpModal.classList.add('active');
+            window.openModalLayer(editExpModal);
         }
         function openEditHrModal(hrRec, hrIdx) {
             _editingExpense = null;
@@ -1279,22 +1276,27 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('edit-exp-amount').value = hrRec.amount || '';
             document.getElementById('edit-exp-date').value = hrRec.date || '';
             document.getElementById('edit-exp-payment').value = hrRec.pMethod || 'cash';
-            editExpModal.removeAttribute('inert');
-            editExpModal.classList.add('active');
+            window.openModalLayer(editExpModal);
         }
 
         // Close edit expense modal
         document.querySelectorAll('.btn-close-edit-exp-modal').forEach(b => b.addEventListener('click', () => {
             const m = document.getElementById('editExpenseModal');
-            if (m) { m.classList.remove('active'); m.setAttribute('inert', ''); }
+            if (m) window.closeModalLayer(m);
             _editingExpense = null;
             _editingHrIndex = null;
         }));
 
+        const editExpenseForm = document.getElementById('form-edit-expense');
+        if (editExpenseForm && editExpenseForm.__expenseEditSubmitHandler) {
+            editExpenseForm.removeEventListener('submit', editExpenseForm.__expenseEditSubmitHandler);
+        }
+        let _expenseEditWaSending = false;
         // Save edited expense
-        document.getElementById('form-edit-expense')?.addEventListener('submit', async (ev) => {
+        const expenseEditSubmitHandler = async (ev) => {
             ev.preventDefault();
             if (!_editingExpense && _editingHrIndex === null) return;
+            if (_expenseEditWaSending) return;
             
             // منع الإرسال المزدوج
             const submitBtn = ev.target.querySelector('button[type="submit"]');
@@ -1302,6 +1304,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري الحفظ...';
             }
+            _expenseEditWaSending = true;
 
             try {
                 const newCat = document.getElementById('edit-exp-category').value.trim();
@@ -1319,6 +1322,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!dbNow.expenses) dbNow.expenses = [];
                 if (!dbNow.hrExpenses) dbNow.hrExpenses = [];
 
+                let editedExpenseForWa = null;
                 if (_editingExpense) {
                     const recInDb = dbNow.expenses.find(x => x.id === _editingExpense.id);
                     if (!recInDb) { alert('لم يُعثر على السند في قاعدة البيانات!'); return; }
@@ -1331,6 +1335,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     recInDb.date = newDate;
                     recInDb.pMethod = newPMethod;
                     recInDb.lastModified = new Date().toISOString();
+                    editedExpenseForWa = {
+                        id: recInDb.id,
+                        cat: recInDb.cat,
+                        desc: recInDb.desc,
+                        amount: recInDb.amount,
+                        date: recInDb.date,
+                        pMethod: recInDb.pMethod
+                    };
                 } else {
                     const hrRec = dbNow.hrExpenses[_editingHrIndex];
                     if (!hrRec) { alert('لم يُعثر على سند الموظف!'); return; }
@@ -1350,9 +1362,95 @@ document.addEventListener('DOMContentLoaded', async () => {
                 db.hrExpenses = dbNow.hrExpenses;
                 db.employees = dbNow.employees || db.employees || [];
 
+                if (editedExpenseForWa) {
+                    setTimeout(async () => {
+                        try {
+                            const waRaw = localStorage.getItem('wa_settings');
+                            if (!waRaw) return;
+                            const waSettings = JSON.parse(waRaw);
+                            if (!waSettings.expenses || !waSettings.admin) return;
+                            const adminPhone = String(waSettings.admin);
+
+                            const sysRaw = localStorage.getItem('restaurant_settings');
+                            const sysSet = sysRaw ? JSON.parse(sysRaw) : {};
+                            const todayStr = editedExpenseForWa.date || new Date().toISOString().split('T')[0];
+                            const displayDate = String(todayStr).replace(/-/g, '/');
+
+                            if(document.getElementById('ev-date')) document.getElementById('ev-date').innerText = displayDate;
+                            if(document.getElementById('ev-foot-date')) document.getElementById('ev-foot-date').innerText = displayDate;
+                            if(document.getElementById('ev-number')) document.getElementById('ev-number').innerText = editedExpenseForWa.id;
+                            if(document.getElementById('ev-cat')) document.getElementById('ev-cat').innerText = editedExpenseForWa.cat;
+                            if(document.getElementById('ev-amt')) document.getElementById('ev-amt').innerText = xf(editedExpenseForWa.amount);
+                            if(document.getElementById('ev-amt-balance')) document.getElementById('ev-amt-balance').innerText = xf(editedExpenseForWa.amount);
+                            if(document.getElementById('ev-desc')) document.getElementById('ev-desc').innerText = editedExpenseForWa.desc;
+                            if(document.getElementById('ev-pay')) document.getElementById('ev-pay').innerText = editedExpenseForWa.pMethod === 'cash' ? 'كاش' : 'حوالة بنكية';
+                            if(document.getElementById('ev-notes')) document.getElementById('ev-notes').innerText = editedExpenseForWa.desc || 'سند مصروف معتمد من النظام';
+                            if(document.getElementById('ev-rest-name')) document.getElementById('ev-rest-name').innerText = sysSet.name || '';
+                            if(document.getElementById('ev-branch')) document.getElementById('ev-branch').innerText = sysSet.branch || '';
+                            if(document.getElementById('ev-phone')) document.getElementById('ev-phone').innerText = sysSet.phone || '';
+                            const logoEl = document.getElementById('ev-logo');
+                            if(logoEl && sysSet.logo && sysSet.logo !== '2222.png') logoEl.src = sysSet.logo;
+
+                            const voucherEl = document.getElementById('exp-voucher-template');
+                            const container = document.getElementById('exp-voucher-container');
+                            if (!voucherEl || !container) return;
+                            try {
+                                container.style.position = 'fixed';
+                                container.style.top = '-9999px';
+                                container.style.left = '0';
+                                container.style.width = '840px';
+                                voucherEl.style.width = '800px';
+                                await new Promise(r => setTimeout(r, 150));
+
+                                const canvas = await html2canvas(voucherEl, { scale:voucherCaptureScale, useCORS:true, backgroundColor:'#fff', width:800, windowWidth:1200, logging:false });
+
+                                const fc = document.createElement('canvas'); fc.width=1600; fc.height=1132;
+                                const ctx2 = fc.getContext('2d');
+                                ctx2.fillStyle='#fff'; ctx2.fillRect(0,0,1600,1132);
+                                ctx2.drawImage(canvas, 0, 0, 1600, 1132);
+                                const imgData = fc.toDataURL('image/jpeg', 0.95);
+
+                                const captionMsg = [
+                                    `📌 إشعار إداري — تم تعديل سند مصروف`,
+                                    `───────────────────`,
+                                    `رقم السند: ${editedExpenseForWa.id}`,
+                                    ``,
+                                    `📂 التصنيف: ${editedExpenseForWa.cat}`,
+                                    `💰 المبلغ: ${xf(editedExpenseForWa.amount)}`,
+                                    `🗒 البيان: ${editedExpenseForWa.desc}`,
+                                ].join('\n');
+                                const { ipcRenderer } = require('electron');
+                                const hubIp =
+                                    typeof window.resolveWaHubIp === 'function'
+                                        ? window.resolveWaHubIp(waSettings)
+                                        : (waSettings.hubIp && String(waSettings.hubIp).trim()) || '';
+                                ipcRenderer.send('wa-send-message', {
+                                    number: adminPhone,
+                                    text: captionMsg,
+                                    image: imgData,
+                                    waHubIp: hubIp,
+                                    wa_mode: localStorage.getItem('wa_mode') || 'browser'
+                                });
+                                console.log('Sent edited expense voucher image to admin:', adminPhone);
+                            } finally {
+                                container.style.position = 'absolute';
+                                container.style.top = '-9999px';
+                                container.style.left = '-9999px';
+                                container.style.width = '';
+                                voucherEl.style.width = '';
+                                document.querySelectorAll('iframe.html2canvas-container').forEach((f) => {
+                                    try { f.remove(); } catch (_) { }
+                                });
+                            }
+                        } catch (waEditError) {
+                            console.error('Error sending edited expense WA voucher', waEditError);
+                        }
+                    }, 400);
+                }
+
                 // Close modal
                 const m = document.getElementById('editExpenseModal');
-                if (m) { m.classList.remove('active'); m.setAttribute('inert', ''); }
+                if (m) window.closeModalLayer(m);
                 _editingExpense = null;
                 _editingHrIndex = null;
 
@@ -1373,8 +1471,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = '<i class="ph ph-check-circle"></i> حفظ التعديلات';
                 }
+                _expenseEditWaSending = false;
             }
-        });
+        };
+        if (editExpenseForm) {
+            editExpenseForm.__expenseEditSubmitHandler = expenseEditSubmitHandler;
+            editExpenseForm.addEventListener('submit', expenseEditSubmitHandler);
+        }
     }
 
 

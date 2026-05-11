@@ -1,7 +1,17 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <script src="demo-mock.js"></script>
+    <script>
+        (function () {
+            try {
+                var theme = localStorage.getItem('sys_theme') || 'dark';
+                var isLight = theme === 'light';
+                var de = document.documentElement;
+                de.setAttribute('data-theme', isLight ? 'light' : 'dark');
+                de.style.backgroundColor = isLight ? '#f1f5f9' : '#0b0f19';
+            } catch (_) {}
+        })();
+    </script>    <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mister Casher - المصروفات والمدفوعات</title>
@@ -9,7 +19,8 @@
     <link rel="stylesheet" href="acc.css">
     <link rel="stylesheet" href="staff.css">
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
-    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/regular/style.css">
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/fill/style.css">
     <link rel="stylesheet" href="light-theme-fixes.css">
 </head>
 <body>
@@ -133,7 +144,7 @@
     </div>
 
     <!-- Modal Expense -->
-    <div class="modal-overlay" id="expenseModal" inert>
+    <div class="modal-overlay" id="expenseModal" inert data-restore-inert>
         <div class="modal-box" style="max-width:500px">
             <button class="btn-close-modal"><i class="ph ph-x"></i></button>
             <h3 style="margin-bottom:24px; color:white; display:flex; align-items:center; gap:8px;"><i class="ph-fill ph-receipt text-orange"></i> تحرير سند صرف جديد</h3>
@@ -187,13 +198,13 @@
     </div>
 
     <!-- Modal: Edit Expense -->
-    <div class="modal-overlay" id="editExpenseModal" inert>
+    <div class="modal-overlay" id="editExpenseModal" inert data-restore-inert>
         <div class="modal-box" style="max-width:500px">
             <div style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);padding:18px 20px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;margin:-24px -24px 20px;">
-                <h3 style="color:white;margin:0;display:flex;align-items:center;gap:8px;font-size:16px;">
-                    <i class="ph-fill ph-pencil"></i> تعديل سند الصرف &nbsp;<span id="edit-exp-id-label" style="font-size:13px;opacity:0.75;"></span>
+                <h3 style="color:white !important; background:transparent; margin:0; display:flex; align-items:center; gap:8px; font-size:16px;">
+                    <i class="ph-fill ph-pencil"></i> تعديل سند الصرف &nbsp;<span id="edit-exp-id-label" style="font-size:13px; opacity:0.75; color: white !important;"></span>
                 </h3>
-                <button class="btn-close-edit-exp-modal" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;"><i class="ph ph-x"></i></button>
+                <button class="btn-close-edit-exp-modal" style="background:none; border:none; color:white !important; font-size:20px; cursor:pointer;"><i class="ph ph-x"></i></button>
             </div>
             <div style="background:#f97316;color:#fff;padding:7px 14px;font-size:12px;border-radius:6px;margin-bottom:16px;display:flex;align-items:center;gap:7px;">
                 <i class="ph ph-warning"></i>

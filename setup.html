@@ -1,12 +1,23 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <script src="demo-mock.js"></script>
+    <script>
+        (function () {
+            try {
+                var theme = localStorage.getItem('sys_theme') || 'dark';
+                var isLight = theme === 'light';
+                var de = document.documentElement;
+                de.setAttribute('data-theme', isLight ? 'light' : 'dark');
+                de.style.backgroundColor = isLight ? '#f1f5f9' : '#0b0f19';
+            } catch (_) {}
+        })();
+    </script>    <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>إعداد وتهيئة النظام لأول مرة - POS</title>
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
-    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/regular/style.css">
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/fill/style.css">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -25,7 +36,7 @@
         /* Background glows */
         .bg-glow {
             position: fixed; border-radius: 50%;
-            filter: blur(80px); pointer-events: none; z-index: 0;
+            opacity: 0.35; pointer-events: none; z-index: 0;
         }
         .bg-glow-1 { width: 400px; height: 400px; background: rgba(16,185,129,.08); top: -100px; right: -100px; }
         .bg-glow-2 { width: 350px; height: 350px; background: rgba(59,130,246,.06); bottom: -100px; left: -100px; }
@@ -75,7 +86,6 @@
             background: rgba(15,23,42,.85);
             border: 1px solid rgba(255,255,255,.07);
             border-radius: 24px; padding: 32px;
-            backdrop-filter: blur(24px);
             box-shadow: 0 24px 64px rgba(0,0,0,.6);
         }
 

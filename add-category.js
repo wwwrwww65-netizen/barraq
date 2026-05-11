@@ -157,7 +157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Printer Modal Logic
     window.openPrinterSelection = async function() {
         const listContainer = document.getElementById('printers-list-container');
-        document.getElementById('printersModal').style.display = 'flex';
+        window.openModalLayer(document.getElementById('printersModal'));
         
         listContainer.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);"><i class="ph ph-spinner ph-spin" style="font-size:24px;"></i> فحص طابعات النظام...</div>';
         
@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.closePrinterSelection = function() {
-        document.getElementById('printersModal').style.display = 'none';
+        window.closeModalLayer(document.getElementById('printersModal'));
     };
 
     window.savePrinterSelection = function() {

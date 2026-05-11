@@ -20,6 +20,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     let inventory = db.inventory;
     let inventoryTx = db.inventoryTx;
 
+    // Check for edit parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('edit')) {
+        const editId = urlParams.get('edit');
+        const purToEdit = purchases.find(p => p.id === editId);
+        if (purToEdit) {
+            // Need to wait slightly for everything to initialize
+            setTimeout(() => openEditModal(purToEdit), 500);
+        }
+    }
+
     function isThisMonth(dateStr) {
         const d = new Date(dateStr);
         if (isNaN(d.getTime())) return false;
@@ -65,7 +76,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             String(p.supName || '').toLowerCase().includes(search) ||
             String(p.ref     || '').toLowerCase().includes(search)
         );
-        filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+        filtered.sort((a, b) => {
+            const dateA = new Date(a.date).getTime();
+            const dateB = new Date(b.date).getTime();
+            if (dateA !== dateB) return dateB - dateA;
+            // If same date, sort by timestamp (newest first)
+            return (b.timestamp || 0) - (a.timestamp || 0);
+        });
 
         const total      = filtered.length;
         const totalPages = Math.max(1, Math.ceil(total / PUR_PAGE_SIZE));
@@ -89,14 +106,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isPendingWh = p.status === 'قيد الاستلام';
             const isCancelled = p.status === 'ملغاة';
 
+            const isPendingCancel = p.status === 'بانتظار تأكيد إلغاء الاستلام';
+
             let statusTag;
             if (isReceived)       statusTag = `<span class="inv-tag tag-safe"><i class="ph-fill ph-check-circle"></i> مُستلمة بالمخزن</span>`;
             else if (isCancelled) statusTag = `<span class="inv-tag" style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid #ef4444;"><i class="ph-fill ph-x-circle"></i> ملغاة</span>`;
-            else if (isPendingWh) statusTag = `<span class="inv-tag tag-low" style="background:rgba(234,179,8,0.15); color:#d97706; border-color:#fbbf24;"><i class="ph ph-hourglass"></i> بانتظار تأكيد المخزن</span>`;
+            else if (isPendingWh) statusTag = `<span class="inv-tag tag-low" style="background:rgba(234,179,8,0.15); color:#d97706; border-color:#fbbf24;"><i class="ph ph-hourglass"></i> بانتظار تأكيد الاستلام</span>`;
+            else if (isPendingCancel) statusTag = `<span class="inv-tag" style="background:rgba(249,115,22,0.15); color:#ea580c; border:1px solid #f97316;"><i class="ph ph-warning-circle"></i> بانتظار تأكيد الإلغاء</span>`;
             else                  statusTag = `<span class="inv-tag tag-low"><i class="ph ph-clock"></i> بانتظار التوريد</span>`;
 
             const tr = document.createElement('tr');
             if (isCancelled) tr.style.opacity = '0.5';
+            
+            // تحديد صلاحية التعديل والحذف
+            // يُسمح فقط في حالة "بانتظار التوريد" (جديدة) أو "ملغاة" (بعد تأكيد المخزن للإلغاء)
+            const canModify = (p.status === 'بانتظار التوريد' || isCancelled);
+
             tr.innerHTML = `
                 <td>
                     <div class="inv-id-cell">
@@ -111,10 +136,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td>${statusTag}</td>
                 <td>
                     <div class="pur-btn-group">
-                        ${!isReceived && !isCancelled && !isPendingWh ? `<button class="pur-btn pur-btn-receive btn-receive-pur" data-id="${p.id}" title="إبلاغ المخازن بالوصول"><i class="ph ph-truck"></i> استلام</button>` : ''}
-                        ${!isReceived && !isCancelled ? `<button class="pur-btn pur-btn-edit btn-edit-pur" data-id="${p.id}" title="تعديل"><i class="ph ph-pencil"></i></button>` : ''}
-                        ${!isReceived && !isCancelled ? `<button class="pur-btn pur-btn-delete btn-delete-pur" data-id="${p.id}" title="حذف"><i class="ph ph-trash"></i></button>` : ''}
-                        ${isReceived  ? `<button class="pur-btn pur-btn-cancel btn-cancel-pur" data-id="${p.id}" title="إلغاء"><i class="ph ph-arrow-u-up-left"></i> إلغاء</button>` : ''}
+                        ${p.status === 'بانتظار التوريد' ? `<button class="pur-btn pur-btn-receive btn-receive-pur" data-id="${p.id}" title="إبلاغ المخازن بالوصول"><i class="ph ph-truck"></i> استلام</button>` : ''}
+                        
+                        ${canModify ? `
+                            <button class="pur-btn pur-btn-edit btn-edit-pur" data-id="${p.id}" title="تعديل"><i class="ph ph-pencil"></i></button>
+                            <button class="pur-btn pur-btn-delete btn-delete-pur" data-id="${p.id}" title="حذف"><i class="ph ph-trash"></i></button>
+                        ` : ''}
+
+                        ${isReceived ? `<button class="pur-btn pur-btn-cancel btn-cancel-pur" data-id="${p.id}" title="إلغاء الاستلام وعكس المخزون"><i class="ph ph-arrow-u-up-left"></i> إلغاء الاستلام</button>` : ''}
+                        
+                        ${isPendingCancel || isPendingWh ? `<span style="font-size:11px; color:var(--text-muted); font-style:italic;">بانتظار رد المخازن...</span>` : ''}
+
                         <button class="pur-btn pur-btn-print print-pur" data-id="${p.id}" title="طباعة"><i class="ph ph-printer"></i></button>
                     </div>
                 </td>
@@ -147,7 +179,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.addEventListener('click', async e => {
                 const pur = purchases.find(x => x.id === e.currentTarget.dataset.id);
                 if (!pur) return;
-                if (!confirm(`هل تريد إبلاغ المستودع بوصول الفاتورة ${pur.id} لبدء إجراءات الفحص والاستلام؟`)) return;
+                if (!await ModernDialog.confirm(`هل تريد إبلاغ المستودع بوصول الفاتورة ${pur.id} لبدء إجراءات الفحص والاستلام؟`)) return;
                 await notifyWarehouseOfArrival(pur);
             });
         });
@@ -160,7 +192,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         tbody.querySelectorAll('.btn-delete-pur').forEach(btn => {
             btn.addEventListener('click', async e => {
                 const pur = purchases.find(x => x.id === e.currentTarget.dataset.id);
-                if (pur) await deletePurchase(pur);
+                if (!pur) return;
+                
+                if (pur.status === 'مستلمة بالمخزن') {
+                    // إذا كانت مستلمة، نقوم بالإلغاء أولاً لعكس المخزون ثم الحذف
+                    const ok = await cancelReceivedPurchase(pur, true); // true means just reverse, don't alert yet
+                    if (!ok) return;
+                }
+                await deletePurchase(pur);
             });
         });
         tbody.querySelectorAll('.btn-cancel-pur').forEach(btn => {
@@ -287,11 +326,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         calculateTotals();
-        modal.classList.add('active');
+        window.openModalLayer(modal);
     });
 
     document.querySelectorAll('.btn-close-modal').forEach(b => b.addEventListener('click', () => {
-        modal.classList.remove('active');
+        window.closeModalLayer(modal);
         form.reset();
     }));
 
@@ -445,7 +484,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 payMethod: pMethod,
                 items: purItems,
                 status: 'بانتظار التوريد',
-                destWh: document.getElementById('inv-warehouse').value
+                destWh: document.getElementById('inv-warehouse').value,
+                timestamp: Date.now()
             };
 
             // 3. Integrate with Database
@@ -462,7 +502,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await saveDB(db);
 
             // 5. Cleanup
-            modal.classList.remove('active');
+            window.closeModalLayer(modal);
             form.reset();
             
             // تأجيل إعادة التحميل لمنع الشاشة السوداء
@@ -503,13 +543,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ❌ DELETE PURCHASE (قيد الاستلام فقط)
     // ═══════════════════════════════════════════════════
     async function deletePurchase(pur) {
-        const confirmed = confirm(
-            `⚠️ تأكيد الحذف\n\nهل أنت متأكد من حذف الفاتورة؟\n\nرقم الفاتورة: ${pur.id}\nالمورد: ${pur.supName}\nالإجمالي: ${xf(pur.total)}\n\n✅ هذه الفاتورة لم تُستلم بعد، لذا لن يتأثر المخزون.\n\nسيتم عكس مديونية المورد إن وُجدت.`
-        );
-        if (!confirmed) return;
+        const isAlreadyCancelled = pur.status === 'ملغاة';
+        const msg = isAlreadyCancelled 
+            ? `⚠️ تأكيد الحذف النهائي\n\nهل أنت متأكد من حذف الفاتورة ${pur.id} نهائياً من السجل؟`
+            : `⚠️ تأكيد الحذف\n\nهل أنت متأكد من حذف الفاتورة؟\n\nرقم الفاتورة: ${pur.id}\nالمورد: ${pur.supName}\nالإجمالي: ${xf(pur.total)}\n\n✅ سيتم حذف البيانات وعكس مديونية المورد إن وُجدت.`;
 
-        // عكس رصيد المورد إن كانت آجلة
-        if (pur.payMethod === 'credit') {
+        if (!(await window.mcasherConfirm(msg))) return;
+
+        // عكس رصيد المورد إن كانت آجلة (فقط إذا لم تكن ملغاة بالفعل لأن الإلغاء يعكس الرصيد)
+        if (!isAlreadyCancelled && pur.payMethod === 'credit') {
             const supObj = suppliers.find(s => s.id === pur.supId);
             if (supObj) {
                 supObj.balance = Math.max(0, (supObj.balance || 0) - pur.total);
@@ -526,81 +568,169 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         renderKPIs();
         renderTable();
-        alert(`✅ تم حذف الفاتورة ${pur.id} بنجاح.\n${pur.payMethod === 'credit' ? 'تم عكس مديونية المورد تلقائياً.' : ''}`);
+        await window.mcasherAlert(`✅ تم حذف الفاتورة ${pur.id} بنجاح.`);
     }
 
     // ═══════════════════════════════════════════════════
     // 🔄 CANCEL RECEIVED PURCHASE (عكس كامل للمخزون والرصيد)
     // ═══════════════════════════════════════════════════
-    async function cancelReceivedPurchase(pur) {
-        const seeItems = pur.items ? pur.items.map(i => `• ${i.name}: ${i.qty}`).join('\n') : '';
-        const confirmed = confirm(
-            `⚠️ تأكيد إلغاء الفاتورة المُستلمة\n\nرقم الفاتورة: ${pur.id}\nالمورد: ${pur.supName}\nالإجمالي: ${xf(pur.total)}\n\nالأصناف التي ستُخصم من المخزون:\n${seeItems}\n\n⚠️ تحذير: سيتم حذف الكميات من المخزون وعكس جميع التأثيرات المالية.\n\nهل تريد المتابعة؟`
-        );
-        if (!confirmed) return;
-
-        const taxPct = getSystemTaxRate();
-        const destWh = pur.destWh || 'main';
-        let warnings = [];
-
-        // عكس الكميات من المخزون
-        pur.items.forEach(buyItem => {
-            const unitCostBeforeTax = buyItem.price / (1 + taxPct / 100);
-            let invItem = inventory.find(i => i.sku === buyItem.sku && (i.warehouseId || 'main') === destWh);
-            if (invItem) {
-                const standardYield = invItem.standardYield || 1;
-                const actualYield = Number(buyItem.yield) || 0;
-                const qtyToRemove = actualYield > 0 ? (actualYield / standardYield) : buyItem.qty;
-
-                const newQty = (Number(invItem.qty) || 0) - qtyToRemove;
-                if (newQty < 0) {
-                    warnings.push(`${buyItem.name}: الكمية الحالية (${invItem.qty.toFixed(2)}) أقل من المطلوب خصمه (${qtyToRemove.toFixed(2)})`);
-                }
-                invItem.qty = Math.max(0, newQty);
-            }
-
-            // حذف سجلات حركات المخزون الخاصة بهذه الفاتورة
-            db.inventoryTx = (db.inventoryTx || []).filter(
-                tx => !(tx.refInvoice === pur.id && tx.type === 'in')
+    async function cancelReceivedPurchase(pur, silent = false) {
+        if (!silent) {
+            const confirmed = await window.mcasherConfirm(
+                `⚠️ طلب إلغاء استلام\n\nرقم الفاتورة: ${pur.id}\nالمورد: ${pur.supName}\nالإجمالي: ${xf(pur.total)}\n\nهل تريد إرسال طلب للمستودع لإلغاء الاستلام وعكس الكميات؟`
             );
-            inventoryTx.length = 0;
-            (db.inventoryTx || []).forEach(t => inventoryTx.push(t));
-        });
-
-        // عكس رصيد المورد إن كانت آجلة
-        if (pur.payMethod === 'credit') {
-            const supObj = suppliers.find(s => s.id === pur.supId);
-            if (supObj) {
-                supObj.balance = Math.max(0, (supObj.balance || 0) - pur.total);
-            }
+            if (!confirmed) return false;
         }
 
-        // تعليم الفاتورة كملغاة (لا تُحذف لضمان المراجعة)
-        pur.status = 'ملغاة';
-        pur.cancelledAt = new Date().toISOString();
-        pur.cancelledReason = 'إلغاء يدوي';
+        // تحويل الحالة لطلب إلغاء (بانتظار موافقة المستودع)
+        pur.status = 'بانتظار تأكيد إلغاء الاستلام';
+        pur.cancellationRequestedAt = new Date().toISOString();
+        pur.cancelledReason = 'طلب إلغاء يدوي من قسم المشتريات';
 
         db.purchases = purchases;
-        db.suppliers = suppliers;
-        db.inventory = inventory;
-        db.inventoryTx = inventoryTx;
         await saveDB(db);
 
-        renderKPIs();
-        renderTable();
+        if (!silent) {
+            renderKPIs();
+            renderTable();
+            await window.mcasherAlert(`✅ تم إرسال طلب إلغاء الاستلام للمستودع بخصوص الفاتورة ${pur.id}.\n\nيجب على أمين المستودع تأكيد عملية الإلغاء من صفحة المخازن لعكس الكميات.`);
+        }
+        return true;
+    }
 
-        let msg = `✅ تم إلغاء الفاتورة ${pur.id} بنجاح.\n\nتم عكس الكميات من المخزون.`;
-        if (pur.payMethod === 'credit') msg += '\nتم عكس مديونية المورد.';
-        if (warnings.length) msg += '\n\n⚠️ تنبيهات:\n' + warnings.join('\n');
-        alert(msg);
+    /**
+     * 📦 استلام تلقائي للمخزون بعد التعديل
+     * يقوم بتحديث الكميات بناءً على القيم الجديدة للفاتورة
+     * @param {Object} pur الفاتورة المعدلة
+     * @param {Array} oldItems الأصناف القديمة لعكسها (اختياري)
+     */
+    async function performAutoReceipt(pur, oldItems = []) {
+        const taxPct = getSystemTaxRate();
+        const destWh = pur.destWh || 'main';
+
+        // 1. عكس الأصناف القديمة أولاً إذا وُجدت
+        if (oldItems && oldItems.length > 0) {
+            oldItems.forEach(oldItem => {
+                let invItem = inventory.find(i => i.sku === oldItem.sku && (i.warehouseId || 'main') === destWh);
+                if (invItem) {
+                    const standardYield = invItem.standardYield || 1;
+                    const oldActualYield = Number(oldItem.yield) || 0;
+                    const qtyToRemove = oldItem.qty * (oldActualYield > 0 ? oldActualYield : standardYield);
+                    
+                    invItem.qty = Math.max(0, (invItem.qty || 0) - qtyToRemove);
+                    if (invItem.physicalQty != null) {
+                        invItem.physicalQty = Math.max(0, invItem.physicalQty - oldItem.qty);
+                    }
+                }
+            });
+            // حذف حركات المخزون القديمة لهذه الفاتورة
+            inventoryTx.length = 0;
+            db.inventoryTx = (db.inventoryTx || []).filter(tx => !(tx.refInvoice === pur.id && tx.type === 'in'));
+            db.inventoryTx.forEach(t => inventoryTx.push(t));
+        }
+
+        // 2. إضافة الأصناف الجديدة
+        pur.items.forEach(buyItem => {
+            const unitCost = buyItem.price; // السعر المدخل في الفاتورة هو أصلاً قبل الضريبة
+            let invItem = inventory.find(i => i.sku === buyItem.sku && (i.warehouseId || 'main') === destWh);
+
+            const standardYield = (invItem ? invItem.standardYield : 0) || 1;
+            const actualYield = Number(buyItem.yield) || 0;
+
+            // الإنتاجية = الكمية المشتراة × (الإنتاجية المدخلة أو المعيارية)
+            let addedQty = buyItem.qty * (actualYield > 0 ? actualYield : standardYield);
+
+            if (invItem) {
+                // تحديث الإنتاجية المعيارية إذا كانت الافتراضية
+                if (actualYield > 0 && (!invItem.standardYield || invItem.standardYield === 1)) {
+                    invItem.standardYield = actualYield;
+                }
+                const oldQty = Number(invItem.qty) || 0;
+                const oldCost = Number(invItem.cost) || 0;
+                const newCostPerYield = unitCost * (buyItem.qty / addedQty);
+                
+                const totalValue = (oldQty * oldCost) + (addedQty * newCostPerYield);
+                const totalQty = oldQty + addedQty;
+                
+                const oldPhysicalQty = Number(invItem.physicalQty) || 0;
+                const oldPhysicalCost = Number(invItem.physicalCost) || (oldCost * (invItem.standardYield || 1));
+                const totalPhysicalValue = (oldPhysicalQty * oldPhysicalCost) + (buyItem.qty * unitCost);
+                const totalPhysicalQty = oldPhysicalQty + buyItem.qty;
+                
+                invItem.qty = totalQty;
+                invItem.physicalQty = totalPhysicalQty;
+                invItem.cost = totalQty > 0 ? (totalValue / totalQty) : newCostPerYield;
+                invItem.physicalCost = totalPhysicalQty > 0 ? (totalPhysicalValue / totalPhysicalQty) : unitCost;
+            } else {
+                // محاولة نسخ الإعدادات من صنف موجود بنفس الـ SKU في مستودع آخر
+                let src = inventory.find(i => i.sku === buyItem.sku);
+                if (src) {
+                    inventory.push({
+                        ...src,
+                        warehouseId: destWh,
+                        qty: addedQty,
+                        physicalQty: buyItem.qty,
+                        cost: unitCost * (buyItem.qty / addedQty),
+                        physicalCost: unitCost
+                    });
+                } else {
+                    inventory.push({
+                        sku: buyItem.sku,
+                        name: buyItem.name,
+                        category: 'مشتريات جديدة',
+                        unit: 'وحدة',
+                        cost: unitCost,
+                        qty: addedQty,
+                        physicalQty: buyItem.qty,
+                        minQty: 0,
+                        warehouseId: destWh,
+                        standardYield: actualYield > 0 ? actualYield : 1
+                    });
+                }
+            }
+
+            // إضافة حركة مخزون جديدة للفاتورة المعدلة
+            inventoryTx.push({
+                id: 'TX-' + Math.floor(Math.random() * 90000 + 10000),
+                type: 'in',
+                total: buyItem.qty * unitCost,
+                date: Date.now(),
+                fromWh: 'SUPPLIER',
+                warehouseId: destWh,
+                sku: buyItem.sku,
+                refInvoice: pur.id,
+                actualQty: buyItem.qty,
+                normalizedQty: addedQty
+            });
+        });
+
+        pur.status = 'مستلمة بالمخزن';
+        db.inventory = inventory;
+        db.inventoryTx = inventoryTx;
+        // سيتم حفظ الـ DB في الدالة المستدعية (submit handler)
     }
 
     // ═══════════════════════════════════════════════════
     // ✏️ EDIT PURCHASE (قيد الاستلام فقط)
     // ═══════════════════════════════════════════════════
     let editingPurchase = null;
+    let wasReceivedBeforeEdit = false;
+    let oldItemsBeforeEdit = [];
 
-    function openEditModal(pur) {
+    async function openEditModal(pur) {
+        wasReceivedBeforeEdit = false;
+        oldItemsBeforeEdit = JSON.parse(JSON.stringify(pur.items || [])); // نسخة عميقة من الأصناف القديمة
+
+        if (pur.status === 'مستلمة بالمخزن') {
+            const shouldCancel = await window.mcasherConfirm('⚠️ تنبيه: هذه الفاتورة مستلمة بالفعل.\n\nهل تريد إلغاء الاستلام الآن لتمكين تعديل الكميات والأصناف؟\n(سيتم عكس المخزون والمديونية قبل فتح نافذة التعديل)');
+            if (shouldCancel) {
+                const ok = await cancelReceivedPurchase(pur, true); // إلغاء صامت
+                if (!ok) return;
+                wasReceivedBeforeEdit = true;
+            } else {
+                await window.mcasherAlert('ملاحظة: ستفتح نافذة التعديل الآن، ولكن أي تغيير في "الكميات" لن يؤثر على المخزون لأنك لم تلغِ الاستلام.');
+            }
+        }
         editingPurchase = pur;
         const editModal = document.getElementById('editPurchaseModal');
 
@@ -633,7 +763,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         calculateEditTotals();
-        editModal.classList.add('active');
+        
+        // استخدام تأخير بسيط لضمان انتهاء المتصفح من معالجة رسالة التأكيد (Confirm)
+        setTimeout(() => {
+            window.openModalLayer(editModal);
+            
+            // التأكيد على أن الحقول قابلة للتفاعل (لحل مشكلة الجمود)
+            editModal.style.pointerEvents = 'auto';
+            const firstInput = editModal.querySelector('input:not([type="hidden"]), select');
+            if (firstInput) firstInput.focus();
+        }, 300);
     }
 
     function addEditRow(item = null) {
@@ -663,6 +802,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="form-group">
                 <label>سعر شراء الوحدة</label>
                 <input type="number" step="0.01" min="0.01" class="input-modern item-price" value="${item ? item.price : ''}" placeholder="0.00" required>
+            </div>
+            <div class="form-group">
+                <label>الإنتاجية (القدرة الكلية)</label>
+                <input type="number" step="any" min="0" class="input-modern item-yield" value="${item ? (item.yield || '') : ''}" placeholder="تلقائي">
             </div>
             <div class="form-group">
                 <label>الإجمالي</label>
@@ -709,7 +852,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // أزرار إضافة صنف وإغلاق modal التعديل
     document.getElementById('btn-edit-add-row')?.addEventListener('click', () => addEditRow());
     document.querySelectorAll('.btn-close-edit-modal').forEach(b => b.addEventListener('click', () => {
-        document.getElementById('editPurchaseModal').classList.remove('active');
+        const em = document.getElementById('editPurchaseModal');
+        if (em) window.closeModalLayer(em);
         editingPurchase = null;
     }));
 
@@ -718,9 +862,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.preventDefault();
         if (!editingPurchase) return;
 
-        const editItemsContainer = document.getElementById('edit-items-container');
-        const rows = editItemsContainer.querySelectorAll('.item-row');
-        if (rows.length === 0) { alert('يجب إضافة صنف واحد على الأقل!'); return; }
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            if (submitBtn.disabled) return; // منع النقرات المتعددة
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري الحفظ...';
+        }
+
+        try {
+            const editItemsContainer = document.getElementById('edit-items-container');
+            const rows = editItemsContainer.querySelectorAll('.item-row');
+        if (rows.length === 0) { await window.mcasherAlert('يجب إضافة صنف واحد على الأقل!'); return; }
 
         const purItems = [];
         let valid = true;
@@ -731,11 +883,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const name = opt && opt.dataset ? opt.dataset.name : '';
             const qty = Number(r.querySelector('.item-qty').value);
             const price = Number(r.querySelector('.item-price').value);
+            const yieldVal = Number(r.querySelector('.item-yield').value) || 0;
             if (!sku || qty <= 0 || price <= 0) { valid = false; return; }
-            purItems.push({ sku, name, qty, price });
+            purItems.push({ sku, name, qty, price, yield: yieldVal });
         });
 
-        if (!valid) { alert('يرجى التحقق من صحة جميع الأصناف والكميات والأسعار!'); return; }
+        if (!valid) { await window.mcasherAlert('يرجى التحقق من صحة جميع الأصناف والكميات والأسعار!'); return; }
 
         const supId = document.getElementById('edit-inv-supplier').value;
         const supObj = suppliers.find(s => s.id === supId);
@@ -745,8 +898,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             ? MisterCasherCurrency.parseLoose(grandTotalRaw) || 0
             : Number(String(grandTotalRaw).replace(/[^\d.]/g, '')) || 0;
 
-        // عكس مديونية المورد القديمة إن كانت آجلة
-        if (editingPurchase.payMethod === 'credit') {
+        // عكس مديونية المورد القديمة إن كانت آجلة (فقط إذا لم تكن الفاتورة ملغاة بالفعل)
+        if (editingPurchase.payMethod === 'credit' && editingPurchase.status !== 'ملغاة') {
             const oldSup = suppliers.find(s => s.id === editingPurchase.supId);
             if (oldSup) oldSup.balance = Math.max(0, (oldSup.balance || 0) - editingPurchase.total);
         }
@@ -757,6 +910,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // تحديث بيانات الفاتورة
+        if (editingPurchase.status === 'ملغاة') {
+            editingPurchase.status = 'بانتظار التوريد';
+            editingPurchase.cancelledAt = null;
+            editingPurchase.cancelledReason = null;
+        }
+        
         editingPurchase.supId = supId;
         editingPurchase.supName = supObj ? supObj.name : editingPurchase.supName;
         editingPurchase.ref = document.getElementById('edit-inv-ref').value;
@@ -767,15 +926,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         editingPurchase.items = purItems;
         editingPurchase.lastModified = new Date().toISOString();
 
+        // استلام تلقائي إذا كانت مستلمة قبل التعديل
+        if (wasReceivedBeforeEdit) {
+            await performAutoReceipt(editingPurchase, oldItemsBeforeEdit);
+        }
+
         db.purchases = purchases;
         db.suppliers = suppliers;
         await saveDB(db);
 
-        document.getElementById('editPurchaseModal').classList.remove('active');
+        const em2 = document.getElementById('editPurchaseModal');
+        if (em2) window.closeModalLayer(em2);
+        
+        const wasAutoReceived = wasReceivedBeforeEdit;
         editingPurchase = null;
+        wasReceivedBeforeEdit = false;
+
         renderKPIs();
         renderTable();
-        alert('✅ تم تعديل الفاتورة بنجاح وتحديث جميع البيانات المرتبطة.');
+        
+        let finalMsg = '✅ تم تعديل الفاتورة بنجاح وتحديث جميع البيانات المرتبطة.';
+        if (wasAutoReceived) finalMsg += '\n📦 تم تحديث الكميات في المخزون تلقائياً.';
+        
+        await window.mcasherAlert(finalMsg);
+        } catch (err) {
+            console.error('Error saving edit:', err);
+            await window.mcasherAlert('حدث خطأ أثناء حفظ التعديلات.');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="ph ph-check-circle"></i> حفظ التعديلات';
+            }
+        }
     });
 
     // --- Print Goods Received Note (أمر استلام بضاعة) ---
@@ -784,6 +966,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         const whNames = { main: 'المستودع الرئيسي', restaurant: 'مخزن المطعم الداخلي', beverages: 'مخزن المشروبات' };
         const destWhName = whNames[pur.destWh || 'main'] || pur.destWh || 'المستودع الرئيسي';
         const dateStr = new Date().toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' });
+
+        // Load restaurant settings from localStorage (same as POS)
+        const sysSetRaw = localStorage.getItem('restaurant_settings');
+        let storeName = 'إدارة النظام';
+        let storeTax = '';
+        let storeBranch = '';
+        let storePhone = '';
+        let logoBase64 = '';
+
+        if (sysSetRaw) {
+            try {
+                const s = JSON.parse(sysSetRaw);
+                storeName = s.name || storeName;
+                storeTax = s.taxNumber || s.tax || '';
+                storeBranch = s.branch || '';
+                storePhone = s.phone || '';
+                logoBase64 = (s.logo && s.logo.startsWith('data:')) ? s.logo : '';
+            } catch (e) { console.error('Error parsing settings in printReceiveNote', e); }
+        }
+
+        let logoHtml = '';
+        if (logoBase64) {
+            logoHtml = `<img src="${logoBase64}" class="store-logo" alt="شعار المتجر">`;
+        }
 
         let itemsHtml = '';
         let subTotal = 0;
@@ -811,9 +1017,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <meta charset="UTF-8">
                 <title>أمر استلام بضاعة - ${pur.id}</title>
                 <style>
-                    body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 25px; color: #1a1a1a; font-size: 13px; }
+                    body { font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif; padding: 25px; color: #1a1a1a; font-size: 13px; }
+                    .store-logo { width: 80px; height: 80px; object-fit: contain; margin-bottom: 10px; filter: grayscale(100%); }
                     .doc-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1e293b; padding-bottom: 18px; margin-bottom: 20px; }
-                    .doc-title { font-size: 22px; font-weight: bold; color: #0f172a; margin: 0 0 5px 0; }
+                    .store-name { font-size: 20px; font-weight: 900; color: #0f172a; margin-bottom: 5px; }
+                    .store-info { font-size: 12px; color: #64748b; margin-bottom: 2px; }
+                    .tax-number { font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 5px; }
+                    .doc-title { font-size: 22px; font-weight: bold; color: #0f172a; margin: 10px 0 5px 0; }
                     .doc-subtitle { font-size: 14px; color: #10b981; font-weight: 600; }
                     .doc-meta { background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 14px; text-align: right; min-width: 240px; }
                     .doc-meta p { margin: 4px 0; font-size: 13px; }
@@ -838,6 +1048,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             <body>
                 <div class="doc-header">
                     <div>
+                        ${logoHtml}
+                        <div class="store-name">${storeName}</div>
+                        ${storeTax ? `<div class="tax-number">الرقم الضريبي: ${storeTax}</div>` : ''}
+                        <div class="store-info">${storeBranch}</div>
+                        ${storePhone ? `<div class="store-info">هاتف: ${storePhone}</div>` : ''}
+                        
                         <p class="doc-title">أمر استلام بضاعة</p>
                         <p class="doc-subtitle">Goods Received Note (GRN)</p>
                         <p style="margin-top:8px; font-size:12px; color:#64748b;">إدارة المشتريات والمخازن</p>
@@ -928,6 +1144,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         const sub = pur.total / (1 + taxPct / 100);
         const tax = pur.total - sub;
 
+        // Load restaurant settings from localStorage (same as POS)
+        const sysSetRaw = localStorage.getItem('restaurant_settings');
+        let storeName = 'إدارة النظام';
+        let storeTax = '';
+        let storeBranch = '';
+        let storePhone = '';
+        let logoBase64 = '';
+
+        if (sysSetRaw) {
+            try {
+                const s = JSON.parse(sysSetRaw);
+                storeName = s.name || storeName;
+                storeTax = s.taxNumber || s.tax || '';
+                storeBranch = s.branch || '';
+                storePhone = s.phone || '';
+                logoBase64 = (s.logo && s.logo.startsWith('data:')) ? s.logo : '';
+            } catch (e) { console.error('Error parsing settings in printPurchaseInvoice', e); }
+        }
+
+        let logoHtml = '';
+        if (logoBase64) {
+            logoHtml = `<img src="${logoBase64}" class="store-logo" alt="شعار المتجر">`;
+        }
+
         const w = window.open('', '_blank', 'width=800,height=600');
         w.document.write(`
             <html dir="rtl" lang="ar">
@@ -935,10 +1175,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <meta charset="UTF-8">
                 <title>فاتورة مشتريات وتوريد بضاعة</title>
                 <style>
-                    body { font-family: 'Segoe UI', Tahoma, Verdana, sans-serif; padding: 20px; color: #333; }
+                    body { font-family: 'Cairo', 'Segoe UI', Tahoma, Verdana, sans-serif; padding: 20px; color: #333; }
+                    .store-logo { width: 80px; height: 80px; object-fit: contain; margin-bottom: 10px; filter: grayscale(100%); }
                     .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #334155; padding-bottom: 20px; margin-bottom: 20px; }
-                    .header-left h1 { margin: 0 0 5px 0; color: #0f172a; }
-                    .header-left p { margin: 0; color: #64748b; }
+                    .header-left h1 { margin: 0 0 5px 0; color: #0f172a; font-size: 24px; font-weight: 900; }
+                    .header-left p { margin: 0; color: #64748b; font-size: 14px; }
+                    .store-info { font-size: 12px; color: #64748b; margin-bottom: 2px; }
+                    .tax-number { font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 5px; }
                     .invoice-info { text-align: right; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
                     .invoice-info p { margin: 5px 0; font-size: 14px; }
                     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -953,8 +1196,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             <body>
                 <div class="header">
                     <div class="header-left">
-                        <h1>Mister Casher للمطاعم</h1>
-                        <p>إدارة المشتريات والمخازن</p>
+                        ${logoHtml}
+                        <h1>${storeName}</h1>
+                        ${storeTax ? `<div class="tax-number">الرقم الضريبي: ${storeTax}</div>` : ''}
+                        <div class="store-info">${storeBranch}</div>
+                        ${storePhone ? `<div class="store-info">هاتف: ${storePhone}</div>` : ''}
+                        <p style="margin-top:10px;">إدارة المشتريات والمخازن</p>
                         <h2 style="margin-top:15px; color:#10b981;">فاتورة مشتريات / توريد بضاعة</h2>
                     </div>
                     <div class="invoice-info">

@@ -129,7 +129,7 @@
         }
 
         btnRebuild?.addEventListener('click', async () => {
-            if (!confirm('سيتم إعادة توليد القيود التلقائية من المبيعات والمشتريات وغيرها، مع الإبقاء على القيود اليدوية فقط. متابعة؟')) return;
+            if (!await ModernDialog.confirm('سيتم إعادة توليد القيود التلقائية من المبيعات والمشتريات وغيرها، مع الإبقاء على القيود اليدوية فقط. متابعة؟')) return;
             const db = await loadDb();
             const r = JC.rebuildJournalEntries(db);
             await window.dbWrite(db);
@@ -162,10 +162,10 @@
             addManualLineRow();
             addManualLineRow();
             document.getElementById('manual-je-memo').value = '';
-            modal.classList.add('active');
+            window.openModalLayer(modal);
         });
 
-        document.querySelectorAll('.close-manual-je').forEach((b) => b.addEventListener('click', () => modal.classList.remove('active')));
+        document.querySelectorAll('.close-manual-je').forEach((b) => b.addEventListener('click', () => window.closeModalLayer(modal)));
 
         btnAddLine?.addEventListener('click', () => addManualLineRow());
 
@@ -270,7 +270,7 @@
             if (!db.journalEntries) db.journalEntries = [];
             db.journalEntries.push(entry);
             await window.dbWrite(db);
-            modal.classList.remove('active');
+            window.closeModalLayer(modal);
             await refresh();
         });
 

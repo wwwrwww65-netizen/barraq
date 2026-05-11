@@ -219,12 +219,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             btnRet.onclick = () => { gotoReturn(order.orderId); };
         }
 
-        modal.style.display = 'flex';
+        window.openModalLayer(modal);
     };
 
     window.closeOrderDetails = function() {
         const modal = document.getElementById('orderDetailsModal');
-        modal.style.display = 'none';
+        window.closeModalLayer(modal);
         currentModalOrder = null;
     };
 

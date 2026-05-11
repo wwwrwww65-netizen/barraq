@@ -10,18 +10,32 @@ const {
 } = require('electron');
 
 // ══════════════════════════════════════════════════════════════════════
-// 🛡️ حماية الأجهزة الضعيفة من (الشاشة السوداء والتجمد)
-// يجب استدعاء هذه الأوامر قبل app.whenReady() لمنع انهيار كرت الشاشة
+// الرسوميات والأداء (يجب قبل app.whenReady())
+// • الافتراضي: تسريع العتاد مفعّل — أخف على المعالج وأسلس على الأجهزة الضعيفة.
+// • إن ظهرت شاشة سوداء: شغّل التطبيق مع المتغير البيئي MISTER_CASHER_SAFE_GRAPHICS=1
+//   (يعيد وضع «إيقاف GPU بالكامل» السابق).
 // ══════════════════════════════════════════════════════════════════════
-app.disableHardwareAcceleration(); // إيقاف تسريع الرسوميات (الحل الجذري للشاشة السوداء)
-app.commandLine.appendSwitch('disable-software-rasterizer');
-app.commandLine.appendSwitch('disable-gpu'); // تأكيد إيقاف الـ GPU بالكامل
-app.commandLine.appendSwitch('disable-gpu-compositing');
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=4096'); // منع انهيار الذاكرة (Memory Leak)
+const useSafeGraphics =
+  process.env.MISTER_CASHER_SAFE_GRAPHICS === '1' ||
+  process.env.MISTER_CASHER_SAFE_GRAPHICS === 'true';
 
-// تحسين الأداء: إعدادات GPU آمنة لمنع الشاشة السوداء
-// ملاحظة: تم حذف ignore-gpu-blocklist و enable-hardware-overlays لأنها كانت تسبب الشاشة السوداء
-// على بعض أجهزة Windows عند التعارض مع مشغلات كروت الشاشة
+if (useSafeGraphics) {
+  app.disableHardwareAcceleration();
+  app.commandLine.appendSwitch('disable-software-rasterizer');
+  app.commandLine.appendSwitch('disable-gpu');
+  app.commandLine.appendSwitch('disable-gpu-compositing');
+} else {
+  // تقليل مشاكل بعض تعريفات Vulkan دون إجبار الرسم على المعالج فقط
+  try {
+    app.commandLine.appendSwitch('disable-features', 'Vulkan');
+  } catch (_) {}
+  // رسم النصوص/الطبقات عبر GPU عند توفره — يخفف الحمل عن المعالج في الواجهات المعقدة
+  try {
+    app.commandLine.appendSwitch('enable-gpu-rasterization');
+  } catch (_) {}
+}
+
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=4096');
 
 // 🔒 Single Instance Lock - منع تشغيل أكثر من نسخة واحدة في نفس الوقت
 // (نفس النهج المستخدم في VS Code و Slack و Discord)
@@ -1127,6 +1141,23 @@ const _emptyDB = { orders: [], products: [], categories: [], inventory: [], purc
 // ⚡ In-Memory Cache — يُخزَّن في الذاكرة لتجنب قراءة القرص في كل مرة
 let _dbCache = null;
 let _dbCacheReady = false;
+let _dbWriteQueue = Promise.resolve();
+
+function _writeDbAtomicQueued(data) {
+  const payload = JSON.stringify(data, null, 2);
+  const tmpPath = `${_dbPath}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  _dbWriteQueue = _dbWriteQueue
+    .catch(() => {})
+    .then(async () => {
+      await fs.promises.writeFile(tmpPath, payload, 'utf8');
+      await fs.promises.rename(tmpPath, _dbPath);
+    })
+    .catch(async (err) => {
+      try { await fs.promises.unlink(tmpPath); } catch (_) {}
+      throw err;
+    });
+  return _dbWriteQueue;
+}
 
 async function _loadDbIntoCache() {
   try {
@@ -1203,8 +1234,8 @@ ipcMain.handle('db-write-full', async (event, data, opts) => {
     _dbCache = data;
     _dbCacheReady = true;
 
-    // Direct write to the primary database file
-    fs.writeFileSync(_dbPath, JSON.stringify(data, null, 2), 'utf8');
+    // Async atomic queued write prevents UI stalls on weak devices
+    await _writeDbAtomicQueued(data);
 
     const broadcast = !opts || opts.broadcast !== false;
     if (broadcast) broadcastDBChanged();
@@ -1578,6 +1609,7 @@ function createWindow() {
     width: 1280,
     height: 800,
     show: false, // لا تظهر النافذة فوراً لمنع الوميض الأبيض
+    paintWhenInitiallyHidden: true, // يجهّز الطبقة قبل الإظهار — انتقال أوضح وأقل تقطيع عند الفتح
     backgroundColor: '#0b0f19', // لون خلفية مظلم يطابق لون التطبيق
     autoHideMenuBar: false,
     icon: path.join(__dirname, '2222.png'),
@@ -1586,6 +1618,7 @@ function createWindow() {
       contextIsolation: false,
       backgroundThrottling: false,  // منع تبطئة الصفحة في الخلفية
       enableWebSQL: false,
+      spellcheck: false,
     }
   });
 

@@ -121,9 +121,9 @@ window.exportPageToPDF = async function(filename = 'تقرير.pdf') {
                 loader = document.createElement('div');
                 loader.id = 'pdf-export-loader';
                 loader.className = 'no-print';
-                loader.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(2, 6, 23, 0.75); z-index:999999; display:flex; align-items:center; justify-content:center; color:white; font-family:"Cairo",sans-serif; backdrop-filter:blur(8px); transition: opacity 0.3s ease;';
+                loader.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(2, 6, 23, 0.88); z-index:999999; display:flex; align-items:center; justify-content:center; color:white; font-family:"Cairo",sans-serif; transition: opacity 0.3s ease;';
                 loader.innerHTML = `
-                    <div class="pdf-loader-content" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); padding: 40px 60px; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; backdrop-filter: blur(16px); animation: floatUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);">
+                    <div class="pdf-loader-content" style="background: rgba(15, 23, 42, 0.94); border: 1px solid rgba(255,255,255,0.08); padding: 40px 60px; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; animation: floatUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);">
                         <div style="position: relative; width: 80px; height: 80px; margin-bottom: 24px; display: flex; align-items: center; justify-content: center;">
                             <!-- Outer spinning ring -->
                             <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; border: 3px solid transparent; border-top-color: #3b82f6; border-right-color: #8b5cf6; border-radius: 50%; animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;"></div>

@@ -98,11 +98,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         form.reset();
         document.getElementById('edit-comp-idx').value = '';
         if (modalTitle) modalTitle.innerHTML = `<i class="ph ph-plus-circle"></i> إضافة شركة توصيل`;
-        modal.classList.add('active');
+        window.openModalLayer(modal);
     };
 
     if (btnClose) {
-        btnClose.onclick = () => modal.classList.remove('active');
+        btnClose.onclick = () => window.closeModalLayer(modal);
     }
 
     window.editCompany = (idx) => {
@@ -114,12 +114,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('comp-active').checked = c.isActive !== false;
         
         if (modalTitle) modalTitle.innerHTML = `<i class="ph ph-pencil-simple"></i> تعديل بيانات الشركة`;
-        modal.classList.add('active');
+        window.openModalLayer(modal);
     };
 
     window.deleteCompany = async (idx) => {
         const c = companies[idx];
-        if (confirm(`هل أنت متأكد من حذف شركة التوصيل (${c.name})؟`)) {
+        if (await ModernDialog.confirm(`هل أنت متأكد من حذف شركة التوصيل (${c.name})؟`)) {
             companies.splice(idx, 1);
             const _db = await window.dbRead();
             _db.deliveryCompanies = companies;
@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         _db.deliveryCompanies = companies;
         await window.dbWrite(_db);
-        modal.classList.remove('active');
+        window.closeModalLayer(modal);
         renderCompanies(searchInput ? searchInput.value.trim() : '');
     };
 

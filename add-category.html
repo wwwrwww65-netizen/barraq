@@ -1,7 +1,17 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <script src="demo-mock.js"></script>
+    <script>
+        (function () {
+            try {
+                var theme = localStorage.getItem('sys_theme') || 'dark';
+                var isLight = theme === 'light';
+                var de = document.documentElement;
+                de.setAttribute('data-theme', isLight ? 'light' : 'dark');
+                de.style.backgroundColor = isLight ? '#f1f5f9' : '#0b0f19';
+            } catch (_) {}
+        })();
+    </script>    <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mister Casher - إضافة قسم جديد</title>
@@ -16,7 +26,8 @@
     
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <!-- Phosphor Icons -->
-    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/regular/style.css">
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/fill/style.css">
     <link rel="stylesheet" href="light-theme-fixes.css">
 </head>
 <body>
@@ -231,7 +242,7 @@
     </div>
 
     <!-- Printers Modal -->
-    <div id="printersModal" class="order-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999; backdrop-filter:blur(8px); align-items:center; justify-content:center;">
+    <div id="printersModal" class="order-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:9999; align-items:center; justify-content:center;">
         <div class="order-modal-content" style="background:var(--bg-card); width:500px; max-width:95%; border-radius:16px; border:1px solid var(--border-color); display:flex; flex-direction:column; max-height:90vh;">
             <div class="order-modal-header" style="display:flex; justify-content:space-between; align-items:center; padding:15px 20px; border-bottom:1px solid var(--border-color);">
                 <h2 style="font-size:18px; margin:0; display:flex; align-items:center; gap:8px;"><i class="ph ph-printer"></i> الطابعات المتوفرة بالنظام</h2>

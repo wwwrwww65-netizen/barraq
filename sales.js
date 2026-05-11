@@ -689,6 +689,7 @@ async function viewOrderDetails(orderId) {
         const modalContainer = document.createElement('div');
         modalContainer.innerHTML = modalHtml;
         document.body.appendChild(modalContainer);
+        window.syncModalBodyScroll();
         
         // Close on backdrop click
         modalContainer.querySelector('#order-details-modal').addEventListener('click', (e) => {
@@ -717,6 +718,7 @@ function closeOrderDetailsModal() {
     const modal = document.getElementById('order-details-modal');
     if (modal) {
         modal.parentElement.remove();
+        window.syncModalBodyScroll();
     }
 }
 

@@ -152,16 +152,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const nameInput = document.getElementById('new-role-name');
     
     document.getElementById('btn-add-new-role').addEventListener('click', () => {
-        modal.classList.add('active');
-        nameInput.focus();
+        window.openModalLayer(modal, '#new-role-name');
     });
 
     document.getElementById('close-role-modal').addEventListener('click', () => {
-        modal.classList.remove('active');
+        window.closeModalLayer(modal);
     });
 
     modal.addEventListener('click', (e) => {
-        if(e.target === modal) modal.classList.remove('active');
+        if(e.target === modal) window.closeModalLayer(modal);
     });
 
     document.getElementById('btn-save-new-role').addEventListener('click', () => {
@@ -180,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         saveRoles();
-        modal.classList.remove('active');
+        window.closeModalLayer(modal);
         nameInput.value = '';
         
         // Select the newly added role automatically

@@ -1010,3 +1010,8 @@ body.light-theme .table-status-card.empty {
 body.light-theme .ts-name {
     color: #0f172a !important;
 }
+
+body.light-theme .btn-pay,
+body.light-theme .btn-pay i {
+    color: #ffffff !important;
+}

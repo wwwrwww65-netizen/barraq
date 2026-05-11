@@ -349,7 +349,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(recent.length === 0) {
             tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--text-muted)">لا توجد طلبات حديثة اليوم</td></tr>`;
         } else {
-            recent.forEach(o => {
+            const recentRows = recent.map((o) => {
                 const oTypeClass = (o.type && o.type.includes('سفري')) ? 'takeaway' : 'dine-in';
                 const oTypeNames = (o.type && o.type.includes('سفري')) ? 'سفري' : 'محلي';
                 
@@ -362,7 +362,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     else if(diffMins > 0) tStr = `منذ ${diffMins} دقيقة`;
                 }
 
-                const tr = `
+                return `
                     <tr>
                         <td><strong>${o.orderId}</strong></td>
                         <td><span class="order-type ${oTypeClass}">${oTypeNames}</span></td>
@@ -373,8 +373,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <td><a href="orders.html" class="action-btn" title="عرض في سجل الطلبات" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:inherit;"><i class="ph ph-eye"></i></a></td>
                     </tr>
                 `;
-                tbody.insertAdjacentHTML('beforeend', tr);
             });
+            tbody.innerHTML = recentRows.join('');
         }
     }
 
@@ -397,8 +397,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(topItems.length === 0) {
             itemsContainer.innerHTML = `<div style="padding:30px; text-align:center; color:var(--text-muted)">لا توجد مبيعات بعد</div>`;
         } else {
-            topItems.forEach(itm => {
-                const tr = `
+            const topItemsRows = topItems.map((itm) => `
                 <div class="item-row">
                     <div style="width:45px; height:45px; border-radius:8px; background:rgba(59, 130, 246, 0.1); display:flex; align-items:center; justify-content:center; color:var(--accent-blue); font-size:24px;">
                         <i class="ph-fill ph-pizza"></i>
@@ -412,9 +411,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <span class="sales-revenue">${curPlain(itm.revenue)}</span>
                     </div>
                 </div>
-                `;
-                itemsContainer.insertAdjacentHTML('beforeend', tr);
-            });
+                `);
+            itemsContainer.innerHTML = topItemsRows.join('');
         }
     }
 
@@ -525,7 +523,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(modal && input) {
             setupFloatModalUi('set');
             input.value = currentFloat;
-            modal.style.display = 'flex';
+            window.openModalLayer(modal, '#floatInput');
         } else {
             // fallback (if used somewhere else where HTML modal isn't injected)
             const userInput = prompt('أدخل العهدة المبدئية للدرج (الكاش الموجود في الدرج قبل بدء الوردية):', currentFloat);
@@ -540,7 +538,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.closeShiftFloatModal = function() {
         const modal = document.getElementById('floatModal');
-        if(modal) modal.style.display = 'none';
+        if(modal) window.closeModalLayer(modal);
     };
 
     window.saveShiftFloatModal = function() {
@@ -571,8 +569,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (modal && input) {
             setupFloatModalUi('add');
             input.value = '';
-            input.focus();
-            modal.style.display = 'flex';
+            window.openModalLayer(modal, '#floatInput');
             return;
         }
         const userInput = prompt('أدخل المبلغ الإضافي لإيداعه في الدرج:', '0');
@@ -663,12 +660,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         document.getElementById('shift-grand-total').innerText = curPlain(d.dailySales);
 
-        modal.style.display = 'flex';
+        window.openModalLayer(modal);
     };
 
     window.closeShiftReport = function() {
         const modal = document.getElementById('shiftReportModal');
-        if(modal) modal.style.display = 'none';
+        if(modal) window.closeModalLayer(modal);
     };
 
     window.confirmCloseShift = async function() {
@@ -1017,7 +1014,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Store snapshot for confirmCloseDay
         window.__dayCloseSnapshot = { allDayShifts, dayTotalCash, dayTotalNet, dayTotalTax, dayTotalRet, dayTotalExp, dayTotalIncome, dayNetTotal, dayDrawerTotal, dayTotalOrders, dayDate: todayStr, closedAt: now.getTime(), dayTotalHSUnpaid, dayDeliveryBreakdown };
 
-        modal.style.display = 'flex';
+        window.openModalLayer(modal);
         } catch (error) {
             const errMsg = (error && error.message) ? error.message : String(error);
             console.error('openDayCloseReport error:', error);
@@ -1027,7 +1024,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.closeDayCloseReport = function() {
         const modal = document.getElementById('dayCloseModal');
-        if (modal) modal.style.display = 'none';
+        if (modal) window.closeModalLayer(modal);
     };
 
     window.confirmCloseDay = async function() {

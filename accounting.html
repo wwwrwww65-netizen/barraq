@@ -1,7 +1,17 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
+    <script>
+        (function () {
+            try {
+                var theme = localStorage.getItem('sys_theme') || 'dark';
+                var isLight = theme === 'light';
+                var de = document.documentElement;
+                de.setAttribute('data-theme', isLight ? 'light' : 'dark');
+                de.style.backgroundColor = isLight ? '#f1f5f9' : '#0b0f19';
+            } catch (_) {}
+        })();
+    </script>    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mister Casher - النظام المحاسبي الشامل</title>
     <link rel="stylesheet" href="styles.css">
@@ -9,7 +19,8 @@
     <link rel="stylesheet" href="staff.css">
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <script src="demo-mock.js"></script>
-    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/regular/style.css">
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/fill/style.css">
     <script src="node_modules/chart.js/dist/chart.umd.js"></script>
     <link rel="stylesheet" href="light-theme-fixes.css">
 </head>
@@ -199,7 +210,7 @@
     </div>
 
     <!-- Advance / Salary Modal -->
-    <div class="modal-overlay" id="advance-modal" inert>
+    <div class="modal-overlay" id="advance-modal" inert data-restore-inert>
         <div class="modal-content">
             <div class="modal-header">
                 <h3><i class="ph ph-hand-coins"></i> إصدار سلفة أو صرف راتب</h3>

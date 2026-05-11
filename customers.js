@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         modalTitle.innerHTML = '<i class="ph ph-user-plus"></i> إضافة تسجيل عميل جديد';
         customerForm.reset();
         document.getElementById('c-id').value = '';
-        modal.classList.add('active');
+        window.openModalLayer(modal);
     }
 
     function openEditModal(customer) {
@@ -155,11 +155,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('c-phone').value = customer.phone;
         document.getElementById('c-email').value = customer.email || '';
         document.getElementById('c-notes').value = customer.notes || '';
-        modal.classList.add('active');
+        window.openModalLayer(modal);
     }
 
     function closeModal() {
-        modal.classList.remove('active');
+        window.closeModalLayer(modal);
     }
 
     // --- Event Listeners ---

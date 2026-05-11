@@ -1,7 +1,17 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
+    <script>
+        (function () {
+            try {
+                var theme = localStorage.getItem('sys_theme') || 'dark';
+                var isLight = theme === 'light';
+                var de = document.documentElement;
+                de.setAttribute('data-theme', isLight ? 'light' : 'dark');
+                de.style.backgroundColor = isLight ? '#f1f5f9' : '#0b0f19';
+            } catch (_) {}
+        })();
+    </script>    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mister Casher - نظام الكاشير (نقطة البيع)</title>
     <link rel="stylesheet" href="styles.css">
@@ -13,9 +23,10 @@
     
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <!-- Phosphor Icons -->
-    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/regular/style.css">
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/fill/style.css">
 </head>
-<body class="dark-theme pos-body">
+<body class="pos-body">
     <script>
         (function(){
             var theme = localStorage.getItem('sys_theme') || 'dark';
@@ -29,7 +40,7 @@
         <!-- Sidebar Navigation (Slimmer for POS) -->
         <aside class="pos-sidebar">
             <div class="logo-mini">
-                <img src="2222.png" alt="Logo">
+                <img src="2222.png" alt="Logo" class="restaurant-logo">
             </div>
             <nav class="pos-menu">
                 <a href="index.html" class="pos-nav-item" title="لوحة القيادة"><i class="ph ph-squares-four"></i></a>
@@ -44,7 +55,6 @@
 
         <!-- Main POS Area (Products) -->
         <main class="pos-main">
-            <!-- Header -->
             <header class="pos-header">
                 <div class="pos-search-box">
                     <i class="ph ph-magnifying-glass"></i>

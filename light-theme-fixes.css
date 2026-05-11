@@ -39,13 +39,13 @@ body.light-theme i {
 }
 
 /* Button Text & Icons - Protected for Premium Buttons */
-body.light-theme button:not(.pur-btn):not(.p-btn):not(.inv-btn-solid):not(.btn-save-role):not(.btn-primary):not([class*="kp-"]):not(.btn-close-payment):not([style*="background"]),
-body.light-theme .btn:not(.pur-btn):not(.p-btn):not(.inv-btn-solid):not(.btn-save-role):not(.btn-primary):not([class*="kp-"]):not(.btn-close-payment):not([style*="background"]) {
+body.light-theme button:not(.pur-btn):not(.p-btn):not(.inv-btn-solid):not(.btn-save-role):not(.btn-primary):not([class*="kp-"]):not(.btn-close-payment):not(.btn-pay):not([style*="background"]),
+body.light-theme .btn:not(.pur-btn):not(.p-btn):not(.inv-btn-solid):not(.btn-save-role):not(.btn-primary):not([class*="kp-"]):not(.btn-close-payment):not(.btn-pay):not([style*="background"]) {
     color: #0f172a;
 }
 
-body.light-theme button:not(.pur-btn):not(.p-btn):not(.inv-btn-solid):not(.btn-save-role):not(.btn-primary):not([class*="kp-"]):not(.btn-close-payment):not([style*="background"]) i,
-body.light-theme .btn:not(.pur-btn):not(.p-btn):not(.inv-btn-solid):not(.btn-save-role):not(.btn-primary):not([class*="kp-"]):not(.btn-close-payment):not([style*="background"]) i {
+body.light-theme button:not(.pur-btn):not(.p-btn):not(.inv-btn-solid):not(.btn-save-role):not(.btn-primary):not([class*="kp-"]):not(.btn-close-payment):not(.btn-pay):not([style*="background"]) i,
+body.light-theme .btn:not(.pur-btn):not(.p-btn):not(.inv-btn-solid):not(.btn-save-role):not(.btn-primary):not([class*="kp-"]):not(.btn-close-payment):not(.btn-pay):not([style*="background"]) i {
     color: #0f172a;
 }
 
@@ -139,7 +139,13 @@ body.light-theme .modal-header h3 {
 /* Ensure white text if header has background */
 body.light-theme .modal-header[style*="background"] h3,
 body.light-theme .modal-header[style*="background-image"] h3,
-body.light-theme .modal-header[style*="background-color"] h3 {
+body.light-theme .modal-header[style*="background-color"] h3,
+body.light-theme .modal-box div[style*="background"] h1,
+body.light-theme .modal-box div[style*="background"] h2,
+body.light-theme .modal-box div[style*="background"] h3,
+body.light-theme .modal-box div[style*="background"] h3 *,
+body.light-theme .modal-box div[style*="background-color"] h3,
+body.light-theme .modal-box div[style*="background-image"] h3 {
     color: white !important;
 }
 
@@ -385,12 +391,13 @@ body.light-theme .inv-btn-solid,
 body.light-theme .wh-receive-btn,
 body.light-theme .btn-save-role,
 body.light-theme .pur-btn,
-body.light-theme .p-btn,
+body.light-theme .p-btn:not(.p-btn-icon),
 body.light-theme .pur-btn-receive,
 body.light-theme .pur-btn-edit,
 body.light-theme .pur-btn-delete,
 body.light-theme .pur-btn-cancel,
 body.light-theme .p-btn-pay,
+body.light-theme .btn-pay,
 body.light-theme .p-btn-profile,
 body.light-theme .p-btn-solid {
     color: white !important;
@@ -402,9 +409,22 @@ body.light-theme .btn-kds-act.to-ready i,
 body.light-theme .inv-btn-solid i,
 body.light-theme .wh-receive-btn i,
 body.light-theme .pur-btn i,
-body.light-theme .p-btn i {
+body.light-theme .p-btn:not(.p-btn-icon) i {
     color: white !important;
 }
+
+/* Force visibility for supplier action icons in light theme */
+body.light-theme .p-btn-icon,
+body.light-theme .p-btn-icon i {
+    color: #475569 !important;
+}
+
+body.light-theme .p-btn-edit:hover,
+body.light-theme .p-btn-edit:hover i { color: #2563eb !important; }
+body.light-theme .p-btn-toggle:hover,
+body.light-theme .p-btn-toggle:hover i { color: #d97706 !important; }
+body.light-theme .p-btn-delete:hover,
+body.light-theme .p-btn-delete:hover i { color: #dc2626 !important; }
 
 /* Inventory Pending Badge Fix */
 body.light-theme #pending-count-badge {
@@ -454,6 +474,7 @@ body.light-theme .pur-btn-edit,
 body.light-theme .pur-btn-delete,
 body.light-theme .pur-btn-cancel,
 body.light-theme .p-btn-pay,
+body.light-theme .btn-pay,
 body.light-theme .p-btn-profile,
 body.light-theme .p-btn-solid,
 body.light-theme .btn-primary,
@@ -472,6 +493,7 @@ body.light-theme .inv-btn-solid.bg-red i,
 body.light-theme .wh-receive-btn i,
 body.light-theme .pur-btn:not(.pur-btn-print) i,
 body.light-theme .p-btn i,
+body.light-theme .btn-pay i,
 body.light-theme .btn-primary i,
 body.light-theme .bg-blue i,
 body.light-theme .bg-green i,
@@ -704,10 +726,10 @@ body.light-theme *:not(button):not(.btn):not([class*="btn"]):not(.badge):not([cl
     color: var(--text-primary) !important;
 }
 
-body.light-theme strong[style*="color"], 
-body.light-theme b[style*="color"], 
-body.light-theme div[style*="color:white"], 
-body.light-theme div[style*="color: white"] {
+body.light-theme strong[style*="color"]:not([style*="background"]), 
+body.light-theme b[style*="color"]:not([style*="background"]), 
+body.light-theme div[style*="color:white"]:not([style*="background"]), 
+body.light-theme div[style*="color: white"]:not([style*="background"]) {
     color: var(--text-primary) !important;
 }
 
@@ -1097,5 +1119,18 @@ body.light-theme .grand-total-box h4 {
 /* Override inline borders in profit-loss breakdown */
 body.light-theme .pl-breakdown-item[style*="border-bottom"] {
     border-bottom-color: #e2e8f0 !important;
+}
+
+/* FINAL OVERRIDE FOR SUPPLIER ICONS - Ensuring visibility in Light Theme */
+body.light-theme .p-btn-icon,
+body.light-theme .p-btn-icon i,
+body.light-theme .premium-btn-group .p-btn-icon i,
+body.light-theme .p-btn-edit i,
+body.light-theme .p-btn-toggle i,
+body.light-theme .p-btn-delete i {
+    color: #1e293b !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: inline-block !important;
 }
 

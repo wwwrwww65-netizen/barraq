@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <span class="sup-id-label">${s.id}</span>
                     </div>
                 </td>
-                <td><span style="background:rgba(255,255,255,0.08);padding:5px 12px;border-radius:8px;font-weight:600;font-size:13px;">${s.cat || ''}</span></td>
+                <td><span class="sup-cat-tag">${s.cat || ''}</span></td>
                 <td dir="ltr" style="text-align:right;font-family:monospace;font-weight:600;">${s.phone || ''}</td>
                 <td style="color:${balColor};">
                     <span class="balance-val">${balText}</span>
@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.getElementById('pay-date').valueAsDate = new Date();
                 document.getElementById('pay-notes').value = '';
                 
-                document.getElementById('paymentModal').classList.add('active');
+                window.openModalLayer(document.getElementById('paymentModal'));
             });
         });
 
@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.getElementById('sup-balance').value = sup.balance || 0;
                     
                     document.getElementById('supModalTitle').innerText = 'تعديل بيانات مورد';
-                    modal.classList.add('active');
+                    window.openModalLayer(modal);
                 }
             });
         });
@@ -148,12 +148,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const sup = suppliers.find((x) => x.id === btn.dataset.id);
                 if (!sup) return;
                 
-                if (confirm(`هل أنت متأكد من حذف المورد "${sup.name}"؟\nسيتم حذف جميع بياناته نهائياً.`)) {
+                if (await window.mcasherConfirm(`هل أنت متأكد من حذف المورد "${sup.name}"؟\nسيتم حذف جميع بياناته نهائياً.`)) {
                     suppliers = suppliers.filter(x => x.id !== btn.dataset.id);
                     db.suppliers = suppliers;
                     await saveDB(db);
                     await render();
-                    alert('تم حذف المورد بنجاح');
+                    await window.mcasherAlert('تم حذف المورد بنجاح');
                 }
             });
         });
@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const payForm = document.getElementById('form-payment');
     const payModal = document.getElementById('paymentModal');
     
-    document.querySelectorAll('.btn-close-payment').forEach(b => b.addEventListener('click', () => payModal.classList.remove('active')));
+    document.querySelectorAll('.btn-close-payment').forEach(b => b.addEventListener('click', () => window.closeModalLayer(payModal)));
 
     payForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -194,9 +194,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         db.suppliers = suppliers;
         await saveDB(db);
         
-        payModal.classList.remove('active');
+        window.closeModalLayer(payModal);
         await render();
-        alert(`✅ تم تسجيل دفعة السداد بمبلغ ${xf(amt)} بنجاح.`);
+        await window.mcasherAlert(`✅ تم تسجيل دفعة السداد بمبلغ ${xf(amt)} بنجاح.`);
     });
 
     // --- Profile Logic (Advanced) ---
@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         activeSupId = id;
         const sup = (db.suppliers || []).find(s => s.id === id);
         if (!sup) {
-            alert('لم يتم العثور على بيانات المورد!');
+            await window.mcasherAlert('لم يتم العثور على بيانات المورد!');
             return;
         }
 
@@ -382,8 +382,73 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td style="font-weight:800; font-size:16px; color:${typeColor}">${amountPrefix}${xf(tx.amount)}</td>
                     <td style="font-weight:900; font-size:16px; color:white;">${xf(tx.runningBal)}</td>
                     <td style="font-family:monospace; color:var(--text-muted); font-size:11px; opacity:0.6;">${tx.ref}</td>
+                    <td class="no-print">
+                        <div style="display:flex; gap:5px;">
+                            ${tx.type === 'purchase' ? `
+                                <button class="p-btn p-btn-icon edit-tx-pur" data-id="${tx.ref}" title="تعديل في صفحة المشتريات" style="background:rgba(59,130,246,0.1); color:#3b82f6;">
+                                    <i class="ph ph-pencil"></i>
+                                </button>
+                                <button class="p-btn p-btn-icon delete-tx-pur" data-id="${tx.ref}" title="حذف الفاتورة" style="background:rgba(239,68,68,0.1); color:#ef4444;">
+                                    <i class="ph ph-trash"></i>
+                                </button>
+                            ` : (tx.type === 'payment' ? `
+                                <button class="p-btn p-btn-icon delete-tx-pay" data-id="${tx.ref}" title="حذف سند السداد" style="background:rgba(239,68,68,0.1); color:#ef4444;">
+                                    <i class="ph ph-trash"></i>
+                                </button>
+                            ` : '')}
+                        </div>
+                    </td>
                 `;
                 txBody.appendChild(tr);
+            });
+
+            // --- Transaction Actions Events ---
+            txBody.querySelectorAll('.edit-tx-pur').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    window.location.href = `purchases.html?edit=${btn.dataset.id}`;
+                });
+            });
+
+            txBody.querySelectorAll('.delete-tx-pur').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const id = btn.dataset.id;
+                    const pur = (db.purchases || []).find(p => p.id === id);
+                    if (!pur) return;
+
+                    if (pur.status === 'مستلمة بالمخزن') {
+                        await window.mcasherAlert('⚠️ لا يمكن حذف فاتورة مستلمة من هنا مباشرة.\nيرجى الذهاب لصفحة «المشتريات» واستخدام زر «إلغاء الاستلام» أولاً لعكس المخزون.');
+                        return;
+                    }
+
+                    if (!(await window.mcasherConfirm(`هل أنت متأكد من حذف فاتورة المشتريات ${id}؟`))) return;
+
+                    // Reverse credit if applicable
+                    if (pur.payMethod === 'credit') {
+                        const s = (db.suppliers || []).find(x => x.id === pur.supId);
+                        if (s) s.balance = Math.max(0, (s.balance || 0) - pur.total);
+                    }
+
+                    db.purchases = db.purchases.filter(p => p.id !== id);
+                    await saveDB(db);
+                    openSupplierProfile(activeSupId); // Refresh view
+                });
+            });
+
+            txBody.querySelectorAll('.delete-tx-pay').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const id = btn.dataset.id;
+                    const pay = (db.supplierPayments || []).find(p => p.id === id);
+                    if (!pay) return;
+
+                    if (!(await window.mcasherConfirm(`هل أنت متأكد من حذف سند السداد بقيمة ${xf(pay.amount)}؟\nسيتم إعادة المبلغ لمديونية المورد.`))) return;
+
+                    const s = (db.suppliers || []).find(x => x.id === pay.supId);
+                    if (s) s.balance = (s.balance || 0) + pay.amount;
+
+                    db.supplierPayments = db.supplierPayments.filter(p => p.id !== id);
+                    await saveDB(db);
+                    openSupplierProfile(activeSupId); // Refresh view
+                });
             });
 
             if (allTx.length === 0) {
@@ -493,12 +558,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('btn-add-supplier').addEventListener('click', () => {
         document.getElementById('sup-id').value = '';
         document.getElementById('supModalTitle').innerText = 'إضافة مورد جديد';
-        modal.classList.add('active');
+        window.openModalLayer(modal);
     });
 
     document.querySelectorAll('.btn-cancel-modal').forEach((b) =>
         b.addEventListener('click', () => {
-            modal.classList.remove('active');
+            window.closeModalLayer(modal);
             document.getElementById('form-sup').reset();
         })
     );
@@ -545,7 +610,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             db.suppliers = suppliers;
             await saveDB(db);
             
-            modal.classList.remove('active');
+            window.closeModalLayer(modal);
             e.target.reset();
             
             requestAnimationFrame(() => {

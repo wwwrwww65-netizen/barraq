@@ -910,11 +910,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!btnOpen || !mConfirm || !mPwd || !inpPwd) return;
 
         function openModal(el) {
-            el.classList.add('active');
             el.setAttribute('aria-hidden', 'false');
+            window.openModalLayer(el);
         }
         function closeModal(el) {
-            el.classList.remove('active');
+            window.closeModalLayer(el);
             el.setAttribute('aria-hidden', 'true');
         }
 
@@ -1020,8 +1020,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnSubmit = document.getElementById('btn-ops-pwd-submit');
         if (!btnOpen || !mConfirm || !mPwd || !inpPwd) return;
 
-        function openM(el)  { el.classList.add('active'); el.setAttribute('aria-hidden','false'); }
-        function closeM(el) { el.classList.remove('active'); el.setAttribute('aria-hidden','true'); }
+        function openM(el)  { el.setAttribute('aria-hidden','false'); window.openModalLayer(el); }
+        function closeM(el) { window.closeModalLayer(el); el.setAttribute('aria-hidden','true'); }
 
         btnOpen.addEventListener('click', () => openM(mConfirm));
         if (btnNo)    btnNo.addEventListener('click',    () => closeM(mConfirm));

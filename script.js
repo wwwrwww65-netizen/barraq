@@ -1,3 +1,12 @@
+// --- Modern Dialogs Injection ---
+(function injectModernDialogs() {
+    if (document.getElementById('modern-dialogs-js')) return;
+    const script = document.createElement('script');
+    script.id = 'modern-dialogs-js';
+    script.src = 'modern-dialogs.js';
+    document.head.appendChild(script);
+})();
+
 // --- Global Authentication Guard ---
 // setup.html: إعداد جهاز جديد مستقل من معالج المزامنة — بدون تسجيل دخول بعد
 const _isPublicAuthPage =
@@ -162,8 +171,58 @@ window._networkSyncing = false; // global flag to avoid re-broadcasting synced d
 const _chunkBuffers = {};
 const MAX_UDP_PAYLOAD = 48000; // safe limit well below UDP max ~65535
 
+/** تجميع ipc لمزامنة localStorage الصغيرة في إطار واحد — يقلل الضغط على العملية الرئيسية */
+const _lsSyncPending = new Map();
+let _lsSyncFlushScheduled = false;
+
 try {
     const { ipcRenderer } = require('electron');
+
+    function flushLsSyncPending() {
+        _lsSyncFlushScheduled = false;
+        if (!_lsSyncPending.size) return;
+        const entries = [..._lsSyncPending.entries()];
+        _lsSyncPending.clear();
+        for (let i = 0; i < entries.length; i++) {
+            const key = entries[i][0];
+            const val = entries[i][1];
+            if (val === null) {
+                ipcRenderer.send('network-sync-send', { action: 'removeItem', key });
+            } else {
+                ipcRenderer.send('network-sync-send', { action: 'setItem', key, value: val });
+            }
+        }
+    }
+
+    function scheduleLsSyncFlush() {
+        if (_lsSyncFlushScheduled) return;
+        _lsSyncFlushScheduled = true;
+        queueMicrotask(flushLsSyncPending);
+    }
+
+    /** إرسال القيم الضخمة على دفعات عبر macrotask لتفادي تجمد اللوحة أثناء رفع الشعار وغيره */
+    function scheduleChunkedLocalStorageSync(key, str) {
+        const totalChunks = Math.ceil(str.length / MAX_UDP_PAYLOAD);
+        const chunkId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+        console.log(`[Sync] 📦 Chunking large value for key: ${key} (${(str.length / 1024).toFixed(1)} KB, ${totalChunks} chunks)`);
+        const CHUNK_BURST = 6;
+        let i = 0;
+        function burst() {
+            const end = Math.min(i + CHUNK_BURST, totalChunks);
+            for (; i < end; i++) {
+                ipcRenderer.send('network-sync-send', {
+                    action: 'setItem_chunk',
+                    key,
+                    chunkId,
+                    chunkIndex: i,
+                    totalChunks,
+                    chunk: str.slice(i * MAX_UDP_PAYLOAD, (i + 1) * MAX_UDP_PAYLOAD),
+                });
+            }
+            if (i < totalChunks) setTimeout(burst, 0);
+        }
+        burst();
+    }
 
     /** IP آخر جهاز على الشبكة يملك واتساب جاهزاً — يُستخدم تلقائياً كمركز واتساب عند ترك حقل Hub فارغاً */
     function recordLanSyncHubIp(ip, opts) {
@@ -355,19 +414,10 @@ try {
         if (!window._networkSyncing) {
             const str = String(value);
             if (str.length > MAX_UDP_PAYLOAD) {
-                // Send in chunks
-                const totalChunks = Math.ceil(str.length / MAX_UDP_PAYLOAD);
-                const chunkId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
-                console.log(`[Sync] 📦 Chunking large value for key: ${key} (${(str.length/1024).toFixed(1)} KB, ${totalChunks} chunks)`);
-                for (let i = 0; i < totalChunks; i++) {
-                    ipcRenderer.send('network-sync-send', {
-                        action: 'setItem_chunk',
-                        key, chunkId, chunkIndex: i, totalChunks,
-                        chunk: str.slice(i * MAX_UDP_PAYLOAD, (i + 1) * MAX_UDP_PAYLOAD)
-                    });
-                }
+                scheduleChunkedLocalStorageSync(key, str);
             } else {
-                ipcRenderer.send('network-sync-send', { action: 'setItem', key, value });
+                _lsSyncPending.set(key, str);
+                scheduleLsSyncFlush();
             }
         }
     };
@@ -376,7 +426,8 @@ try {
     localStorage.removeItem = function(key) {
         _origRemoveItem(key);
         if (!window._networkSyncing) {
-            ipcRenderer.send('network-sync-send', { action: 'removeItem', key });
+            _lsSyncPending.set(key, null);
+            scheduleLsSyncFlush();
         }
     };
 
@@ -384,6 +435,8 @@ try {
     localStorage.clear = function() {
         _origClear();
         if (!window._networkSyncing) {
+            _lsSyncPending.clear();
+            _lsSyncFlushScheduled = false;
             ipcRenderer.send('network-sync-send', { action: 'clear' });
         }
     };
@@ -414,7 +467,6 @@ try {
             font-size: 11px;
             font-weight: 700;
             color: #94a3b8;
-            backdrop-filter: blur(12px);
             z-index: 10000;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
@@ -609,6 +661,82 @@ try {
         if (refreshBtn) refreshBtn.style.display = 'none';
         setSyncState('error', 'الشبكة: التطبيق الكامل فقط (.exe)');
     }
+})();
+
+(function () {
+    var _modalScrollScheduled = null;
+    function anyModalLayerOpen() {
+        if (document.querySelectorAll('.modal-overlay.active').length) return true;
+        if (document.querySelectorAll('.factory-modal-overlay.active').length) return true;
+        if (document.querySelectorAll('.hs-modal.active').length) return true;
+        if (document.querySelector('.js-modal-layer-root')) return true;
+        if (document.getElementById('order-details-modal')) return true;
+        var sw = document.getElementById('sw-overlay');
+        if (sw && document.body.contains(sw)) {
+            var cs = window.getComputedStyle(sw);
+            if (cs.display !== 'none' && cs.visibility !== 'hidden') return true;
+        }
+        var dyn = document.querySelectorAll('.order-modal, .shift-modal');
+        for (var i = 0; i < dyn.length; i++) {
+            var c2 = window.getComputedStyle(dyn[i]);
+            if (c2.display !== 'none' && c2.visibility !== 'hidden') return true;
+        }
+        return false;
+    }
+    window.syncModalBodyScroll = function () {
+        document.body.style.overflow = anyModalLayerOpen() ? 'hidden' : '';
+    };
+    window.openModalLayer = function (el, focusSel) {
+        if (!el) return;
+        el.removeAttribute('inert');
+        if (el.classList.contains('order-modal') || el.classList.contains('shift-modal')) {
+            el.style.display = 'flex';
+        } else {
+            el.classList.add('active');
+        }
+        window.syncModalBodyScroll();
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                var inp = focusSel
+                    ? el.querySelector(focusSel)
+                    : el.querySelector('input:not([type="hidden"]):not([disabled]),select:not([disabled]),textarea:not([disabled])');
+                if (inp) {
+                    try { inp.focus({ preventScroll: true }); } catch (e1) {
+                        try { inp.focus(); } catch (e2) {}
+                    }
+                }
+            });
+        });
+    };
+    window.closeModalLayer = function (el) {
+        if (!el) return;
+        if (el.classList.contains('order-modal') || el.classList.contains('shift-modal')) {
+            el.style.display = 'none';
+        } else {
+            el.classList.remove('active');
+        }
+        if (el.hasAttribute('data-restore-inert')) el.setAttribute('inert', '');
+        window.syncModalBodyScroll();
+    };
+    function scheduleModalScrollSync() {
+        if (_modalScrollScheduled != null) return;
+        _modalScrollScheduled = requestAnimationFrame(function () {
+            _modalScrollScheduled = null;
+            window.syncModalBodyScroll();
+        });
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+        try {
+            var mo = new MutationObserver(scheduleModalScrollSync);
+            mo.observe(document.body, {
+                subtree: true,
+                childList: true,
+                attributes: true,
+                attributeFilter: ['class', 'style', 'inert']
+            });
+        } catch (e) {}
+        window.syncModalBodyScroll();
+    });
 })();
 
 // Update Date and Time — يتحدث مرة واحدة بالدقيقة دون ضغط على المعالج
@@ -810,9 +938,7 @@ window.syncGlobalSettings = function() {
         pdropStyle.textContent = `
             #_profile-drop-global {
                 position: fixed;
-                background: rgba(10, 15, 30, 0.97);
-                backdrop-filter: blur(16px);
-                -webkit-backdrop-filter: blur(16px);
+                background: rgba(10, 15, 30, 0.98);
                 border: 1px solid rgba(255,255,255,0.12);
                 border-radius: 12px;
                 width: 220px;
@@ -1143,8 +1269,7 @@ function showSyncWizard(ipcRenderer) {
             box-shadow:0 0 40px rgba(16,185,129,.35);margin-bottom:10px; }
         .sw-logo-area h1 { font-size:22px;margin:0;
             background:linear-gradient(90deg,#10b981,#34d399,#10b981);
-            background-size:200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;
-            animation:sw-spin 4s linear infinite; }
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;color:transparent; }
         .sw-logo-area p { color:#475569;font-size:12px;margin:3px 0 0; }
 
         .sw-card {
@@ -1152,7 +1277,6 @@ function showSyncWizard(ipcRenderer) {
             border:1px solid rgba(255,255,255,.07);
             border-radius:22px;padding:28px 36px;
             min-width:370px;max-width:440px;width:90%;
-            backdrop-filter:blur(24px);
             box-shadow:0 24px 60px rgba(0,0,0,.6);
             text-align:center;
         }
@@ -1696,3 +1820,92 @@ document.addEventListener("DOMContentLoaded", function() {
         }).catch(e => console.error('Error loading delivery companies for nav', e));
     }
 });
+
+/**
+ * 🛠️ حل مشكلة تجمد الحقول في Electron بعد رسائل التأكيد (Confirm/Alert)
+ * نقوم باستبدال confirm و alert بنوافذ HTML مخصصة لا تسرق التركيز من النظام.
+ */
+window.mcasherConfirm = function(msg) {
+    return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.className = 'custom-confirm-overlay';
+        overlay.style = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center;
+            z-index: 100000; animation: fadeIn 0.2s;
+        `;
+        
+        const box = document.createElement('div');
+        box.style = `
+            background: #1a1f2c; color: white; padding: 35px; border-radius: 24px;
+            width: 90%; max-width: 480px; border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 30px 70px rgba(0,0,0,0.7); text-align: center;
+            font-family: 'Cairo', sans-serif;
+        `;
+        
+        box.innerHTML = `
+            <div style="font-size: 60px; color: #f59e0b; margin-bottom: 20px;"><i class="ph-fill ph-warning-circle"></i></div>
+            <h3 style="margin: 0 0 15px; font-size: 22px; font-weight: 800;">تأكيد العملية</h3>
+            <p style="margin: 0 0 30px; line-height: 1.7; color: #cbd5e1; font-size: 16px;">${msg.replace(/\n/g, '<br>')}</p>
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button id="confirm-ok" style="background: #3b82f6; color: white; border: none; padding: 12px 40px; border-radius: 12px; cursor: pointer; font-weight: bold; flex: 1; font-size: 16px; transition: 0.2s;">موافق</button>
+                <button id="confirm-cancel" style="background: rgba(255,255,255,0.08); color: white; border: none; padding: 12px 40px; border-radius: 12px; cursor: pointer; flex: 1; font-size: 16px; transition: 0.2s;">إلغاء</button>
+            </div>
+        `;
+        
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+        
+        const okBtn = box.querySelector('#confirm-ok');
+        const cancelBtn = box.querySelector('#confirm-cancel');
+        
+        okBtn.onmouseover = () => okBtn.style.background = '#2563eb';
+        okBtn.onmouseout = () => okBtn.style.background = '#3b82f6';
+        
+        cancelBtn.onmouseover = () => cancelBtn.style.background = 'rgba(255,255,255,0.15)';
+        cancelBtn.onmouseout = () => cancelBtn.style.background = 'rgba(255,255,255,0.08)';
+
+        okBtn.onclick = () => {
+            document.body.removeChild(overlay);
+            resolve(true);
+        };
+        cancelBtn.onclick = () => {
+            document.body.removeChild(overlay);
+            resolve(false);
+        };
+    });
+};
+
+window.mcasherAlert = function(msg) {
+    return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.style = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center;
+            z-index: 100000; animation: fadeIn 0.2s;
+        `;
+        
+        const box = document.createElement('div');
+        box.style = `
+            background: #1a1f2c; color: white; padding: 35px; border-radius: 24px;
+            width: 90%; max-width: 420px; border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 30px 70px rgba(0,0,0,0.7); text-align: center;
+            font-family: 'Cairo', sans-serif;
+        `;
+        
+        box.innerHTML = `
+            <div style="font-size: 60px; color: #10b981; margin-bottom: 20px;"><i class="ph-fill ph-check-circle"></i></div>
+            <h3 style="margin: 0 0 15px; font-size: 22px; font-weight: 800;">تنبيه</h3>
+            <p style="margin: 0 0 30px; line-height: 1.7; color: #cbd5e1; font-size: 16px;">${msg.replace(/\n/g, '<br>')}</p>
+            <button id="alert-ok" style="background: #3b82f6; color: white; border: none; padding: 12px 60px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px;">فهمت</button>
+        `;
+        
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+        
+        box.querySelector('#alert-ok').onclick = () => {
+            document.body.removeChild(overlay);
+            resolve();
+        };
+    });
+};

@@ -532,12 +532,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert('السلة فارغة! يجب إضافة منتجات أولاً.');
             return;
         }
-        modalCheckout.classList.add('active');
+        window.openModalLayer(modalCheckout);
         calculateChange();
     });
 
     btnCloseCheckout.addEventListener('click', () => {
-        modalCheckout.classList.remove('active');
+        window.closeModalLayer(modalCheckout);
     });
 
     // Payment Methods Toggle styling
@@ -610,9 +610,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 1. Handling normal cash (Cash Change)
         const received = parseFloat(cashReceivedInput.value) || 0;
         let change = received - total;
-        if (change < 0 || isNaN(change)) change = 0;
         
-        if(cashChangeDisplay) cashChangeDisplay.innerText = formatCurrency(change);
+        if(cashChangeDisplay) {
+            if (change < 0) {
+                // Show as "Remaining to pay" if negative
+                const label = document.querySelector('span[style*="المتبقي للعميل"]');
+                if (label) label.innerText = 'المتبقي لإكمال المبلغ:';
+                cashChangeDisplay.innerText = formatCurrency(Math.abs(change));
+                cashChangeDisplay.style.color = 'var(--accent-orange)';
+            } else {
+                const label = document.querySelector('span[style*="المتبقي للعميل"]');
+                if (label) label.innerText = 'المتبقي للعميل (الصرف):';
+                cashChangeDisplay.innerText = formatCurrency(change);
+                cashChangeDisplay.style.color = 'var(--accent-red)';
+            }
+        }
 
         // 2. Handling split (Split Payment)
         const splitCashVal = document.getElementById('split-cash-amount').value;
@@ -680,6 +692,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const cleaned = String(_ct).replace(/[^\d.-]/g, '');
                 totalOrder = parseFloat(cleaned) || 0;
             }
+
+            // --- Validation for Cash Payment ---
+            if (selectedPay === 'كاش') {
+                const received = parseFloat(document.getElementById('cash-received').value) || 0;
+                if (received < totalOrder) {
+                    alert('المبلغ المستلم أقل من الإجمالي المطلوب! يرجى التأكد من المبلغ.');
+                    btnConfirmPay.disabled = false;
+                    btnConfirmPay.innerHTML = '<i class="ph ph-check-circle"></i> تأكيد الدفع وطباعة الفواتير';
+                    return;
+                }
+            }
+            // -----------------------------------
             
             // Debug: Log the parsed value
             console.log('[POS] Cart total text:', _ct);
@@ -842,7 +866,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const orderNotesField = document.getElementById('checkout-order-notes');
             if (orderNotesField) orderNotesField.value = '';
             renderCart();
-            modalCheckout.classList.remove('active');
+            window.closeModalLayer(modalCheckout);
 
             const wasEditingOrder = isEditingOrder;
             isEditingOrder = false;
@@ -961,24 +985,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Fill Items
         const rItems = document.getElementById('r-items');
         const kItems = document.getElementById('k-items');
-        rItems.innerHTML = ''; kItems.innerHTML = '';
-
+        const receiptRows = [];
+        const kitchenRows = [];
         cart.forEach(item => {
-            rItems.innerHTML += `
+            receiptRows.push(`
                 <tr style="border-bottom: 1px dashed #ccc;">
                     <td class="item-name" style="padding: 5px 0;">${item.name}</td>
                     <td class="item-qty" style="text-align: center;">${item.qty}</td>
                     <td class="item-price" style="text-align: left;">${formatCurrency(item.price * item.qty)}</td>
                 </tr>
-            `;
-
-            kItems.innerHTML += `
+            `);
+            kitchenRows.push(`
                 <tr style="border-bottom: 1px dashed #000;">
                     <td style="padding: 5px 0;">🔴 ${item.name}</td>
                     <td style="text-align: center; font-size:24px; padding: 5px;">${item.qty}</td>
                 </tr>
-            `;
+            `);
         });
+        rItems.innerHTML = receiptRows.join('');
+        kItems.innerHTML = kitchenRows.join('');
 
         // Totals for customer (مجموع الأصناف ≠ الإجمالي النهائي عند وجود خصم)
         const rSub = document.getElementById('r-subtotal');
@@ -1593,11 +1618,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    window.deleteTable = function(key) {
+    window.deleteTable = async function(key) {
         const tables = getTables();
         const found = tables.find(t => getTableKey(t) === key);
         if (!found) return;
-        if (!confirm(`هل تريد حذف ${found.section} - ${found.name}؟`)) return;
+        if (!await ModernDialog.confirm(`هل تريد حذف ${found.section} - ${found.name}؟`)) return;
         const updated = tables.filter(t => getTableKey(t) !== key);
         saveTables(updated);
         const statusObj = getTableStatus();
@@ -1652,7 +1677,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     cartTableSelect.addEventListener('change', () => {
         if (cartTableSelect.value === 'customize') {
             cartTableSelect.value = previousTableSelectValue;
-            tablesModal.classList.add('active');
+            window.openModalLayer(tablesModal);
             renderManageTables();
             renderStatusTables();
         } else {
@@ -1674,7 +1699,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     btnCloseTablesModal.addEventListener('click', () => {
-        tablesModal.classList.remove('active');
+        window.closeModalLayer(tablesModal);
     });
 
     // Initialize tables on load

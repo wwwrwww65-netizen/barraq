@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function closeModal() {
-        modal.classList.remove('active');
+        window.closeModalLayer(modal);
     }
 
     function openModalForOrder(order) {
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('modal-order-total').innerText = xf(order.total || 0);
         const cashRadio = modal.querySelector('input[name="return-method"][value="نقدي"]');
         if (cashRadio) cashRadio.checked = true;
-        modal.classList.add('active');
+        window.openModalLayer(modal);
     }
 
     function orderAlreadyReturned(orderId) {
@@ -85,7 +85,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderSearchResult(order) {
-        document.getElementById('res-order-id').innerText = `رقم الطلب: #${order.orderId || '—'}`;
+        const displayId = String(order.orderId || '').startsWith('#') ? order.orderId : `#${order.orderId || '—'}`;
+        document.getElementById('res-order-id').innerText = `رقم الطلب: ${displayId}`;
         document.getElementById('res-date').innerText = order.date || new Date(order.timestamp || Date.now()).toLocaleString('ar-SA');
         document.getElementById('res-total').innerHTML = `${(window.MisterCasherCurrency ? MisterCasherCurrency.formatNumber(order.total || 0) : Number(order.total || 0).toFixed(2))} <span class="js-cur-sym">${window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س'}</span>`;
         document.getElementById('res-method').innerText = order.paymentMethod || 'غير محدد';

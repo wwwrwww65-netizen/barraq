@@ -11,7 +11,6 @@
         .notif-dropdown {
             position: absolute;
             background: rgba(15, 23, 42, 0.98);
-            backdrop-filter: blur(15px);
             border: 1px solid rgba(255,255,255,0.1);
             border-radius: 12px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.6);
@@ -80,7 +79,6 @@
             align-items: center;
             gap: 18px;
             animation: slideInRight 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-            backdrop-filter: blur(10px);
             min-width: 320px;
         }
         @keyframes slideInRight {
@@ -177,6 +175,10 @@
 
     let notifications = [];
     let unreadCount = 0;
+    let _persistNotifsTimer = null;
+    let _persistNotifsInFlight = false;
+    let _persistAlertStateTimer = null;
+    let _persistAlertStateInFlight = false;
 
     const dropdown = document.createElement('div');
     dropdown.className = 'notif-dropdown';
@@ -186,7 +188,7 @@
         return typeof window.dbRead === 'function' && typeof window.dbWrite === 'function';
     }
 
-    async function persistNotifsToDb() {
+    async function persistNotifsToDbNow() {
         try {
             localStorage.setItem('sys_notifications', JSON.stringify(notifications));
         } catch (e) {}
@@ -197,6 +199,20 @@
             db.systemNotifications = notifications.slice(-50);
             await window.dbWrite(db);
         } catch (e) {}
+    }
+
+    function persistNotifsToDb() {
+        if (_persistNotifsInFlight) return;
+        if (_persistNotifsTimer) clearTimeout(_persistNotifsTimer);
+        _persistNotifsTimer = setTimeout(async () => {
+            if (_persistNotifsInFlight) return;
+            _persistNotifsInFlight = true;
+            try {
+                await persistNotifsToDbNow();
+            } finally {
+                _persistNotifsInFlight = false;
+            }
+        }, 500);
     }
 
     async function hydrateNotifications() {
@@ -218,7 +234,7 @@
                 notifications = [];
             }
             if (notifications.length > 0 && hasDb()) {
-                await persistNotifsToDb();
+                await persistNotifsToDbNow();
             }
         }
         unreadCount = notifications.filter((n) => !n.read).length;
@@ -241,7 +257,7 @@
         }
     }
 
-    async function saveAlertState(obj) {
+    async function saveAlertStateNow(obj) {
         try {
             localStorage.setItem('alerted_inv_items', JSON.stringify(obj));
         } catch (e) {}
@@ -251,6 +267,20 @@
             db.inventoryAlertState = obj;
             await window.dbWrite(db);
         } catch (e) {}
+    }
+
+    function saveAlertState(obj) {
+        if (_persistAlertStateInFlight) return;
+        if (_persistAlertStateTimer) clearTimeout(_persistAlertStateTimer);
+        _persistAlertStateTimer = setTimeout(async () => {
+            if (_persistAlertStateInFlight) return;
+            _persistAlertStateInFlight = true;
+            try {
+                await saveAlertStateNow(obj);
+            } finally {
+                _persistAlertStateInFlight = false;
+            }
+        }, 600);
     }
 
     function renderDropdown() {
@@ -288,7 +318,7 @@
                 btnMarkRead.addEventListener('click', (e) => {
                     e.stopPropagation();
                     notifications.forEach((n) => (n.read = true));
-                    void persistNotifsToDb();
+                    persistNotifsToDb();
                     renderDropdown();
                     updateBadge();
                 });
@@ -315,7 +345,7 @@
             read: false
         });
         if (notifications.length > 50) notifications.shift();
-        void persistNotifsToDb();
+        persistNotifsToDb();
         updateBadge();
         if (dropdown.classList.contains('show')) renderDropdown();
     };
@@ -416,7 +446,7 @@
             }
 
             if (hasChanges) {
-                await saveAlertState(alertedItems);
+                saveAlertState(alertedItems);
             }
         } catch (err) {
         } finally {
@@ -424,25 +454,18 @@
         }
     }
 
-    setInterval(() => {
-        const bells = document.querySelectorAll('.notification-btn');
-        bells.forEach((bell) => {
-            if (bell.id === 'inv-notif-btn') return;
-            if (!bell.dataset.bound) {
-                bell.dataset.bound = 'true';
-                bell.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const rect = bell.getBoundingClientRect();
-                    dropdown.style.top = rect.bottom + 10 + 'px';
-                    dropdown.style.left = Math.max(10, rect.left - 100) + 'px';
-                    dropdown.classList.toggle('show');
-                    renderDropdown();
-                });
-            }
-        });
-    }, 1000);
-
     document.addEventListener('click', (e) => {
+        const bell = e.target.closest('.notification-btn');
+        if (bell && bell.id !== 'inv-notif-btn') {
+            e.stopPropagation();
+            const rect = bell.getBoundingClientRect();
+            dropdown.style.top = rect.bottom + 10 + 'px';
+            dropdown.style.left = Math.max(10, rect.left - 100) + 'px';
+            dropdown.classList.toggle('show');
+            renderDropdown();
+            return;
+        }
+
         if (
             !dropdown.contains(e.target) &&
             !e.target.closest('.notification-btn') &&

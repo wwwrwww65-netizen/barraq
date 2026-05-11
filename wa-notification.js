@@ -33,7 +33,6 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
             padding: 20px;
             animation: waSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-            backdrop-filter: blur(20px);
             direction: rtl;
             position: relative;
             overflow: hidden;

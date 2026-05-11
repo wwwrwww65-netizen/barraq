@@ -213,12 +213,21 @@
 .modal-overlay.active {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto !important;
+}
+.modal-overlay.active .modal-box {
+    pointer-events: auto !important;
+}
+.modal-overlay.active input, 
+.modal-overlay.active select, 
+.modal-overlay.active button {
+    pointer-events: auto !important;
 }
 
 #invoiceModal .modal-box, 
 #editPurchaseModal .modal-box {
     background: rgba(26, 31, 44, 0.98) !important;
-    backdrop-filter: blur(20px);
+    /* backdrop-filter معطّل — ثقيل على الأجهزة الضعيفة */
     border-radius: 28px !important;
     border: 1px solid rgba(255, 255, 255, 0.15) !important;
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6) !important;
@@ -262,35 +271,32 @@
 .item-row {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr;
-    gap: 15px;
+    gap: 15px 20px;
     margin-bottom: 25px;
-    padding: 20px;
+    padding: 24px;
     background: rgba(255, 255, 255, 0.03);
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     animation: slideIn 0.2s ease-out;
 }
 
-.item-row > *:nth-child(1) { grid-column: span 1; } /* Product Select */
-.item-row > *:nth-child(4) { grid-row: 2; } /* Price input */
-.item-row > *:nth-child(5) { grid-row: 2; } /* Total input */
-.item-row > *:nth-child(6) { grid-row: 2; align-self: end; } /* Trash btn */
+.row-item-select {
+    grid-column: span 1;
+}
 
-.item-row .form-group label {
-    font-size: 11px !important;
-    margin-bottom: 5px !important;
-    color: var(--text-muted) !important;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.row-delete-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
 }
 
 .btn-remove-row {
     background: rgba(239, 68, 68, 0.1) !important;
     border: 1px solid rgba(239, 68, 68, 0.2) !important;
     color: #ef4444 !important;
-    width: 40px;
-    height: 46px;
+    width: 100% !important;
+    height: 48px !important;
     border-radius: 12px;
     display: flex;
     align-items: center;

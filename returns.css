@@ -228,18 +228,23 @@ body.light-theme .btn-cancel-modal:hover {
     padding: 20px; margin-top: 15px; display: none; text-align: right;
 }
 .order-result-card.active { display: block; }
-.or-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
-.or-header h3 { color: white; font-size: 18px; }
-.or-header span { color: var(--text-secondary); font-size: 13px; }
+.or-header { display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
+.or-header h3 { color: white; font-size: 16px; margin: 0; white-space: nowrap; }
+.or-header span { color: var(--text-secondary); font-size: 12px; white-space: nowrap; }
 
 .or-details { display: flex; justify-content: space-between; margin-bottom: 20px; }
 .or-info span { display: block; color: var(--text-secondary); font-size: 13px; margin-bottom: 5px; }
 .or-info strong { display: block; color: white; font-size: 16px; margin-bottom: 10px; }
 
 .btn-process-return {
-    width: 100%; padding: 15px; background: linear-gradient(135deg, var(--accent-red), #b91c1c); color: white; border: none; border-radius: var(--border-radius-md); font-family: inherit; font-size: 16px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: var(--transition);
+    width: 100%; padding: 15px; background: linear-gradient(135deg, var(--accent-red), #b91c1c); color: #ffffff !important; border: none; border-radius: var(--border-radius-md); font-family: inherit; font-size: 16px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: var(--transition);
 }
-.btn-process-return:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(239, 68, 68, 0.4); }
+.btn-process-return:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(239, 68, 68, 0.4); color: #ffffff !important; }
+
+body.light-theme .btn-process-return,
+body.light-theme .btn-process-return i {
+    color: #ffffff !important;
+}
 
 
 /* --- Advanced Return Modal --- */

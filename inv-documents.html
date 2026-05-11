@@ -1,14 +1,25 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <script src="demo-mock.js"></script>
+    <script>
+        (function () {
+            try {
+                var theme = localStorage.getItem('sys_theme') || 'dark';
+                var isLight = theme === 'light';
+                var de = document.documentElement;
+                de.setAttribute('data-theme', isLight ? 'light' : 'dark');
+                de.style.backgroundColor = isLight ? '#f1f5f9' : '#0b0f19';
+            } catch (_) {}
+        })();
+    </script>    <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مستر كاشير POS | المستندات والحركات المخزنية</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="inventory.css">
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
-    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/regular/style.css">
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/fill/style.css">
     <style>
         .filter-tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
         .filter-tab { background: rgba(255,255,255,0.05); padding: 8px 16px; border-radius:8px; border: 1px solid var(--border-color); color: var(--text-secondary); cursor: pointer; transition: 0.3s; }

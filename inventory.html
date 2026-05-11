@@ -1,7 +1,17 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <script src="demo-mock.js"></script>
+    <script>
+        (function () {
+            try {
+                var theme = localStorage.getItem('sys_theme') || 'dark';
+                var isLight = theme === 'light';
+                var de = document.documentElement;
+                de.setAttribute('data-theme', isLight ? 'light' : 'dark');
+                de.style.backgroundColor = isLight ? '#f1f5f9' : '#0b0f19';
+            } catch (_) {}
+        })();
+    </script>    <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mister Casher - نظام إدارة المخازن</title>
@@ -13,7 +23,8 @@
     
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <!-- Phosphor Icons -->
-    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/regular/style.css">
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/fill/style.css">
 </head>
 <body>
     <script>
@@ -228,7 +239,7 @@
     <div id="itemModal" class="modal-overlay">
         <div class="modal-box">
             <div class="modal-header">
-                <h3 id="item-modal-title">تعريف منتج مخزني جديد</h3>
+                <h3 id="item-modal-title"><i class="ph ph-package"></i> تعريف منتج مخزني جديد</h3>
                 <button type="button" class="btn-cancel-modal" title="إغلاق"><i class="ph ph-x"></i></button>
             </div>
             <form id="form-item" class="modal-body">
@@ -272,16 +283,16 @@
                         </label>
                         <div style="display:flex; gap:10px;">
                             <div style="flex:1;">
-                                <small style="display:none; margin-bottom:4px; font-size:10px; color:var(--text-muted);" id="lbl-qty-std">الرصيد المحاسبي (لأغراض البيع والتكلفة)</small>
-                                <input type="number" step="any" id="item-qty" class="input-modern" style="display:none;" placeholder="مثال: 11">
+                                <label id="lbl-qty-phys" style="display:none; margin-bottom:4px;">الكمية الفعلية الحالية</label>
+                                <input type="number" step="any" id="item-physical-qty" class="input-modern" style="display:none;" placeholder="مثال: 10 حبات">
                             </div>
                             <div style="flex:1;">
-                                <small style="display:none; margin-bottom:4px; font-size:10px; color:var(--text-muted);" id="lbl-qty-phys">العدد الحالي (الموجود فعلياً بالثلاجة)</small>
-                                <input type="number" step="any" id="item-physical-qty" class="input-modern" style="display:none;" placeholder="مثال: 11">
+                                <label id="lbl-qty-std" style="display:none; margin-bottom:4px;">الكمية الحالية للوحدة مثال (نفر/طبق)</label>
+                                <input type="number" step="any" id="item-qty" class="input-modern" style="display:none;" placeholder="مثال: 160 طبق/نفر">
                             </div>
                         </div>
                         <p id="qty-note" style="display:none; margin-top:8px; font-size:11px; color:var(--accent-blue); font-weight:600;">
-                            <i class="ph ph-info"></i> ملاحظة: في الحالات العادية، اكتب نفس الرقم في الخانتين (مثلاً: 11 و 11).
+                            <i class="ph ph-info"></i> ملاحظة: للأصناف المباشرة (مثل المشروبات) اكتب نفس الرقم. اما للأصناف التي تُنتج أطباقاً (مثل اللحوم)، اكتب عدد الحبات في الخانة الأولى وإجمالي عدد الأطباق الناتج عنها في الخانة الثانية.
                         </p>
                     </div>
                 </div>
@@ -300,7 +311,7 @@
                 </div>
                 <div class="modal-actions mt-3">
                     <button type="button" class="btn-cancel btn-cancel-modal">إلغاء</button>
-                    <button type="submit" class="btn-save-role bg-blue" id="item-submit-btn">حفظ المنتج</button>
+                    <button type="submit" class="btn-save-role bg-blue" id="item-submit-btn"><i class="ph ph-check-circle"></i> حفظ المنتج</button>
                 </div>
             </form>
         </div>
@@ -338,15 +349,15 @@
     <div id="txModal" class="modal-overlay">
         <div class="modal-box">
             <div class="modal-header">
-                <h3 id="tx-modal-title">حركة مخزنية</h3>
+                <h3 id="tx-modal-title"><i class="ph ph-arrows-left-right"></i> حركة مخزنية</h3>
                 <button type="button" class="btn-cancel-modal" title="إغلاق"><i class="ph ph-x"></i></button>
             </div>
             <form id="form-tx" class="modal-body">
                 <div class="form-group">
                     <label>نوع الحركة</label>
                     <select id="tx-type" class="input-modern" required>
-                        <option value="in">استلام بضاعة (دخول مستودع)</option>
-                        <option value="out">أمر صرف (خروج للتشغيل)</option>
+                        <option value="in">📦 استلام بضاعة (دخول مستودع)</option>
+                        <option value="out">📤 أمر صرف (خروج للتشغيل)</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -369,14 +380,15 @@
                 <div class="form-group" id="tx-dest-group" style="display:none; border:1px solid rgba(234,179,8,0.3); border-radius:10px; padding:14px; background:rgba(234,179,8,0.1);">
                     <label style="color:#fbbf24; font-weight:700;"><i class="ph ph-navigation-arrow"></i> الجهة المستلِمة (وجهة أمر الصرف)</label>
                     <select id="tx-dest" class="input-modern" style="margin-top:8px;">
-                        <option value="kitchen_main">المطبخ الرئيسي</option>
+                        <option value="restaurant">مخزن المطعم الداخلي { مخزون المطبخ }</option>
+                        <option value="beverages">مخزن المشروبات</option>
                         <option value="kitchen_cold">قسم التحضير البارد</option>
                         <option value="kitchen_grills">قسم المشويات</option>
                         <option value="kitchen_pastry">قسم الحلويات والمخبوزات</option>
                         <option value="production">قسم الإنتاج والتجهيز</option>
-                        <option value="bar">البار والمشروبات</option>
-                        <option value="other">أخرى</option>
+                        <option value="other">أخرى (إدخال يدوي)</option>
                     </select>
+                    <input type="text" id="tx-dest-custom" class="input-modern" placeholder="اكتب اسم الجهة المستلمة هنا..." style="margin-top:8px; display:none; border-color:var(--accent-orange);">
                     <p style="margin-top:8px; font-size:12px; color:var(--text-muted);">
                         <i class="ph ph-info"></i> سيُخصم من المخزون فوراً وينتظر تأكيد الاستلام من الجهة المختارة
                     </p>
@@ -389,7 +401,7 @@
 
                 <div class="modal-actions mt-3">
                     <button type="button" class="btn-cancel btn-cancel-modal">إلغاء</button>
-                    <button type="submit" class="btn-save-role bg-green" id="tx-submit-btn">تأكيد الحركة المخزنية</button>
+                    <button type="submit" class="btn-save-role bg-green" id="tx-submit-btn"><i class="ph ph-check-circle"></i> تأكيد الحركة المخزنية</button>
                 </div>
             </form>
         </div>
@@ -426,8 +438,13 @@
                     <select id="trans-sku" class="input-modern" required></select>
                 </div>
                 <div class="form-group">
-                    <label>الكمية المحولة (العدد الحقيقي)</label>
-                    <input type="number" id="trans-qty" step="any" min="0.0001" class="input-modern" required>
+                    <label>الكمية الفعلية المراد تحويلها (مثلاً: 2 حبة)</label>
+                    <input type="number" id="trans-qty" step="any" min="0.0001" class="input-modern" placeholder="ادخل عدد الحبات الحقيقي" required>
+                </div>
+                <div class="form-group" id="trans-capacity-row" style="display:none;">
+                    <label>إجمالي السعة (نفر/طبق)</label>
+                    <input type="number" id="trans-capacity" step="any" min="0" class="input-modern" placeholder="أو أدخل السعة مباشرة" style="color:var(--accent-orange, #f97316); font-weight:700;">
+                    <small style="color:var(--text-muted); margin-top:4px; display:block;">يُحسب تلقائياً — أو أدخله يدوياً وسيتحسب عدد الحبات</small>
                 </div>
                 <div class="modal-actions mt-3">
                     <button type="button" class="btn-cancel btn-cancel-modal">إلغاء</button>

@@ -9,6 +9,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Format currency
     const formatCurrency = (amount) =>
         window.MisterCasherCurrency ? MisterCasherCurrency.format(amount) : Number(amount).toFixed(2) + ' ر.س';
+    function getVoucherCaptureScale() {
+        const cores = Number(navigator.hardwareConcurrency) || 2;
+        const mem = Number(navigator.deviceMemory) || 0;
+        if (cores <= 2 || (mem > 0 && mem <= 2)) return 1.4;
+        if (cores <= 4 || (mem > 0 && mem <= 4)) return 1.7;
+        return 2;
+    }
 
     // Load data
     async function loadData() {
@@ -521,11 +528,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('bulk-unpaid-count').textContent = `${unpaidOrders.length} طلب غير مدفوع`;
         document.getElementById('bulk-receive-amount').value = totalUnpaid.toFixed(2);
         
-        document.getElementById('hs-bulk-receive-modal').classList.add('active');
+        window.openModalLayer(document.getElementById('hs-bulk-receive-modal'));
     };
 
     window.closeBulkReceiveModal = function() {
-        document.getElementById('hs-bulk-receive-modal').classList.remove('active');
+        window.closeModalLayer(document.getElementById('hs-bulk-receive-modal'));
     };
 
     window.confirmBulkReceive = async function() {
@@ -538,7 +545,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        if (!confirm(`هل تريد تأكيد استلام ${formatCurrency(amount)} من هنقرستيشن؟\nسيتم إنشاء سند قبض.`)) {
+        if (!await ModernDialog.confirm(`هل تريد تأكيد استلام ${formatCurrency(amount)} من هنقرستيشن؟\nسيتم إنشاء سند قبض.`)) {
             return;
         }
 
@@ -686,7 +693,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await new Promise(r => setTimeout(r, 150)); // let dom update
 
             const canvas = await html2canvas(template, {
-                scale: 2,
+                scale: getVoucherCaptureScale(),
                 useCORS: true,
                 backgroundColor: '#ffffff',
                 width: 800,

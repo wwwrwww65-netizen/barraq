@@ -1,7 +1,17 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <script src="demo-mock.js"></script>
+    <script>
+        (function () {
+            try {
+                var theme = localStorage.getItem('sys_theme') || 'dark';
+                var isLight = theme === 'light';
+                var de = document.documentElement;
+                de.setAttribute('data-theme', isLight ? 'light' : 'dark');
+                de.style.backgroundColor = isLight ? '#f1f5f9' : '#0b0f19';
+            } catch (_) {}
+        })();
+    </script>    <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mister Casher - المشتريات والموردين</title>
@@ -10,7 +20,8 @@
     <link rel="stylesheet" href="purchases.css">
     <link rel="stylesheet" href="purchases_modern.css">
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
-    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/regular/style.css">
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/fill/style.css">
 </head>
 <body>
     <script>
@@ -287,7 +298,8 @@
     <!-- Hidden Template for Rows -->
     <template id="item-row-tpl">
         <div class="item-row">
-            <div class="form-group">
+            <!-- Row 1: Item, Qty, Price -->
+            <div class="form-group row-item-select">
                 <label>الصنف (الخامة)</label>
                 <select class="input-modern item-sku" required></select>
             </div>
@@ -296,7 +308,7 @@
                 <input type="number" step="any" min="0.0001" class="input-modern item-qty" placeholder="0" required>
             </div>
             <div class="form-group">
-                <label>الإنتاجية (القدرة الكلية)</label>
+                <label>الإنتاجية (للحبة الواحدة)</label>
                 <input type="number" step="any" min="0" class="input-modern item-yield" placeholder="تلقائي">
             </div>
             <div class="form-group">

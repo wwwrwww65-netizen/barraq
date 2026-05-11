@@ -1,7 +1,17 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <script src="demo-mock.js"></script>
+    <script>
+        (function () {
+            try {
+                var theme = localStorage.getItem('sys_theme') || 'dark';
+                var isLight = theme === 'light';
+                var de = document.documentElement;
+                de.setAttribute('data-theme', isLight ? 'light' : 'dark');
+                de.style.backgroundColor = isLight ? '#f1f5f9' : '#0b0f19';
+            } catch (_) {}
+        })();
+    </script>    <script src="demo-mock.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>إدارة المرتجعات - Mister Casher</title>
@@ -13,7 +23,8 @@
     
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <!-- Phosphor Icons -->
-    <script src="node_modules/@phosphor-icons/web/src/index.js"></script>
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/regular/style.css">
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/fill/style.css">
 </head>
 <body>
     <script>
@@ -186,52 +197,62 @@
         </main>
     </div>
 
-    <!-- Returns Confirmation Modal -->
-    <div class="modal-overlay" id="return-modal">
-        <div class="return-modal-content">
-            <div class="modal-header-danger">
-                <i class="ph-fill ph-warning-circle"></i>
-                <h3>تأكيد عملية إرجاع الأموال</h3>
+    <!-- Returns Confirmation Modal (Standardized with Modern Dialogs) -->
+    <div class="md-overlay" id="return-modal">
+        <div class="md-container md-type-error" style="width: 500px;">
+            <div class="md-header">
+                <div class="md-icon-circle">
+                    <i class="ph-fill ph-warning-circle"></i>
+                </div>
+                <h3 class="md-title">تأكيد عملية إرجاع الأموال</h3>
             </div>
-            <div class="modal-body">
-                <div class="return-info-summary">
-                    <div class="info-item">
-                        <span class="label">رقم الطلب</span>
-                        <span class="value" id="modal-order-id">ORD-0000</span>
+            
+            <div class="md-body" style="padding-top: 10px;">
+                <div class="return-info-summary" style="background: rgba(255,255,255,0.03); border-radius: 16px; padding: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div class="info-item" style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span style="opacity: 0.7;">رقم الطلب:</span>
+                        <strong id="modal-order-id" style="color: white;">ORD-0000</strong>
                     </div>
-                    <div class="info-item">
-                        <span class="label">إجمالي المبلغ المسترد</span>
-                        <span class="value amount" id="modal-order-total">0.00 ر.س</span>
+                    <div class="info-item" style="display: flex; justify-content: space-between;">
+                        <span style="opacity: 0.7;">المبلغ المسترد:</span>
+                        <strong id="modal-order-total" style="color: var(--accent-red); font-size: 20px;">0.00 ر.س</strong>
                     </div>
                 </div>
 
-                <div class="payment-method-selector">
-                    <label>اختر طريقة رد المبلغ للعميل:</label>
-                    <div class="method-options">
+                <div class="payment-method-selector" style="text-align: right; margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 12px; font-weight: 700; opacity: 0.9;">طريقة رد المبلغ:</label>
+                    <div class="method-options" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                         <label class="method-option">
                             <input type="radio" name="return-method" value="نقدي" checked>
-                            <div class="method-box">
-                                <i class="ph ph-money"></i>
+                            <div class="method-box" style="padding: 15px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.1); cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                <i class="ph ph-money" style="font-size: 24px;"></i>
                                 <span>نقدي (كاش)</span>
                             </div>
                         </label>
                         <label class="method-option">
                             <input type="radio" name="return-method" value="شبكة">
-                            <div class="method-box">
-                                <i class="ph ph-credit-card"></i>
+                            <div class="method-box" style="padding: 15px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.1); cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                <i class="ph ph-credit-card" style="font-size: 24px;"></i>
                                 <span>بطاقة (شبكة)</span>
                             </div>
                         </label>
                     </div>
                 </div>
 
-                <p style="color: var(--text-muted); font-size: 13px; text-align: center; line-height: 1.6;">
-                    تنبيه: سيتم تسجيل هذه العملية كمرتجع مالي، وسيتم تحديث سجل المبيعات والمخزون بشكل آلي.
+                <p style="font-size: 13px; opacity: 0.6; line-height: 1.5;">
+                    سيتم إلغاء الطلب نهائياً وعكس المبالغ في التقارير المالية.
                 </p>
             </div>
-            <div class="modal-footer">
-                <button class="btn-confirm-return" id="confirm-return-final">تأكيد الإرجاع</button>
-                <button class="btn-cancel-modal" id="cancel-return-modal">إلغاء</button>
+
+            <div class="md-footer">
+                <button class="md-btn md-btn-secondary" id="cancel-return-modal">
+                    <i class="ph ph-x-circle"></i>
+                    <span>إلغاء</span>
+                </button>
+                <button class="md-btn md-btn-primary" id="confirm-return-final" style="background: var(--accent-red);">
+                    <i class="ph ph-check-circle"></i>
+                    <span>تأكيد الإرجاع</span>
+                </button>
             </div>
         </div>
     </div>
