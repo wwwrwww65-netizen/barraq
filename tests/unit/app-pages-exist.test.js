@@ -33,6 +33,7 @@ const APP_HTML_PAGES = [
   'profile.html',
   'suppliers.html',
   'setup.html',
+  'activation.html',
   'inv-documents.html',
   'acc-banks.html',
   'acc-reports.html',
@@ -42,6 +43,7 @@ const APP_HTML_PAGES = [
   'journal.html',
   'add-item.html',
   'add-category.html',
+  'day-closures.html',
 ];
 
 describe('app HTML pages exist', () => {

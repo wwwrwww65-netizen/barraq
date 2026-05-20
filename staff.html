@@ -163,7 +163,7 @@
         /* Stats row inside profile */
         .profile-stats-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 16px;
             margin-top: 16px;
         }
@@ -817,14 +817,21 @@
                                         style="font-size:12px">ر.س</span></h3>
                             </div>
                             <div class="p-stat-card">
-                                <p>إجمالي السلف / الخصم</p>
+                                <p>سلف / خصم (رصيد مفتوح)</p>
                                 <h3 style="color:#f87171;" id="pro-loans">0.00 <span class="js-cur-sym"
+                                        style="font-size:12px">ر.س</span></h3>
+                            </div>
+                            <div class="p-stat-card">
+                                <p>راتب / مكافآت مُصرفة</p>
+                                <h3 style="color:#fbbf24;" id="pro-paid">0.00 <span class="js-cur-sym"
                                         style="font-size:12px">ر.س</span></h3>
                             </div>
                             <div class="p-stat-card">
                                 <p>صافي المستحق للصرف</p>
                                 <h3 style="color:#60a5fa;" id="pro-net">0.00 <span class="js-cur-sym"
                                         style="font-size:12px">ر.س</span></h3>
+                                <p id="pro-net-detail"
+                                    style="font-size:11px;color:var(--text-muted);margin:6px 0 0;line-height:1.5;"></p>
                             </div>
                             <div class="p-stat-card"
                                 style="background:rgba(236,72,153,0.1); border-color:rgba(236,72,153,0.2);">

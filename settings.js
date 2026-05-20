@@ -1,5 +1,340 @@
 document.addEventListener('DOMContentLoaded', () => {
 
+    (function injectLicenseSettingsPage() {
+        const nav = document.querySelector('.sidebar .nav-menu');
+        const pagesHost = document.querySelector('.settings-pages-container');
+        if (!nav || !pagesHost || document.getElementById('page-license')) return;
+
+        if (!nav.querySelector('[data-target="page-license"]')) {
+            const tab = document.createElement('a');
+            tab.href = '#';
+            tab.className = 'nav-item settings-tab';
+            tab.setAttribute('data-target', 'page-license');
+            tab.innerHTML = '<i class="ph ph-medal"></i><span>الإصدار والاشتراكات</span>';
+            const advTab = nav.querySelector('[data-target="page-advanced"]');
+            if (advTab) nav.insertBefore(tab, advTab);
+            else nav.appendChild(tab);
+        }
+
+        const page = document.createElement('div');
+        page.id = 'page-license';
+        page.className = 'settings-page';
+        page.innerHTML = `
+            <div class="settings-grid">
+                <div class="settings-card" style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 40px 20px;">
+                    <div style="background: var(--accent-blue); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);">
+                        <i class="ph-fill ph-medal" style="font-size: 40px; color: #fff !important;"></i>
+                    </div>
+                    <h2 style="margin-bottom: 10px; font-size: 1.8rem; color: var(--text-primary);">نظام إدارة المطاعم</h2>
+                    <p style="color: var(--text-muted); font-size: 1rem; margin-bottom: 30px;">الإصدار الحالي: <span dir="ltr">v1.0.25</span></p>
+                    
+                    <div style="background: var(--bg-card-hover); padding: 25px; border-radius: 16px; width: 100%; max-width: 500px; border: 1px solid var(--border-light); margin-bottom: 30px; text-align: right;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px dashed var(--border-light); padding-bottom: 15px;">
+                            <span style="color: var(--text-secondary);"><i class="ph ph-fingerprint"></i> معرّف الجهاز:</span>
+                            <strong id="set-license-device-id" dir="ltr" style="user-select: all; font-family: monospace; color: var(--text-primary);">—</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px dashed var(--border-light); padding-bottom: 15px;">
+                            <span style="color: var(--text-secondary);"><i class="ph ph-star"></i> حالة النسخة:</span>
+                            <span id="set-license-status" style="font-weight: bold; padding: 4px 12px; border-radius: 20px; background: rgba(59, 130, 246, 0.1); color: var(--accent-blue);">—</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px dashed var(--border-light); padding-bottom: 15px;">
+                            <span style="color: var(--text-secondary);"><i class="ph ph-devices"></i> الأجهزة المرتبطة المسموحة:</span>
+                            <strong id="set-license-allowed" style="color: var(--text-primary);">—</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; display: none;" id="trial-ends-container">
+                            <span style="color: var(--text-secondary);"><i class="ph ph-clock-countdown"></i> انتهاء التجربة:</span>
+                            <strong id="set-license-trial-ends" dir="ltr" style="color: #e74c3c;">—</strong>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; align-items: center;">
+                        <button type="button" class="btn btn-primary" id="btn-license-refresh" style="min-width: 200px; justify-content: center;">
+                            <i class="ph ph-arrows-clockwise"></i> تحديث الحالة
+                        </button>
+                        <button type="button" class="btn btn-primary" id="btn-request-permanent" style="min-width: 200px; background-color: #27ae60 !important; border-color: #27ae60 !important; justify-content: center; display: none;">
+                            <i class="ph ph-rocket-launch"></i> طلب ترقية للنسخة الدائمة
+                        </button>
+                        
+                        <button type="button" class="btn btn-primary" id="btn-open-extra-devices-modal" style="background-color: var(--accent-blue) !important; border-color: var(--accent-blue) !important; justify-content: center; display: none; min-width: 200px;">
+                            <i class="ph ph-plus-circle"></i> طلب إضافة أجهزة
+                        </button>
+                    </div>
+                    <p id="set-license-msg" style="margin-top: 20px; font-size: 14px; color: var(--text-secondary);"></p>
+                </div>
+            </div>
+        `;
+        const advPage = document.getElementById('page-advanced');
+        if (advPage) pagesHost.insertBefore(page, advPage);
+        else pagesHost.appendChild(page);
+
+        // Inject modal directly into body to avoid CSS transform scoping issues
+        if (!document.getElementById('modal-extra-devices')) {
+            const modalDiv = document.createElement('div');
+            modalDiv.id = 'modal-extra-devices';
+            modalDiv.className = 'factory-modal-overlay';
+            modalDiv.setAttribute('aria-hidden', 'true');
+            modalDiv.innerHTML = `
+                <div class="factory-modal-box" role="dialog" aria-modal="true" style="text-align: right; padding: 30px;">
+                    <h3 class="factory-modal-title" style="margin-top: 0; display: flex; align-items: center; gap: 12px; font-size: 1.4rem; margin-bottom: 15px; color: var(--text-primary);">
+                        <i class="ph-fill ph-desktop" style="color: var(--accent-blue); font-size: 1.8rem;"></i>
+                        طلب أجهزة إضافية
+                    </h3>
+                    <p class="factory-modal-text" style="color: var(--text-secondary); margin-bottom: 25px; font-size: 1rem; line-height: 1.6;">
+                        حدد عدد الأجهزة الإضافية التي ترغب بربطها بنظامك. سيتم إرسال الطلب للإدارة للمراجعة والموافقة.
+                    </p>
+                    <div style="margin-bottom: 30px;">
+                        <label style="display: block; color: var(--text-secondary); margin-bottom: 10px; font-size: 0.95rem; font-weight: 600;">العدد المطلوب:</label>
+                        <input type="number" id="input-extra-devices" min="1" max="50" value="1" class="input-modern" style="text-align: center; font-size: 1.2rem; font-weight: bold;">
+                    </div>
+                    <div class="factory-modal-actions" style="display: flex; gap: 12px;">
+                        <button type="button" id="btn-cancel-extra-devices" class="factory-btn factory-btn-muted" style="flex: 1; justify-content: center; font-size: 1rem; padding: 12px;">إلغاء</button>
+                        <button type="button" id="btn-confirm-extra-devices" class="factory-btn" style="flex: 1; background: var(--accent-blue); color: white; border: none; justify-content: center; font-size: 1rem; padding: 12px;"><i class="ph-fill ph-paper-plane-tilt"></i> إرسال الطلب</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modalDiv);
+        }
+
+        const btnRef = document.getElementById('btn-license-refresh');
+        const btnUpgrade = document.getElementById('btn-request-permanent');
+        const btnOpenExtraDevices = document.getElementById('btn-open-extra-devices-modal');
+        const modalExtraDevices = document.getElementById('modal-extra-devices');
+        const btnCancelExtraDevices = document.getElementById('btn-cancel-extra-devices');
+        const btnConfirmExtraDevices = document.getElementById('btn-confirm-extra-devices');
+        const inputExtraDevices = document.getElementById('input-extra-devices');
+        
+        const elDev = document.getElementById('set-license-device-id');
+        const elSt = document.getElementById('set-license-status');
+        const elAl = document.getElementById('set-license-allowed');
+        const elMsg = document.getElementById('set-license-msg');
+        const trialContainer = document.getElementById('trial-ends-container');
+        const elTrial = document.getElementById('set-license-trial-ends');
+
+        let currentDeviceId = null;
+
+        async function refreshLicenseUi() {
+            try {
+                const { ipcRenderer } = require('electron');
+                const info = await ipcRenderer.invoke('license-get-info');
+                if (elDev) elDev.textContent = info.deviceId || '—';
+                currentDeviceId = info.deviceId;
+                
+                if (elSt) {
+                    elSt.textContent = info.statusLabel || info.status || '—';
+                    if (info.status === 'active') {
+                        elSt.style.background = 'rgba(39, 174, 96, 0.15)';
+                        elSt.style.color = '#27ae60';
+                    } else if (info.status === 'trial') {
+                        elSt.style.background = 'rgba(243, 156, 18, 0.15)';
+                        elSt.style.color = '#f39c12';
+                    } else {
+                        elSt.style.background = 'rgba(231, 76, 60, 0.15)';
+                        elSt.style.color = '#e74c3c';
+                    }
+                }
+                
+                if (elAl) elAl.textContent = String(info.allowedClients ?? '—');
+                
+                if (info.status === 'trial' && info.trialEndsAtLabel) {
+                    trialContainer.style.display = 'flex';
+                    if (elTrial) elTrial.textContent = info.trialEndsAtLabel;
+                } else {
+                    trialContainer.style.display = 'none';
+                }
+
+                // Show upgrade button only if not active, otherwise show extra devices button
+                if (btnUpgrade) {
+                    if (info.status !== 'active') {
+                        btnUpgrade.style.display = 'inline-flex';
+                        if (btnOpenExtraDevices) btnOpenExtraDevices.style.display = 'none';
+                    } else {
+                        btnUpgrade.style.display = 'none';
+                        if (btnOpenExtraDevices) btnOpenExtraDevices.style.display = 'inline-flex';
+                    }
+                }
+
+            } catch (e) {
+                if (elMsg) elMsg.textContent = e.message;
+            }
+        }
+        refreshLicenseUi();
+
+        btnRef?.addEventListener('click', async () => {
+            btnRef.disabled = true;
+            if (elMsg) elMsg.textContent = 'جاري التحديث من السحابة...';
+            try {
+                const { ipcRenderer } = require('electron');
+                const r = await ipcRenderer.invoke('license-refresh-manual');
+                if (r.success) {
+                    if (elMsg) elMsg.textContent = r.found
+                        ? 'تم التحديث بنجاح.'
+                        : 'لم يُعثر على ترخيص في السحابة بعد.';
+                    await refreshLicenseUi();
+                } else if (elMsg) elMsg.textContent = r.error || 'فشل التحديث';
+            } catch (e) {
+                if (elMsg) elMsg.textContent = e.message;
+            }
+            btnRef.disabled = false;
+        });
+
+        btnUpgrade?.addEventListener('click', async () => {
+            btnUpgrade.disabled = true;
+            const originalHtml = btnUpgrade.innerHTML;
+            btnUpgrade.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin"></i> جاري إرسال الطلب...';
+            
+            try {
+                const { ipcRenderer } = require('electron');
+                const restaurantSettings = localStorage.getItem('restaurant_settings');
+                let restName = '';
+                let phone = '';
+                if (restaurantSettings) {
+                    const parsed = JSON.parse(restaurantSettings);
+                    restName = parsed.name || '';
+                    phone = parsed.phone || localStorage.getItem('wa_settings') ? JSON.parse(localStorage.getItem('wa_settings')).admin : '';
+                }
+                
+                const r = await ipcRenderer.invoke('license-request-permanent', {
+                    restaurantName: restName,
+                    phone: phone,
+                    adminUsername: localStorage.getItem('admin_username') || '',
+                    deviceId: currentDeviceId
+                });
+                
+                if (r.success) {
+                    alert('تم إرسال طلب الترقية للنسخة الدائمة بنجاح! سيتم التواصل معك قريباً لتأكيد التفعيل.');
+                } else {
+                    alert('فشل إرسال الطلب: ' + (r.error || 'خطأ غير معروف'));
+                }
+            } catch (e) {
+                alert('حدث خطأ أثناء إرسال الطلب: ' + e.message);
+            }
+            
+            btnUpgrade.innerHTML = originalHtml;
+            btnUpgrade.disabled = false;
+        });
+
+        // Modal Logic for Extra Devices
+        btnOpenExtraDevices?.addEventListener('click', () => {
+            if (modalExtraDevices) {
+                modalExtraDevices.classList.add('active');
+                modalExtraDevices.setAttribute('aria-hidden', 'false');
+                if(inputExtraDevices) inputExtraDevices.focus();
+            }
+        });
+
+        function closeExtraDevicesModal() {
+            if (modalExtraDevices) {
+                modalExtraDevices.classList.remove('active');
+                modalExtraDevices.setAttribute('aria-hidden', 'true');
+            }
+        }
+
+        btnCancelExtraDevices?.addEventListener('click', closeExtraDevicesModal);
+        
+        modalExtraDevices?.addEventListener('click', (e) => {
+            if (e.target === modalExtraDevices) closeExtraDevicesModal();
+        });
+
+        btnConfirmExtraDevices?.addEventListener('click', async () => {
+            const count = parseInt(inputExtraDevices.value, 10);
+            if (isNaN(count) || count < 1) {
+                alert('الرجاء إدخال عدد صحيح للأجهزة المطلوبة.');
+                return;
+            }
+
+            btnConfirmExtraDevices.disabled = true;
+            const originalHtml = btnConfirmExtraDevices.innerHTML;
+            btnConfirmExtraDevices.innerHTML = '<i class="ph-fill ph-spinner-gap ph-spin"></i> إرسال...';
+
+            try {
+                const { ipcRenderer } = require('electron');
+                const restaurantSettings = localStorage.getItem('restaurant_settings');
+                let restName = '';
+                let phone = '';
+                if (restaurantSettings) {
+                    const parsed = JSON.parse(restaurantSettings);
+                    restName = parsed.name || '';
+                    phone = parsed.phone || localStorage.getItem('wa_settings') ? JSON.parse(localStorage.getItem('wa_settings')).admin : '';
+                }
+
+                const r = await ipcRenderer.invoke('license-request-extra-devices', {
+                    restaurantName: restName,
+                    phone: phone,
+                    adminUsername: localStorage.getItem('admin_username') || '',
+                    deviceId: currentDeviceId,
+                    requestedDevicesCount: count
+                });
+
+                if (r.success) {
+                    alert('تم إرسال طلب زيادة الأجهزة بنجاح! سيتم مراجعة طلبك وإبلاغك عند التفعيل.');
+                    closeExtraDevicesModal();
+                } else {
+                    alert('فشل إرسال الطلب: ' + (r.error || 'خطأ غير معروف'));
+                }
+            } catch (e) {
+                alert('حدث خطأ أثناء إرسال الطلب: ' + e.message);
+            }
+
+            btnConfirmExtraDevices.innerHTML = originalHtml;
+            btnConfirmExtraDevices.disabled = false;
+        });
+    })();
+
+    const selPerf = document.getElementById('set-perf-mode');
+    const perfStatus = document.getElementById('set-perf-status');
+    function updatePerfStatusText() {
+        if (!perfStatus || !window.MC_PERF) return;
+        let mode = 'auto';
+        try {
+            mode = localStorage.getItem('mc_perf_override') || 'auto';
+        } catch (_) {}
+        if (mode === 'weak') {
+            perfStatus.textContent = 'الوضع الحالي: توفير طاقة (يدوي)';
+        } else if (mode === 'strong') {
+            perfStatus.textContent = 'الوضع الحالي: أداء كامل (يدوي)';
+        } else if (window.MC_PERF.isWeak) {
+            perfStatus.textContent = 'تلقائي: توفير طاقة — تم اكتشاف جهاز ضعيف';
+        } else {
+            perfStatus.textContent = 'تلقائي: أداء كامل';
+        }
+    }
+    if (selPerf) {
+        (async () => {
+            try {
+                const { ipcRenderer } = require('electron');
+                const disk = await ipcRenderer.invoke('mc-get-perf-override');
+                if (disk && disk.override) {
+                    localStorage.setItem('mc_perf_override', disk.override);
+                    selPerf.value = disk.override;
+                } else {
+                    selPerf.value = localStorage.getItem('mc_perf_override') || 'auto';
+                }
+            } catch (_) {
+                try {
+                    selPerf.value = localStorage.getItem('mc_perf_override') || 'auto';
+                } catch (__) {
+                    selPerf.value = 'auto';
+                }
+            }
+            updatePerfStatusText();
+        })();
+        selPerf.addEventListener('change', () => {
+            if (window.MC_PERF && typeof window.MC_PERF.setOverride === 'function') {
+                window.MC_PERF.setOverride(selPerf.value);
+            } else {
+                try {
+                    localStorage.setItem('mc_perf_override', selPerf.value);
+                    const { ipcRenderer } = require('electron');
+                    ipcRenderer.invoke('mc-save-perf-override', selPerf.value).finally(() => {
+                        window.location.reload();
+                    });
+                } catch (_) {
+                    window.location.reload();
+                }
+            }
+        });
+    }
+
     const form = document.querySelector('#settings-form');
     const dropZone = document.getElementById('drop-zone');
     const logoInput = document.getElementById('logo-input');
@@ -1140,10 +1475,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     tabTitle.textContent = tab.querySelector('span').textContent;
                 }
 
-                // Hide Action Buttons if on Support Page
+                // Hide Action Buttons if on Support or License Page
                 const actionBar = document.querySelector('.settings-actions-bar');
                 if (actionBar) {
-                    actionBar.style.display = (targetId === 'page-support') ? 'none' : 'flex';
+                    actionBar.style.display = (targetId === 'page-support' || targetId === 'page-license') ? 'none' : 'flex';
                 }
 
                 // If support page, update WhatsApp link with restaurant name

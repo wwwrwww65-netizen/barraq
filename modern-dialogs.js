@@ -130,11 +130,8 @@ window.alert = function(msg) {
     ModernDialog.alert(msg);
 };
 
-window.confirm = function(msg) {
-    console.warn('Native confirm called. Code execution will NOT block. Returning false by default.');
-    ModernDialog.confirm(msg);
-    return false; 
-};
+// لا تستبدل window.confirm — في Electron يُرجع false فوراً ويكسر confirmCloseDay وغيره.
+// استخدم دائماً: const ok = await window.mcasherConfirm('الرسالة', 'العنوان');
 
 // Auto-inject CSS
 (function injectStyles() {

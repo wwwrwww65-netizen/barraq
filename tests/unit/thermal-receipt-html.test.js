@@ -28,10 +28,10 @@ function mockReceiptDom() {
 describe('getReceiptFooterLine', () => {
   it('بدون تخصيص: اسم البرنامج', () => {
     const { getReceiptFooterLine } = require('../../thermal-receipt-updated.js');
-    expect(getReceiptFooterLine(null, 'أي اسم', null)).toContain('Hash POS');
+    expect(getReceiptFooterLine(null, 'أي اسم', null)).toContain('Mister Casher');
     expect(
-      getReceiptFooterLine(JSON.stringify({ name: 'هش HASH', logo: '1111.png' }), 'هش HASH', null)
-    ).toContain('Hash POS');
+      getReceiptFooterLine(JSON.stringify({ name: 'Mister Casher', logo: '2222.png' }), 'Mister Casher', null)
+    ).toContain('Mister Casher');
   });
 
   it('مع اسم منشأة مخصص: بدون Hash POS في الإيصال العادي', () => {
@@ -42,7 +42,7 @@ describe('getReceiptFooterLine', () => {
       null
     );
     expect(line).toBe('مطعم الأصالة');
-    expect(line).not.toContain('Hash POS');
+    expect(line).not.toContain('Mister Casher');
   });
 
   it('مع شعار base64 يُعتبر تخصيصاً', () => {
@@ -54,7 +54,7 @@ describe('getReceiptFooterLine', () => {
     );
     expect(line).toContain('هش HASH');
     expect(line).toContain('تقرير وردية');
-    expect(line).not.toContain('Hash POS');
+    expect(line).not.toContain('Mister Casher');
   });
 });
 
@@ -75,7 +75,7 @@ describe('buildThermalReceiptHTML', () => {
     expect(html).toContain('80mm');
     expect(html).toContain('dir="rtl"');
     expect(html).toContain('#INV-TEST');
-    expect(html).toContain('Hash POS');
+    expect(html).toContain('Mister Casher');
     expect(html).toContain('مجموع الأصناف');
   });
 

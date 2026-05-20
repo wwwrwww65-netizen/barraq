@@ -127,30 +127,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         let deliveryBreakdown = {};
 
         function splitOrderAmounts(o) {
+            if (window.PaymentSplit) {
+                const pay = window.PaymentSplit.splitOrderAmounts(o);
+                const compName = o.deliveryCompany || (o.hungerStation === true ? 'هنقرستيشن' : 'توصيل');
+                const deliveryAmount = pay.hungerStation > 0 ? pay.hungerStation : 0;
+                return {
+                    cash: pay.cash,
+                    card: pay.network,
+                    deliveryAmount,
+                    compName: deliveryAmount > 0 ? compName : undefined,
+                };
+            }
             const pm = String(o.paymentMethod || '').trim();
             const total = Number(o.total) || 0;
-            const isDelivery = o.hungerStation === true || o.orderType === 'توصيل' || !!o.deliveryCompany;
-            
-            if (isDelivery) {
-                const isPaid = o.hsPaymentStatus === 'paid';
-                if (!isPaid) return { cash: 0, card: 0, deliveryAmount: 0 };
-                
-                const method = (o.hsPaymentMethod || '').trim();
-                const compName = o.deliveryCompany || (o.hungerStation === true ? 'هنقرستيشن' : 'توصيل');
-                
-                if (method.includes('كاش')) {
-                    return { cash: total, card: 0, deliveryAmount: total, compName };
-                } else {
-                    return { cash: 0, card: total, deliveryAmount: total, compName };
-                }
-            }
-
-            if (pm === 'مجزأ') {
-                const c = Number(o.splitCash) || 0;
-                const n = Number(o.splitNetwork) || 0;
-                if (c || n) return { cash: c, card: n, deliveryAmount: 0 };
-                return { cash: 0, card: total, deliveryAmount: 0 };
-            }
             if (pm.includes('كاش') || pm === 'cash') return { cash: total, card: 0, deliveryAmount: 0 };
             return { cash: 0, card: total, deliveryAmount: 0 };
         }
@@ -181,8 +170,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         let totalReturns = 0;
+        const allOrdersForRet = allOrders || orders;
         returns.forEach(r => {
             totalReturns += (Number(r.amount) || 0);
+            if (window.PaymentSplit && !window.PaymentSplit.returnAffectsLiquidity(r, allOrdersForRet)) return;
             const back = splitReturnAmounts(r);
             cashSales -= back.cash;
             cardSales -= back.card;
@@ -191,8 +182,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         const netRevenue = totalRevenue - totalReturns;
 
         // ---- Expenses ----
+        function hrCountsAsExpense(hr) {
+            if (window.PaymentSplit) return window.PaymentSplit.hrAffectsLiquidity(hr);
+            const t = String(hr.type || '');
+            if (t.includes('سلفة')) return true;
+            return !t.includes('خصم / جزاء') && !t.includes('جزاء');
+        }
         let totalHRExpenses = 0;
-        hrExpenses.forEach(hr => totalHRExpenses += (Number(hr.amount) || 0));
+        hrExpenses.forEach(hr => {
+            if (!hrCountsAsExpense(hr)) return;
+            totalHRExpenses += (Number(hr.amount) || 0);
+        });
 
         let totalPurchases = 0;
         purchases.forEach(pur => totalPurchases += (Number(pur.total) || Number(pur.amount) || 0));

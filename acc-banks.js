@@ -14,13 +14,17 @@
             .replace(/"/g, '&quot;');
     }
 
+    const PS = () => window.PaymentSplit;
+
     function hrAffectsLiquidity(h) {
+        if (PS()) return PS().hrAffectsLiquidity(h);
         const t = String(h.type || '');
         if (t.includes('سلفة')) return true;
         return !t.includes('خصم / جزاء') && !t.includes('جزاء');
     }
 
     function orderToCashBank(o) {
+        if (PS()) return PS().orderToCashBank(o);
         const t = Number(o.total) || 0;
         const pm = String(o.paymentMethod || '').trim();
         if (pm === 'cash' || pm === 'كاش' || pm === 'نقد') return { c: t, b: 0 };
@@ -30,6 +34,7 @@
     }
 
     function returnRefundCashBank(r) {
+        if (PS()) return PS().returnRefundCashBank(r);
         const amt = Number(r.amount) || 0;
         const pm = String(r.method || '').trim();
         if (pm === 'cash' || pm === 'كاش' || pm === 'نقد') return { c: amt, b: 0 };
@@ -90,6 +95,7 @@
         let cashRetOut = 0;
         let bankRetOut = 0;
         returnsRows.forEach((r) => {
+            if (PS() && !PS().returnAffectsLiquidity(r, posOrders)) return;
             const x = returnRefundCashBank(r);
             cashRetOut += x.c;
             bankRetOut += x.b;

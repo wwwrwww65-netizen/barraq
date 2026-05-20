@@ -39,6 +39,7 @@ const PAGES_AFTER_LOGIN = [
   'journal.html',
   'add-item.html',
   'add-category.html',
+  'day-closures.html',
 ];
 
 test.describe.configure({ mode: 'serial' });

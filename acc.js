@@ -31,13 +31,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function hrAffectsLiquidity(h) {
+        if (window.PaymentSplit) return window.PaymentSplit.hrAffectsLiquidity(h);
         const t = String(h.type || '');
         if (t.includes('سلفة')) return true;
         return !t.includes('خصم / جزاء') && !t.includes('جزاء');
     }
 
+    const allOrdersForReturns = db.orders || [];
     let totalReturns = 0;
-    returnsRows.forEach((r) => { totalReturns += Number(r.amount) || 0; });
+    let totalReturnsAll = 0;
+    returnsRows.forEach((r) => {
+        const amt = Number(r.amount) || 0;
+        totalReturnsAll += amt;
+        if (window.PaymentSplit && !window.PaymentSplit.returnAffectsLiquidity(r, allOrdersForReturns)) return;
+        totalReturns += amt;
+    });
     let totalOtherIncome = 0;
     otherIncomeRows.forEach((row) => { totalOtherIncome += Number(row.amount) || 0; });
 
@@ -60,12 +68,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const revByDayGross = sumByWeekday(
-        posOrders,
+        posOrders.filter((o) => o.status !== 'returned'),
         (o) => new Date(o.timestamp || o.date || Date.now()),
         (o) => o.total,
     );
+    const ordersForRetChart = db.orders || [];
     const retByDay = sumByWeekday(
-        returnsRows,
+        returnsRows.filter(
+            (r) => !window.PaymentSplit || window.PaymentSplit.returnAffectsLiquidity(r, ordersForRetChart),
+        ),
         (r) => new Date(r.timestamp || r.date || Date.now()),
         (r) => Number(r.amount) || 0,
     );
@@ -94,27 +105,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     );
     const outByDay = revByDay.map((_, i) => purByDay[i] + expByDay[i] + hrByDay[i]);
 
-    // 2. ✅ Financial Aggregation Engine (مواءمة مع profit-loss.js)
-    let totalRev = 0, cashRev = 0, bankRev = 0;
-    posOrders.forEach((o) => {
-        const t = Number(o.total) || 0;
-        totalRev += t;
-        const pm = o.paymentMethod || '';
-        if (pm === 'cash' || pm === 'كاش') cashRev += t;
-        else if (['card', 'bank', 'شبكة / بطاقة', 'شبكة'].includes(pm)) bankRev += t;
-        else if (pm === 'مجزأ') {
-            cashRev += Number(o.splitCash) || 0;
-            bankRev += Number(o.splitNetwork) || 0;
-        } else {
-            bankRev += t;
-        }
-    });
+    // 2. ✅ Financial Aggregation Engine — منطق موحّد (payment-split.js)
+    const activeOrders = posOrders.filter((o) => o.status !== 'returned');
+    let totalRev = 0;
+    let cashRev = 0;
+    let bankRev = 0;
+    if (window.PaymentSplit) {
+        const agg = window.PaymentSplit.aggregateOrderRevenue(activeOrders);
+        totalRev = agg.total;
+        cashRev = agg.cash;
+        bankRev = agg.bank;
+    } else {
+        activeOrders.forEach((o) => {
+            const t = Number(o.total) || 0;
+            totalRev += t;
+            const pm = o.paymentMethod || '';
+            if (pm === 'cash' || pm === 'كاش') cashRev += t;
+            else if (['card', 'bank', 'شبكة / بطاقة', 'شبكة'].includes(pm)) bankRev += t;
+            else if (pm === 'مجزأ') {
+                cashRev += Number(o.splitCash) || 0;
+                bankRev += Number(o.splitNetwork) || 0;
+            } else bankRev += t;
+        });
+    }
     otherIncomeRows.forEach((row) => {
         const a = Number(row.amount) || 0;
         if (row.pMethod === 'bank') bankRev += a;
         else cashRev += a;
     });
-    const totalRevNet = Math.max(0, totalRev - totalReturns) + totalOtherIncome;
+    /* totalRev يستبعد الطلبات المرتجعة — لا نخصم المرتجعات مرتين */
+    const totalRevNet = totalRev + totalOtherIncome;
 
     let totalPur = 0, cashPur = 0, bankPur = 0;
     erpPurchases.forEach((p) => {
@@ -146,6 +166,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     function returnRefundCashBank(r) {
+        if (window.PaymentSplit) return window.PaymentSplit.returnRefundCashBank(r);
         const amt = Number(r.amount) || 0;
         const pm = String(r.method || '').trim();
         if (pm === 'cash' || pm === 'كاش' || pm === 'نقد') return { c: amt, b: 0 };
@@ -159,6 +180,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     let cashRetOut = 0, bankRetOut = 0;
     returnsRows.forEach((r) => {
+        if (window.PaymentSplit && !window.PaymentSplit.returnAffectsLiquidity(r, allOrdersForReturns)) return;
         const x = returnRefundCashBank(r);
         cashRetOut += x.c;
         bankRetOut += x.b;
@@ -476,16 +498,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 bOrders.forEach(o => {
                     if(!isInRange(o.timestamp||o.dateStr||o.date)) return;
-                    let t = Number(o.total)||0;
-                    let pm = o.paymentMethod||'';
-                    if(['cash','كاش','نقد'].includes(pm)) cash += t;
-                    else if(['card','bank','شبكة / بطاقة','شبكة','مدى','فيزا'].includes(pm)) bank += t;
-                    else if(pm==='مجزأ') { cash += Number(o.splitCash)||0; bank += Number(o.splitNetwork)||0; }
-                    else bank += t;
+                    if (window.PaymentSplit) {
+                        const x = window.PaymentSplit.orderToCashBank(o);
+                        cash += x.c;
+                        bank += x.b;
+                    } else if (o.status === 'returned') {
+                        return;
+                    } else {
+                        let t = Number(o.total)||0;
+                        let pm = o.paymentMethod||'';
+                        if(['cash','كاش','نقد'].includes(pm)) cash += t;
+                        else if(['card','bank','شبكة / بطاقة','شبكة','مدى','فيزا'].includes(pm)) bank += t;
+                        else if(pm==='مجزأ') { cash += Number(o.splitCash)||0; bank += Number(o.splitNetwork)||0; }
+                        else bank += t;
+                    }
                 });
 
                 bReturns.forEach(r => {
                     if(!isInRange(r.timestamp||r.date)) return;
+                    if (window.PaymentSplit && !window.PaymentSplit.returnAffectsLiquidity(r, bOrders)) return;
                     let x = returnRefundCashBank(r);
                     cash -= x.c; bank -= x.b;
                 });
@@ -551,39 +582,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             );
 
             function splitShiftOrder(o) {
+                if (window.PaymentSplit) return window.PaymentSplit.splitOrderAmounts(o);
                 const pm = String(o.paymentMethod || '').trim();
                 const total = Number(o.total) || 0;
-                const isHS = o.hungerStation === true || o.orderType === 'هنقرستيشن';
-                const isHSPaid = o.hsPaymentStatus === 'paid';
-                
-                // HungerStation unpaid should NOT affect drawer balance
-                if (isHS && !isHSPaid) {
-                    return { cash: 0, network: 0, hungerStation: total };
-                }
-                
-                // HungerStation paid - check payment method
-                if (isHS && isHSPaid) {
-                    const hsMethod = (o.hsPaymentMethod || '').trim();
-                    if (hsMethod.includes('كاش') || hsMethod === 'cash') {
-                        return { cash: total, network: 0, hungerStation: 0 };
-                    } else {
-                        return { cash: 0, network: total, hungerStation: 0 };
-                    }
-                }
-                
-                if (pm === 'مجزأ') {
-                    const c = Number(o.splitCash) || 0;
-                    const n = Number(o.splitNetwork) || 0;
-                    
-                    // Validation: if split values are invalid, use total as cash
-                    if (c < 0 || n < 0) {
-                        return { cash: total, network: 0, hungerStation: 0 };
-                    }
-                    
-                    if (c || n) return { cash: c, network: n, hungerStation: 0 };
-                    // If no split values stored, assume all cash
-                    return { cash: total, network: 0, hungerStation: 0 };
-                }
                 if (pm.includes('كاش') || pm === 'cash') return { cash: total, network: 0, hungerStation: 0 };
                 return { cash: 0, network: total, hungerStation: 0 };
             }
@@ -616,9 +617,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             dExpenses.forEach(h => {
                 const a = Number(h.amount) || 0;
                 dTotalExp += a;
-                // تفريق بين النقدي والبنكي
-                if (h.pMethod === 'bank') dBankExp += a;
-                else dCashExp += a;
+                const isCash = window.PaymentSplit
+                    ? window.PaymentSplit.isCashPaymentMethod(h.pMethod)
+                    : (h.pMethod !== 'bank' && h.pMethod !== 'network' && h.pMethod !== 'شبكة');
+                if (isCash) dCashExp += a;
+                else dBankExp += a;
             });
 
             // رصيد الدرج = يتأثر فقط بالمصروفات النقدية (البنك لا يخرج من الدرج)
@@ -803,11 +806,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         function getVoucherCaptureScale() {
-            const cores = Number(navigator.hardwareConcurrency) || 2;
-            const mem = Number(navigator.deviceMemory) || 0;
-            if (cores <= 2 || (mem > 0 && mem <= 2)) return 1.4;
-            if (cores <= 4 || (mem > 0 && mem <= 4)) return 1.7;
-            return 2;
+            if (window.MC_PERF && typeof window.MC_PERF.getVoucherCaptureScale === 'function') {
+                return window.MC_PERF.getVoucherCaptureScale();
+            }
+            return 1.5;
         }
         const voucherCaptureScale = getVoucherCaptureScale();
         const modal = document.getElementById('expenseModal');
@@ -1487,7 +1489,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.getElementById('pl-rev-sales').innerText = fmt3(totalRev);
         const plRet = document.getElementById('pl-returns-row');
-        if (plRet) plRet.innerText = totalReturns > 0 ? `(${fmt3(totalReturns)})` : '0.00';
+        if (plRet) plRet.innerText = totalReturnsAll > 0 ? `(${fmt3(totalReturnsAll)})` : '0.00';
         document.getElementById('pl-total-rev').innerText = fmt3(totalRevNet);
         document.getElementById('pl-cogs-pur').innerText = `(${fmt3(totalPur)})`;
         const gross = totalRevNet - totalPur;

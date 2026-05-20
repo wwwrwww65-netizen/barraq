@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <script>
@@ -50,6 +50,7 @@
                 <a href="#" class="nav-item active settings-tab" data-target="page-info"><i class="ph ph-info"></i><span>المعلومات والبيانات</span></a>
                 <a href="#" class="nav-item settings-tab" data-target="page-whatsapp"><i class="ph ph-whatsapp-logo"></i><span>الربط مع واتساب</span></a>
                 <a href="#" class="nav-item settings-tab" data-target="page-backup"><i class="ph ph-hard-drives"></i><span>التخزين والنسخ</span></a>
+                <a href="#" class="nav-item settings-tab" data-target="page-license"><i class="ph ph-medal"></i><span>الإصدار والاشتراكات</span></a>
                 <a href="#" class="nav-item settings-tab" data-target="page-advanced"><i class="ph ph-warning"></i><span>خيارات متقدمة</span></a>
                 <a href="#" class="nav-item settings-tab" data-target="page-support"><i class="ph ph-headset"></i><span>الدعم الفني والخدمات</span></a>
             </nav>
@@ -485,6 +486,22 @@
                         <!-- Page 4: Advanced -->
                         <div id="page-advanced" class="settings-page">
                             <div class="settings-grid">
+                                <div class="settings-card" style="grid-column: 1 / -1;">
+                                    <div class="sc-header">
+                                        <i class="ph-fill ph-gauge"></i>
+                                        <h3>وضع الأداء</h3>
+                                    </div>
+                                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 12px;">
+                                        يُكتشف تلقائياً على الأجهزة الضعيفة (مثل Celeron J1900). عند التغيير تُحدَّث الصفحة فوراً؛ لإعادة ضبط نافذة التشغيل بالكامل أغلق التطبيق وافتحه من جديد.
+                                    </p>
+                                    <label style="font-size: 13px; font-weight: 700; display: block; margin-bottom: 6px;">ملف الأداء</label>
+                                    <select id="set-perf-mode" class="input-modern" style="max-width: 320px;">
+                                        <option value="auto">تلقائي (مُوصى به)</option>
+                                        <option value="weak">توفير طاقة — أجهزة ضعيفة</option>
+                                        <option value="strong">أداء كامل — أجهزة قوية</option>
+                                    </select>
+                                    <p id="set-perf-status" style="margin-top: 10px; font-size: 12px; color: var(--text-secondary);"></p>
+                                </div>
                                 <!-- منطقة خطرة — يظهر للمدير العام فقط -->
                                 <div id="settings-factory-reset-wrap" class="settings-card" style="grid-column: 1 / -1; display: none; border-color: rgba(239, 68, 68, 0.45); background: rgba(127, 29, 29, 0.12);">
                                     <div class="sc-header" style="border-bottom-color: rgba(239, 68, 68, 0.25);">

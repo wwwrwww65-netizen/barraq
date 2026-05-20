@@ -4,17 +4,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     // State
     let hsOrders = [];
     let currentFilter = 'all';
-    let currentDateFilter = 'all'; // all, today, week, month, custom
+    let currentDateFilter = 'all'; // all, today, week, month, 2weeks, single, range
+    let customDateSingle = '';
+    let customDateFrom = '';
+    let customDateTo = '';
+    let selectedOrderIds = new Set();
+    let selectionTouched = false;
 
     // Format currency
     const formatCurrency = (amount) =>
         window.MisterCasherCurrency ? MisterCasherCurrency.format(amount) : Number(amount).toFixed(2) + ' ر.س';
     function getVoucherCaptureScale() {
-        const cores = Number(navigator.hardwareConcurrency) || 2;
-        const mem = Number(navigator.deviceMemory) || 0;
-        if (cores <= 2 || (mem > 0 && mem <= 2)) return 1.4;
-        if (cores <= 4 || (mem > 0 && mem <= 4)) return 1.7;
-        return 2;
+        if (window.MC_PERF && typeof window.MC_PERF.getVoucherCaptureScale === 'function') {
+            return window.MC_PERF.getVoucherCaptureScale();
+        }
+        return 1.5;
     }
 
     // Load data
@@ -85,29 +89,136 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function getOrderTimestamp(order) {
+        if (order.timestamp) return Number(order.timestamp);
+        if (order.date) {
+            const parsed = Date.parse(order.date);
+            if (!Number.isNaN(parsed)) return parsed;
+        }
+        return 0;
+    }
+
+    function formatDateInputLabel(dateStr) {
+        if (!dateStr) return '';
+        try {
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const dt = new Date(y, m - 1, d);
+            return dt.toLocaleDateString('ar-u-nu-latn', { year: 'numeric', month: 'long', day: 'numeric' });
+        } catch (_) {
+            return dateStr;
+        }
+    }
+
+    function getDateFilterLabel() {
+        if (currentDateFilter === 'all') return 'كل الأوقات';
+        if (currentDateFilter === 'today') return 'اليوم';
+        if (currentDateFilter === 'week') return 'هذا الأسبوع';
+        if (currentDateFilter === 'month') return 'هذا الشهر';
+        if (currentDateFilter === '2weeks') return 'آخر أسبوعين';
+        if (currentDateFilter === 'single' && customDateSingle) {
+            return `تاريخ ${formatDateInputLabel(customDateSingle)}`;
+        }
+        if (currentDateFilter === 'range') {
+            if (customDateFrom && customDateTo) {
+                return `من ${formatDateInputLabel(customDateFrom)} إلى ${formatDateInputLabel(customDateTo)}`;
+            }
+            if (customDateFrom) return `من ${formatDateInputLabel(customDateFrom)}`;
+            if (customDateTo) return `حتى ${formatDateInputLabel(customDateTo)}`;
+        }
+        return 'كل الأوقات';
+    }
+
+    function updateDateFilterLabel() {
+        const el = document.getElementById('hs-active-date-label');
+        if (el) el.textContent = getDateFilterLabel();
+    }
+
+    function setDateFilterActive(mode) {
+        currentDateFilter = mode;
+        const presetModes = ['all', 'today', 'week', 'month', '2weeks'];
+        document.querySelectorAll('.hs-filter-btn[data-date]').forEach(b => {
+            b.classList.toggle('active', presetModes.includes(mode) && b.dataset.date === mode);
+        });
+        updateDateFilterLabel();
+    }
+
+    function resetSelectionToVisible(orders) {
+        selectedOrderIds = new Set(orders.map(o => o.orderId).filter(Boolean));
+        selectionTouched = false;
+    }
+
     // Date filtering
     function filterByDate(orders) {
         const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
         if (currentDateFilter === 'all') return orders;
-        
+
         return orders.filter(order => {
-            const orderDate = new Date(order.timestamp || 0);
-            
+            const orderTs = getOrderTimestamp(order);
+
             if (currentDateFilter === 'today') {
-                return orderDate >= today;
-            } else if (currentDateFilter === 'week') {
-                const weekAgo = new Date(today);
+                return orderTs >= todayStart;
+            }
+            if (currentDateFilter === 'week') {
+                const weekAgo = new Date(todayStart);
                 weekAgo.setDate(weekAgo.getDate() - 7);
-                return orderDate >= weekAgo;
-            } else if (currentDateFilter === 'month') {
-                const monthAgo = new Date(today);
+                return orderTs >= weekAgo.getTime();
+            }
+            if (currentDateFilter === 'month') {
+                const monthAgo = new Date(todayStart);
                 monthAgo.setMonth(monthAgo.getMonth() - 1);
-                return orderDate >= monthAgo;
+                return orderTs >= monthAgo.getTime();
+            }
+            if (currentDateFilter === '2weeks') {
+                const twoWeeksAgo = new Date(todayStart);
+                twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+                return orderTs >= twoWeeksAgo.getTime();
+            }
+            if (currentDateFilter === 'single' && customDateSingle) {
+                const dayStart = new Date(customDateSingle).getTime();
+                const dayEnd = dayStart + 86400000 - 1;
+                return orderTs >= dayStart && orderTs <= dayEnd;
+            }
+            if (currentDateFilter === 'range') {
+                if (customDateFrom) {
+                    const fromTs = new Date(customDateFrom).getTime();
+                    if (orderTs < fromTs) return false;
+                }
+                if (customDateTo) {
+                    const toTs = new Date(customDateTo).getTime() + 86400000 - 1;
+                    if (orderTs > toTs) return false;
+                }
             }
             return true;
         });
+    }
+
+    function getFilteredOrders() {
+        let filtered = filterByDate(hsOrders);
+        if (currentFilter === 'paid') {
+            filtered = filtered.filter(o => o.hsPaymentStatus === 'paid');
+        } else if (currentFilter === 'unpaid') {
+            filtered = filtered.filter(o => o.hsPaymentStatus !== 'paid');
+        }
+        const searchInput = document.getElementById('hs-search-input');
+        const searchTerm = (searchInput ? searchInput.value : '').toLowerCase();
+        if (searchTerm) {
+            filtered = filtered.filter(o =>
+                (o.orderId || '').toLowerCase().includes(searchTerm) ||
+                (o.customerName || '').toLowerCase().includes(searchTerm)
+            );
+        }
+        return filtered;
+    }
+
+    function syncSelectAllCheckbox(filtered) {
+        const selectAll = document.getElementById('hs-select-all');
+        if (!selectAll) return;
+        const visibleIds = filtered.map(o => o.orderId).filter(Boolean);
+        const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedOrderIds.has(id));
+        selectAll.checked = allSelected;
+        selectAll.indeterminate = !allSelected && visibleIds.some(id => selectedOrderIds.has(id));
     }
 
     // Render dashboard KPIs
@@ -130,43 +241,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('hs-total-unpaid').innerHTML = formatCurrency(totalUnpaid);
         document.getElementById('hs-delivered-orders').textContent = deliveredOrders;
         document.getElementById('hs-pending-payment').textContent = unpaidOrders.length;
+
+        const kpiPeriod = document.querySelector('#hs-total-orders')?.closest('.hs-card')?.querySelector('.hs-card-subtitle span');
+        if (kpiPeriod) kpiPeriod.textContent = getDateFilterLabel();
     }
 
     // Render orders table
-    function renderOrders() {
+    function renderOrders(resetSelection = false) {
         const tbody = document.getElementById('hs-orders-table');
-        const filteredOrders = filterByDate(hsOrders);
-        
-        let filtered = filteredOrders;
-        
-        // Apply payment filter - ONLY for paid/unpaid, not for 'all'
-        if (currentFilter === 'paid') {
-            filtered = filteredOrders.filter(o => o.hsPaymentStatus === 'paid');
-        } else if (currentFilter === 'unpaid') {
-            filtered = filteredOrders.filter(o => o.hsPaymentStatus !== 'paid');
-        }
-        // For 'all', show everything (no filter)
+        const filtered = getFilteredOrders();
 
-        // Apply search
-        const searchInput = document.getElementById('hs-search-input');
-        const searchTerm = (searchInput ? searchInput.value : '').toLowerCase();
-        if (searchTerm) {
-            filtered = filtered.filter(o => 
-                (o.orderId || '').toLowerCase().includes(searchTerm) ||
-                (o.customerName || '').toLowerCase().includes(searchTerm)
-            );
+        if (resetSelection || !selectionTouched) {
+            resetSelectionToVisible(filtered);
+        } else {
+            const visibleIds = new Set(filtered.map(o => o.orderId).filter(Boolean));
+            selectedOrderIds = new Set([...selectedOrderIds].filter(id => visibleIds.has(id)));
         }
 
         if (filtered.length === 0) {
             const targetCompany = new URLSearchParams(window.location.search).get('company') || 'هنقرستيشن';
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="hs-empty">
+                    <td colspan="9" class="hs-empty">
                         <i class="ph ph-motorcycle"></i>
                         <p>لا توجد طلبات لشركة ${targetCompany} بعد</p>
                     </td>
                 </tr>
             `;
+            syncSelectAllCheckbox([]);
             return;
         }
 
@@ -176,9 +278,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const statusText = 'مكتمل';
             const paymentClass = order.hsPaymentStatus || 'unpaid';
             const paymentText = paymentClass === 'paid' ? 'مدفوع' : 'غير مدفوع';
+            const isChecked = selectedOrderIds.has(order.orderId);
+            const safeId = (order.orderId || '').replace(/'/g, "\\'");
 
             return `
                 <tr>
+                    <td style="text-align:center;">
+                        <input type="checkbox" class="hs-order-cb hs-order-checkbox" data-order-id="${order.orderId || ''}" ${isChecked ? 'checked' : ''} onchange="toggleHsOrderSelection('${safeId}', this.checked)">
+                    </td>
                     <td><strong>${order.orderId || '-'}</strong></td>
                     <td>${order.date || '-'}</td>
                     <td>${order.customerName || 'هنقرستيشن'}</td>
@@ -200,6 +307,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
         }).join('');
 
+        syncSelectAllCheckbox(filtered);
+
         // Populate tfoot with summary rows (print/PDF friendly — no big cards)
         const tfoot = document.getElementById('hs-orders-tfoot');
         if (tfoot) {
@@ -210,10 +319,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const unpaidCount = filtered.filter(o => o.hsPaymentStatus !== 'paid').length;
             const sym = window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س';
 
+            const dateLabel = getDateFilterLabel();
             tfoot.innerHTML = `
                 <tr style="background:rgba(255,107,0,0.07); font-weight:700; border-top:3px solid #ff6b00;">
-                    <td colspan="3" style="padding:12px 14px; font-size:13px; border-top:3px solid #94a3b8;">
-                        ◼ إجمالي الطلبات: <strong>${filtered.length} طلب</strong>
+                    <td colspan="4" style="padding:12px 14px; font-size:13px; border-top:3px solid #94a3b8;">
+                        ◼ إجمالي الطلبات: <strong>${filtered.length} طلب</strong> — <span style="color:#ff6b00;">${dateLabel}</span>
                     </td>
                     <td style="padding:12px 14px; border-top:3px solid #94a3b8;"></td>
                     <td style="padding:12px 14px; font-size:15px; font-weight:800; border-top:3px solid #94a3b8;">
@@ -222,7 +332,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td colspan="3" style="padding:12px 14px; font-size:12px; border-top:3px solid #94a3b8;">الإجمالي الكلي</td>
                 </tr>
                 <tr style="background:rgba(16,185,129,0.06);">
-                    <td colspan="3" style="padding:9px 14px; font-size:13px;">
+                    <td colspan="4" style="padding:9px 14px; font-size:13px;">
                         ✓ المدفوع: <strong>${paidCount} طلب</strong>
                     </td>
                     <td style="padding:9px 14px;"></td>
@@ -232,7 +342,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td colspan="3" style="padding:9px 14px; font-size:12px;">تم الاستلام</td>
                 </tr>
                 <tr style="background:rgba(239,68,68,0.06);">
-                    <td colspan="3" style="padding:9px 14px; font-size:13px;">
+                    <td colspan="4" style="padding:9px 14px; font-size:13px;">
                         ✗ غير المدفوع: <strong>${unpaidCount} طلب</strong>
                     </td>
                     <td style="padding:9px 14px;"></td>
@@ -314,6 +424,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div style="background: linear-gradient(135deg, rgba(255,107,0,0.1), rgba(255,133,51,0.1)); padding: 16px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #ff6b00;">
                         <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">المبلغ الإجمالي للطلب:</div>
                         <div style="font-size: 32px; font-weight: 800; color: #ff6b00;">${formatCurrency(order.total || 0)}</div>
+                        <div style="font-size: 13px; color: #ff6b00; font-weight: 700; margin-top: 8px;">تاريخ الطلب: ${order.date || '-'}</div>
                     </div>
                     
                     <div class="hs-form-group">
@@ -410,11 +521,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 from: order.deliveryCompany || order.orderType || 'هنقرستيشن',
                 orderId: orderId,
                 paymentMethod: selectedMethod,
-                notes: notes || `استلام مبلغ طلب ${orderId}`,
+                notes: notes || `استلام مبلغ طلب ${orderId} — تاريخ الطلب: ${order.date || '-'}`,
+                dateFilterLabel: order.date ? `تاريخ الطلب: ${order.date}` : '',
                 date: now.toLocaleString('ar-u-nu-latn'),
-                timestamp: now.getTime(),
-                // Mark that this affects drawer balance
-                
+                timestamp: now.getTime()
             };
             dbData.receipt_vouchers.push(newVoucher);
             
@@ -457,13 +567,78 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         const d = new Date();
         const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        const filterSlug = getDateFilterLabel().replace(/\s+/g, '_').replace(/[^\w\u0600-\u06FF_-]/g, '');
         
         if (typeof window.exportPageToPDF === 'function') {
-            window.exportPageToPDF(targetCompany + '_' + restName + '_' + dateStr + '.pdf');
+            window.exportPageToPDF(targetCompany + '_' + restName + '_' + filterSlug + '_' + dateStr + '.pdf');
         } else {
             window.print();
         }
     };
+
+    window.toggleHsOrderSelection = function(orderId, checked) {
+        if (!orderId) return;
+        selectionTouched = true;
+        if (checked) selectedOrderIds.add(orderId);
+        else selectedOrderIds.delete(orderId);
+        syncSelectAllCheckbox(getFilteredOrders());
+    };
+
+    const selectAllEl = document.getElementById('hs-select-all');
+    if (selectAllEl) {
+        selectAllEl.addEventListener('change', () => {
+            selectionTouched = true;
+            const filtered = getFilteredOrders();
+            if (selectAllEl.checked) {
+                filtered.forEach(o => { if (o.orderId) selectedOrderIds.add(o.orderId); });
+            } else {
+                filtered.forEach(o => { if (o.orderId) selectedOrderIds.delete(o.orderId); });
+            }
+            renderOrders(false);
+        });
+    }
+
+    const singleDateInput = document.getElementById('hs-date-single');
+    if (singleDateInput) {
+        singleDateInput.addEventListener('change', () => {
+            if (!singleDateInput.value) return;
+            customDateSingle = singleDateInput.value;
+            customDateFrom = '';
+            customDateTo = '';
+            const fromEl = document.getElementById('hs-date-from');
+            const toEl = document.getElementById('hs-date-to');
+            if (fromEl) fromEl.value = '';
+            if (toEl) toEl.value = '';
+            setDateFilterActive('single');
+            renderDashboard();
+            renderOrders(true);
+        });
+    }
+
+    const applyRangeBtn = document.getElementById('hs-apply-date-range');
+    if (applyRangeBtn) {
+        applyRangeBtn.addEventListener('click', () => {
+            const fromEl = document.getElementById('hs-date-from');
+            const toEl = document.getElementById('hs-date-to');
+            customDateFrom = fromEl ? fromEl.value : '';
+            customDateTo = toEl ? toEl.value : '';
+            if (!customDateFrom && !customDateTo) {
+                alert('الرجاء اختيار تاريخ البداية أو النهاية على الأقل');
+                return;
+            }
+            if (customDateFrom && customDateTo && customDateFrom > customDateTo) {
+                alert('تاريخ البداية يجب أن يكون قبل تاريخ النهاية');
+                return;
+            }
+            customDateSingle = '';
+            if (singleDateInput) singleDateInput.value = '';
+            document.querySelectorAll('.hs-filter-btn[data-date]').forEach(b => b.classList.remove('active'));
+            currentDateFilter = 'range';
+            updateDateFilterLabel();
+            renderDashboard();
+            renderOrders(true);
+        });
+    }
 
     // Filter buttons - Payment status
     document.querySelectorAll('.hs-filter-btn[data-filter]').forEach(btn => {
@@ -471,24 +646,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.querySelectorAll('.hs-filter-btn[data-filter]').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentFilter = btn.dataset.filter;
-            renderOrders();
+            renderOrders(true);
         });
     });
 
     // Filter buttons - Date range
     document.querySelectorAll('.hs-filter-btn[data-date]').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.hs-filter-btn[data-date]').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentDateFilter = btn.dataset.date;
+            customDateSingle = '';
+            customDateFrom = '';
+            customDateTo = '';
+            if (singleDateInput) singleDateInput.value = '';
+            const fromEl = document.getElementById('hs-date-from');
+            const toEl = document.getElementById('hs-date-to');
+            if (fromEl) fromEl.value = '';
+            if (toEl) toEl.value = '';
+            setDateFilterActive(btn.dataset.date);
             renderDashboard();
-            renderOrders();
+            renderOrders(true);
         });
     });
 
     // Search input
     document.getElementById('hs-search-input').addEventListener('input', () => {
-        renderOrders();
+        renderOrders(false);
     });
 
     // Notification helper
@@ -505,6 +686,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Initial load
+    updateDateFilterLabel();
     loadData();
 
     // Listen for database changes
@@ -518,14 +700,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    function getSelectedUnpaidOrders() {
+        return getFilteredOrders().filter(o =>
+            o.hsPaymentStatus !== 'paid' && selectedOrderIds.has(o.orderId)
+        );
+    }
+
     // Bulk receive modal
     window.openBulkReceiveModal = async function() {
-        const filteredOrders = filterByDate(hsOrders);
-        const unpaidOrders = filteredOrders.filter(o => o.hsPaymentStatus !== 'paid');
+        const unpaidOrders = getSelectedUnpaidOrders();
         const totalUnpaid = unpaidOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+        const dateLabel = getDateFilterLabel();
+        const companyName = new URLSearchParams(window.location.search).get('company') || 'هنقرستيشن';
+
+        if (unpaidOrders.length === 0) {
+            alert('لا توجد طلبات غير مدفوعة محددة للاستلام');
+            return;
+        }
 
         document.getElementById('bulk-unpaid-amount').textContent = formatCurrency(totalUnpaid);
-        document.getElementById('bulk-unpaid-count').textContent = `${unpaidOrders.length} طلب غير مدفوع`;
+        document.getElementById('bulk-unpaid-count').textContent = `${unpaidOrders.length} طلب محدد غير مدفوع`;
+        const bulkDateLabel = document.getElementById('bulk-date-range-label');
+        if (bulkDateLabel) bulkDateLabel.textContent = `الفترة: ${dateLabel}`;
         document.getElementById('bulk-receive-amount').value = totalUnpaid.toFixed(2);
         
         window.openModalLayer(document.getElementById('hs-bulk-receive-modal'));
@@ -545,13 +741,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        if (!await ModernDialog.confirm(`هل تريد تأكيد استلام ${formatCurrency(amount)} من هنقرستيشن؟\nسيتم إنشاء سند قبض.`)) {
+        const companyName = new URLSearchParams(window.location.search).get('company') || 'هنقرستيشن';
+        const dateLabel = getDateFilterLabel();
+        const selectedUnpaid = getSelectedUnpaidOrders()
+            .sort((a, b) => getOrderTimestamp(a) - getOrderTimestamp(b));
+
+        if (selectedUnpaid.length === 0) {
+            alert('لا توجد طلبات محددة غير مدفوعة');
+            return;
+        }
+
+        if (!await ModernDialog.confirm(`هل تريد تأكيد استلام ${formatCurrency(amount)} من ${companyName}؟\nالفترة: ${dateLabel}\nعدد الطلبات المحددة: ${selectedUnpaid.length}\nسيتم إنشاء سند قبض.`)) {
             return;
         }
 
         try {
             const dbData = await window.dbRead();
             const now = new Date();
+            const periodNote = `الفترة: ${dateLabel}`;
 
             // Create receipt voucher (سند قبض)
             if (!dbData.receipt_vouchers) dbData.receipt_vouchers = [];
@@ -560,18 +767,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 id: 'RV-HS-' + Date.now(),
                 type: 'سند قبض',
                 amount: amount,
-                from: new URLSearchParams(window.location.search).get('company') || 'هنقرستيشن',
+                from: companyName,
                 orderId: 'طلبات متعددة',
                 paymentMethod: paymentMethod,
-                notes: notes || `استلام مبلغ من ${new URLSearchParams(window.location.search).get('company') || 'هنقرستيشن'}`,
+                notes: notes || `استلام مبلغ من ${companyName} — ${periodNote}`,
+                dateFilterLabel: dateLabel,
                 date: now.toLocaleString('ar-u-nu-latn'),
                 timestamp: now.getTime()
             };
             dbData.receipt_vouchers.push(newVoucher);
 
-            // Mark orders as paid based on amount received
-            const unpaidOrders = hsOrders.filter(o => o.hsPaymentStatus !== 'paid')
-                .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            // Mark selected orders as paid based on amount received
+            const unpaidOrders = selectedUnpaid;
             
             let remainingAmount = amount;
             let totalCashReceived = 0;
@@ -674,7 +881,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('hsv-number').innerText = voucherData.id;
             document.getElementById('hsv-amt-balance').innerText = formatCurrency(voucherData.amount);
             document.getElementById('hsv-amt').innerText = formatCurrency(voucherData.amount);
-            document.getElementById('hsv-desc').innerText = voucherData.notes;
+            const descParts = [voucherData.notes];
+            if (voucherData.dateFilterLabel) descParts.push(`(${voucherData.dateFilterLabel})`);
+            document.getElementById('hsv-desc').innerText = descParts.filter(Boolean).join(' ');
             document.getElementById('hsv-pay').innerText = voucherData.paymentMethod;
             document.getElementById('hsv-notes').innerText = 'تم الاستلام والتأكيد من النظام';
             document.getElementById('hsv-foot-date').innerText = displayDate;

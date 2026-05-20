@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <script>
@@ -99,6 +99,26 @@
                     const restaurantName = (data.name || '').trim();
                     const restaurantLogo = (data.logo || '').trim();
 
+                    // إرسال البيانات للمدير الخلفي لغرض ترقية التراخيص
+                    try {
+                        if (typeof require !== 'undefined') {
+                            const { ipcRenderer } = require('electron');
+                            let phoneVal = data.phone || '';
+                            if (!phoneVal) {
+                                try {
+                                    const waRaw = localStorage.getItem('wa_settings');
+                                    if (waRaw) phoneVal = JSON.parse(waRaw).admin || '';
+                                } catch(_) {}
+                            }
+                            if (!phoneVal) phoneVal = localStorage.getItem('admin_phone') || '';
+                            ipcRenderer.send('update-restaurant-info', {
+                                restaurantName: restaurantName,
+                                phone: phoneVal,
+                                adminUsername: localStorage.getItem('admin_username') || ''
+                            });
+                        }
+                    } catch(e) {}
+
                     // إذا كان الشعار base64 أو مساراً لملف مطعم حقيقي
                     if (restaurantLogo && restaurantLogo !== '2222.png' && restaurantLogo !== '1(1).png') {
                         logoEl.src = restaurantLogo;
@@ -111,8 +131,6 @@
             }
         });
     </script>
-    <script src="currency-helper.js"></script>
-    <script src="script.js"></script>
     <script src="login.js"></script>
 </body>
 </html>

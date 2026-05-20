@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <script>
+        (function () {
+            try {
+                var theme = localStorage.getItem('sys_theme') || 'dark';
+                var isLight = theme === 'light';
+                var de = document.documentElement;
+                de.setAttribute('data-theme', isLight ? 'light' : 'dark');
+                de.style.backgroundColor = isLight ? '#f1f5f9' : '#0b0f19';
+            } catch (_) {}
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تفعيل النظام - Mister Casher</title>
+    <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/regular/style.css">
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/fill/style.css">
+    <link rel="stylesheet" href="activation.css">
+</head>
+<body>
+    <div class="act-bg-glow act-glow-1"></div>
+    <div class="act-bg-glow act-glow-2"></div>
+    <div class="act-wrap">
+        <header class="act-header">
+            <img src="2222.png" alt="Logo" width="56" height="56" style="border-radius:14px;">
+            <h1>تفعيل Mister Casher</h1>
+            <p id="act-subtitle">فعّل نسختك أو ابدأ التجربة المجانية لمدة 7 أيام</p>
+        </header>
+        <div id="act-lock-banner" class="act-lock" style="display:none;"></div>
+        <section class="act-card">
+            <label class="act-label">معرف الجهاز (Device ID)</label>
+            <div class="act-device-row">
+                <code id="act-device-id" class="act-device-id">جاري التحميل...</code>
+                <button type="button" class="act-btn act-btn-ghost" id="btn-copy-device" title="نسخ"><i class="ph ph-copy"></i></button>
+            </div>
+            <p class="act-hint">أرسل هذا المعرف للدعم عند طلب التفعيل الدائم.</p>
+        </section>
+        <section class="act-card act-status" id="act-status-box">
+            <div class="act-status-row"><span>الحالة</span><strong id="act-status-text">—</strong></div>
+            <div class="act-status-row"><span>الأجهزة المسموحة</span><strong id="act-allowed-text">—</strong></div>
+            <div class="act-status-row"><span>تنتهي التجربة</span><strong id="act-trial-end">—</strong></div>
+        </section>
+        <div class="act-actions">
+            <button type="button" class="act-btn act-btn-primary" id="btn-start-trial"><i class="ph-fill ph-clock-countdown"></i> بدء التجربة المجانية (7 أيام)</button>
+            <button type="button" class="act-btn act-btn-secondary" id="btn-permanent"><i class="ph-fill ph-key"></i> تفعيل النسخة الدائمة</button>
+            <button type="button" class="act-btn act-btn-ghost" id="btn-check-status"><i class="ph ph-arrows-clockwise"></i> التحقق من حالة التفعيل</button>
+            <button type="button" class="act-btn act-btn-success" id="btn-go-login" style="display:none;"><i class="ph ph-sign-in"></i> الدخول إلى النظام</button>
+        </div>
+        <p id="act-message" class="act-message"></p>
+    </div>
+    <div id="act-upgrade-modal" class="act-modal" style="display:none;">
+        <div class="act-modal-card">
+            <h3>الحد الأقصى للأجهزة</h3>
+            <p id="act-upgrade-msg">تم الوصول للحد الأقصى للأجهزة. هل تود طلب ترقية؟</p>
+            <div class="act-modal-actions">
+                <button type="button" class="act-btn act-btn-primary" id="btn-upgrade-request">طلب ترقية</button>
+                <button type="button" class="act-btn act-btn-ghost" id="btn-upgrade-close">إغلاق</button>
+            </div>
+        </div>
+    </div>
+    <script src="activation.js"></script>
+</body>
+</html>

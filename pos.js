@@ -779,21 +779,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             // - normal: append as new order via db-save-order
             // - edit mode: replace existing order by same orderId
             if (isEditingOrder && editingOrderId) {
-                const dbNow = await window.dbRead();
-                dbNow.orders = dbNow.orders || [];
-                const idx = dbNow.orders.findIndex((o) => String(o.orderId) === String(editingOrderId));
-                if (idx >= 0) {
-                    const oldOrder = dbNow.orders[idx] || {};
-                    orderData.orderId = editingOrderId;
-                    orderData.timestamp = oldOrder.timestamp || orderData.timestamp;
-                    orderData.updatedAt = Date.now();
-                    orderData.editVersion = Number(oldOrder.editVersion || 0) + 1;
-                    dbNow.orders[idx] = orderData;
-                } else {
-                    // fallback if original missing
-                    dbNow.orders.push(orderData);
+                orderData.orderId = editingOrderId;
+                orderData.updatedAt = Date.now();
+                let patched = false;
+                if (typeof window.dbUpdateOrder === 'function') {
+                    const patchRes = await window.dbUpdateOrder(orderData);
+                    patched = patchRes && patchRes.success;
                 }
-                await window.dbWrite(dbNow);
+                if (!patched) {
+                    const dbNow = await window.dbRead();
+                    dbNow.orders = dbNow.orders || [];
+                    const idx = dbNow.orders.findIndex((o) => String(o.orderId) === String(editingOrderId));
+                    if (idx >= 0) {
+                        const oldOrder = dbNow.orders[idx] || {};
+                        orderData.timestamp = oldOrder.timestamp || orderData.timestamp;
+                        orderData.editVersion = Number(oldOrder.editVersion || 0) + 1;
+                        dbNow.orders[idx] = orderData;
+                    } else {
+                        orderData.editVersion = 1;
+                        dbNow.orders.push(orderData);
+                    }
+                    await window.dbWrite(dbNow);
+                }
             } else {
                 // Securely save via IPC to backend SQLite (Atomic Transaction)
                 const saveResult = await ipcRenderer.invoke('db-save-order', orderData);

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <script>
@@ -102,6 +102,7 @@
             <a href="accounting.html" class="nav-item"><i class="ph ph-vault"></i> المحاسبة</a>
             <a href="statistics.html" class="nav-item"><i class="ph ph-chart-pie-slice"></i> الإحصائيات</a>
             <a href="cashier-report.html" class="nav-item active"><i class="ph ph-identification-card"></i> تقارير الكاشيرين</a>
+            <a href="day-closures.html" class="nav-item"><i class="ph ph-folder-open"></i> سجلات الاقفال</a>
             <a href="staff.html" class="nav-item"><i class="ph ph-users-three"></i> شؤون الموظفين</a>
             <a href="inventory.html" class="nav-item"><i class="ph ph-package"></i> المخزون</a>
             <a href="delivery-companies.html" class="nav-item"><i class="ph ph-buildings"></i><span>شركات التوصيل</span></a>
@@ -224,6 +225,7 @@
 <script src="currency-helper.js"></script>
 <script src="script.js"></script>
 <script src="db-helper.js"></script>
+<script src="payment-split.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', async () => {
     // ── Determine current user ───────────────────────────────────────
@@ -295,7 +297,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         let orders = allOrders
-            .filter(o => inPeriod(o.timestamp || o.createdAt))
+            .filter(o => o.status !== 'returned' && inPeriod(o.timestamp || o.createdAt))
             .map(o => ({ ...o, cashier: resolveCashier(o) }));
 
         let returns = allReturns.filter(r => inPeriod(r.timestamp));
@@ -309,13 +311,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderOrdersTable(orders);
     };
 
+    function orderPay(o) {
+        if (window.PaymentSplit) {
+            const p = window.PaymentSplit.splitOrderAmounts(o);
+            return { cash: p.cash, network: p.network };
+        }
+        const t = o.total || 0;
+        const pm = o.paymentMethod || '';
+        if (pm === 'كاش' || pm === 'cash') return { cash: t, network: 0 };
+        if (pm === 'مجزأ') return { cash: o.splitCash || 0, network: o.splitNetwork || 0 };
+        if (pm.includes('شبكة') || pm.includes('بطاقة')) return { cash: 0, network: t };
+        return { cash: 0, network: t };
+    }
+
     function renderKPIs(orders, returns) {
         let total = 0, cash = 0, network = 0;
         orders.forEach(o => {
             total += o.total || 0;
-            if (o.paymentMethod === 'كاش') cash += o.total || 0;
-            else if (o.paymentMethod === 'شبكة / بطاقة' || o.paymentMethod === 'شبكة') network += o.total || 0;
-            else if (o.paymentMethod === 'مجزأ') { cash += o.splitCash || 0; network += o.splitNetwork || 0; }
+            const p = orderPay(o);
+            cash += p.cash;
+            network += p.network;
         });
         let totalReturns = returns.reduce((s, r) => s + (r.amount || 0), 0);
         const fmt = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : n.toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س');
@@ -341,9 +356,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             let total=0, cash=0, network=0, retTotal=0;
             myOrders.forEach(o => {
                 total += o.total||0;
-                if(o.paymentMethod==='كاش') cash += o.total||0;
-                else if(o.paymentMethod==='شبكة / بطاقة'||o.paymentMethod==='شبكة') network += o.total||0;
-                else if(o.paymentMethod==='مجزأ') { cash+=o.splitCash||0; network+=o.splitNetwork||0; }
+                const p = orderPay(o);
+                cash += p.cash;
+                network += p.network;
             });
             myReturns.forEach(r => retTotal += r.amount||0);
             const initials = name.split(' ').map(w=>w[0]||'').join('').substring(0,2);

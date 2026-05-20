@@ -9,11 +9,10 @@ let db = {};
 let voucherSearchQuery = '';
 let isVoucherGenerating = false;
 function getVoucherCaptureScale() {
-    const cores = Number(navigator.hardwareConcurrency) || 2;
-    const mem = Number(navigator.deviceMemory) || 0;
-    if (cores <= 2 || (mem > 0 && mem <= 2)) return 1.4;
-    if (cores <= 4 || (mem > 0 && mem <= 4)) return 1.7;
-    return 2;
+    if (window.MC_PERF && typeof window.MC_PERF.getVoucherCaptureScale === 'function') {
+        return window.MC_PERF.getVoucherCaptureScale();
+    }
+    return 1.5;
 }
 
 function formatVoucherNo(n) {
@@ -137,28 +136,172 @@ async function checkAndRunAutoCycleReset() {
 }
 
 async function persistDb() {
-    await window.dbWrite(db);
+    return await window.dbWrite(db);
 }
 
-function getEmpPaidSalary(empName) {
-    let lastReset = db.hrCycle?.lastResetAt || 0;
+/** مرجع حي للموظف من db الحالية (يتجنب مرجعاً قديماً بعد pos-db-updated). */
+function getProfileEmployee(profileId) {
+    const pid = profileId || currentProfileId;
+    if (!pid) return null;
+    return (db.employees || []).find((e) => e.id === pid) || null;
+}
 
-    // Find the latest individual 'تصفير حساب' for this employee
+function normalizeEmpName(name) {
+    return String(name || '').trim().replace(/\s+/g, ' ');
+}
+
+function hrExpenseMatchesEmployee(h, empName) {
+    return normalizeEmpName(h?.employee) === normalizeEmpName(empName);
+}
+
+/** طابع زمني موحّد للسند (يدعم السجلات القديمة بتاريخ فقط). */
+function getHrExpenseTimestamp(h) {
+    const ts = Number(h?.timestamp || h?.lastModified || 0);
+    if (Number.isFinite(ts) && ts > 0) return ts;
+    if (h?.date) {
+        const parsed = Date.parse(h.date);
+        if (Number.isFinite(parsed) && !isNaN(parsed)) return parsed;
+    }
+    return 0;
+}
+
+function compareHrExpenseTime(a, b) {
+    const ta = getHrExpenseTimestamp(a);
+    const tb = getHrExpenseTimestamp(b);
+    if (ta === 0 && tb === 0) return 0;
+    if (ta === 0) return 1;
+    if (tb === 0) return -1;
+    return ta - tb;
+}
+
+function getEmpResetTimestamp(empName) {
+    let lastReset = Number(db.hrCycle?.lastResetAt) || 0;
     const expenses = db.hrExpenses || [];
-    let lastIndividualReset = 0;
     for (let i = expenses.length - 1; i >= 0; i--) {
-        if (expenses[i].employee === empName && expenses[i].type === 'تصفير حساب') {
-            lastIndividualReset = expenses[i].timestamp || 0;
+        const h = expenses[i];
+        if (hrExpenseMatchesEmployee(h, empName) && h.type === 'تصفير حساب') {
+            lastReset = Math.max(lastReset, getHrExpenseTimestamp(h));
             break;
         }
     }
+    return lastReset;
+}
 
-    // Use the most recent reset timestamp (global or individual)
-    lastReset = Math.max(lastReset, lastIndividualReset);
+function voucherIsLoanDeduction(type) {
+    const t = String(type || '').trim().toLowerCase();
+    if (t === 'advance') return true;
+    return t.includes('سلف') || t.includes('عليه') || t.includes('خصم') || t.includes('جزاء');
+}
 
-    return expenses
-        .filter(h => h.employee === empName && h.type.includes('راتب') && (h.timestamp || 0) >= lastReset)
-        .reduce((sum, h) => sum + (Number(h.amount) || 0), 0);
+function voucherIsPaidSalary(type) {
+    const t = String(type || '').trim();
+    return t.includes('راتب') || t.includes('مكافأة') || t.includes('مكافاة');
+}
+
+/** رصيد السلف/الخصم المفتوح من السجل المالي (بعد آخر تصفير). */
+function getEmpOpenLoans(empName) {
+    const globalReset = Number(db.hrCycle?.lastResetAt) || 0;
+    const items = (db.hrExpenses || [])
+        .filter(h => hrExpenseMatchesEmployee(h, empName))
+        .sort(compareHrExpenseTime);
+
+    let loans = 0;
+    let lastProcessedTime = 0;
+
+    for (const h of items) {
+        const t = getHrExpenseTimestamp(h);
+
+        if (globalReset > 0 && lastProcessedTime < globalReset && t >= globalReset) {
+            loans = 0;
+        }
+
+        if (h.type === 'تصفير حساب') {
+            loans = 0;
+        } else if (voucherIsLoanDeduction(h.type)) {
+            loans += Number(h.amount) || 0;
+        }
+
+        if (t > 0) lastProcessedTime = Math.max(lastProcessedTime, t);
+    }
+
+    if (globalReset > 0 && lastProcessedTime < globalReset) {
+        loans = 0;
+    }
+
+    return Math.max(0, loans);
+}
+
+function syncEmployeeLoansFromHistory() {
+    if (!Array.isArray(db.employees)) return false;
+    let changed = false;
+    db.employees.forEach((emp) => {
+        const computed = getEmpOpenLoans(emp.name);
+        const stored = Number(emp.loans) || 0;
+        if (Math.abs(computed - stored) > 0.009) {
+            emp.loans = computed;
+            changed = true;
+        }
+    });
+    return changed;
+}
+
+function getEmpPaidSalary(empName) {
+    const globalReset = Number(db.hrCycle?.lastResetAt) || 0;
+    const items = (db.hrExpenses || [])
+        .filter(h => hrExpenseMatchesEmployee(h, empName))
+        .sort(compareHrExpenseTime);
+
+    let paid = 0;
+    let lastProcessedTime = 0;
+
+    for (const h of items) {
+        const t = getHrExpenseTimestamp(h);
+
+        if (globalReset > 0 && lastProcessedTime < globalReset && t >= globalReset) {
+            paid = 0;
+        }
+
+        if (h.type === 'تصفير حساب') {
+            paid = 0;
+        } else if (voucherIsPaidSalary(h.type)) {
+            paid += Number(h.amount) || 0;
+        }
+
+        if (t > 0) lastProcessedTime = Math.max(lastProcessedTime, t);
+    }
+
+    if (globalReset > 0 && lastProcessedTime < globalReset) {
+        paid = 0;
+    }
+
+    return Math.max(0, paid);
+}
+
+function refreshProfileHeaderCards(emp) {
+    if (!emp) return;
+    const salary = Number(emp.salary) || 0;
+    const openLoans = getEmpOpenLoans(emp.name);
+    const paidSalary = getEmpPaidSalary(emp.name);
+    const netSalary = Math.max(0, salary - openLoans - paidSalary);
+
+    const proLoans = document.getElementById('pro-loans');
+    const proNet = document.getElementById('pro-net');
+    const proPaid = document.getElementById('pro-paid');
+    const proNetDetail = document.getElementById('pro-net-detail');
+
+    if (proLoans) {
+        proLoans.innerHTML = `${xfNum(openLoans)} <span style="font-size:12px">${curSym()}</span>`;
+    }
+    if (proPaid) {
+        proPaid.innerHTML = `${xfNum(paidSalary)} <span style="font-size:12px">${curSym()}</span>`;
+    }
+    if (proNet) {
+        proNet.innerHTML = `${xfNum(netSalary)} <span style="font-size:12px">${curSym()}</span>`;
+    }
+    if (proNetDetail) {
+        proNetDetail.textContent =
+            `${xfNum(salary)} أساسي − ${xfNum(openLoans)} سلف/خصم − ${xfNum(paidSalary)} مُصرف`;
+    }
 }
 
 
@@ -457,8 +600,6 @@ window.openFullProfile = function (id) {
     if (!emp) return;
     currentProfileId = id;
 
-    const paidSalary = getEmpPaidSalary(emp.name);
-    const netSalary = Math.max(0, (emp.salary || 0) - (emp.loans || 0) - paidSalary);
     const absentDays = db.attendance.filter(a => a.empId === id && a.status === 'غياب').length;
 
     // Compute Dynamic Status
@@ -488,8 +629,7 @@ window.openFullProfile = function (id) {
     if (proStatusEl) proStatusEl.outerHTML = `<span class="p-tag" id="pro-status">${statusHtml}</span>`;
 
     document.getElementById('pro-salary').innerHTML = `${xfNum(emp.salary || 0)} <span style="font-size:12px">${curSym()}</span>`;
-    document.getElementById('pro-loans').innerHTML = `${xfNum(emp.loans || 0)} <span style="font-size:12px">${curSym()}</span>`;
-    document.getElementById('pro-net').innerHTML = `${xfNum(netSalary)} <span style="font-size:12px">${curSym()}</span>`;
+    refreshProfileHeaderCards(emp);
     document.getElementById('pro-absent').innerHTML = `${absentDays} <span style="font-size:12px">يوم</span>`;
 
     // Personal Details
@@ -567,8 +707,13 @@ window.openFullProfile = function (id) {
 
     // ── Delete Button ─────────────────────────────────────────────────
     document.getElementById('pro-btn-delete').onclick = async () => {
+        const empLive = getProfileEmployee(id);
+        if (!empLive) {
+            alert('تعذر العثور على بيانات الموظف.');
+            return;
+        }
         const confirmed = confirm(
-            `⚠️ حذف الموظف: ${emp.name}\n\n` +
+            `⚠️ حذف الموظف: ${empLive.name}\n\n` +
             `• سيُحذف ملف الموظف من قائمة الموظفين.\n` +
             `• ستبقى جميع سجلاته المالية والمبيعات محفوظة في قاعدة البيانات لأسباب محاسبية.\n` +
             `• لا يمكن التراجع عن هذا الإجراء.\n\n` +
@@ -577,25 +722,30 @@ window.openFullProfile = function (id) {
         if (!confirmed) return;
 
         // Remove employee from db
-        db.employees = db.employees.filter(e => e.id !== emp.id);
+        db.employees = db.employees.filter(e => e.id !== empLive.id);
 
         // Remove system login if exists
         try {
             const users = JSON.parse(localStorage.getItem('system_users') || '[]');
-            const updated = users.filter(u => u.username !== emp.username && u.name !== emp.name);
+            const updated = users.filter(u => u.username !== empLive.username && u.name !== empLive.name);
             localStorage.setItem('system_users', JSON.stringify(updated));
         } catch (e) { }
 
         // Save and navigate
         await persistDb();
         showView('view-employees', 'nav-employees');
-        renderStaff();
+        renderEmployees();
         updateKPIs();
-        alert(`✅ تم حذف الموظف "${emp.name}" بنجاح.\nسجلاته المالية محفوظة في قاعدة البيانات.`);
+        alert(`✅ تم حذف الموظف "${empLive.name}" بنجاح.\nسجلاته المالية محفوظة في قاعدة البيانات.`);
     };
 
     document.getElementById('pro-btn-reset').onclick = async () => {
-        const openLoans = Number(emp.loans) || 0;
+        const empLive = getProfileEmployee(id);
+        if (!empLive) {
+            alert('تعذر العثور على بيانات الموظف. أعد فتح الملف وحاول مرة أخرى.');
+            return;
+        }
+        const openLoans = getEmpOpenLoans(empLive.name);
 
         // استخدام confirm مخصص بدل native dialog لتجنب مشاكل Electron
         const confirmed = await new Promise((resolve) => {
@@ -636,10 +786,9 @@ window.openFullProfile = function (id) {
 
         if (!confirmed) return;
 
-        emp.loans = 0;
         if (!db.hrExpenses) db.hrExpenses = [];
         db.hrExpenses.push({
-            employee: emp.name,
+            employee: empLive.name,
             amount: 0,
             type: 'تصفير حساب',
             reason: `تصفير الرصيد المفتوح (${xf(openLoans)}) والبدء بدورة جديدة`,
@@ -647,11 +796,17 @@ window.openFullProfile = function (id) {
             timestamp: Date.now(),
             voucherNo: allocateVoucherNo()
         });
-        await persistDb();
+        reconcileEmpLoans(empLive.name);
+        const saved = await persistDb();
+        if (!saved) {
+            alert('تعذر حفظ التصفير في قاعدة البيانات. حاول مرة أخرى.');
+            return;
+        }
         updateKPIs();
         renderEmployees();
         renderPayroll();
-        openFullProfile(emp.id);
+        openFullProfile(id);
+        alert('تم تصفير حساب الموظف وبدء دورة مالية جديدة له.');
     };
 
     // Switch view
@@ -760,7 +915,7 @@ window.renderProfileFinances = function (empName) {
 
     let myVouchers = (db.hrExpenses || [])
         .map((h, idx) => ({ h, idx }))
-        .filter(({ h }) => h.employee === empName);
+        .filter(({ h }) => hrExpenseMatchesEmployee(h, empName));
 
     const periodSelect = document.getElementById('pro-finances-period');
     const filterVal = periodSelect ? periodSelect.value : 'all';
@@ -839,6 +994,10 @@ window.renderProfileFinances = function (empName) {
     if (myVouchers.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px;">لا توجد حركات مالية مسجلة في هذه الفترة.</td></tr>';
         if (tfoot) tfoot.innerHTML = '';
+        if (currentProfileId) {
+            const emp = db.employees.find(e => e.id === currentProfileId);
+            if (emp) refreshProfileHeaderCards(emp);
+        }
         return;
     }
 
@@ -891,7 +1050,7 @@ window.renderProfileFinances = function (empName) {
     if (tfoot) {
         const empObj = db.employees.find(e => e.name === empName);
         const currentSalary = empObj ? (empObj.salary || 0) : 0;
-        const currentLoans = empObj ? (empObj.loans || 0) : 0;
+        const currentLoans = empObj ? getEmpOpenLoans(empName) : 0;
         const paidSalary = getEmpPaidSalary(empName);
         const netPayable = Math.max(0, currentSalary - currentLoans - paidSalary);
 
@@ -963,6 +1122,11 @@ window.renderProfileFinances = function (empName) {
                 .pro-finances-table tfoot .print-only-cell { display: table-cell !important; padding: 9px 14px !important; }
             }
         `;
+    }
+
+    if (currentProfileId) {
+        const emp = db.employees.find(e => e.id === currentProfileId);
+        if (emp) refreshProfileHeaderCards(emp);
     }
 }
 
@@ -1326,16 +1490,24 @@ function renderVouchers() {
 }
 
 function voucherAffectsEmployeeLoans(voucherType) {
-    const t = String(voucherType || '');
-    return t.includes('سلفة') || t.includes('عليه') || t.includes('خصم / جزاء') || t.includes('جزاء');
+    return voucherIsLoanDeduction(voucherType);
+}
+
+function reconcileEmpLoans(empName) {
+    const emp = db.employees.find(e => hrExpenseMatchesEmployee({ employee: e.name }, empName));
+    if (emp) emp.loans = getEmpOpenLoans(emp.name);
 }
 
 function applyVoucherLoanDelta(voucher, direction) {
-    if (!voucherAffectsEmployeeLoans(voucher?.type)) return;
-    const emp = db.employees.find(e => e.name === voucher.employee);
+    if (!voucher?.employee) return;
+    const emp = db.employees.find(e => hrExpenseMatchesEmployee({ employee: e.name }, voucher.employee));
     if (!emp) return;
-    const amt = Number(voucher.amount) || 0;
-    emp.loans = Math.max(0, (Number(emp.loans) || 0) + (direction * amt));
+    if (direction < 0) {
+        const amt = Number(voucher.amount) || 0;
+        emp.loans = Math.max(0, (Number(emp.loans) || 0) - amt);
+        return;
+    }
+    reconcileEmpLoans(voucher.employee);
 }
 
 function refreshHrViewsAfterVoucherChange() {
@@ -1362,8 +1534,8 @@ window.deleteHrVoucher = async function (index) {
     );
     if (!ok) return;
 
-    applyVoucherLoanDelta(voucher, -1);
     db.hrExpenses.splice(index, 1);
+    reconcileEmpLoans(voucher.employee);
     await persistDb();
     refreshHrViewsAfterVoucherChange();
     alert('تم حذف العملية المالية بنجاح.');
@@ -1836,8 +2008,7 @@ window.generateVoucher = async function (typeStr) {
 
         if (!db.hrExpenses) db.hrExpenses = [];
         if (isEditMode && db.hrExpenses[editIndex]) {
-            const oldEntry = { ...db.hrExpenses[editIndex] };
-            applyVoucherLoanDelta(oldEntry, -1);
+            const oldEmployee = db.hrExpenses[editIndex].employee;
             db.hrExpenses[editIndex] = {
                 ...db.hrExpenses[editIndex],
                 employee,
@@ -1849,7 +2020,8 @@ window.generateVoucher = async function (typeStr) {
                 voucherNo,
                 lastModified: Date.now(),
             };
-            applyVoucherLoanDelta(db.hrExpenses[editIndex], 1);
+            reconcileEmpLoans(oldEmployee);
+            if (employee !== oldEmployee) reconcileEmpLoans(employee);
         } else {
             const newEntry = {
                 employee,
@@ -2020,6 +2192,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (ensureVoucherNumbersOnDb()) await persistDb();
     ensurePayrollCycleConfig();
     await checkAndRunAutoCycleReset();
+    if (syncEmployeeLoansFromHistory()) await persistDb();
 
     if (db.employees.length === 0) {
         db.employees = [
@@ -2196,6 +2369,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (deductionsOpen) void renderDeductions();
                     if (historyOpen) loadHistoryData();
                     populateEmpSelect();
+                    if (profileOpen && currentProfileId) {
+                        openFullProfile(currentProfileId);
+                    }
                 });
             });
         });

@@ -39,7 +39,15 @@
         return row ? row.name : code;
     }
 
+    let PaymentSplit;
+    try {
+        PaymentSplit = require('./payment-split.js');
+    } catch (_e) {
+        PaymentSplit = root.PaymentSplit || null;
+    }
+
     function hrAffectsLiquidity(h) {
+        if (PaymentSplit) return PaymentSplit.hrAffectsLiquidity(h);
         const t = String(h.type || '');
         if (t.includes('سلفة')) return true;
         return !t.includes('خصم / جزاء') && !t.includes('جزاء');
@@ -48,6 +56,10 @@
     function orderPaymentSplit(o) {
         const t = round2(o.total);
         if (t <= 0) return { cash: 0, bank: 0 };
+        if (PaymentSplit) {
+            const x = PaymentSplit.orderToCashBank(o);
+            return { cash: round2(x.c), bank: round2(x.b) };
+        }
         const pm = o.paymentMethod || '';
         let cash = 0;
         let bank = 0;
@@ -64,6 +76,7 @@
     }
 
     function returnRefundCashBank(r) {
+        if (PaymentSplit) return PaymentSplit.returnRefundCashBank(r);
         const amt = round2(r.amount);
         const pm = String(r.method || '').trim();
         if (pm === 'cash' || pm === 'كاش' || pm === 'نقد') return { c: amt, b: 0 };
@@ -124,6 +137,7 @@
         }
 
         (db.orders || []).forEach((o, idx) => {
+            if (o.status === 'returned') return;
             const amt = round2(o.total);
             if (amt <= 0) return;
             const { cash, bank } = orderPaymentSplit(o);
@@ -163,6 +177,7 @@
         });
 
         (db.returns || []).forEach((r, idx) => {
+            if (PaymentSplit && !PaymentSplit.returnAffectsLiquidity(r, db.orders || [])) return;
             const amt = round2(r.amount);
             if (amt <= 0) return;
             let { c, b } = returnRefundCashBank(r);

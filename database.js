@@ -1,6 +1,15 @@
 const fs = require('fs');
 const path = require('path');
 
+/** عند التعيين: القراءة/الكتابة من كاش الذاكرة في main.js (بدون readFileSync متكرر) */
+let _memGetDb = null;
+let _memSaveDb = null;
+
+function setMemoryBackend(getFn, saveFn) {
+    _memGetDb = typeof getFn === 'function' ? getFn : null;
+    _memSaveDb = typeof saveFn === 'function' ? saveFn : null;
+}
+
 /** مسار ملف القاعدة؛ في الاختبارات يُعيّن عبر POS_TEST_DB_FILE لتجنّب تحميل electron */
 function getDbPath() {
     if (process.env.POS_TEST_DB_FILE) {
@@ -12,6 +21,10 @@ function getDbPath() {
 
 // Always read fresh to avoid state desync since renderers also modify the file directly
 function loadDB() {
+    if (_memGetDb) {
+        const cached = _memGetDb();
+        if (cached && typeof cached === 'object') return cached;
+    }
     const dbPath = getDbPath();
     let freshDb = { orders: [], products: [], inventory: [], categories: [] };
     try {
@@ -28,6 +41,10 @@ function loadDB() {
 }
 
 function saveDB(dbData) {
+    if (_memSaveDb) {
+        _memSaveDb(dbData);
+        return;
+    }
     const dbPath = getDbPath();
     const tempPath = dbPath + '.tmp';
     try {
@@ -45,9 +62,6 @@ function saveDB(dbData) {
                 break;
             } catch (e) {
                 console.warn(`[DB Save] Rename attempt ${i+1} failed, retrying...`, e.message);
-                // Simple busy wait
-                const start = Date.now();
-                while (Date.now() - start < 100) {} 
             }
         }
         if (!success) throw new Error('Failed to rename temp database file after 5 attempts');
@@ -178,6 +192,8 @@ function buildLineDeductions(db, lineItem, warehouseId, orderId = '') {
 }
 
 module.exports = {
+    setMemoryBackend,
+    buildLineDeductions,
     saveOrder: (orderData) => {
         try {
             let db = loadDB();

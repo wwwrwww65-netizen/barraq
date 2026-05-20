@@ -1,6 +1,6 @@
 {
   "name": "baraaq",
-  "version": "1.0.25",
+  "version": "1.0.26",
   "main": "main.js",
   "description": "Mister Casher Desktop — نظام نقاط البيع المتكامل للمطاعم (Techier)",
   "scripts": {
@@ -38,7 +38,8 @@
       "!invoices/**/*",
       "!tests/**/*",
       "!test-results/**/*",
-      "!scripts/**/*"
+      "!scripts/**/*",
+      "!admin-dashboard.html"
     ],
     "extraResources": [
       {
@@ -68,6 +69,7 @@
     "@phosphor-icons/web": "^2.1.2",
     "better-sqlite3": "^12.8.0",
     "chart.js": "^4.5.1",
+    "firebase-admin": "^13.10.0",
     "googleapis": "^169.0.0",
     "html2canvas": "^1.4.1",
     "qrcode": "^1.5.4",

@@ -530,10 +530,18 @@ function startGoogleDriveAutoScheduler(app, getDbPath, BrowserWindow) {
   }, AUTO_CHECK_MS);
 }
 
+function stopGoogleDriveAutoScheduler() {
+  if (autoSchedulerInterval) {
+    clearInterval(autoSchedulerInterval);
+    autoSchedulerInterval = null;
+  }
+}
+
 module.exports = {
   setupGoogleDriveIpc,
   loadOAuthConfig,
   startGoogleDriveAutoScheduler,
+  stopGoogleDriveAutoScheduler,
   collectLocalStorageSnapshot,
   OAUTH_PORT,
   REDIRECT_PATH,

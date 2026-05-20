@@ -6,3 +6,4 @@ package-lock.json
 *.log
 database_backup_*.json
 google-oauth.json
+firebase-service-account.json

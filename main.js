@@ -8,6 +8,8 @@ const {
   globalShortcut,
   Menu,
 } = require('electron');
+const fs = require('fs');
+const path = require('path');
 
 // ══════════════════════════════════════════════════════════════════════
 // الرسوميات والأداء (يجب قبل app.whenReady())
@@ -15,9 +17,64 @@ const {
 // • إن ظهرت شاشة سوداء: شغّل التطبيق مع المتغير البيئي MISTER_CASHER_SAFE_GRAPHICS=1
 //   (يعيد وضع «إيقاف GPU بالكامل» السابق).
 // ══════════════════════════════════════════════════════════════════════
+function isWeakHostMachine() {
+  try {
+    const cpus = require('os').cpus();
+    if (!cpus || !cpus.length) return false;
+    const cores = cpus.length;
+    const maxMhz = Math.max(...cpus.map((c) => c.speed || 0));
+    return cores <= 4 && maxMhz > 0 && maxMhz < 2400;
+  } catch (_) {
+    return false;
+  }
+}
+
+const weakHostMachine = isWeakHostMachine();
+
+function _mcPerfSettingsPath() {
+  return path.join(app.getPath('userData'), 'mc_perf_settings.json');
+}
+
+function readMcPerfOverrideSync() {
+  try {
+    const raw = fs.readFileSync(_mcPerfSettingsPath(), 'utf8');
+    const j = JSON.parse(raw);
+    const mode = j && j.override;
+    if (mode === 'weak' || mode === 'strong' || mode === 'auto') return mode;
+  } catch (_) {}
+  return 'auto';
+}
+
+function writeMcPerfOverrideSync(mode) {
+  try {
+    fs.writeFileSync(_mcPerfSettingsPath(), JSON.stringify({ override: mode }), 'utf8');
+  } catch (e) {
+    console.warn('[MC_PERF] Could not write perf settings:', e.message);
+  }
+}
+
+function resolveEffectiveWeakHost(override) {
+  const mode = override != null ? override : readMcPerfOverrideSync();
+  if (mode === 'weak') return true;
+  if (mode === 'strong') return false;
+  return weakHostMachine;
+}
+
+let effectiveWeakHost = resolveEffectiveWeakHost();
+global._mcCompactDbWrites = effectiveWeakHost;
+global._mcWeakHost = effectiveWeakHost;
+
+function applyMcPerfOverride(mode) {
+  writeMcPerfOverrideSync(mode);
+  effectiveWeakHost = resolveEffectiveWeakHost(mode);
+  global._mcCompactDbWrites = effectiveWeakHost;
+  global._mcWeakHost = effectiveWeakHost;
+}
+
 const useSafeGraphics =
   process.env.MISTER_CASHER_SAFE_GRAPHICS === '1' ||
-  process.env.MISTER_CASHER_SAFE_GRAPHICS === 'true';
+  process.env.MISTER_CASHER_SAFE_GRAPHICS === 'true' ||
+  (effectiveWeakHost && process.env.MISTER_CASHER_SAFE_GRAPHICS !== '0');
 
 if (useSafeGraphics) {
   app.disableHardwareAcceleration();
@@ -81,13 +138,14 @@ app.on('web-contents-created', (e, webContents) => {
 const {
   setupGoogleDriveIpc,
   startGoogleDriveAutoScheduler,
+  stopGoogleDriveAutoScheduler,
   collectLocalStorageSnapshot,
 } = require('./google-drive-main');
-const fs = require('fs');
-const path = require('path');
 const dgram = require('dgram');
 const http = require('http');
 const os = require('os');
+const licenseManager = require('./licensing/license-manager');
+const { LICENSE_KICK_UDP_TYPE } = require('./licensing/constants');
 
 const PORT = 41234;
 const HTTP_PORT = 41235;
@@ -140,6 +198,9 @@ function placePrintWindowOnPrimaryDisplay(win) {
 
 let server;
 let httpServer;
+let peerPresenceInterval = null;
+let mainWindow = null;
+let shutdownDone = false;
 
 /** حد آمن لحجم JSON في حزمة UDP واحدة (restaurant_settings + شعار base64 يتجاوز الحد بسهولة) */
 const FULL_SYNC_UDP_SAFE_CHARS = 10000;
@@ -717,6 +778,7 @@ function setupHTTPServer() {
     console.log(`[HTTP Sync] 🌐 Server ready: http://${getLocalIP()}:${HTTP_PORT}`);
   });
   httpServer.on('error', e => console.error('[HTTP Sync] Server error:', e.message));
+  licenseManager.setHttpServer(httpServer);
 }
 
 function setupNetworkSync() {
@@ -744,14 +806,32 @@ function setupNetworkSync() {
         }, 800);
 
       } else if (data.type === 'peer_ping') {
-        // A new device is scanning the network — check if we have data and respond
-        BrowserWindow.getAllWindows().forEach(win => {
-          win.webContents.send('check-should-announce', {
-            requesterIP: rinfo.address,
-            myIP: getLocalIP(),
-            myHostname: os.hostname()
+        const licHandled = licenseManager.handlePeerPingLicense(data, rinfo, myInstanceId, server);
+        if (!licHandled) {
+          BrowserWindow.getAllWindows().forEach(win => {
+            win.webContents.send('check-should-announce', {
+              requesterIP: rinfo.address,
+              myIP: getLocalIP(),
+              myHostname: os.hostname(),
+              clientDeviceId: data.deviceId || '',
+            });
           });
+        }
+
+      } else if (data.type === 'peer_rejected') {
+        BrowserWindow.getAllWindows().forEach((win) => {
+          if (!win.isDestroyed()) {
+            win.webContents.send('license-peer-rejected', {
+              hubDeviceId: data.hubDeviceId,
+              clientDeviceId: data.clientDeviceId,
+              allowedClients: data.allowedClients,
+              reason: data.reason,
+            });
+          }
         });
+
+      } else if (data.type === LICENSE_KICK_UDP_TYPE) {
+        licenseManager.executeKillSwitch(data.reason || 'blocked');
 
       } else if (data.type === 'peer_pong') {
         // A peer announced it has data — tell renderer (sync wizard)
@@ -916,8 +996,22 @@ function setupNetworkSync() {
 
   ipcMain.on('lan-broadcast-presence', () => broadcastPeerPresence());
 
-  setInterval(broadcastPeerPresence, 25000);
+  if (peerPresenceInterval) clearInterval(peerPresenceInterval);
+  peerPresenceInterval = setInterval(broadcastPeerPresence, 25000);
   setTimeout(broadcastPeerPresence, 2500);
+
+  licenseManager.setNetworkRefs(
+    (msg, off, len, port, addr) => {
+      try {
+        server.send(msg, off, len, port, addr);
+      } catch (e) {
+        console.error('[License] UDP relay:', e.message);
+      }
+    },
+    PORT,
+    BROADCAST_ADDR
+  );
+  licenseManager.startBackgroundWorker();
 
   // Handle direct PDF Export saving
   ipcMain.handle('export-pdf', async (event, filename) => {
@@ -1045,18 +1139,23 @@ function setupNetworkSync() {
 let _broadcastDebounceTimer = null;
 function broadcastDBChanged() {
   if (_broadcastDebounceTimer) clearTimeout(_broadcastDebounceTimer);
+  const debounceMs = effectiveWeakHost ? 1400 : 550;
   _broadcastDebounceTimer = setTimeout(() => {
     _broadcastDebounceTimer = null;
     try {
       if (!server) return;
       const msg = Buffer.from(JSON.stringify({ type: 'db_changed', instanceId: myInstanceId }));
       server.send(msg, 0, msg.length, PORT, BROADCAST_ADDR);
-      // Also notify all local windows immediately (same machine)
-      BrowserWindow.getAllWindows().forEach(win => {
-        if (!win.isDestroyed()) win.webContents.send('db-file-updated');
+      BrowserWindow.getAllWindows().forEach((win) => {
+        if (win.isDestroyed()) return;
+        try {
+          if (win.isVisible() || win.isFocused()) {
+            win.webContents.send('db-file-updated');
+          }
+        } catch (_) {}
       });
     } catch (e) { }
-  }, 500);
+  }, debounceMs);
 }
 
 ipcMain.on('notify-db-changed', () => {
@@ -1071,13 +1170,10 @@ ipcMain.on('get-db-path', (event) => {
 const dbAPI = require('./database');
 
 ipcMain.handle('db-save-order', async (event, data) => {
+  if (!_dbCacheReady) await _loadDbIntoCache();
   const result = dbAPI.saveOrder(data);
 
-  // ⚡ تحديث الكاش فوراً لأن dbAPI قام بالكتابة للقرص بشكل مستقل
-  await _refreshDbCache();
-
-  // 🚨 Broadcast immediately so kitchen + all devices see the new order NOW
-  broadcastDBChanged();
+  setImmediate(() => broadcastDBChanged());
 
   // ZATCA Direct Auto-Sync
   setTimeout(async () => {
@@ -1093,43 +1189,48 @@ ipcMain.handle('db-save-order', async (event, data) => {
 
   return result;
 });
+function _sortedOrdersFromCache() {
+  const list = (_dbCache && _dbCache.orders) ? _dbCache.orders : [];
+  return list.slice().sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 500);
+}
+
 ipcMain.handle('db-get-orders', async () => {
-  if (_dbCacheReady && _dbCache.orders) return _dbCache.orders;
-  return dbAPI.getOrders();
+  if (!_dbCacheReady) await _loadDbIntoCache();
+  return _sortedOrdersFromCache();
 });
 
 ipcMain.handle('db-get-products', async () => {
-  if (_dbCacheReady && _dbCache.products) return _dbCache.products;
-  return dbAPI.getProducts();
+  if (!_dbCacheReady) await _loadDbIntoCache();
+  return _dbCache.products || [];
 });
 
 ipcMain.handle('db-get-categories', async () => {
-  if (_dbCacheReady && _dbCache.categories) return _dbCache.categories;
-  return dbAPI.getCategories();
+  if (!_dbCacheReady) await _loadDbIntoCache();
+  return _dbCache.categories || [];
 });
 
 ipcMain.handle('db-get-inventory', async () => {
-  if (_dbCacheReady && _dbCache.inventory) return _dbCache.inventory;
-  return dbAPI.getInventory();
+  if (!_dbCacheReady) await _loadDbIntoCache();
+  return _dbCache.inventory || [];
 });
 
 ipcMain.handle('db-save-product', async (event, data) => {
+  if (!_dbCacheReady) await _loadDbIntoCache();
   const result = dbAPI.saveProduct(data);
-  await _refreshDbCache();
-  broadcastDBChanged();
+  setImmediate(() => broadcastDBChanged());
   return result;
 });
 
 ipcMain.handle('db-save-category', async (event, data) => {
+  if (!_dbCacheReady) await _loadDbIntoCache();
   const result = dbAPI.saveCategory(data);
-  await _refreshDbCache();
-  broadcastDBChanged();
+  setImmediate(() => broadcastDBChanged());
   return result;
 });
 ipcMain.handle('db-save-inventory', async (event, item) => {
+  if (!_dbCacheReady) await _loadDbIntoCache();
   const result = dbAPI.saveInventoryItem(item);
-  await _refreshDbCache();
-  broadcastDBChanged();
+  setImmediate(() => broadcastDBChanged());
   return result;
 });
 
@@ -1143,8 +1244,73 @@ let _dbCache = null;
 let _dbCacheReady = false;
 let _dbWriteQueue = Promise.resolve();
 
+function _dayClosureRecordKey(c) {
+  const t = Number(c && c.closedAt) || 0;
+  if (t > 1e11) return 't:' + t;
+  if (c && c.id) return 'id:' + c.id;
+  return '';
+}
+
+function _dayClosureId(c) {
+  if (!c || typeof c !== 'object') return '';
+  if (c.id) return String(c.id);
+  const t = Number(c.closedAt) || 0;
+  return t > 0 ? 'DAY-' + t : '';
+}
+
+function _stripShiftsFromClosure(c) {
+  if (!c || typeof c !== 'object') return c;
+  const out = { ...c };
+  delete out.shifts;
+  delete out.allDayShifts;
+  return out;
+}
+
+/** نقل shifts إلى day_closure_details لتصغير حجم pos_database.json */
+function _migrateDayClosureStorage(db) {
+  if (!db || typeof db !== 'object' || db._dayClosuresCompactV1) return false;
+  if (!Array.isArray(db.day_closures)) db.day_closures = [];
+  if (!db.day_closure_details || typeof db.day_closure_details !== 'object') {
+    db.day_closure_details = {};
+  }
+  let changed = false;
+  for (const raw of db.day_closures) {
+    if (!raw || typeof raw !== 'object') continue;
+    const shifts = raw.shifts || raw.allDayShifts;
+    if (!Array.isArray(shifts) || shifts.length === 0) continue;
+    const id = _dayClosureId(raw);
+    if (!id) continue;
+    if (!db.day_closure_details[id]) {
+      db.day_closure_details[id] = { shifts };
+      changed = true;
+    }
+    delete raw.shifts;
+    delete raw.allDayShifts;
+    changed = true;
+  }
+  db._dayClosuresCompactV1 = true;
+  return changed;
+}
+
+function _mergeDayClosures(existing, incoming) {
+  const map = new Map();
+  for (const list of [existing, incoming]) {
+    if (!Array.isArray(list)) continue;
+    for (const c of list) {
+      if (!c || typeof c !== 'object') continue;
+      const key = _dayClosureRecordKey(c);
+      if (!key) continue;
+      const prev = map.get(key);
+      if (!prev || (Number(c.closedAt) || 0) >= (Number(prev.closedAt) || 0)) map.set(key, c);
+    }
+  }
+  return Array.from(map.values());
+}
+
 function _writeDbAtomicQueued(data) {
-  const payload = JSON.stringify(data, null, 2);
+  const payload = global._mcCompactDbWrites
+    ? JSON.stringify(data)
+    : JSON.stringify(data, null, 2);
   const tmpPath = `${_dbPath}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   _dbWriteQueue = _dbWriteQueue
     .catch(() => {})
@@ -1154,6 +1320,8 @@ function _writeDbAtomicQueued(data) {
     })
     .catch(async (err) => {
       try { await fs.promises.unlink(tmpPath); } catch (_) {}
+      console.error('[DB Write] Queued write failed:', err.message);
+      writeAuditLog('DB_WRITE_ERROR', { error: err.message, queued: true });
       throw err;
     });
   return _dbWriteQueue;
@@ -1163,6 +1331,12 @@ async function _loadDbIntoCache() {
   try {
     const data = await fs.promises.readFile(_dbPath, 'utf8');
     _dbCache = JSON.parse(data);
+    if (_migrateDayClosureStorage(_dbCache)) {
+      console.log('[DB Cache] ضغط سجلات إقفال اليوم (فصل تفاصيل الورديات)');
+      const persistMigration = () => void _writeDbAtomicQueued(_dbCache);
+      if (effectiveWeakHost) setTimeout(persistMigration, 12000);
+      else setImmediate(persistMigration);
+    }
     _dbCacheReady = true;
     console.log('[DB Cache] ✅ Database loaded into memory cache.');
   } catch (e) {
@@ -1177,8 +1351,35 @@ async function _refreshDbCache() {
   await _loadDbIntoCache();
 }
 
-// تحميل قاعدة البيانات للذاكرة فور جاهزية التطبيق
-app.whenReady().then(() => _loadDbIntoCache());
+// تحميل قاعدة البيانات للذاكرة + ربط database.js بالكاش (بدون قراءة قرص متكررة)
+app.whenReady().then(async () => {
+  await _loadDbIntoCache();
+  dbAPI.setMemoryBackend(
+    () => _dbCache,
+    (db) => {
+      _dbCache = db;
+      _dbCacheReady = true;
+      void _writeDbAtomicQueued(db);
+    }
+  );
+  if (effectiveWeakHost) {
+    console.log('[MisterCasherPOS] Low-power mode: safe graphics, compact DB writes, background throttling.');
+  }
+});
+
+ipcMain.handle('mc-save-perf-override', async (event, mode) => {
+  const m = mode === 'weak' || mode === 'strong' || mode === 'auto' ? mode : 'auto';
+  applyMcPerfOverride(m);
+  return { ok: true, effectiveWeak: effectiveWeakHost };
+});
+
+ipcMain.handle('mc-get-perf-override', async () => {
+  return {
+    override: readMcPerfOverrideSync(),
+    effectiveWeak: effectiveWeakHost,
+    hardwareWeak: weakHostMachine,
+  };
+});
 
 
 // 📝 Audit Log Helper - تسجيل جميع العمليات الهامة
@@ -1208,6 +1409,145 @@ function writeAuditLog(action, details) {
   }
 }
 // ⚡ قراءة فورية من الذاكرة (Cache) بدلاً من القرص في كل مرة
+function _dayClosureListItem(c) {
+  if (!c || typeof c !== 'object') return c;
+  const shifts = c.shifts || c.allDayShifts || [];
+  const ordersFromShifts =
+    shifts.length > 0
+      ? shifts.reduce((s, sh) => s + (sh.ordersCount || sh.totalOrders || sh.orders_count || 0), 0)
+      : 0;
+  const id = _dayClosureId(c);
+  const detailsMap = _dbCache && _dbCache.day_closure_details;
+  const hasStoredDetails =
+    Boolean(id && detailsMap && detailsMap[id] && Array.isArray(detailsMap[id].shifts) && detailsMap[id].shifts.length > 0);
+  return {
+    id: c.id,
+    closedAt: c.closedAt,
+    date: c.date,
+    closedBy: c.closedBy,
+    shiftsCount: c.shiftsCount || shifts.length || 0,
+    ordersCount: c.ordersCount || ordersFromShifts || 0,
+    totalIncome: c.totalIncome || 0,
+    drawerTotal: c.drawerTotal || 0,
+    totalCash: c.totalCash,
+    totalNetwork: c.totalNetwork,
+    totalTax: c.totalTax,
+    totalReturns: c.totalReturns,
+    totalExpenses: c.totalExpenses,
+    hungerStationUnpaid: c.hungerStationUnpaid,
+    deliveryBreakdown: c.deliveryBreakdown,
+    hasShiftDetails: shifts.length > 0 || hasStoredDetails,
+  };
+}
+
+ipcMain.handle('db-read-day-closures', async () => {
+  try {
+    if (!_dbCacheReady) await _loadDbIntoCache();
+    const list = Array.isArray(_dbCache?.day_closures) ? _dbCache.day_closures : [];
+    return list.map(_dayClosureListItem);
+  } catch (e) {
+    console.error('[DB Read] day_closures:', e.message);
+    return [];
+  }
+});
+
+/** قراءة أجزاء من القاعدة فقط — يقلل حجم IPC (لوحة القيادة، إلخ) */
+ipcMain.handle('db-read-slice', async (event, keys) => {
+  try {
+    if (!_dbCacheReady) await _loadDbIntoCache();
+    const list = Array.isArray(keys) ? keys : [];
+    const out = {};
+    for (const key of list) {
+      if (!key || typeof key !== 'string') continue;
+      const val = _dbCache[key];
+      if (Array.isArray(val)) out[key] = val.slice();
+      else if (val && typeof val === 'object') out[key] = { ...val };
+      else out[key] = val;
+    }
+    return out;
+  } catch (e) {
+    console.error('[DB Read] slice:', e.message);
+    return {};
+  }
+});
+
+/** تحديث طلب واحد دون إرسال القاعدة كاملة عبر IPC */
+ipcMain.handle('db-update-order', async (event, orderData) => {
+  try {
+    if (!_dbCacheReady) await _loadDbIntoCache();
+    if (!orderData || orderData.orderId == null) {
+      return { success: false, error: 'invalid order' };
+    }
+    if (!_dbCache.orders) _dbCache.orders = [];
+    const idx = _dbCache.orders.findIndex((o) => String(o.orderId) === String(orderData.orderId));
+    if (idx >= 0) {
+      const old = _dbCache.orders[idx] || {};
+      _dbCache.orders[idx] = {
+        ...old,
+        ...orderData,
+        orderId: orderData.orderId,
+        timestamp: orderData.timestamp || old.timestamp,
+        editVersion: Number(old.editVersion || 0) + 1,
+        updatedAt: orderData.updatedAt || Date.now(),
+      };
+    } else {
+      orderData.editVersion = orderData.editVersion || 1;
+      _dbCache.orders.push(orderData);
+    }
+    void _writeDbAtomicQueued(_dbCache);
+    setImmediate(() => broadcastDBChanged());
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+/** إضافة سجل إقفال يوم دون قراءة/كتابة القاعدة كاملة */
+ipcMain.handle('db-append-day-closure', async (event, payload) => {
+  try {
+    if (!_dbCacheReady) await _loadDbIntoCache();
+    const summary = payload && payload.summary;
+    const shifts = (payload && payload.shifts) || [];
+    if (!summary || !summary.id) return { success: false, error: 'invalid closure' };
+    if (!Array.isArray(_dbCache.day_closures)) _dbCache.day_closures = [];
+    if (!_dbCache.day_closure_details || typeof _dbCache.day_closure_details !== 'object') {
+      _dbCache.day_closure_details = {};
+    }
+    const dupKey = summary.id || ('DAY-' + (summary.closedAt || ''));
+    const exists = _dbCache.day_closures.some(
+      (c) => (c.id || ('DAY-' + (c.closedAt || ''))) === dupKey
+    );
+    if (!exists) _dbCache.day_closures.push(_stripShiftsFromClosure(summary));
+    _dbCache.day_closure_details[summary.id] = { shifts: Array.isArray(shifts) ? shifts : [] };
+    void _writeDbAtomicQueued(_dbCache);
+    setImmediate(() => broadcastDBChanged());
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('db-read-day-closure-detail', async (event, closureId) => {
+  try {
+    if (!_dbCacheReady) await _loadDbIntoCache();
+    const list = Array.isArray(_dbCache?.day_closures) ? _dbCache.day_closures : [];
+    const id = String(closureId || '');
+    const found =
+      list.find((c) => c && c.id === id) ||
+      list.find((c) => c && 'DAY-' + c.closedAt === id);
+    if (!found) return null;
+    const key = _dayClosureId(found) || id;
+    const details = _dbCache.day_closure_details && key ? _dbCache.day_closure_details[key] : null;
+    const shifts =
+      (found.shifts || found.allDayShifts) ||
+      (details && details.shifts) ||
+      [];
+    return { ...found, shifts: Array.isArray(shifts) ? shifts : [] };
+  } catch (e) {
+    return null;
+  }
+});
+
 ipcMain.handle('db-read-full', async () => {
   try {
     // إذا كانت الكاش جاهزة ومكتملة — أرجعها فوراً بدون I/O
@@ -1231,14 +1571,39 @@ ipcMain.handle('db-read-full', async () => {
 });
 ipcMain.handle('db-write-full', async (event, data, opts) => {
   try {
+    // منع فقدان سجلات الإقفال عند حفظ لقطة قديمة من نافذة أخرى (بدون day_closures)
+    const cacheClosures = _dbCache && Array.isArray(_dbCache.day_closures) ? _dbCache.day_closures : [];
+    const cacheClosureDetails =
+      _dbCache && _dbCache.day_closure_details && typeof _dbCache.day_closure_details === 'object'
+        ? _dbCache.day_closure_details
+        : null;
+    const incomingHasCore =
+      (data.orders?.length || 0) > 0 ||
+      (data.products?.length || 0) > 0 ||
+      (data.inventory?.length || 0) > 0;
+    if (cacheClosures.length > 0 && incomingHasCore) {
+      if (!Array.isArray(data.day_closures)) {
+        data.day_closures = cacheClosures.slice();
+      } else if (data.day_closures.length < cacheClosures.length) {
+        data.day_closures = _mergeDayClosures(cacheClosures, data.day_closures);
+      }
+    }
+    if (cacheClosureDetails && incomingHasCore) {
+      if (!data.day_closure_details || typeof data.day_closure_details !== 'object') {
+        data.day_closure_details = { ...cacheClosureDetails };
+      } else {
+        data.day_closure_details = { ...cacheClosureDetails, ...data.day_closure_details };
+      }
+    }
+    _migrateDayClosureStorage(data);
+
     _dbCache = data;
     _dbCacheReady = true;
 
-    // Async atomic queued write prevents UI stalls on weak devices
-    await _writeDbAtomicQueued(data);
+    void _writeDbAtomicQueued(data);
 
     const broadcast = !opts || opts.broadcast !== false;
-    if (broadcast) broadcastDBChanged();
+    if (broadcast) setImmediate(() => broadcastDBChanged());
     return true;
   } catch (e) {
     console.error('[DB Write] ❌ Error:', e.message);
@@ -1608,7 +1973,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
-    show: false, // لا تظهر النافذة فوراً لمنع الوميض الأبيض
+    show: effectiveWeakHost, // على الأجهزة الضعيفة: إظهار فوري يقلل إحساس «شاشة سوداء مجمدة»
     paintWhenInitiallyHidden: true, // يجهّز الطبقة قبل الإظهار — انتقال أوضح وأقل تقطيع عند الفتح
     backgroundColor: '#0b0f19', // لون خلفية مظلم يطابق لون التطبيق
     autoHideMenuBar: false,
@@ -1616,7 +1981,8 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      backgroundThrottling: false,  // منع تبطئة الصفحة في الخلفية
+      // على الأجهزة الضعيفة: تبطئة الخلفية لتوفير المعالج — الميزات كاملة
+      backgroundThrottling: effectiveWeakHost,
       enableWebSQL: false,
       spellcheck: false,
     }
@@ -1647,19 +2013,119 @@ function createWindow() {
     }
   });
 
-  win.loadFile('login.html');
-
-  // قم بتكبير النافذة برمجياً وهي لا تزال في حالة الإخفاء 
-  // هذا يمنع ظهور المربع الأسود الصغير قبل عملية التكبير (Maximize Animation)
-  win.maximize();
+  const loadStartupPage = async () => {
+    try {
+      const pageSpec = await licenseManager.resolveStartupPage();
+      const qIdx = pageSpec.indexOf('?');
+      if (qIdx >= 0) {
+        const file = pageSpec.slice(0, qIdx);
+        const qs = new URLSearchParams(pageSpec.slice(qIdx + 1));
+        const query = {};
+        qs.forEach((v, k) => {
+          query[k] = v;
+        });
+        await win.loadFile(file, { query });
+      } else {
+        await win.loadFile(pageSpec);
+      }
+    } catch (e) {
+      console.error('[License] startup page:', e.message);
+      await win.loadFile('login.html');
+    }
+  };
+  loadStartupPage();
 
   win.once('ready-to-show', () => {
-    // إظهار النافذة وهي مجهزة مسبقاً بالشاشة الكاملة
-    win.show();
+    if (!win.isDestroyed()) {
+      if (!win.isMaximized()) win.maximize();
+      win.show();
+      win.focus();
+    }
+  });
+
+  mainWindow = win;
+  win.on('closed', () => {
+    if (mainWindow === win) mainWindow = null;
+    // نافذة واتساب المخفية (preventDefault على close) تمنع window-all-closed
+    destroyWaNativeWindow();
+    if (process.platform !== 'darwin' && BrowserWindow.getAllWindows().length === 0) {
+      app.quit();
+    }
   });
 }
 
+function setupLicenseIpc() {
+  const dbPathFn = () => path.join(app.getPath('userData'), 'pos_database.json');
+
+  licenseManager.init(app, dbPathFn);
+
+  ipcMain.handle('license-get-device-id', async () => licenseManager.getDeviceId());
+  ipcMain.handle('license-get-info', async () =>
+    new Promise((resolve) => {
+      setImmediate(() => {
+        try {
+          resolve(licenseManager.getPublicInfo());
+        } catch (e) {
+          resolve({ deviceId: '—', status: 'none', statusLabel: '—', canLogin: false, error: e.message });
+        }
+      });
+    })
+  );
+  ipcMain.handle('license-evaluate-access', async () =>
+    new Promise((resolve) => {
+      setImmediate(() => {
+        try {
+          const a = licenseManager.evaluateAccess();
+          resolve({ ok: a.ok, message: a.message, lock: a.lock });
+        } catch (e) {
+          resolve({ ok: false, message: e.message, lock: null });
+        }
+      });
+    })
+  );
+  ipcMain.handle('license-get-trial-blob', () => licenseManager.cache.trialBlob || null);
+  ipcMain.handle('license-start-trial', async (e, pkg) => {
+    const r = await licenseManager.startTrial(pkg || {});
+    return { ...r, trialBlob: licenseManager.cache.trialBlob || null };
+  });
+  ipcMain.handle('license-request-permanent', async (e, pkg) =>
+    licenseManager.requestPermanentActivation(pkg || {})
+  );
+  ipcMain.handle('license-request-extra-devices', async (e, pkg) =>
+    licenseManager.requestExtraDevices(pkg || {})
+  );
+  ipcMain.handle('license-check-status', () => licenseManager.checkStatusFromCloud());
+  ipcMain.handle('license-refresh-manual', () => licenseManager.refreshLicenseManual());
+  ipcMain.handle('license-request-upgrade', async (e, data) =>
+    licenseManager.requestUpgrade(data.clientDeviceId, data.hubDeviceId)
+  );
+  ipcMain.on('license-mark-setup-complete', (event, meta) => {
+    licenseManager.markSetupComplete(meta || {});
+  });
+  ipcMain.on('update-restaurant-info', (event, info) => {
+    licenseManager.updateRestaurantInfo(info);
+  });
+  ipcMain.handle('license-save-ls-trial-blob', async (e, blob) => {
+    try {
+      const p = path.join(app.getPath('userData'), 'license-ls-trial.json');
+      await fs.promises.writeFile(p, JSON.stringify({ blob }), 'utf8');
+      return true;
+    } catch (err) {
+      return false;
+    }
+  });
+}
+
+app.on('before-quit', () => {
+  try {
+    licenseManager.recordShutdown();
+    licenseManager.stopBackgroundWorker();
+  } catch (_) {}
+});
+
 app.whenReady().then(() => {
+  setupLicenseIpc();
+
   // ══════════════════════════════════════════════════════════════
   // 🚀 استراتيجية الفتح السريع — نفس نهج VS Code و Spotify و Discord
   //   المرحلة 1: النافذة تظهر فوراً (أولوية قصوى)
@@ -1726,45 +2192,85 @@ app.whenReady().then(() => {
   });
 });
 // ============================================================
-// Graceful Shutdown — نفس النهج المستخدم في تطبيقات الإنتاج
-// الترتيب الصحيح: 1) إغلاق Shortcuts → 2) إغلاق Servers → 3) تحرير Lock
+// Graceful Shutdown
+// السبب الجذري لعدم إعادة الفتح: نافذة واتساب المخفية + مؤقتات UDP/WA
+// تُبقي العملية حية؛ النسخة الجديدة تفشل في requestSingleInstanceLock وتُغلق فوراً.
 // ============================================================
-app.on('will-quit', (event) => {
-  // 1️⃣ إلغاء تسجيل جميع الاختصارات العامة فوراً
+function destroyWaNativeWindow() {
+  if (!waNativeWin || waNativeWin.isDestroyed()) {
+    waNativeWin = null;
+    waNativeReady = false;
+    return;
+  }
+  try {
+    waNativeWin.removeAllListeners('close');
+    waNativeWin.destroy();
+  } catch (_) { }
+  waNativeWin = null;
+  waNativeReady = false;
+}
+
+async function shutdownAllServices() {
+  waManualStop = true;
+  if (waRestartTimer) {
+    clearTimeout(waRestartTimer);
+    waRestartTimer = null;
+  }
+  if (peerPresenceInterval) {
+    clearInterval(peerPresenceInterval);
+    peerPresenceInterval = null;
+  }
+  if (localDiskAutoInterval) {
+    clearInterval(localDiskAutoInterval);
+    localDiskAutoInterval = null;
+  }
+  try { stopGoogleDriveAutoScheduler(); } catch (_) { }
+
+  destroyWaNativeWindow();
+  await teardownWaClient();
+
   try { globalShortcut.unregisterAll(); } catch (_) { }
 
-  // 2️⃣ إغلاق خادم UDP بشكل نظيف
   if (server) {
     try {
-      server.close(() => console.log('[MisterCasherPOS] ✅ UDP server closed gracefully.'));
+      await new Promise((resolve) => {
+        server.close(() => resolve());
+        setTimeout(resolve, 500);
+      });
+      console.log('[MisterCasherPOS] ✅ UDP server closed gracefully.');
     } catch (_) { }
     server = null;
   }
 
-  // 3️⃣ إغلاق خادم HTTP بشكل نظيف
   if (httpServer) {
     try {
-      httpServer.close(() => console.log('[MisterCasherPOS] ✅ HTTP server closed gracefully.'));
+      await new Promise((resolve) => {
+        httpServer.close(() => resolve());
+        setTimeout(resolve, 500);
+      });
+      console.log('[MisterCasherPOS] ✅ HTTP server closed gracefully.');
     } catch (_) { }
     httpServer = null;
   }
 
-  // 4️⃣ تحرير Single Instance Lock صراحةً — يسمح بإعادة الفتح الفوري
-  // هذا هو المعيار الصحيح وفق Electron Docs (مثل VS Code: src/main.js)
   try { app.releaseSingleInstanceLock(); } catch (_) { }
-
   console.log('[MisterCasherPOS] 👋 App shutdown complete.');
+}
+
+app.on('before-quit', (event) => {
+  if (shutdownDone) return;
+  event.preventDefault();
+  shutdownAllServices()
+    .catch((e) => console.error('[MisterCasherPOS] Shutdown error:', e.message))
+    .finally(() => {
+      shutdownDone = true;
+      app.quit();
+    });
 });
 
-// ============================================================
-// 🪟 Windows Fix: إغلاق كامل عند إغلاق آخر نافذة
-// بدون هذا الحدث، تبقى العملية حية في الخلفية على Windows
-// وهذا هو السبب الحقيقي لاضطرار المستخدم لإعادة تشغيل الجهاز!
-// ============================================================
 app.on('window-all-closed', () => {
-  // على macOS التطبيقات تبقى نشطة حتى Cmd+Q
-  // على Windows/Linux نُغلق فوراً عند إغلاق آخر نافذة
   if (process.platform !== 'darwin') {
+    destroyWaNativeWindow();
     app.quit();
   }
 });
@@ -3470,15 +3976,6 @@ ipcMain.on('wa-debug-log', (event, payload) => {
     console.warn('[WA][RENDERER] debug-log parse error:', e?.message || e);
   }
 });
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
-
-
-
 
 
 

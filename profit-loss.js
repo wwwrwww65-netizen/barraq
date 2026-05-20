@@ -94,24 +94,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             );
         }
         
-        // 1. Calculate Income (مواءمة تصنيف الدفع مع لوحة المحاسبة)
+        // 1. Calculate Income — منطق موحّد (payment-split.js)
+        orders = orders.filter((o) => o.status !== 'returned');
         let cashSales = 0;
         let networkSales = 0;
         let totalRevenue = 0;
 
-        orders.forEach((o) => {
-            const t = Number(o.total) || 0;
-            totalRevenue += t;
-            const pm = o.paymentMethod || '';
-            if (pm === 'cash' || pm === 'كاش') cashSales += t;
-            else if (['card', 'bank', 'شبكة / بطاقة', 'شبكة'].includes(pm)) networkSales += t;
-            else if (pm === 'مجزأ') {
-                cashSales += Number(o.splitCash) || 0;
-                networkSales += Number(o.splitNetwork) || 0;
-            } else {
-                networkSales += t;
-            }
-        });
+        if (window.PaymentSplit) {
+            const agg = window.PaymentSplit.aggregateOrderRevenue(orders);
+            totalRevenue = agg.total;
+            cashSales = agg.cash;
+            networkSales = agg.bank;
+        } else {
+            orders.forEach((o) => {
+                const t = Number(o.total) || 0;
+                totalRevenue += t;
+                const pm = o.paymentMethod || '';
+                if (pm === 'cash' || pm === 'كاش') cashSales += t;
+                else if (['card', 'bank', 'شبكة / بطاقة', 'شبكة'].includes(pm)) networkSales += t;
+                else if (pm === 'مجزأ') {
+                    cashSales += Number(o.splitCash) || 0;
+                    networkSales += Number(o.splitNetwork) || 0;
+                } else networkSales += t;
+            });
+        }
 
         // 2. Calculate Returns 
         let totalReturns = 0;
@@ -147,7 +153,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         otherIncomeRows.forEach((row) => {
             otherIncome += Number(row.amount) || 0;
         });
-        const netRevenue = totalRevenue - totalReturns + otherIncome;
+        /* المرتجعات المُسجَّلة تُستبعد مع الطلب (status=returned) — لا نخصمها مرتين */
+        const netRevenue = totalRevenue + otherIncome;
         /* تفريق إيرادات أخرى حسب الوسيلة (للعرض فقط) */
         let otherIncCash = 0, otherIncBank = 0;
         otherIncomeRows.forEach((row) => {
@@ -197,9 +204,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         const revW = [0, 0, 0, 0];
         orders.forEach((o) => {
+            if (o.status === 'returned') return;
             revW[weekBucket(o.timestamp || o.date)] += Number(o.total) || 0;
         });
+        const allOrdersPl = db.orders || [];
         returns.forEach((r) => {
+            if (window.PaymentSplit && !window.PaymentSplit.returnAffectsLiquidity(r, allOrdersPl)) return;
             const b = weekBucket(r.timestamp || r.date);
             revW[b] -= Number(r.amount) || 0;
         });

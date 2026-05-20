@@ -1,3 +1,19 @@
+// ملف الأداء الموحّد — يجب أن يُحمَّل قبل أي منطق ثقيل
+try {
+    require('./perf-profile.js');
+} catch (e) {
+    console.warn('[MC_PERF] perf-profile load failed:', e && e.message);
+}
+try {
+    require('./page-lifecycle.js');
+} catch (e) {
+    console.warn('[MC Lifecycle] load failed:', e && e.message);
+}
+// تعطيل التنقّل السريع — كان يفتح الصفحات بدون CSS/تنسيقات مضمّنة
+try {
+    localStorage.setItem('mc_fast_nav', 'off');
+} catch (_) {}
+
 // --- Modern Dialogs Injection ---
 (function injectModernDialogs() {
     if (document.getElementById('modern-dialogs-js')) return;
@@ -11,11 +27,23 @@
 // setup.html: إعداد جهاز جديد مستقل من معالج المزامنة — بدون تسجيل دخول بعد
 const _isPublicAuthPage =
     window.location.pathname.includes('login.html') ||
-    window.location.pathname.includes('setup.html');
+    window.location.pathname.includes('setup.html') ||
+    window.location.pathname.includes('activation.html');
 if (!_isPublicAuthPage) {
     const cUserRaw = localStorage.getItem('currentUser');
     if (!cUserRaw) {
-        window.location.href = 'login.html';
+        (async () => {
+            try {
+                const { ipcRenderer } = require('electron');
+                const access = await ipcRenderer.invoke('license-evaluate-access');
+                if (!access.ok) {
+                    const lock = access.lock ? '?lock=' + encodeURIComponent(access.lock) : '';
+                    window.location.href = 'activation.html' + lock;
+                    return;
+                }
+            } catch (_) {}
+            window.location.href = 'login.html';
+        })();
     } else {
         try {
             (function migrateFatoraPerm() {
@@ -135,23 +163,41 @@ if (!_isPublicAuthPage) {
 
         } catch(e) { console.error('Auth Guard Check Failed', e); }
     }
+
+    // إرسال معلومات المطعم للمدير الخلفي (لتحديث التراخيص) في حال تغيرت من الإعدادات
+    try {
+        const saved = localStorage.getItem('restaurant_settings');
+        if (saved && typeof require !== 'undefined') {
+            const data = JSON.parse(saved);
+            // محاولة جلب الرقم من عدة مصادر بالترتيب
+            let phoneVal = data.phone || '';
+            if (!phoneVal) {
+                // fallback: رقم هاتف الإدارة من إعدادات الواتساب
+                try {
+                    const waRaw = localStorage.getItem('wa_settings');
+                    if (waRaw) phoneVal = JSON.parse(waRaw).admin || '';
+                } catch(_) {}
+            }
+            if (!phoneVal) phoneVal = localStorage.getItem('admin_phone') || '';
+            const { ipcRenderer } = require('electron');
+            ipcRenderer.send('update-restaurant-info', {
+                restaurantName: data.name || '',
+                phone: phoneVal,
+                adminUsername: localStorage.getItem('admin_username') || ''
+            });
+        }
+    } catch (e) {}
 }
 
 // --- إعادة تحميل الواجهات عند تحديث pos_database (محلي أو مزامنة شبكة) ---
 (function initPosDatabaseLiveRefresh() {
     const handlers = new Set();
     let debounceTimer = null;
-    window.registerPosDatabaseRefresh = function (fn) {
-        if (typeof fn !== 'function') return function () {};
-        handlers.add(fn);
-        return function unsub() {
-            handlers.delete(fn);
-        };
-    };
-    window.addEventListener('pos-db-updated', () => {
-        if (debounceTimer) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-            debounceTimer = null;
+    let refreshPendingWhileHidden = false;
+    if (!Array.isArray(window.__mcPageRefreshUnsubs)) window.__mcPageRefreshUnsubs = [];
+
+    function runRefreshHandlers() {
+        const run = () => {
             handlers.forEach((fn) => {
                 try {
                     const r = fn();
@@ -160,7 +206,49 @@ if (!_isPublicAuthPage) {
                     console.warn('[pos-db-refresh]', e);
                 }
             });
-        }, 100);
+        };
+        if (window.MC_PERF && typeof window.MC_PERF.runWhenIdle === 'function') {
+            window.MC_PERF.runWhenIdle(run, window.MC_PERF.isWeak ? 200 : 80);
+        } else {
+            run();
+        }
+    }
+
+    function scheduleRefresh() {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        const debounceMs =
+            window.MC_PERF && typeof window.MC_PERF.getDbRefreshDebounceMs === 'function'
+                ? window.MC_PERF.getDbRefreshDebounceMs()
+                : window.MC_PERF && window.MC_PERF.isWeak
+                  ? 900
+                  : 200;
+        debounceTimer = setTimeout(() => {
+            debounceTimer = null;
+            if (document.hidden) {
+                refreshPendingWhileHidden = true;
+                return;
+            }
+            runRefreshHandlers();
+        }, debounceMs);
+    }
+
+    window.registerPosDatabaseRefresh = function (fn) {
+        if (typeof fn !== 'function') return function () {};
+        handlers.add(fn);
+        const unsub = function () {
+            handlers.delete(fn);
+        };
+        window.__mcPageRefreshUnsubs.push(unsub);
+        return unsub;
+    };
+
+    window.addEventListener('pos-db-updated', scheduleRefresh);
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && refreshPendingWhileHidden) {
+            refreshPendingWhileHidden = false;
+            scheduleRefresh();
+        }
     });
 })();
 
@@ -249,6 +337,28 @@ try {
 
     ipcRenderer.on('lan-sync-hub-ip', (event, ip) => {
         recordLanSyncHubIp(ip, { mergeIntoWaSettings: true });
+    });
+
+    ipcRenderer.on('license-peer-rejected', (event, data) => {
+        const hub = data.hubDeviceId || '—';
+        const allowed = data.allowedClients != null ? data.allowedClients : '?';
+        const goUpgrade = confirm(
+            'تم الوصول للحد الأقصى للأجهزة (' + allowed + ').\n\n' +
+            'السيرفر الرئيسي: ' + hub + '\n\nهل تود إرسال طلب ترقية؟'
+        );
+        if (goUpgrade) {
+            ipcRenderer.invoke('license-request-upgrade', {
+                clientDeviceId: data.clientDeviceId || '',
+                hubDeviceId: hub,
+            }).then((r) => {
+                if (r && r.success) alert('تم إرسال طلب الترقية.');
+                else alert((r && r.error) || 'تعذّر إرسال الطلب.');
+            });
+        }
+    });
+
+    ipcRenderer.on('license-killed', () => {
+        window.location.href = 'activation.html?lock=blocked';
     });
 
     // تصفير شبكي: بعد سحب قاعدة فارغة من المركز — مسح localStorage مع الإبقاء على بيانات دخول المدير
@@ -1529,13 +1639,20 @@ function showSyncWizard(ipcRenderer) {
         }
     }, 1000);
 
+    async function sendPeerPing() {
+        let deviceId = '';
+        try {
+            deviceId = await ipcRenderer.invoke('license-get-device-id');
+        } catch (_) {}
+        ipcRenderer.send('network-sync-send', { type: 'peer_ping', deviceId });
+    }
+
     // ─ Send peer_ping after socket is ready ─────────────────────────────────
     setTimeout(() => {
-        ipcRenderer.send('network-sync-send', { type: 'peer_ping' });
-        // Repeat ping every 3 seconds while searching
+        sendPeerPing();
         let pingInterval = setInterval(() => {
             if (dismissed || foundPeers.length > 0) { clearInterval(pingInterval); return; }
-            ipcRenderer.send('network-sync-send', { type: 'peer_ping' });
+            sendPeerPing();
         }, 3000);
     }, 1500);
 
@@ -1594,7 +1711,7 @@ function showSyncWizard(ipcRenderer) {
         setTimeout(() => {
             if (barEl) { barEl.style.transition=`width ${SEARCH_TIMEOUT}s linear`; barEl.style.width='0%'; }
         }, 100);
-        ipcRenderer.send('network-sync-send', { type: 'peer_ping' });
+        sendPeerPing();
         searchTimer = setInterval(() => {
             if (foundPeers.length > 0) { clearInterval(searchTimer); return; }
             secsLeft--;
@@ -1614,7 +1731,7 @@ function showSyncWizard(ipcRenderer) {
         setTimeout(() => {
             if (barEl) { barEl.style.transition=`width ${SEARCH_TIMEOUT}s linear`; barEl.style.width='0%'; }
         }, 100);
-        ipcRenderer.send('network-sync-send', { type: 'peer_ping' });
+        sendPeerPing();
         searchTimer = setInterval(() => {
             secsLeft--;
             if (secsEl) secsEl.textContent = secsLeft;
@@ -1722,13 +1839,17 @@ window.isDateInPeriod = function(dateInput, period) {
     return true;
 };
 
-// Load Global Notifications Engine
+// Load Global Notifications Engine (فترة أطول على الأجهزة الضعيفة — نفس الميزة)
 (function() {
     try {
         const s = document.createElement('script');
         s.src = 'notifications.js';
+        s.defer = true;
         document.head.appendChild(s);
-        console.log('[System] Notifications Engine Loaded Globally');
+        console.log(
+            '[System] Notifications Engine loading' +
+                (window.MC_PERF && window.MC_PERF.isWeak ? ' (low-power interval)' : '')
+        );
         
         // --- Theme Toggle Logic ---
         document.addEventListener('DOMContentLoaded', () => {

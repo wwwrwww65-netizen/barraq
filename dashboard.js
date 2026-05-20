@@ -63,6 +63,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         return { cash: 0, network: amount };
     }
 
+    /** مصروفات الكاش فقط — مصروفات الشبكة/البنك لا تُخصم من الدرج */
+    function sumCashDrawerExpenses(expenseList) {
+        let total = 0;
+        (expenseList || []).forEach((ex) => {
+            const pm = String(ex.pMethod || 'cash').trim();
+            if (pm !== 'bank' && pm !== 'network' && pm !== 'شبكة') {
+                total += Number(ex.amount) || 0;
+            }
+        });
+        return total;
+    }
+
     const { getReceiptFooterLine, escapeHtmlPrint } = require('./thermal-receipt-updated.js');
 
     const kpiValues = document.querySelectorAll('.kpi-card .kpi-value');
@@ -86,7 +98,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     /** الفترة المعروضة حالياً — تُحدَّث عند تغيير أزرار اليوم/الأسبوع ليعاد التحميل بعد المزامنة */
     let currentDashboardPeriod = 'today';
     async function loadDashboardData(period = 'today') {
-        let db = await window.dbRead();
+        let db;
+        if (typeof window.dbReadSlice === 'function') {
+            db = await window.dbReadSlice(['orders', 'returns', 'hrExpenses', 'expenses']);
+        } else {
+            db = await window.dbRead();
+        }
         let orders = db.orders || [];
         let returns = db.returns || [];
         
@@ -107,6 +124,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             hrExpenses = hrExpenses.filter(h => 
                 window.isDateInPeriod(h.timestamp || h.date, period)
             );
+        }
+
+        // بعد إقفال اليوم/الوردية: عرض «اليوم» = الجلسة الحالية فقط (من last_z_report_time)
+        if (period === 'today' && lastZReport > 0) {
+            const orderTs = (o) => (o.timestamp || o.createdAt || 0);
+            const returnTs = (r) => (r.timestamp || (r.date ? new Date(r.date).getTime() : 0) || 0);
+            const expenseTs = (h) => (h.timestamp || (h.date ? new Date(h.date).getTime() : 0) || h.createdAt || 0);
+            orders = orders.filter(o => orderTs(o) >= lastZReport);
+            returns = returns.filter(r => returnTs(r) >= lastZReport);
+            hrExpenses = hrExpenses.filter(h => expenseTs(h) >= lastZReport);
         }
 
         // --- 1. CALCULATE KPIs ---
@@ -216,22 +243,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     let totalExp = 0;
     hrExpenses.forEach(h => totalExp += h.amount);
 
-    // Drawer balance must always be shift-based (today + after last Z), independent from current dashboard filter.
+    // Drawer balance: جلسة اليوم الحالية (بعد آخر Z أو إقفال يوم)
     const shiftCashFloat = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
-    // Filter out returned orders to avoid double counting
-    const shiftOrders = (db.orders || []).filter(o =>
-        o.status !== 'returned' &&
-        window.isDateInPeriod(o.timestamp || o.dateStr || o.date, 'today') &&
-        ((o.timestamp || o.createdAt || Date.now()) >= lastZReport)
-    );
-    const shiftReturns = (db.returns || []).filter(r =>
-        window.isDateInPeriod(r.timestamp || r.date, 'today') &&
-        ((r.timestamp || Date.now()) >= lastZReport)
-    );
-    const shiftExpenses = ((db.hrExpenses || []).concat(db.expenses || [])).filter(h =>
-        window.isDateInPeriod(h.timestamp || h.date, 'today') &&
-        ((h.timestamp || new Date(h.date).getTime()) >= lastZReport)
-    );
+    let shiftOrders;
+    let shiftReturns;
+    let shiftExpenses;
+    if (period === 'today') {
+        shiftOrders = orders;
+        shiftReturns = returns;
+        shiftExpenses = hrExpenses;
+    } else {
+        shiftOrders = (db.orders || []).filter(o =>
+            o.status !== 'returned' &&
+            window.isDateInPeriod(o.timestamp || o.dateStr || o.date, 'today') &&
+            ((o.timestamp || o.createdAt || 0) >= lastZReport)
+        );
+        shiftReturns = (db.returns || []).filter(r =>
+            window.isDateInPeriod(r.timestamp || r.date, 'today') &&
+            ((r.timestamp || 0) >= lastZReport)
+        );
+        shiftExpenses = ((db.hrExpenses || []).concat(db.expenses || [])).filter(h =>
+            window.isDateInPeriod(h.timestamp || h.date, 'today') &&
+            ((h.timestamp || new Date(h.date).getTime() || h.createdAt || 0) >= lastZReport)
+        );
+    }
 
     let shiftCashSales = 0;
     let deliveryStats = {}; // { 'HungerStation': { amount: 0, count: 0 } }
@@ -271,6 +306,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const drawerBalance = shiftCashFloat + shiftCashSales - shiftTotalExp;
 
     window.__dashboardData = { dailySales, cashSales, networkSales, totalTax, totalReturnsAmt, totalExp, shiftCashFloat, drawerBalance, shiftHungerStationUnpaid, shiftDeliveryBreakdown };
+
+    document.querySelectorAll('.kpi-cards .kpi-card').forEach((card, idx) => {
+        const titleEl = card.querySelector('.kpi-title');
+        if (!titleEl) return;
+        const defaults = ['مبيعات اليوم', 'الطلبات المنجزة', 'نواقص المخزن', 'المصروفات (الخوارج)', 'الرصيد في الدرج', 'رصيد الشبكة'];
+        if (idx < 6 && defaults[idx]) {
+            titleEl.textContent = defaults[idx];
+        }
+    });
 
     // Apply to UI
     kpiValues[0].innerHTML = `${curNum(dailySales)}<span class="currency">${curSym()}</span>`;
@@ -417,16 +461,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
 
-    // --- 4. RENDER CHART ---
-    const ctxCanvas = document.getElementById('salesChart');
-    if(ctxCanvas && typeof Chart !== 'undefined') {
+    // --- 4. RENDER CHART (مؤجّل على الأجهزة الضعيفة — الأرقام تظهر فوراً) ---
+    function renderDashboardChart() {
+        const ctxCanvas = document.getElementById('salesChart');
+        if (!ctxCanvas || typeof Chart === 'undefined') return;
         const ctx = ctxCanvas.getContext('2d');
-        let fakeData = [
-            dailySales * 0.4, dailySales * 0.7, dailySales * 0.5, 
-            dailySales * 0.9, dailySales * 0.6, dailySales * 1.1, dailySales
+        const fakeData = [
+            dailySales * 0.4, dailySales * 0.7, dailySales * 0.5,
+            dailySales * 0.9, dailySales * 0.6, dailySales * 1.1, dailySales,
         ];
-
-        if(dashboardChart) dashboardChart.destroy();
+        if (dashboardChart) dashboardChart.destroy();
         dashboardChart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -436,19 +480,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                     data: fakeData,
                     borderColor: '#10b981',
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    borderWidth: 3, tension: 0.4, fill: true,
-                    pointBackgroundColor: '#10b981', pointBorderWidth: 2, pointRadius: 4,
-                }]
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#10b981',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                }],
             },
             options: {
-                responsive: true, maintainAspectRatio: false,
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: window.MC_PERF && window.MC_PERF.isWeak ? false : undefined,
                 plugins: { legend: { display: false } },
                 scales: {
-                    x: { grid: { display: false, drawBorder: false }, ticks: { color: 'rgba(255,255,255,0.5)', font: { family: 'Cairo' } } },
-                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.5)', font: { family: 'Cairo' } } }
-                }
-            }
+                    x: {
+                        grid: { display: false, drawBorder: false },
+                        ticks: { color: 'rgba(255,255,255,0.5)', font: { family: 'Cairo' } },
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: 'rgba(255,255,255,0.5)', font: { family: 'Cairo' } },
+                    },
+                },
+            },
         });
+    }
+    if (window.MC_PERF && typeof window.MC_PERF.runWhenIdle === 'function') {
+        window.MC_PERF.runWhenIdle(renderDashboardChart, 150);
+    } else {
+        renderDashboardChart();
     }
     } // End of loadDashboardData
 
@@ -669,7 +730,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.confirmCloseShift = async function() {
-        if(!confirm('هل أنت متأكد من إغلاق الوردية وبدء وردية جديدة؟\nملاحظة: رصيد الدرج لن يتم تصفيره، سيتم الاحتفاظ به.')) return;
+        const shiftOk = await window.mcasherConfirm(
+            'هل أنت متأكد من إغلاق الوردية وبدء وردية جديدة؟\nملاحظة: رصيد الدرج لن يتم تصفيره، سيتم الاحتفاظ به.',
+            'تأكيد إغلاق الوردية'
+        );
+        if (!shiftOk) return;
 
         const closeTime = Date.now();
 
@@ -684,7 +749,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (currentUserConf) { try { const p = JSON.parse(currentUserConf); if (p.username || p.name) cashierName = p.username || p.name; } catch(e){} }
         
         // احصل على بيانات الوردية الحالية من قاعدة البيانات لحفظها في السجل
-        const db = await window.dbRead();
+        const db =
+            typeof window.dbReadSlice === 'function'
+                ? await window.dbReadSlice(['orders', 'returns', 'hrExpenses', 'expenses'])
+                : await window.dbRead();
         const allOrders = db.orders || [];
         const allReturns = db.returns || [];
         const allExpenses = (db.hrExpenses || []).concat(db.expenses || []);
@@ -752,9 +820,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         localStorage.setItem('z_report_timestamps', JSON.stringify(zTimestamps));
 
         // Mark current time as start of new shift - DO NOT RESET FLOAT
-        localStorage.setItem('last_z_report_time', closeTime);
-        // Keep the drawer balance as opening float for next shift
+        localStorage.setItem('last_z_report_time', String(closeTime));
         localStorage.setItem('shift_cash_float', shiftDrawerBalance);
+        try { localStorage.removeItem('_dashboard_kpi_snap'); } catch (e) {}
 
         alert(`تم إغلاق الوردية بنجاح.\n\nملخص الوردية:\n- المبيعات: ${curPlain(shiftTotal)}\n- كاش: ${curPlain(shiftCash)}\n- شبكة: ${curPlain(shiftNetwork)}\n- المصروفات: ${curPlain(shiftExp)}\n- رصيد الدرج المحفوظ: ${curPlain(shiftDrawerBalance)}\n\nسيتم استخدام هذا الرصيد كرصيد افتتاحي للوردية الجديدة.`);
         window.location.reload();
@@ -805,8 +873,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (sysSet) { try { const s = JSON.parse(sysSet); if (s.taxRate !== undefined) taxRate = parseFloat(s.taxRate); } catch(e){} }
         const TAX_RATE = taxRate / 100;
 
-        // Read database
-        let db = await window.dbRead();
+        // Read database (أجزاء مطلوبة فقط — أسرع على الأجهزة الضعيفة)
+        let db =
+            typeof window.dbReadSlice === 'function'
+                ? await window.dbReadSlice(['orders', 'returns', 'hrExpenses', 'expenses'])
+                : await window.dbRead();
         if (!db || typeof db !== 'object') {
             throw new Error('صيغة قاعدة البيانات غير صالحة (dbRead لم يرجع كائن).');
         }
@@ -894,13 +965,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             rReturns.forEach(r => {
                 ret += r.amount;
             });
-            rExpenses.forEach(ex => exp += ex.amount);
+            exp = sumCashDrawerExpenses(rExpenses);
 
             const floatAmt = range.isCurrent ? shiftFloat : 0;
+            const activeOrders = rOrders.filter(o => o.status !== 'returned');
 
             return {
                 ...range,
-                ordersCount: rOrders.length,
+                ordersCount: activeOrders.length,
                 cashSales: cash,
                 networkSales: net,
                 totalTax: tax,
@@ -931,8 +1003,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         const dayTotalIncome = dayTotalCash + dayTotalNet;
         const dayNetTotal    = dayTotalIncome - dayTotalRet - dayTotalExp;
-        // خذ رصيد الوردية الأخيرة فقط - لأنه الرصيد الفعلي الحالي في الدرج
-        const dayDrawerTotal = allDayShifts.length > 0 ? (allDayShifts[allDayShifts.length - 1].drawerBalance || 0) : 0;
+        // رصيد الدرج = الوردية الحالية (عهدة + كاش الوردية − مصروفات كاش الوردية) — لا نجمع كل يوم مع العهدة لتجنب الازدواج بعد إغلاق Z
+        const dayDrawerTotal = allDayShifts.length > 0
+            ? (allDayShifts[allDayShifts.length - 1].drawerBalance || 0)
+            : (shiftFloat + dayTotalCash - sumCashDrawerExpenses(todayExpenses));
 
         // Populate summary
         document.getElementById('day-shifts-count').innerText  = allDayShifts.length + ' وردية';
@@ -1012,7 +1086,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         // Store snapshot for confirmCloseDay
-        window.__dayCloseSnapshot = { allDayShifts, dayTotalCash, dayTotalNet, dayTotalTax, dayTotalRet, dayTotalExp, dayTotalIncome, dayNetTotal, dayDrawerTotal, dayTotalOrders, dayDate: todayStr, closedAt: now.getTime(), dayTotalHSUnpaid, dayDeliveryBreakdown };
+        window.__dayCloseSnapshot = { allDayShifts, dayTotalCash, dayTotalNet, dayTotalTax, dayTotalRet, dayTotalExp, dayTotalIncome, dayNetTotal, dayDrawerTotal, dayTotalOrders, dayDate: todayStr, closedAt: now.getTime(), dayTotalHSUnpaid, dayDeliveryBreakdown, shiftCashFloat: shiftFloat };
 
         window.openModalLayer(modal);
         } catch (error) {
@@ -1028,68 +1102,135 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.confirmCloseDay = async function() {
-        if (!confirm('هل أنت متأكد من إقفال اليوم بالكامل؟\nسيتم حفظ سجل كامل لكل الورديات والرصيد الحالي للانتقال لليوم الجديد.')) return;
+        const dayOk = await window.mcasherConfirm(
+            'هل أنت متأكد من إقفال اليوم بالكامل؟\nسيتم حفظ السجل، طباعة التقرير، والانتقال لليوم الجديد.\nرصيد الدرج يُحفظ كما هو.',
+            'تأكيد إقفال اليوم'
+        );
+        if (!dayOk) return;
 
-        const snap = window.__dayCloseSnapshot || {};
+        const snap = window.__dayCloseSnapshot;
+        if (!snap || !snap.dayDate) {
+            if (typeof window.mcasherAlert === 'function') {
+                await window.mcasherAlert('افتح تقرير إقفال اليوم أولاً (زر «اقفال اليوم») ثم اضغط تأكيد الإقفال.', 'تنبيه');
+            } else {
+                alert('افتح تقرير إقفال اليوم أولاً ثم أعد المحاولة.');
+            }
+            return;
+        }
 
-        // Save day summary to day_history in localStorage AND database
-        let dayHistory = [];
-        try { dayHistory = JSON.parse(localStorage.getItem('day_history') || '[]'); } catch(e){}
+        const confirmBtn = document.querySelector('#dayCloseModal button[onclick*="confirmCloseDay"]');
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.style.opacity = '0.6';
+        }
 
-        dayHistory.push({
-            date: snap.dayDate,
-            closedAt: snap.closedAt || Date.now(),
-            shiftsCount: (snap.allDayShifts || []).length,
-            ordersCount: snap.dayTotalOrders || 0,
-            totalCash: snap.dayTotalCash || 0,
-            totalNetwork: snap.dayTotalNet || 0,
-            totalIncome: snap.dayTotalIncome || 0,
-            totalTax: snap.dayTotalTax || 0,
-            totalReturns: snap.dayTotalRet || 0,
-            totalExpenses: snap.dayTotalExp || 0,
-            netTotal: snap.dayNetTotal || 0,
-            hungerStationUnpaid: snap.dayTotalHSUnpaid || 0,
-            deliveryBreakdown: snap.dayDeliveryBreakdown || {},
-            drawerTotal: snap.dayDrawerTotal || 0,
-            shifts: snap.allDayShifts || []
-        });
-        localStorage.setItem('day_history', JSON.stringify(dayHistory));
+        try {
+            const currentUserConf = localStorage.getItem('currentUser');
+            let managerName = 'المدير';
+            if (currentUserConf) {
+                try { const p = JSON.parse(currentUserConf); if (p.username || p.name) managerName = p.username || p.name; } catch (e) {}
+            }
 
-        // حفظ في قاعدة البيانات أيضًا للتقارير المستقبلية
-        const db = await window.dbRead();
-        if (!db.day_closures) db.day_closures = [];
-        db.day_closures.push({
-            id: 'DAY-' + (snap.closedAt || Date.now()),
-            date: snap.dayDate,
-            closedAt: snap.closedAt || Date.now(),
-            shiftsCount: (snap.allDayShifts || []).length,
-            ordersCount: snap.dayTotalOrders || 0,
-            totalCash: snap.dayTotalCash || 0,
-            totalNetwork: snap.dayTotalNet || 0,
-            totalIncome: snap.dayTotalIncome || 0,
-            totalTax: snap.dayTotalTax || 0,
-            totalReturns: snap.dayTotalRet || 0,
-            totalExpenses: snap.dayTotalExp || 0,
-            netTotal: snap.dayNetTotal || 0,
-            hungerStationUnpaid: snap.dayTotalHSUnpaid || 0,
-            drawerTotal: snap.dayDrawerTotal || 0,
-            shifts: snap.allDayShifts || []
-        });
-        await window.dbWrite(db);
+            const closedAt = snap.closedAt || Date.now();
+            const closureId = 'DAY-' + closedAt;
+            const shiftDetails = snap.allDayShifts || [];
+            const closureRecord = {
+                id: closureId,
+                date: snap.dayDate,
+                closedAt,
+                closedBy: managerName,
+                shiftsCount: shiftDetails.length,
+                ordersCount: snap.dayTotalOrders || 0,
+                totalCash: snap.dayTotalCash || 0,
+                totalNetwork: snap.dayTotalNet || 0,
+                totalIncome: snap.dayTotalIncome || 0,
+                totalTax: snap.dayTotalTax || 0,
+                totalReturns: snap.dayTotalRet || 0,
+                totalExpenses: snap.dayTotalExp || 0,
+                netTotal: snap.dayNetTotal || 0,
+                hungerStationUnpaid: snap.dayTotalHSUnpaid || 0,
+                deliveryBreakdown: snap.dayDeliveryBreakdown || {},
+                drawerTotal: (snap.dayDrawerTotal != null && !isNaN(snap.dayDrawerTotal))
+                    ? Number(snap.dayDrawerTotal)
+                    : 0
+            };
 
-        // DO NOT RESET DRAWER BALANCE - carry forward to next day
-        const currentDrawerBalance = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
-        
-        // Close all shifts — reset shift time to NOW but KEEP drawer balance
-        localStorage.setItem('last_z_report_time', Date.now());
-        // Keep drawer balance as opening balance for next day
-        localStorage.setItem('shift_cash_float', currentDrawerBalance);
+            let dayHistory = [];
+            try { dayHistory = JSON.parse(localStorage.getItem('day_history') || '[]'); } catch (e) {}
+            dayHistory.push(closureRecord);
+            localStorage.setItem('day_history', JSON.stringify(dayHistory));
 
-        // Also clear z_report_timestamps (day closed, fresh start)
-        localStorage.setItem('z_report_timestamps', '[]');
+            let saved = false;
+            if (typeof window.dbAppendDayClosure === 'function') {
+                const r = await window.dbAppendDayClosure(closureRecord, shiftDetails);
+                saved = r && r.success;
+            }
+            if (!saved) {
+                const db = await window.dbRead();
+                const mergeClosures = typeof window.mergeDayClosureRecords === 'function'
+                    ? window.mergeDayClosureRecords
+                    : (dbList, hist) => (dbList || []).concat(hist || []);
+                db.day_closures = mergeClosures(db.day_closures || [], dayHistory);
+                const dupKey = closureRecord.id || ('DAY-' + closedAt);
+                const alreadySaved = db.day_closures.some((c) => (c.id || ('DAY-' + (c.closedAt || ''))) === dupKey);
+                if (!alreadySaved) db.day_closures.push(closureRecord);
+                if (!db.day_closure_details || typeof db.day_closure_details !== 'object') {
+                    db.day_closure_details = {};
+                }
+                db.day_closure_details[closureId] = { shifts: shiftDetails };
+                saved = await window.dbWrite(db);
+            }
+            if (!saved) {
+                throw new Error('تعذر حفظ سجل الإقفال في قاعدة البيانات.');
+            }
 
-        alert(`✅ تم إقفال اليوم بالكامل بنجاح!\n\nملخص اليوم:\n- عدد الورديات: ${(snap.allDayShifts || []).length}\n- المبيعات: ${curPlain(snap.dayTotalIncome || 0)}\n- المصروفات: ${curPlain(snap.dayTotalExp || 0)}\n- رصيد الدرج المحفوظ: ${curPlain(currentDrawerBalance)}\n\nبيانات اليوم محفوظة في النظام. أي مبيعات جديدة ستحسب لليوم الجديد.`);
-        window.location.reload();
+            // احفظ رصيد الدرج الكامل من التقرير (وليس العهدة الافتتاحية فقط)
+            const drawerToKeep = (snap.dayDrawerTotal != null && !isNaN(snap.dayDrawerTotal))
+                ? Number(snap.dayDrawerTotal)
+                : (() => {
+                    const shifts = snap.allDayShifts || [];
+                    if (shifts.length) return Number(shifts[shifts.length - 1].drawerBalance) || 0;
+                    return parseFloat(localStorage.getItem('shift_cash_float')) || 0;
+                })();
+
+            localStorage.setItem('shift_cash_float', String(drawerToKeep));
+            localStorage.setItem('last_z_report_time', String(closedAt));
+            localStorage.setItem('z_report_timestamps', '[]');
+            try {
+                localStorage.setItem('last_day_close_at', String(closedAt));
+                localStorage.setItem('last_day_close_drawer', String(drawerToKeep));
+                localStorage.removeItem('_dashboard_kpi_snap');
+            } catch (e) {}
+
+            window.closeDayCloseReport();
+
+            if (typeof window.printDayReport === 'function') {
+                await window.printDayReport();
+            }
+
+            const successMsg = `تم إقفال اليوم بالكامل بنجاح.\n\nملخص اليوم:\n- عدد الورديات: ${(snap.allDayShifts || []).length}\n- الطلبات: ${snap.dayTotalOrders || 0}\n- المبيعات: ${curPlain(snap.dayTotalIncome || 0)}\n- المصروفات: ${curPlain(snap.dayTotalExp || 0)}\n- رصيد الدرج المحفوظ للوردية الجديدة: ${curPlain(drawerToKeep)}\n\nملاحظة: الطلبات والمبيعات في لوحة القيادة تبدأ من صفر للوردية الجديدة — السجل الكامل في «سجلات الإقفال».`;
+            if (typeof window.mcasherAlert === 'function') {
+                await window.mcasherAlert(successMsg, 'تم إقفال اليوم');
+            } else {
+                alert(successMsg);
+            }
+
+            window.__dayCloseSnapshot = null;
+            window.location.reload();
+        } catch (error) {
+            console.error('confirmCloseDay error:', error);
+            const errMsg = (error && error.message) ? error.message : String(error);
+            if (typeof window.mcasherAlert === 'function') {
+                await window.mcasherAlert('تعذر إقفال اليوم: ' + errMsg, 'خطأ');
+            } else {
+                alert('تعذر إقفال اليوم: ' + errMsg);
+            }
+        } finally {
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.style.opacity = '';
+            }
+        }
     };
 
     window.printDayReport = async function() {

@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <script>
+        (function () {
+            var theme = localStorage.getItem('sys_theme') || 'dark';
+            var cls = theme === 'light' ? 'light-theme' : 'dark-theme';
+            document.documentElement.className = cls;
+            document.documentElement.setAttribute('data-theme', theme === 'light' ? 'light' : 'dark');
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سجلات الإقفال اليومي — Mister Casher</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/regular/style.css">
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/fill/style.css">
+    <style>
+
+
+        /* Main Content — تمرير داخل تخطيط flex (بدون min-height:0 لا يعمل السكرول) */
+        .app-container { min-height: 0; }
+        .main-content.day-closures-main {
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 auto;
+            min-height: 0;
+            max-height: 100vh;
+            padding: 28px;
+            overflow: hidden;
+            box-sizing: border-box;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* تمرير قائمة السجلات مع رأس جدول ثابت */
+        .closures-table-scroll {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .closures-table-scroll thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #0f172a;
+            box-shadow: 0 1px 0 var(--border-color, rgba(255,255,255,0.08));
+        }
+        html[data-theme='light'] .closures-table-scroll thead th,
+        body.light-theme .closures-table-scroll thead th {
+            background: #f1f5f9;
+        }
+        .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 14px; flex-shrink: 0; }
+        .page-title { font-size: 24px; font-weight: 800; }
+        .page-title span { color: #10b981; }
+
+        /* Premium Filters Bar with glassmorphism */
+        .filters-bar { 
+            display: flex; 
+            gap: 16px; 
+            align-items: center; 
+            flex-wrap: wrap; 
+            background: rgba(255, 255, 255, 0.02); 
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color, rgba(255,255,255,0.06)); 
+            border-radius: 16px; 
+            padding: 16px 20px; 
+            margin-bottom: 24px; 
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+            flex-shrink: 0;
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; }
+        .filter-group label { font-size: 11px; color: var(--text-muted,#64748b); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .filter-group select, .filter-group input { 
+            background: rgba(255, 255, 255, 0.04); 
+            border: 1px solid var(--border-color, rgba(255,255,255,0.08)); 
+            border-radius: 10px; 
+            color: var(--text-primary,#f1f5f9); 
+            padding: 10px 14px; 
+            font-family: 'Cairo',sans-serif; 
+            font-size: 13px; 
+            min-width: 150px; 
+            transition: all 0.2s;
+        }
+        .filter-group select:focus, .filter-group input:focus {
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16,185,129,0.15);
+            outline: none;
+        }
+        .search-group { flex: 1; min-width: 200px; }
+        .search-group input { width: 100%; box-sizing: border-box; }
+
+        /* KPI Cards Grid */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 28px; flex-shrink: 0; }
+        .kpi-card { 
+            background: rgba(255, 255, 255, 0.02); 
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--border-color, rgba(255,255,255,0.06)); 
+            border-radius: 16px; 
+            padding: 20px; 
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .kpi-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.25);
+            border-color: rgba(16,185,129,0.2);
+        }
+        .kpi-card .kpi-label { font-size: 13px; color: var(--text-muted,#64748b); font-weight: 700; margin-bottom: 8px; }
+        .kpi-card .kpi-val { font-size: 24px; font-weight: 900; }
+        .kpi-card .kpi-val.green { color: #10b981; }
+        .kpi-card .kpi-val.blue { color: #60a5fa; }
+        .kpi-card .kpi-val.purple { color: #a78bfa; }
+        .kpi-card .kpi-val.orange { color: #f59e0b; }
+        .kpi-card .kpi-hint {
+            font-size: 11px;
+            color: var(--text-muted, #64748b);
+            margin-top: 6px;
+            line-height: 1.4;
+            font-weight: 600;
+        }
+
+        /* Premium Table Design */
+        .table-card { 
+            background: rgba(255, 255, 255, 0.02); 
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--border-color, rgba(255,255,255,0.06)); 
+            border-radius: 18px; 
+            overflow: hidden; 
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+        }
+        .table-card-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.06)); }
+        .table-card-header h3 { font-size: 18px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: rgba(255, 255, 255, 0.03); padding: 16px 20px; text-align: right; font-size: 13px; font-weight: 700; color: var(--text-muted,#64748b); text-transform: uppercase; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.06)); }
+        td { padding: 15px 20px; font-size: 14px; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.04)); vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(255, 255, 255, 0.01); }
+        
+        /* لا تستخدم .badge — يتعارض مع styles.css (دائرة إشعارات 18px مطلقة الموضع) */
+        .closure-tag { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; position: static; width: auto; height: auto; border: none; }
+        .closure-tag-green { background: rgba(16,185,129,0.15); color: #10b981; }
+        .closure-tag-blue { background: rgba(96,165,250,0.15); color: #60a5fa; }
+        .closure-tag-purple { background: rgba(167,139,250,0.15); color: #a78bfa; }
+        
+        .action-btn { 
+            background: rgba(16, 185, 129, 0.1); 
+            border: 1px solid rgba(16, 185, 129, 0.2); 
+            color: #10b981; 
+            width: 38px; 
+            height: 38px; 
+            border-radius: 10px; 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+        }
+        .action-btn:hover { 
+            background: #10b981; 
+            color: white; 
+            transform: scale(1.05); 
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+        }
+        
+        .user-avatar { 
+            width: 32px; 
+            height: 32px; 
+            border-radius: 50%; 
+            background: linear-gradient(135deg,#10b981,#34d399); 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: 800; 
+            font-size: 13px; 
+            color: white; 
+            margin-left: 10px; 
+        }
+        .no-data { text-align: center; padding: 60px 20px; color: var(--text-muted,#64748b); }
+        .no-data i { font-size: 56px; opacity: .3; display: block; margin-bottom: 16px; }
+
+        /* Modal styling exact matching index.html */
+        .shift-modal {
+            position: fixed; inset: 0; z-index: 99999;
+            background: rgba(0,0,0,0.85);
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        .shift-modal-content {
+            background: var(--bg-card, #121824);
+            border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+            border-radius: 16px;
+            width: 580px;
+            max-width: 95%;
+            display: flex; flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            overflow: hidden;
+            animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes modalFadeIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .shift-modal-header {
+            background: rgba(255,255,255,0.02);
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.08));
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .shift-modal-header h2 { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin: 0; color: #fff;}
+        .shift-modal-header .close-btn { background: none; border: none; color: var(--text-muted, #64748b); font-size: 22px; cursor: pointer; transition: color 0.2s; }
+        .shift-modal-header .close-btn:hover { color: #ef4444; }
+
+        /* Receipt View Container */
+        .shift-receipt {
+            padding: 24px;
+            background: #fff;
+            color: #000;
+            max-height: 62vh;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+        .shift-receipt .receipt-header { text-align: center; margin-bottom: 15px; }
+        .shift-receipt .receipt-header img { width: 60px; height: 60px; object-fit: contain; filter: grayscale(100%); margin-bottom: 5px; }
+        .shift-receipt .receipt-header h3 { margin: 0; font-size: 18px; font-weight: 800; color: #000; }
+        .shift-receipt .receipt-header p { margin: 2px 0; font-size: 13px; color: #444; font-weight: 700;}
+        .shift-receipt .receipt-datetime { margin-top: 5px; font-size: 12px; color: #666; border-top: 1px dashed #ccc; padding-top: 5px; }
+        .shift-receipt .receipt-divider { border-top: 1px dashed #000; margin: 12px 0; }
+        .shift-receipt .receipt-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600; font-size: 13px; color: #000; }
+        .shift-receipt .receipt-row.bold { font-weight: 800; font-size: 15px; }
+        .shift-receipt .receipt-row.highlight { background: #f0f0f0; padding: 6px; border-radius: 4px; margin-top: 8px; }
+        .shift-receipt .receipt-row.highlight-drawer { background: #e0eee0; padding: 8px; border: 1px dashed #000; margin-top: 8px; border-radius: 4px;}
+        .shift-receipt .receipt-row.grand-total { background: #000; color: #fff; padding: 10px; border-radius: 4px; font-size: 16px; margin-top: 15px; }
+        .shift-receipt .receipt-row .negative { color: #d00; }
+        .shift-receipt .receipt-footer { text-align: center; font-size: 12px; font-weight:700; margin-top: 20px; color: #000; }
+        
+        .day-shift-block { border: 1px dashed #bbb; border-radius: 6px; margin-bottom: 14px; padding: 10px; background: #fafafa; text-align: right; }
+        .day-shift-block .shift-block-header { font-weight: 800; font-size: 13px; background: #e8e8e8; padding: 5px 8px; border-radius: 4px; margin-bottom: 8px; display: flex; justify-content: space-between; color: #000; }
+        .day-shift-block .receipt-row { font-size: 12px; margin-bottom: 5px; color: #000; }
+
+        .shift-modal-actions {
+            padding: 18px 24px;
+            background: rgba(255,255,255,0.02);
+            border-top: 1px solid var(--border-color, rgba(255,255,255,0.08));
+            display: flex; gap: 12px;
+        }
+        .shift-modal-actions button { flex: 1; padding: 12px; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor:pointer; border-radius: 10px; font-family: 'Cairo', sans-serif; transition: all 0.2s; }
+        .btn-outline-modal { background: transparent; border: 1px solid var(--border-color, rgba(255,255,255,0.15)); color: var(--text-primary, #f1f5f9); }
+        .btn-outline-modal:hover { background: rgba(255,255,255,0.05); }
+        .btn-print-modal { background: #10b981; border: none; color: #fff; }
+        .btn-print-modal:hover { background: #059669; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16,185,129,0.3); }
+
+        /* Scrollbar styles for modal receipt */
+        .shift-receipt::-webkit-scrollbar { width: 6px; }
+        .shift-receipt::-webkit-scrollbar-track { background: #f1f1f1; }
+        .shift-receipt::-webkit-scrollbar-thumb { background: #bbb; border-radius: 3px; }
+        .shift-receipt::-webkit-scrollbar-thumb:hover { background: #999; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <img src="2222.png" alt="شعار Mister Casher" class="restaurant-logo">
+                <span>Mister Casher <span class="highlight">POS</span></span>
+            </div>
+            
+            <nav class="nav-menu">
+                <div class="nav-group">
+                    <p class="nav-label">الرئيسية</p>
+                    <a href="index.html" class="nav-item"><i class="ph ph-squares-four"></i><span>لوحة القيادة</span></a>
+                    <a href="pos.html" class="nav-item"><i class="ph ph-calculator"></i><span>نقطة البيع (الكاشير)</span></a>
+                    <a href="kitchen-production.html" class="nav-item"><i class="ph ph-cooking-pot"></i><span>المطبخ والإنتاج</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">شركات التوصيل</p>
+                    <a href="hungerstation.html" class="nav-item" id="nav-hs"><i class="ph ph-motorcycle"></i><span>هنقرستيشن</span></a>
+                    <div id="dynamic-delivery-companies-nav"></div>
+                </div>
+                <div class="nav-group">
+                    <p class="nav-label">المبيعات والمنيو</p>
+                    <a href="orders.html" class="nav-item"><i class="ph ph-list-numbers"></i><span>سجل الطلبات</span></a>
+                    <a href="sales.html" class="nav-item"><i class="ph ph-chart-line-up"></i><span>المبيعات</span></a>
+                    <a href="menu.html" class="nav-item"><i class="ph ph-list-dashes"></i><span>الأصناف والمنيو</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">العمليات والمخزون</p>
+                    <a href="inventory.html" class="nav-item"><i class="ph ph-package"></i><span>المخازن والمستودعات</span></a>
+                    <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>المشتريات والموردين</span></a>
+                    <a href="returns.html" class="nav-item"><i class="ph ph-arrow-u-down-left"></i><span>المرتجعات</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">الإدارة والتقارير</p>
+                    <a href="staff.html" class="nav-item"><i class="ph ph-users"></i><span>الموظفين والعمال</span></a>
+                    <a href="customers.html" class="nav-item"><i class="ph ph-users-three"></i><span>العملاء</span></a>
+                    <a href="accounting.html" class="nav-item"><i class="ph ph-calculator"></i><span>النظام المحاسبي</span></a>
+                    <a href="statistics.html" class="nav-item"><i class="ph ph-chart-pie"></i><span>الإحصائيات</span></a>
+                    <a href="profit-loss.html" class="nav-item"><i class="ph ph-scales"></i><span>الأرباح والخسائر</span></a>
+                    <a href="day-closures.html" class="nav-item active"><i class="ph ph-folder-open"></i><span>سجلات الاقفال</span></a>
+                    <div class="nav-divider" style="margin: 15px 0; border-top: 1px solid var(--border-color); width: 80%; align-self: center;"></div>
+                    <p class="nav-label">مؤسسة الزكاة والضريبة</p>
+                    <a href="fatora.html" class="nav-item"><i class="ph ph-link"></i><span>الربط مع منصة فوترة (الزكاة)</span></a>
+                </div>
+
+                <div class="nav-group">
+                    <p class="nav-label">النظام</p>
+                    <a href="delivery-companies.html" class="nav-item"><i class="ph ph-buildings"></i><span>شركات التوصيل</span></a>
+                    <a href="settings.html" class="nav-item"><i class="ph ph-gear"></i><span>الإعدادات</span></a>
+                    <a href="permissions.html" class="nav-item"><i class="ph ph-shield-check"></i><span>الصلاحيات</span></a>
+                    <a href="login.html" class="nav-item logout"><i class="ph ph-sign-out"></i><span>تسجيل خروج</span></a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content day-closures-main">
+        <div class="page-header">
+            <div>
+                <div class="page-title">سجلات <span>الاقفال اليومي</span></div>
+                <p style="color:var(--text-muted,#64748b); margin:4px 0 0; font-size:13px;">تاريخ إقفال الأيام الكاملة، الورديات، وتفاصيل المبيعات التاريخية</p>
+            </div>
+            <button onclick="window.print()" class="btn btn-outline" style="border-color:var(--border-color); color:var(--text-primary); padding:10px 18px; border-radius:10px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:8px; font-size:14px; background:transparent;">
+                <i class="ph ph-printer"></i> طباعة هذه الصفحة
+            </button>
+        </div>
+
+        <!-- Filters Bar -->
+        <div class="filters-bar">
+            <div class="filter-group">
+                <label>الفترة الزمنية</label>
+                <select id="filter-period">
+                    <option value="all" selected>الكل (جميع السجلات)</option>
+                    <option value="today">اليوم</option>
+                    <option value="week">هذا الأسبوع</option>
+                    <option value="month">هذا الشهر</option>
+                    <option value="year">هذه السنة</option>
+                    <option value="custom">تحديد تاريخ مخصص</option>
+                </select>
+            </div>
+            
+            <div class="filter-group" id="date-from-group" style="display:none;">
+                <label>من تاريخ</label>
+                <input type="date" id="filter-date-from">
+            </div>
+            
+            <div class="filter-group" id="date-to-group" style="display:none;">
+                <label>إلى تاريخ</label>
+                <input type="date" id="filter-date-to">
+            </div>
+
+            <div class="filter-group search-group">
+                <label>البحث بالمسؤول أو التاريخ</label>
+                <input type="text" id="search-input" placeholder="ابحث باسم المستخدم أو المسؤول أو تاريخ الإقفال...">
+            </div>
+        </div>
+
+        <!-- KPI Cards Grid -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">سجلات إقفال اليوم</div>
+                <div class="kpi-val green" id="kpi-closures-count">0 سجل</div>
+                <div class="kpi-hint" id="kpi-closures-hint">يطابق عدد صفوف الجدول أدناه</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">إجمالي دخل المبيعات</div>
+                <div class="kpi-val blue" id="kpi-total-income">0.00 ر.س</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">مجموع الورديات</div>
+                <div class="kpi-val purple" id="kpi-shifts-count">0 وردية</div>
+                <div class="kpi-hint" id="kpi-shifts-hint">مجموع عمود «الورديات» لكل السجلات المعروضة</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">إجمالي رصيد الدرج</div>
+                <div class="kpi-val orange" id="kpi-drawer-total">0.00 ر.س</div>
+            </div>
+        </div>
+
+        <!-- Closures Table Card -->
+        <div class="table-card">
+            <div class="table-card-header">
+                <h3><i class="ph ph-receipt" style="color:#10b981;"></i> سجلات إقفال اليوم الكامل</h3>
+                <span id="records-count-badge" class="closure-tag closure-tag-green">0 سجل</span>
+            </div>
+            <div class="closures-table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>رقم السجل</th>
+                            <th>تاريخ الإقفال</th>
+                            <th>المسؤول (المستخدم)</th>
+                            <th>الورديات</th>
+                            <th>الطلبات</th>
+                            <th>إجمالي المبيعات</th>
+                            <th>رصيد الدرج</th>
+                            <th>عرض</th>
+                        </tr>
+                    </thead>
+                    <tbody id="closures-tbody">
+                        <tr><td colspan="8" class="no-data"><i class="ph ph-circle-notch ph-spin"></i>جاري تحميل البيانات...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            </div>
+        </main>
+    </div>
+
+<!-- Modal تفاصيل إقفال اليوم (Historical View) - ONLY Print & Back buttons -->
+<div id="dayCloseDetailModal" class="shift-modal" style="display:none;">
+    <div class="shift-modal-content">
+        <div class="shift-modal-header">
+            <h2><i class="ph ph-moon-stars" style="color:#a78bfa;"></i> تقرير إقفال اليوم الكامل (سجل تاريخي)</h2>
+            <button class="close-btn" onclick="closeDayCloseDetailModal()"><i class="ph ph-x"></i></button>
+        </div>
+
+        <div id="day-print-area" class="shift-receipt">
+            <!-- Header -->
+            <div class="receipt-header">
+                <img src="2222.png" alt="الشعار" class="restaurant-logo" id="day-logo">
+                <h3 id="day-res-name">Mister Casher</h3>
+                <p style="font-weight:800; font-size:14px;">تقرير إقفال اليوم الكامل (X-Report)</p>
+                <div class="receipt-datetime" style="font-weight:bold;border:none;" id="day-cashier-name">المسؤول: —</div>
+                <div class="receipt-datetime" id="day-datetime"></div>
+            </div>
+
+            <div class="receipt-divider"></div>
+
+            <!-- ملخص اليوم الكامل -->
+            <div style="text-align:center; background:#f0f0f0; padding:6px 10px; border-radius:6px; font-weight:800; font-size:13px; margin-bottom:10px; color:#000;">▌ ملخص اليوم الكامل</div>
+
+            <div class="receipt-row">
+                <span>تاريخ اليوم:</span>
+                <span id="day-date">—</span>
+            </div>
+            <div class="receipt-row">
+                <span>عدد الورديات:</span>
+                <span id="day-shifts-count-lbl">0</span>
+            </div>
+            <div class="receipt-row">
+                <span>إجمالي الطلبات:</span>
+                <span id="day-orders-count">0 طلب</span>
+            </div>
+            <div id="day-delivery-breakdown-container"></div>
+
+            <div class="receipt-divider"></div>
+
+            <!-- تفاصيل الورديات -->
+            <div style="text-align:center; background:#f0f0f0; padding:6px 10px; border-radius:6px; font-weight:800; font-size:13px; margin-bottom:10px; color:#000;">▌ تفاصيل الورديات</div>
+            <div id="day-shifts-breakdown"></div>
+
+            <div class="receipt-divider"></div>
+
+            <!-- الإجماليات الكاملة -->
+            <div style="text-align:center; background:#f0f0f0; padding:6px 10px; border-radius:6px; font-weight:800; font-size:13px; margin-bottom:10px; color:#000;">▌ الإجماليات الكاملة لليوم</div>
+
+            <div class="receipt-row">
+                <span>إجمالي الكاش:</span>
+                <span id="day-total-cash">0.00 ر.س</span>
+            </div>
+            <div class="receipt-row">
+                <span>إجمالي الشبكة:</span>
+                <span id="day-total-network">0.00 ر.س</span>
+            </div>
+            <div class="receipt-row bold highlight">
+                <span>إجمالي الدخل:</span>
+                <span id="day-total-income-lbl">0.00 ر.س</span>
+            </div>
+
+            <div class="receipt-divider"></div>
+
+            <div class="receipt-row">
+                <span>إجمالي الضريبة (مشمولة):</span>
+                <span id="day-total-tax">0.00 ر.س</span>
+            </div>
+            <div class="receipt-row">
+                <span>إجمالي المرتجعات:</span>
+                <span id="day-total-returns" class="negative">0.00 ر.س</span>
+            </div>
+            <div class="receipt-row">
+                <span>إجمالي المصروفات:</span>
+                <span id="day-total-expenses" class="negative">0.00 ر.س</span>
+            </div>
+
+            <div class="receipt-divider"></div>
+
+            <div class="receipt-row bold grand-total">
+                <span>إجمالي المبيعات:</span>
+                <span id="day-total-sales">0.00 ر.س</span>
+            </div>
+            <div class="receipt-row bold" style="background:#f8fafc; padding:8px; border-radius:4px; margin-top:4px; border:1px solid #e2e8f0; color:#1e293b; display: flex; justify-content: space-between;">
+                <span>الإجمالي مع التوصيل:</span>
+                <span id="day-total-with-hs">0.00 ر.س</span>
+            </div>
+            <div class="receipt-row bold highlight-drawer">
+                <span>رصيد الدرج:</span>
+                <span id="day-drawer-total">0.00 ر.س</span>
+            </div>
+
+            <div class="receipt-footer" id="day-footer">
+                تم إقفال اليوم بالكامل — سجل تاريخي مقفل
+            </div>
+        </div>
+
+        <div class="shift-modal-actions">
+            <button class="btn btn-outline-modal" onclick="closeDayCloseDetailModal()">رجوع</button>
+            <button class="btn-print-modal" onclick="printDayReportHistorical()"><i class="ph ph-printer"></i> طباعة إقفال اليوم</button>
+        </div>
+    </div>
+</div>
+
+<script src="currency-helper.js"></script>
+<script src="script.js"></script>
+<script src="db-helper.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+    // تطبيق كلاس الثيم على body لتعمل قواعد styles.css
+    const _theme = localStorage.getItem('sys_theme') || 'dark';
+    document.body.className = _theme === 'light' ? 'light-theme' : 'dark-theme';
+
+    // تحديد العنصر النشط في الشريط الجانبي بناءً على اسم الصفحة الحالية
+    const _href = (location.pathname || location.href);
+    const _currentPage = _href.split('/').pop().split('?')[0].split('#')[0].toLowerCase();
+    document.querySelectorAll('.nav-item').forEach(link => {
+        link.classList.remove('active');
+        const linkHref = (link.getAttribute('href') || '').split('/').pop().split('?')[0].toLowerCase();
+        if (linkHref && linkHref === _currentPage) {
+            link.classList.add('active');
+        }
+    });
+
+    function curPlain(n) {
+        return window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toFixed(2) + ' ر.س';
+    }
+    function curNum(n) {
+        return window.MisterCasherCurrency ? MisterCasherCurrency.formatNumber(n) : Number(n).toFixed(2);
+    }
+    function curSym() {
+        return window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س';
+    }
+
+    let allClosures = [];
+    let selectedClosure = null;
+
+    function normalizeClosedAt(c) {
+        if (typeof window.normalizeDayClosureClosedAt === 'function') {
+            return window.normalizeDayClosureClosedAt(c);
+        }
+        return Number(c.closedAt) || 0;
+    }
+
+    // Load closures from db (خفيف — بدون تحميل orders/inventory)
+    async function loadClosures() {
+        try {
+            const readList = typeof window.dbReadDayClosures === 'function'
+                ? window.dbReadDayClosures
+                : async () => {
+                    const db = await window.dbRead();
+                    return db.day_closures || [];
+                };
+            const dbClosures = await readList();
+            let dayHistory = [];
+            try { dayHistory = JSON.parse(localStorage.getItem('day_history') || '[]'); } catch (e) {}
+
+            const mergeFn = typeof window.mergeDayClosureRecords === 'function'
+                ? window.mergeDayClosureRecords
+                : (...lists) => [].concat(...lists.filter(Array.isArray));
+
+            allClosures = mergeFn(dbClosures, dayHistory);
+
+            // استعادة السجلات المفقودة — مرة واحدة فقط (تجنب إعادة كتابة القاعدة الكاملة عند كل فتح)
+            const dbCount = dbClosures.length;
+            const needsMigrate = allClosures.length > dbCount && !localStorage.getItem('day_closures_migrated_v1');
+            if (needsMigrate && typeof window.dbWrite === 'function') {
+                const db = await window.dbRead();
+                db.day_closures = allClosures;
+                await window.dbWrite(db, { broadcast: false });
+                localStorage.setItem('day_closures_migrated_v1', '1');
+                console.log('[DayClosures] استُعيدت', allClosures.length - dbCount, 'سجلة إقفال إلى قاعدة البيانات');
+            }
+
+            // Sort closures descending by closedAt date
+            allClosures.sort((a, b) => normalizeClosedAt(b) - normalizeClosedAt(a));
+
+            // إكمال البيانات وإعادة حسابها من shifts[] أو الحقول المخزّنة (سجلات قديمة)
+            allClosures = allClosures.map(c => {
+                const shifts = c.shifts || c.allDayShifts || [];
+
+                const computedShifts = (c.shiftsCount > 0 ? c.shiftsCount : 0)
+                    || shifts.length
+                    || 0;
+
+                let computedOrders = (c.ordersCount > 0 ? c.ordersCount : 0);
+                if (!computedOrders && shifts.length > 0) {
+                    computedOrders = shifts.reduce((s, sh) => {
+                        return s + (sh.ordersCount || sh.totalOrders || sh.orders_count || 0);
+                    }, 0);
+                }
+
+                // إصلاح totalIncome إذا كانت صفرًا ولكن يوجد cashSales في الورديات
+                let totalIncome = c.totalIncome || 0;
+                if (!totalIncome && shifts.length > 0) {
+                    totalIncome = shifts.reduce((s, sh) => s + (sh.cashSales || 0) + (sh.networkSales || 0), 0);
+                }
+
+                // drawerTotal: خذه من آخر وردية إذا كان مفقودًا
+                let drawerTotal = c.drawerTotal || 0;
+                if (!drawerTotal && shifts.length > 0) {
+                    const lastShift = shifts[shifts.length - 1];
+                    if (lastShift && lastShift.drawerBalance) drawerTotal = lastShift.drawerBalance;
+                }
+
+                // إصلاح closedAt: رقم زمني فقط — لا نُعيّن «اليوم» لسجلات قديمة بلا تاريخ
+                let closedAt = normalizeClosedAt(c);
+
+                // إذا كان حقل date مفقوداً، اشتقه من closedAt
+                const date = c.date || new Date(closedAt).toLocaleDateString('ar-u-nu-latn', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+                return {
+                    ...c,
+                    shiftsCount: computedShifts,
+                    ordersCount: computedOrders,
+                    totalIncome,
+                    drawerTotal,
+                    closedAt,
+                    date,
+                    hasShiftDetails: Boolean(c.hasShiftDetails || shifts.length > 0)
+                };
+            });
+
+            applyFilters();
+        } catch(error) {
+            console.error('Failed to load closures:', error);
+            document.getElementById('closures-tbody').innerHTML = `
+                <tr><td colspan="8" class="no-data" style="color:#ef4444;"><i class="ph ph-x-circle"></i> تعذر تحميل البيانات: ${error.message}</td></tr>
+            `;
+        }
+    }
+
+    // Filters implementation
+    function applyFilters() {
+        const period = document.getElementById('filter-period').value;
+        const searchVal = document.getElementById('search-input').value.toLowerCase().trim();
+        const dateFromVal = document.getElementById('filter-date-from').value;
+        const dateToVal = document.getElementById('filter-date-to').value;
+
+        // Toggle date pickers display
+        if (period === 'custom') {
+            document.getElementById('date-from-group').style.display = 'flex';
+            document.getElementById('date-to-group').style.display = 'flex';
+        } else {
+            document.getElementById('date-from-group').style.display = 'none';
+            document.getElementById('date-to-group').style.display = 'none';
+        }
+
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const startOfWeek = new Date(startOfToday);
+        startOfWeek.setDate(startOfWeek.getDate() - now.getDay());
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+        const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
+
+        let filtered = allClosures.filter(c => {
+            const time = c.closedAt || 0;
+
+            // 1. Time Period filter
+            if (period === 'all') {
+                // لا فلتر — أظهر الكل
+            } else if (period === 'today') {
+                if (time < startOfToday) return false;
+            } else if (period === 'week') {
+                if (time < startOfWeek.getTime()) return false;
+            } else if (period === 'month') {
+                if (time < startOfMonth) return false;
+            } else if (period === 'year') {
+                if (time < startOfYear) return false;
+            } else if (period === 'custom') {
+                if (dateFromVal) {
+                    const fromTime = new Date(dateFromVal).getTime();
+                    if (time < fromTime) return false;
+                }
+                if (dateToVal) {
+                    // Include the full end day by adding 24 hours
+                    const toTime = new Date(dateToVal).getTime() + 86400000;
+                    if (time > toTime) return false;
+                }
+            }
+
+            // 2. Search filter
+            if (searchVal) {
+                const cashier = (c.closedBy || getShiftsCashier(c) || '').toLowerCase();
+                const dateStr = (c.date || '').toLowerCase();
+                const idStr = (c.id || '').toLowerCase();
+                if (!cashier.includes(searchVal) && !dateStr.includes(searchVal) && !idStr.includes(searchVal)) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+
+        renderKPIs(filtered);
+        renderTable(filtered);
+    }
+
+    function getShiftsCashier(c) {
+        if (c.shifts && c.shifts.length > 0) {
+            return c.shifts[c.shifts.length - 1].cashierName || 'المدير';
+        }
+        return 'المدير';
+    }
+
+    function sumShiftsInClosures(data) {
+        return data.reduce((sum, c) => sum + (c.shiftsCount || (c.shifts ? c.shifts.length : 0) || 0), 0);
+    }
+
+    function renderKPIs(data) {
+        const count = data.length;
+        const totalIncome = data.reduce((sum, c) => sum + (c.totalIncome || 0), 0);
+        const totalShifts = sumShiftsInClosures(data);
+        const drawerTotal = data.reduce((sum, c) => sum + (c.drawerTotal || 0), 0);
+
+        document.getElementById('kpi-closures-count').textContent = count + ' سجل';
+        document.getElementById('kpi-total-income').textContent = curPlain(totalIncome);
+        document.getElementById('kpi-shifts-count').textContent = totalShifts + ' وردية';
+        document.getElementById('kpi-drawer-total').textContent = curPlain(drawerTotal);
+    }
+
+    function renderTable(data) {
+        const tbody = document.getElementById('closures-tbody');
+        const totalShifts = sumShiftsInClosures(data);
+        const badgeEl = document.getElementById('records-count-badge');
+        badgeEl.textContent = data.length + ' سجل · ' + totalShifts + ' وردية';
+        badgeEl.title = 'سجل = يوم مقفل واحد في الجدول · وردية = مجموع عمود الورديات';
+
+        if (data.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="no-data">
+                        <i class="ph ph-folder-open"></i>
+                        لا توجد سجلات إقفال متطابقة للفترة المحددة.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = data.map((c, index) => {
+            const cashier = c.closedBy || getShiftsCashier(c) || 'المدير';
+            const initials = cashier.split(' ').map(w => w[0] || '').join('').substring(0, 2);
+
+            // تنسيق التاريخ والوقت بشكل قصير وواضح
+            const closedDate = c.closedAt ? new Date(c.closedAt) : null;
+            const shortDate = closedDate ? closedDate.toLocaleDateString('ar-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' }) : (c.date || '—');
+            const dayName  = closedDate ? closedDate.toLocaleDateString('ar-u-nu-latn', { weekday: 'long' }) : '';
+            const timeStr  = closedDate ? closedDate.toLocaleTimeString('ar-u-nu-latn', { hour: '2-digit', minute: '2-digit' }) : '';
+            const shortId  = c.id ? c.id.substring(0, 18) : ('DAY-' + String(c.closedAt || index).substring(0, 13));
+            const netSales = curPlain(c.totalIncome || 0);
+            const drawerVal = curPlain(c.drawerTotal || 0);
+
+            return `
+                <tr>
+                    <td><strong style="font-size:12px; color:var(--text-muted);">${shortId}</strong></td>
+                    <td>
+                        <div style="font-weight:800; font-size:14px;">${shortDate}</div>
+                        <div style="font-size:12px; color:var(--text-muted,#64748b); margin-top:2px;">
+                            ${dayName} &nbsp;·&nbsp; <i class="ph ph-clock" style="vertical-align:middle;"></i> ${timeStr}
+                        </div>
+                    </td>
+                    <td>
+                        <span class="user-avatar">${initials}</span>
+                        <span style="font-weight: 600;">${cashier}</span>
+                    </td>
+                    <td>
+                        <span class="closure-tag closure-tag-purple" style="white-space:nowrap;">
+                            ${c.shiftsCount || 0} وردية
+                        </span>
+                    </td>
+                    <td>
+                        <span class="closure-tag closure-tag-blue" style="white-space:nowrap;">
+                            ${c.ordersCount || 0} طلب
+                        </span>
+                    </td>
+                    <td style="font-weight:800; color:#10b981;">${netSales}</td>
+                    <td style="font-weight:700; color:#f59e0b;">${drawerVal}</td>
+                    <td>
+                        <button type="button" class="action-btn view-closure-btn" data-closure-id="${String(c.id || ('DAY-' + c.closedAt)).replace(/"/g, '&quot;')}">
+                            <i class="ph ph-eye"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        tbody.querySelectorAll('.view-closure-btn').forEach(btn => {
+            btn.addEventListener('click', () => viewClosureDetails(btn.getAttribute('data-closure-id')));
+        });
+    }
+
+    // Modal Operations
+    window.viewClosureDetails = async function(closureId) {
+        selectedClosure = allClosures.find(c => (c.id === closureId || ('DAY-' + c.closedAt) === closureId));
+        if (!selectedClosure) {
+            alert('عذراً، لم يتم العثور على بيانات الإقفال المحددة.');
+            return;
+        }
+
+        let c = selectedClosure;
+        if (c.hasShiftDetails && typeof window.dbReadDayClosureDetail === 'function') {
+            try {
+                const full = await window.dbReadDayClosureDetail(closureId);
+                if (full) c = { ...c, ...full };
+            } catch (_) {}
+        }
+        selectedClosure = c;
+        
+        // Fill header in modal
+        document.getElementById('day-cashier-name').innerText = 'المسؤول: ' + (c.closedBy || getShiftsCashier(c) || 'المدير');
+        
+        const closeDate = c.closedAt ? new Date(c.closedAt) : new Date();
+        document.getElementById('day-datetime').innerText = closeDate.toLocaleString('ar-u-nu-latn', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        document.getElementById('day-date').innerText = c.date || closeDate.toLocaleDateString('ar-u-nu-latn', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+        // Restaurant settings logo & name
+        const sysSet = localStorage.getItem('restaurant_settings');
+        if (sysSet) {
+            try {
+                const s = JSON.parse(sysSet);
+                const displayName = (s.name && s.name !== 'Mister Casher') ? s.name : 'Mister Casher';
+                document.getElementById('day-res-name').innerText = displayName;
+                
+                const dayLogoEl = document.getElementById('day-logo');
+                if (dayLogoEl && s.logo && s.logo !== '2222.png' && s.logo !== '1(1).png') {
+                    dayLogoEl.src = s.logo;
+                } else if (dayLogoEl) {
+                    dayLogoEl.src = '2222.png';
+                }
+            } catch(e){}
+        } else {
+            const dayLogoEl = document.getElementById('day-logo');
+            if (dayLogoEl) dayLogoEl.src = '2222.png';
+        }
+
+        // Summary details
+        document.getElementById('day-shifts-count-lbl').innerText = (c.shiftsCount || (c.shifts ? c.shifts.length : 0) || 0) + ' وردية';
+        document.getElementById('day-orders-count').innerText = (c.ordersCount || 0) + ' طلب';
+
+        // Delivery breakdown
+        const dayDeliveryContainer = document.getElementById('day-delivery-breakdown-container');
+        dayDeliveryContainer.innerHTML = '';
+        const deliveryData = c.deliveryBreakdown || {};
+        if (Object.keys(deliveryData).length > 0) {
+            for (const [comp, amt] of Object.entries(deliveryData)) {
+                dayDeliveryContainer.insertAdjacentHTML('beforeend', `
+                    <div class="receipt-row">
+                        <span>إجمالي ${comp}:</span>
+                        <span style="color:#ff6b00;">${curPlain(amt)}</span>
+                    </div>
+                `);
+            }
+        } else {
+            const hsAmt = c.hungerStationUnpaid || 0;
+            dayDeliveryContainer.insertAdjacentHTML('beforeend', `
+                <div class="receipt-row">
+                    <span>إجمالي التوصيل:</span>
+                    <span style="color:#ff6b00;">${curPlain(hsAmt)}</span>
+                </div>
+            `);
+        }
+
+        // Totals
+        document.getElementById('day-total-cash').innerText = curPlain(c.totalCash || 0);
+        document.getElementById('day-total-network').innerText = curPlain(c.totalNetwork || 0);
+        document.getElementById('day-total-income-lbl').innerText = curPlain(c.totalIncome || 0);
+        document.getElementById('day-total-tax').innerText = curPlain(c.totalTax || 0);
+        document.getElementById('day-total-returns').innerText = curPlain(c.totalReturns || 0);
+        document.getElementById('day-total-expenses').innerText = curPlain(c.totalExpenses || 0);
+        document.getElementById('day-total-sales').innerText = curPlain(c.totalIncome || 0);
+        
+        const totalWithHSVal = (c.totalIncome || 0) + (c.hungerStationUnpaid || 0);
+        document.getElementById('day-total-with-hs').innerText = curPlain(totalWithHSVal);
+        document.getElementById('day-drawer-total').innerText = curPlain(c.drawerTotal || 0);
+
+        // Render shifts breakdown
+        const breakdownEl = document.getElementById('day-shifts-breakdown');
+        breakdownEl.innerHTML = '';
+        
+        const shifts = c.shifts || [];
+        if (shifts.length === 0) {
+            breakdownEl.innerHTML = '<div style="text-align:center; padding:10px; color:#666;">لا توجد بيانات تفصيلية للورديات في هذا السجل.</div>';
+        } else {
+            shifts.forEach((s, idx) => {
+                const sStart = s.startTime ? new Date(s.startTime).toLocaleTimeString('ar-u-nu-latn', { hour: '2-digit', minute: '2-digit' }) : '—';
+                const sEnd = s.endTime ? new Date(s.endTime).toLocaleTimeString('ar-u-nu-latn', { hour: '2-digit', minute: '2-digit' }) : '—';
+                const sIncome = ((s.cashSales || 0) + (s.networkSales || 0)).toFixed(2);
+
+                let deliveryHtml = '';
+                if (s.deliveryBreakdown && Object.keys(s.deliveryBreakdown).length > 0) {
+                    for (const [comp, amt] of Object.entries(s.deliveryBreakdown)) {
+                        deliveryHtml += `<div class="receipt-row"><span>توصيل ${comp}:</span><span style="color:#ff6b00;">${curPlain(amt)}</span></div>`;
+                    }
+                } else if (s.hungerStationUnpaid > 0) {
+                    deliveryHtml = `<div class="receipt-row"><span>توصيل غير مدفوع:</span><span style="color:#ff6b00;">${curPlain(s.hungerStationUnpaid || 0)}</span></div>`;
+                }
+
+                breakdownEl.insertAdjacentHTML('beforeend', `
+                    <div class="day-shift-block">
+                        <div class="shift-block-header">
+                            <span>الوردية ${idx + 1} — ${s.cashierName || 'موظف'}</span>
+                            <span>${sStart} ← ${sEnd}</span>
+                        </div>
+                        <div class="receipt-row"><span>عدد الطلبات:</span><span>${s.ordersCount || 0} طلب</span></div>
+                        <div class="receipt-row"><span>مبيعات كاش:</span><span>${curPlain(s.cashSales || 0)}</span></div>
+                        <div class="receipt-row"><span>مبيعات شبكة:</span><span>${curPlain(s.networkSales || 0)}</span></div>
+                        ${deliveryHtml}
+                        <div class="receipt-row"><span>إجمالي الدخل:</span><span style="font-weight:800;">${curPlain(parseFloat(sIncome) || 0)}</span></div>
+                        <div class="receipt-row"><span>المرتجعات:</span><span style="color:#c00;">${curPlain(s.totalReturns || 0)}</span></div>
+                        <div class="receipt-row"><span>المصروفات:</span><span style="color:#c00;">${curPlain(s.totalExpenses || 0)}</span></div>
+                        <div class="receipt-row"><span>رصيد الدرج:</span><span style="font-weight:800; color:#047857;">${curPlain(s.drawerBalance || 0)}</span></div>
+                    </div>
+                `);
+            });
+        }
+
+        // Show Modal
+        document.getElementById('dayCloseDetailModal').style.display = 'flex';
+    };
+
+    window.closeDayCloseDetailModal = function() {
+        document.getElementById('dayCloseDetailModal').style.display = 'none';
+        selectedClosure = null;
+    };
+
+    // Print Thermal Report exact replica of printDayReport
+    window.printDayReportHistorical = async function() {
+        if (!selectedClosure) return;
+
+        const { ipcRenderer } = require('electron');
+        const path = require('path');
+        const fs = require('fs');
+        const { getReceiptFooterLine, escapeHtmlPrint } = require('./thermal-receipt-updated.js');
+
+        const c = selectedClosure;
+
+        // Get restaurant settings
+        const sysSet = localStorage.getItem('restaurant_settings');
+        let restName = 'Mister Casher';
+        let logoBase64 = '';
+        
+        if (sysSet) {
+            try {
+                const s = JSON.parse(sysSet);
+                if (s.name) restName = s.name;
+                
+                // Convert logo to base64
+                if (s.logo && s.logo.startsWith('data:')) {
+                    logoBase64 = s.logo;
+                } else if (s.logo) {
+                    try {
+                        const logoPath = path.join(__dirname, s.logo);
+                        if (fs.existsSync(logoPath)) {
+                            const logoBuffer = fs.readFileSync(logoPath);
+                            const ext = path.extname(s.logo).toLowerCase();
+                            const mimeType = ext === '.png' ? 'image/png' : 
+                                           ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'image/png';
+                            logoBase64 = `data:${mimeType};base64,${logoBuffer.toString('base64')}`;
+                        }
+                    } catch(e) {
+                        console.error('Historical report logo error:', e);
+                    }
+                }
+            } catch(e){}
+        }
+        
+        // If no logo, use default 2222.png
+        if (!logoBase64) {
+            try {
+                const defaultLogo = path.join(__dirname, '2222.png');
+                if (fs.existsSync(defaultLogo)) {
+                    const logoBuffer = fs.readFileSync(defaultLogo);
+                    logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+                }
+            } catch(e) {}
+        }
+
+        // Get formatting values from selected closure
+        const cashier = c.closedBy || getShiftsCashier(c) || 'المدير';
+        const managerName = 'المسؤول: ' + cashier;
+        const closeDate = c.closedAt ? new Date(c.closedAt) : new Date();
+        const datetime = closeDate.toLocaleString('ar-u-nu-latn', { hour: '2-digit', minute: '2-digit' });
+        const date = c.date || closeDate.toLocaleDateString('ar-u-nu-latn', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        
+        const totalOrders = c.ordersCount || '0';
+        const totalCash = curPlain(c.totalCash || 0);
+        const totalNetwork = curPlain(c.totalNetwork || 0);
+        const totalIncome = curPlain(c.totalIncome || 0);
+        const totalTax = curPlain(c.totalTax || 0);
+        const totalReturns = curPlain(c.totalReturns || 0);
+        const totalExpenses = curPlain(c.totalExpenses || 0);
+        const totalSales = curPlain(c.totalIncome || 0);
+        
+        // Read delivery breakdown
+        let deliveryPrintRowsDay = '';
+        const deliveryData = c.deliveryBreakdown || {};
+        if (Object.keys(deliveryData).length > 0) {
+            for (const [comp, amt] of Object.entries(deliveryData)) {
+                deliveryPrintRowsDay += `<tr class="row-light"><td>إجمالي ${comp}</td><td>${curPlain(amt)}</td></tr>`;
+            }
+        } else {
+            const hsAmt = c.hungerStationUnpaid || 0;
+            deliveryPrintRowsDay = `<tr class="row-light"><td style="color:#ff6b00;">إجمالي التوصيل</td><td style="color:#ff6b00;">${curPlain(hsAmt)}</td></tr>`;
+        }
+
+        const totalWithHSVal = (c.totalIncome || 0) + (c.hungerStationUnpaid || 0);
+        const totalWithHS = curPlain(totalWithHSVal);
+        const drawerTotal = curPlain(c.drawerTotal || 0);
+
+        const dayPrintFooter = escapeHtmlPrint(getReceiptFooterLine(sysSet, restName, 'تقرير إقفال يوم'));
+
+        // Build exact HTML matching design standards of original printed day closes
+        const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        
+        @page {
+            size: 80mm auto;
+            margin: 0;
+        }
+        
+        html {
+            -webkit-text-size-adjust: none;
+            text-size-adjust: none;
+            overflow: visible;
+        }
+
+        body {
+            width: 100%;
+            max-width: 80mm;
+            margin: 0 auto;
+            padding: 0;
+            background: #ffffff;
+            color: #000000;
+            direction: rtl;
+            unicode-bidi: embed;
+            font-family: 'Cairo', 'Segoe UI', 'Arial', 'Tahoma', sans-serif;
+            text-align: center;
+            line-height: 1.4;
+            font-size: 10pt;
+            -webkit-font-smoothing: antialiased;
+            overflow: visible;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+        
+        .receipt-wrapper {
+            width: 100%;
+            padding-top: 3mm;
+            padding-bottom: 3mm;
+            padding-left: 4mm;
+            padding-right: 6mm;
+            margin: 0 auto;
+            box-sizing: border-box;
+        }
+        
+        .store-logo {
+            width: 25mm;
+            height: 25mm;
+            max-width: 25mm;
+            max-height: 25mm;
+            object-fit: contain;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            margin-bottom: 2mm;
+            filter: grayscale(100%);
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+        }
+        
+        .report-title {
+            font-size: 13pt;
+            font-weight: 900;
+            margin-top: 2mm;
+            margin-bottom: 1mm;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            padding-left: 1mm;
+            padding-right: 1mm;
+        }
+        
+        .report-subtitle {
+            font-size: 9.5pt;
+            font-weight: 700;
+            margin-top: 1mm;
+            margin-bottom: 1mm;
+        }
+        
+        .manager-info {
+            font-size: 9pt;
+            font-weight: 700;
+            margin-top: 1.5mm;
+            margin-bottom: 1.5mm;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            padding-left: 1mm;
+            padding-right: 1mm;
+        }
+        
+        .datetime {
+            font-size: 8pt;
+            color: #555555;
+            margin-top: 1mm;
+            margin-bottom: 1mm;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            padding-left: 1mm;
+            padding-right: 1mm;
+        }
+        
+        .divider {
+            border-top: 1.5px dashed #000000;
+            margin-top: 3mm;
+            margin-bottom: 3mm;
+            width: 100%;
+        }
+        
+        .divider-thick {
+            border-top: 2px solid #000000;
+            margin-top: 3mm;
+            margin-bottom: 3mm;
+            width: 100%;
+        }
+        
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-top: 2mm;
+            margin-bottom: 2mm;
+            font-size: 9pt;
+            border: 1.5px solid #000000;
+            break-inside: avoid;
+        }
+        
+        .report-table thead th {
+            padding-top: 1.5mm;
+            padding-bottom: 1.5mm;
+            padding-left: 1.5mm;
+            padding-right: 1.5mm;
+            border: 1px solid #000000;
+            background: #e0e0e0;
+            font-weight: 800;
+            font-size: 9pt;
+            text-align: center;
+        }
+        
+        .report-table tbody td {
+            padding-top: 1.5mm;
+            padding-bottom: 1.5mm;
+            padding-left: 2mm;
+            padding-right: 2mm;
+            border: 1px solid #cccccc;
+            vertical-align: middle;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            break-inside: avoid;
+        }
+        
+        .report-table tbody td:first-child {
+            width: 56%;
+            text-align: start;
+            font-weight: 600;
+        }
+        
+        .report-table tbody td:last-child {
+            width: 44%;
+            text-align: end;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .report-table tbody tr.row-strong td {
+            background: #f0f0f0;
+            font-weight: 800;
+            font-size: 9.5pt;
+        }
+        
+        .report-table tbody tr.grand-total td {
+            font-size: 11pt;
+            font-weight: 900;
+            background: #000000;
+            color: #ffffff;
+            border-color: #000000;
+            padding-top: 2.5mm;
+            padding-bottom: 2.5mm;
+            padding-left: 2mm;
+            padding-right: 2mm;
+        }
+        
+        .footer-message {
+            font-size: 9.5pt;
+            font-weight: 700;
+            margin-top: 3mm;
+            margin-bottom: 1mm;
+            text-align: center;
+            padding-left: 1mm;
+            padding-right: 1mm;
+            overflow-wrap: anywhere;
+            line-height: 1.5;
+        }
+        
+        .powered-by {
+            font-size: 7.5pt;
+            color: #555555;
+            margin-top: 2mm;
+            text-align: center;
+            padding-left: 1mm;
+            padding-right: 1mm;
+            overflow-wrap: anywhere;
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt-wrapper">
+        ${logoBase64 ? `<img s` + `rc="${logoBase64}" alt="Logo" class="store-logo">` : ''}
+        
+        <div class="report-title">${restName}</div>
+        <div class="report-subtitle">تقرير إقفال اليوم الكامل (X-Report)</div>
+        
+        <div class="manager-info">${managerName}</div>
+        <div class="datetime">${date} - ${datetime}</div>
+        
+        <div class="divider"></div>
+        
+        <table class="report-table">
+            <thead>
+                <tr><th colspan="2">ملخص اليوم الكامل (سجل تاريخي)</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>عدد الطلبات</td><td>${totalOrders}</td></tr>
+                ${deliveryPrintRowsDay}
+                <tr><td>إجمالي الكاش</td><td>${totalCash}</td></tr>
+                <tr><td>إجمالي الشبكة</td><td>${totalNetwork}</td></tr>
+                <tr class="row-strong"><td>إجمالي الدخل</td><td>${totalIncome}</td></tr>
+            </tbody>
+        </table>
+        
+        <table class="report-table">
+            <thead>
+                <tr><th colspan="2">الضريبة والتعديلات</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>الضريبة</td><td>${totalTax}</td></tr>
+                <tr><td>المرتجعات</td><td style="color:#c00;">${totalReturns}</td></tr>
+                <tr><td>المصروفات</td><td style="color:#c00;">${totalExpenses}</td></tr>
+            </tbody>
+        </table>
+        
+        <div class="divider-thick"></div>
+        
+        <table class="report-table">
+            <tbody>
+                <tr class="grand-total"><td>إجمالي المبيعات</td><td>${totalSales}</td></tr>
+                <tr class="row-strong"><td>الإجمالي مع التوصيل</td><td>${totalWithHS}</td></tr>
+                <tr class="row-strong"><td>رصيد الدرج</td><td>${drawerTotal}</td></tr>
+            </tbody>
+        </table>
+        
+        <div class="footer-message">
+            تم إقفال اليوم بالكامل<br>
+            سجل تاريخي مقفل ومؤرشف
+        </div>
+        <div class="powered-by">${dayPrintFooter}</div>
+    </div>
+</body>
+</html>`;
+
+        try {
+            const cashierPrinter = localStorage.getItem('cashier_printer') || '';
+            console.log('📤 Sending historical close print to:', cashierPrinter || 'Default Printer');
+            
+            const pr = await ipcRenderer.invoke('print-to-device', { html: html, printerName: cashierPrinter });
+            if (pr && pr.success) {
+                console.log('✅ Day closure report printed successfully');
+                alert('تمت طباعة التقرير بنجاح على الطابعة الحرارية.');
+            } else {
+                console.warn('❌ Thermal print returned failure:', pr);
+                alert('فشلت عملية الطباعة: ' + (pr ? pr.error || 'خطأ غير معروف' : 'لا استجابة من خدمة الطباعة'));
+            }
+        } catch(e) {
+            console.error('❌ Historical close print failed:', e);
+            alert('حدث خطأ أثناء طباعة التقرير الحراري: ' + e.message);
+        }
+    };
+
+    // Load initial data
+    await loadClosures();
+
+    // Event listeners
+    document.getElementById('filter-period').addEventListener('change', applyFilters);
+    document.getElementById('filter-date-from').addEventListener('change', applyFilters);
+    document.getElementById('filter-date-to').addEventListener('change', applyFilters);
+    let _searchDebounce = null;
+    document.getElementById('search-input').addEventListener('input', () => {
+        clearTimeout(_searchDebounce);
+        _searchDebounce = setTimeout(applyFilters, 300);
+    });
+
+    // Dynamic database refresh integration
+    if (typeof window.registerPosDatabaseRefresh === 'function') {
+        window.registerPosDatabaseRefresh(async () => {
+            await loadClosures();
+        });
+    }
+});
+</script>
+</body>
+</html>

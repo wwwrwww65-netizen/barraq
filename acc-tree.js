@@ -2,13 +2,17 @@
  * تعبئة شجرة الحسابات من القاعدة (بدون أرقام وهمية)
  */
 (function () {
+    const PS = () => window.PaymentSplit;
+
     function hrAffectsLiquidity(h) {
+        if (PS()) return PS().hrAffectsLiquidity(h);
         const t = String(h.type || '');
         if (t.includes('سلفة')) return true;
         return !t.includes('خصم / جزاء') && !t.includes('جزاء');
     }
 
     function orderToCashBank(o) {
+        if (PS()) return PS().orderToCashBank(o);
         const t = Number(o.total) || 0;
         const pm = String(o.paymentMethod || '').trim();
         if (pm === 'cash' || pm === 'كاش' || pm === 'نقد') return { c: t, b: 0 };
@@ -18,6 +22,7 @@
     }
 
     function returnRefundCashBank(r) {
+        if (PS()) return PS().returnRefundCashBank(r);
         const amt = Number(r.amount) || 0;
         const pm = String(r.method || '').trim();
         if (pm === 'cash' || pm === 'كاش' || pm === 'نقد') return { c: amt, b: 0 };
@@ -44,6 +49,7 @@
         let cashRev = 0;
         let bankRev = 0;
         posOrders.forEach((o) => {
+            if (o.status === 'returned') return;
             const t = Number(o.total) || 0;
             totalRev += t;
             const x = orderToCashBank(o);
@@ -52,6 +58,7 @@
         });
         let totalReturns = 0;
         returnsRows.forEach((r) => {
+            if (PS() && !PS().returnAffectsLiquidity(r, posOrders)) return;
             totalReturns += Number(r.amount) || 0;
         });
         let totalOtherIncome = 0;
@@ -61,7 +68,7 @@
             if (row.pMethod === 'bank') bankRev += a;
             else cashRev += a;
         });
-        const totalRevNet = Math.max(0, totalRev - totalReturns) + totalOtherIncome;
+        const totalRevNet = totalRev + totalOtherIncome;
 
         let cashPur = 0;
         let bankPur = 0;
@@ -95,6 +102,7 @@
         let cashRetOut = 0;
         let bankRetOut = 0;
         returnsRows.forEach((r) => {
+            if (PS() && !PS().returnAffectsLiquidity(r, posOrders)) return;
             const x = returnRefundCashBank(r);
             cashRetOut += x.c;
             bankRetOut += x.b;

@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة إدارة Mister Casher</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        body { font-family: 'Cairo', sans-serif; background: #0b1120; color: #f8fafc; }
+        .glass-panel { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .glass-header { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 10px; }
+        
+        .tab-btn.active { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .badge { padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; }
+        .badge-pending { background: rgba(234, 179, 8, 0.15); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.3); }
+        .badge-active { background: rgba(34, 197, 94, 0.15); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .badge-blocked { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-trial { background: rgba(168, 85, 247, 0.15); color: #d8b4fe; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .badge-expired { background: rgba(100, 116, 139, 0.15); color: #cbd5e1; border: 1px solid rgba(100, 116, 139, 0.3); }
+    </style>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, doc, updateDoc, setDoc, deleteDoc, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // إعدادات Firebase الخاصة بك
+        const firebaseConfig = {
+            apiKey: "AIzaSyBmH18BLyVZoPhrJJBClF8FUIwUZGAy7js",
+            authDomain: "mister-23108.firebaseapp.com",
+            projectId: "mister-23108",
+            storageBucket: "mister-23108.firebasestorage.app",
+            messagingSenderId: "130749360567",
+            appId: "1:130749360567:web:75fb84d70541c7cc226032",
+            measurementId: "G-VW3Z9KSGQP"
+        };
+
+        let db;
+        let allRequests = [];
+        let allLicenses = [];
+        let currentSearchQuery = "";
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            document.getElementById('connection-status').innerHTML = '<i class="ph-fill ph-check-circle text-green-400 text-xl"></i> <span class="text-green-400">متصل بالخادم</span>';
+            initApp();
+        } catch(e) {
+            document.getElementById('connection-status').innerHTML = `<i class="ph-fill ph-warning-circle text-red-400 text-xl"></i> <span class="text-red-400">فشل الاتصال</span>`;
+            console.error(e);
+        }
+
+        function initApp() {
+            // الاستماع لطلبات التفعيل
+            onSnapshot(collection(db, "Activation_Requests"), (snapshot) => {
+                allRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderRequests();
+                updateStats();
+            }, (error) => showError(error));
+
+            // الاستماع للتراخيص
+            onSnapshot(collection(db, "Licenses"), (snapshot) => {
+                allLicenses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderLicenses();
+                updateStats();
+            }, (error) => showError(error));
+
+            // إعداد البحث
+            document.getElementById('search-input').addEventListener('input', (e) => {
+                currentSearchQuery = e.target.value.toLowerCase().trim();
+                renderRequests();
+                renderLicenses();
+            });
+        }
+
+        function showError(error) {
+            alert("خطأ في جلب البيانات من فايربيس! تأكد من إعدادات Firestore Rules (يجب أن تكون allow read, write: if true). الخطأ: " + error.message);
+        }
+
+        // تحويل التاريخ لنص مقروء
+        function formatDate(timestamp) {
+            if (!timestamp) return 'غير محدد';
+            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            return date.toLocaleString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        // تحديث الإحصائيات العلوية
+        function updateStats() {
+            const pendingReqs = allRequests.filter(r => r.status === 'pending').length;
+            const activeLics = allLicenses.filter(l => l.status === 'active').length;
+            const blockedLics = allLicenses.filter(l => l.status === 'blocked').length;
+            const trialLics = allLicenses.filter(l => l.status === 'trial').length;
+
+            document.getElementById('stat-pending').innerText = pendingReqs;
+            document.getElementById('stat-active').innerText = activeLics;
+            document.getElementById('stat-blocked').innerText = blockedLics;
+            document.getElementById('stat-trial').innerText = trialLics;
+        }
+
+        // عرض طلبات التفعيل
+        window.renderRequests = function() {
+            const container = document.getElementById('requests-container');
+            let html = '';
+            
+            const filtered = allRequests.filter(r => 
+                String(r.restaurantName || '').toLowerCase().includes(currentSearchQuery) ||
+                String(r.deviceId || r.hubDeviceId || '').toLowerCase().includes(currentSearchQuery) ||
+                String(r.phone || '').toLowerCase().includes(currentSearchQuery) ||
+                String(r.adminFullName || r.adminUsername || '').toLowerCase().includes(currentSearchQuery)
+            ).sort((a,b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)); // الأحدث أولاً
+
+            if(filtered.length === 0) {
+                container.innerHTML = '<div class="text-center p-12 glass-panel rounded-2xl"><i class="ph ph-tray text-4xl text-slate-500 mb-3 block"></i><p class="text-slate-400">لا توجد طلبات تطابق البحث</p></div>';
+                return;
+            }
+
+            filtered.forEach(req => {
+                const isPending = req.status === 'pending';
+                const isExtraDevices = req.type === 'extra_devices';
+                
+                let title = req.restaurantName || 'غير مسجل';
+                let icon = 'ph-storefront';
+                let badgeClass = isPending ? 'badge-pending' : 'badge-active';
+                let statusText = isPending ? 'بانتظار التفعيل' : 'تمت المعالجة';
+                
+                if (isExtraDevices) {
+                    title = `طلب زيادة أجهزة: ${title}`;
+                    icon = 'ph-desktop';
+                }
+                
+                html += `
+                <div class="glass-panel rounded-2xl p-5 hover:border-slate-600 transition-colors">
+                    <div class="flex flex-col md:flex-row justify-between gap-4 mb-4 pb-4 border-b border-slate-700/50">
+                        <div class="flex items-start gap-4">
+                            <div class="bg-blue-500/10 p-3 rounded-xl border border-blue-500/20 text-blue-400">
+                                <i class="ph-fill ${icon} text-2xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-white mb-1">${title}</h3>
+                                <div class="flex gap-2 text-xs text-slate-400">
+                                    <span class="flex items-center gap-1"><i class="ph-fill ph-user"></i> ${req.adminFullName || req.adminUsername || 'مدير'}</span>
+                                    ${req.phone ? `<span class="flex items-center gap-1"><i class="ph-fill ph-phone"></i> ${req.phone}</span>` : ''}
+                                </div>
+                                ${isExtraDevices ? `<div class="mt-2 inline-block bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-lg text-sm border border-indigo-500/30">
+                                    <i class="ph-bold ph-plus-circle"></i> الأجهزة الإضافية المطلوبة: <span class="font-bold text-white">${req.requestedDevicesCount}</span> 
+                                    <span class="text-xs text-indigo-400 ml-1">(الحالي: ${req.currentAllowed || 1})</span>
+                                </div>` : ''}
+                            </div>
+                        </div>
+                        <div class="text-left md:text-left">
+                            <span class="badge ${badgeClass} inline-flex items-center gap-1 mb-2">
+                                <i class="ph-fill ${isPending ? 'ph-clock' : 'ph-check-circle'}"></i> ${statusText}
+                            </span>
+                            <div class="text-xs text-slate-400"><i class="ph ph-calendar-blank"></i> ${formatDate(req.createdAt)}</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-black/20 p-3 rounded-lg mb-4">
+                        <div class="text-xs text-slate-400 mb-1">Device ID (المعرف المرجعي)</div>
+                        <code class="text-green-400 font-mono text-xs select-all block break-all" dir="ltr">${req.deviceId || req.hubDeviceId}</code>
+                    </div>
+
+                    <div class="flex gap-3">
+                        ${isPending && !isExtraDevices ? `<button onclick="activateDevice('${req.id}', '${req.hubDeviceId || req.deviceId}', '${req.restaurantName}')" class="flex-1 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400 text-white font-bold py-2.5 px-4 rounded-xl flex justify-center items-center gap-2 transition-all"><i class="ph-bold ph-key"></i> الموافقة وتفعيل النسخة الدائمة</button>` : ''}
+                        ${isPending && isExtraDevices ? `<button onclick="approveExtraDevices('${req.id}', '${req.hubDeviceId || req.deviceId}', ${req.currentAllowed || 1}, ${req.requestedDevicesCount || 0})" class="flex-1 bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-500 hover:to-blue-400 text-white font-bold py-2.5 px-4 rounded-xl flex justify-center items-center gap-2 transition-all"><i class="ph-bold ph-check-circle"></i> الموافقة وإضافة الأجهزة</button>` : ''}
+                        <button onclick="deleteDocById('Activation_Requests', '${req.id}')" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all" title="حذف الطلب"><i class="ph-bold ph-trash"></i></button>
+                    </div>
+                </div>
+                `;
+            });
+            container.innerHTML = html;
+        };
+
+        // عرض الأجهزة / التراخيص
+        window.renderLicenses = function() {
+            const container = document.getElementById('licenses-container');
+            let html = '';
+            
+            const filtered = allLicenses.filter(l => 
+                String(l.restaurantName || '').toLowerCase().includes(currentSearchQuery) ||
+                String(l.hubDeviceId || '').toLowerCase().includes(currentSearchQuery) ||
+                String(l.adminUsername || '').toLowerCase().includes(currentSearchQuery)
+            ).sort((a,b) => (b.updatedAt?.toMillis() || 0) - (a.updatedAt?.toMillis() || 0));
+
+            if(filtered.length === 0) {
+                container.innerHTML = '<div class="text-center p-12 glass-panel rounded-2xl"><i class="ph ph-devices text-4xl text-slate-500 mb-3 block"></i><p class="text-slate-400">لا توجد أجهزة مطابقة</p></div>';
+                return;
+            }
+
+            filtered.forEach(lic => {
+                let badgeClass = 'badge-active';
+                let statusAr = 'مفعّل دائم';
+                if(lic.status === 'blocked') { badgeClass = 'badge-blocked'; statusAr = 'محظور'; }
+                else if(lic.status === 'trial') { badgeClass = 'badge-trial'; statusAr = 'نسخة تجريبية'; }
+                else if(lic.status === 'expired') { badgeClass = 'badge-expired'; statusAr = 'منتهي'; }
+
+                // تجهيز قائمة الأجهزة الفرعية المتصلة
+                let linkedHtml = '';
+                if(lic.linkedDevices && lic.linkedDevices.length > 0) {
+                    linkedHtml = '<div class="mt-4 text-xs border-t border-slate-700/50 pt-3"><div class="text-slate-400 font-bold mb-2 flex items-center gap-1"><i class="ph-fill ph-plugs-connected"></i> الأجهزة الفرعية المتصلة:</div><div class="space-y-1">';
+                    lic.linkedDevices.forEach(d => {
+                        const isOnline = (Date.now() - d.lastSeen) < (60 * 60 * 1000); // يعتبر متصل إذا شوهد خلال آخر ساعة
+                        linkedHtml += `
+                            <div class="flex items-center justify-between bg-black/30 p-2 rounded border border-white/5">
+                                <div class="flex items-center gap-2">
+                                    <span class="relative flex h-2 w-2"><span class="${isOnline ? 'animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75' : ''}"></span><span class="relative inline-flex rounded-full h-2 w-2 ${isOnline ? 'bg-green-500' : 'bg-slate-600'}"></span></span>
+                                    <span class="text-slate-300 font-mono text-[10px] select-all" dir="ltr">${d.deviceId}</span>
+                                </div>
+                                <span class="text-slate-400 text-[10px]">${d.hostname || d.ip || 'مجهول'}</span>
+                            </div>
+                        `;
+                    });
+                    linkedHtml += '</div></div>';
+                }
+
+                html += `
+                <div class="glass-panel rounded-2xl p-5 hover:border-slate-600 transition-colors">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="ph-fill ph-desktop text-blue-400"></i> ${lic.restaurantName || 'جهاز مجهول'}
+                            </h3>
+                            <div class="flex gap-2 mt-2 mb-1 text-xs text-slate-400">
+                                <span class="flex items-center gap-1"><i class="ph-fill ph-user"></i> ${lic.adminUsername || 'غير مسجل'}</span>
+                                <span class="flex items-center gap-1"><i class="ph-fill ph-phone"></i> ${lic.phone || 'لا يوجد رقم'}</span>
+                            </div>
+                            <code class="text-blue-300 font-mono text-xs select-all block break-all" dir="ltr">${lic.hubDeviceId}</code>
+                        </div>
+                        <span class="badge ${badgeClass}">${statusAr}</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-y-3 gap-x-4 mb-5 p-3 bg-black/20 rounded-lg text-sm">
+                        <div><span class="text-slate-400 block text-xs">الأجهزة المسموحة:</span><span class="font-bold text-white">${lic.allowedClients || 1}</span></div>
+                        <div><span class="text-slate-400 block text-xs">تاريخ آخر تزامن:</span><span class="text-slate-200 text-xs">${formatDate(lic.updatedAt)}</span></div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        <!-- أزرار التحكم بالحالة -->
+                        <div class="flex-1 flex gap-2">
+                            <button onclick="changeLicenseStatus('${lic.id}', 'active')" class="${lic.status === 'active' ? 'bg-green-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'} px-3 py-2 rounded-lg text-sm font-semibold flex-1 transition-colors">تفعيل دائم</button>
+                            <button onclick="changeLicenseStatus('${lic.id}', 'blocked')" class="${lic.status === 'blocked' ? 'bg-red-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'} px-3 py-2 rounded-lg text-sm font-semibold flex-1 transition-colors">حظر الجهاز</button>
+                            <button onclick="changeLicenseStatus('${lic.id}', 'trial')" class="${lic.status === 'trial' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'} px-3 py-2 rounded-lg text-sm font-semibold flex-1 transition-colors">تحويل لتجربة</button>
+                        </div>
+                        <!-- زيادة ونقصان الأجهزة -->
+                        <div class="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
+                            <button onclick="updateClientsCount('${lic.id}', ${(lic.allowedClients || 1) + 1})" class="w-8 h-8 flex justify-center items-center hover:bg-slate-700 rounded text-green-400"><i class="ph-bold ph-plus"></i></button>
+                            <span class="w-6 text-center font-bold text-sm" title="عدد الأجهزة المسموحة">${lic.allowedClients || 1}</span>
+                            <button onclick="updateClientsCount('${lic.id}', Math.max(1, ${(lic.allowedClients || 1) - 1}))" class="w-8 h-8 flex justify-center items-center hover:bg-slate-700 rounded text-red-400"><i class="ph-bold ph-minus"></i></button>
+                        </div>
+                        <button onclick="deleteDocById('Licenses', '${lic.id}', 'هل أنت متأكد من حذف الترخيص بالكامل؟ لن يتمكن العميل من الدخول!')" class="bg-red-500/10 hover:bg-red-500 hover:text-white text-red-400 px-3 rounded-lg transition-colors"><i class="ph-bold ph-trash"></i></button>
+                    </div>
+                    
+                    ${linkedHtml}
+                </div>
+                `;
+            });
+            container.innerHTML = html;
+        };
+
+        // الموافقة على طلب التفعيل
+        window.activateDevice = async (requestId, deviceId, resName) => {
+            if(!confirm(`تأكيد تفعيل النسخة الدائمة لجهاز المطعم (${resName})؟`)) return;
+            try {
+                // 1. تحديث الطلب إلى approved
+                await updateDoc(doc(db, "Activation_Requests", requestId), { status: 'approved', updatedAt: serverTimestamp() });
+                
+                // 2. البحث عن الترخيص في مجموعة Licenses وإنشاؤه أو تحديثه
+                const q = query(collection(db, "Licenses"), where("hubDeviceId", "==", deviceId));
+                const snap = await getDocs(q);
+                
+                if(!snap.empty) {
+                    // موجود مسبقاً، حدث حالته إلى active
+                    await updateDoc(doc(db, "Licenses", snap.docs[0].id), {
+                        status: 'active',
+                        updatedAt: serverTimestamp()
+                    });
+                } else {
+                    // إنشاء ترخيص جديد
+                    await setDoc(doc(collection(db, "Licenses")), {
+                        hubDeviceId: deviceId,
+                        status: 'active',
+                        allowedClients: 1,
+                        restaurantName: resName || 'مطعم غير معروف',
+                        createdAt: serverTimestamp(),
+                        updatedAt: serverTimestamp()
+                    });
+                }
+                alert('تم التفعيل بنجاح! بمجرد أن يضغط العميل على "التحقق" في جهازه سيتم فتح النظام فوراً.');
+            } catch(e) {
+                alert('حدث خطأ أثناء التفعيل: ' + e.message);
+            }
+        };
+
+        // الموافقة على زيادة عدد الأجهزة
+        window.approveExtraDevices = async (requestId, deviceId, currentAllowed, requestedExtra) => {
+            const newTotal = parseInt(currentAllowed) + parseInt(requestedExtra);
+            if(!confirm(`تأكيد زيادة عدد الأجهزة إلى ${newTotal} جهاز؟`)) return;
+            try {
+                // 1. البحث عن الترخيص وتحديث عدد الأجهزة
+                const q = query(collection(db, "Licenses"), where("hubDeviceId", "==", deviceId));
+                const snap = await getDocs(q);
+                
+                if(!snap.empty) {
+                    await updateDoc(doc(db, "Licenses", snap.docs[0].id), {
+                        allowedClients: newTotal,
+                        updatedAt: serverTimestamp()
+                    });
+                } else {
+                    alert('لم يتم العثور على الترخيص الدائم المرتبط بهذا الطلب!');
+                    return;
+                }
+                
+                // 2. تحديث الطلب إلى approved
+                await updateDoc(doc(db, "Activation_Requests", requestId), { status: 'approved', updatedAt: serverTimestamp() });
+                
+                alert('تمت الموافقة على زيادة الأجهزة بنجاح!');
+            } catch(e) {
+                alert('حدث خطأ أثناء الموافقة: ' + e.message);
+            }
+        };
+
+        // تغيير حالة الترخيص (حظر، تفعيل، إلخ)
+        window.changeLicenseStatus = async (licenseId, newStatus) => {
+            try {
+                await updateDoc(doc(db, "Licenses", licenseId), {
+                    status: newStatus,
+                    updatedAt: serverTimestamp()
+                });
+                // سيتم التحديث تلقائياً بسبب onSnapshot
+            } catch(e) { alert('خطأ: ' + e.message); }
+        };
+
+        // تغيير عدد الأجهزة المسموحة
+        window.updateClientsCount = async (licenseId, newCount) => {
+            try {
+                await updateDoc(doc(db, "Licenses", licenseId), {
+                    allowedClients: newCount,
+                    updatedAt: serverTimestamp()
+                });
+            } catch(e) { alert('خطأ: ' + e.message); }
+        };
+
+        // دالة حذف عامة
+        window.deleteDocById = async (colName, docId, confirmMsg = 'هل أنت متأكد من الحذف؟') => {
+            if(!confirm(confirmMsg)) return;
+            try {
+                await deleteDoc(doc(db, colName, docId));
+            } catch(e) { alert('خطأ أثناء الحذف: ' + e.message); }
+        };
+
+        // منطق تبديل التبويبات
+        window.switchTab = function(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            document.getElementById('btn-' + tabId).classList.add('active');
+            document.getElementById('tab-' + tabId).classList.add('active');
+        };
+    </script>
+</head>
+<body class="custom-scrollbar min-h-screen pb-10">
+    
+    <!-- الهيدر الثابت العُلوي -->
+    <header class="glass-header sticky top-0 z-50 p-4 mb-8">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex justify-center items-center shadow-lg shadow-blue-500/30">
+                    <i class="ph-bold ph-shield-check text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black text-white">إدارة تراخيص <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Mister Casher</span></h1>
+                    <div id="connection-status" class="text-xs mt-1 flex items-center gap-1 font-semibold text-slate-400">
+                        <i class="ph ph-spinner animate-spin"></i> جاري الاتصال...
+                    </div>
+                </div>
+            </div>
+
+            <!-- مربع البحث -->
+            <div class="relative w-full md:w-96">
+                <i class="ph ph-magnifying-glass absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                <input type="text" id="search-input" placeholder="ابحث باسم المطعم، الجهاز أو الهاتف..." 
+                    class="w-full bg-slate-800/50 border border-slate-700 text-white rounded-xl py-2.5 pr-10 pl-4 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-slate-500">
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-4 gap-6">
+        
+        <!-- الشريط الجانبي -->
+        <aside class="space-y-6">
+            <!-- أزرار التبويبات -->
+            <div class="glass-panel p-2 rounded-2xl flex flex-col gap-1">
+                <button id="btn-requests" onclick="switchTab('requests')" class="tab-btn active flex items-center justify-between p-3 rounded-xl transition-all font-bold text-slate-300 hover:bg-slate-800/80">
+                    <span class="flex items-center gap-2"><i class="ph-fill ph-bell-ringing text-xl"></i> الطلبات الواردة</span>
+                    <span id="stat-pending" class="bg-blue-500 text-white text-xs py-0.5 px-2.5 rounded-full shadow-sm">0</span>
+                </button>
+                <button id="btn-licenses" onclick="switchTab('licenses')" class="tab-btn flex items-center justify-between p-3 rounded-xl transition-all font-bold text-slate-300 hover:bg-slate-800/80">
+                    <span class="flex items-center gap-2"><i class="ph-fill ph-hard-drives text-xl"></i> سجل التراخيص والأجهزة</span>
+                    <span id="stat-active" class="bg-green-500 text-white text-xs py-0.5 px-2.5 rounded-full shadow-sm">0</span>
+                </button>
+            </div>
+
+            <!-- إحصائيات سريعة -->
+            <div class="glass-panel p-5 rounded-2xl">
+                <h3 class="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider">نظرة عامة</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+                        <span class="flex items-center gap-2 text-sm"><i class="ph-fill ph-prohibit text-lg"></i> أجهزة محظورة</span>
+                        <strong id="stat-blocked">0</strong>
+                    </div>
+                    <div class="flex justify-between items-center p-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                        <span class="flex items-center gap-2 text-sm"><i class="ph-fill ph-clock-countdown text-lg"></i> فترة تجريبية</span>
+                        <strong id="stat-trial">0</strong>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- منطقة المحتوى الرئيسية -->
+        <main class="lg:col-span-3">
+            
+            <!-- تبويب: الطلبات -->
+            <div id="tab-requests" class="tab-content active">
+                <div class="flex items-center gap-2 mb-6">
+                    <i class="ph-fill ph-tray text-2xl text-blue-400"></i>
+                    <h2 class="text-2xl font-black text-white">طلبات التفعيل الجديدة</h2>
+                </div>
+                <div id="requests-container" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <!-- Loading State -->
+                    <div class="col-span-full flex flex-col items-center justify-center p-12 text-blue-400">
+                        <i class="ph ph-spinner-gap animate-spin text-4xl mb-2"></i>
+                        <span>جاري جلب البيانات...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- تبويب: التراخيص والأجهزة -->
+            <div id="tab-licenses" class="tab-content">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-2">
+                        <i class="ph-fill ph-database text-2xl text-emerald-400"></i>
+                        <h2 class="text-2xl font-black text-white">إدارة الأجهزة والتراخيص</h2>
+                    </div>
+                </div>
+                
+                <div id="licenses-container" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <!-- Loading State -->
+                </div>
+            </div>
+
+        </main>
+    </div>
+</body>
+</html>

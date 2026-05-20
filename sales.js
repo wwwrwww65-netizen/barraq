@@ -152,8 +152,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadSales() {
-    // Auto-fix negative split values before loading
-    await autoFixNegativeSplitValues();
+    // إصلاح القيم السالبة مرة واحدة لكل جلسة — لا يُعاد مسح آلاف الطلبات عند كل فتح
+    const shouldFix =
+        !window.MC_PERF ||
+        typeof window.MC_PERF.shouldRunSalesAutoFixThisSession !== 'function' ||
+        window.MC_PERF.shouldRunSalesAutoFixThisSession();
+    if (shouldFix) {
+        await autoFixNegativeSplitValues();
+        if (window.MC_PERF && typeof window.MC_PERF.markSalesAutoFixDone === 'function') {
+            window.MC_PERF.markSalesAutoFixDone();
+        }
+    }
     
     // Read from SQLite JSON database via IPC
     allSalesOrders = await ipcRenderer.invoke('db-get-orders');

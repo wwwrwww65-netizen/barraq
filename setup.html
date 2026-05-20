@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <script>
@@ -61,7 +61,7 @@
             -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
         }
         .setup-header h1 { font-size: 26px; font-weight: 800; color: #fff; margin-bottom: 6px; }
-        .setup-header p { color: #64748b; font-size: 14px; }
+        .setup-header p { color: #e2e8f0; font-size: 14px; }
 
         /* Steps indicator */
         .steps-bar {
@@ -74,7 +74,7 @@
             font-size: 13px; font-weight: 800;
             background: rgba(255,255,255,.05);
             border: 2px solid rgba(255,255,255,.08);
-            color: #475569; transition: all .3s;
+            color: #e2e8f0; transition: all .3s;
         }
         .step-dot.active { background: #10b981; border-color: #10b981; color: #fff; box-shadow: 0 0 20px rgba(16,185,129,.4); }
         .step-dot.done { background: rgba(16,185,129,.2); border-color: rgba(16,185,129,.4); color: #10b981; }
@@ -97,7 +97,7 @@
         }
 
         .step-title { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
-        .step-sub { color: #64748b; font-size: 13px; margin-bottom: 24px; }
+        .step-sub { color: #e2e8f0; font-size: 13px; margin-bottom: 24px; }
 
         /* Logo upload */
         .logo-upload-area {
@@ -111,20 +111,20 @@
         .logo-upload-area.has-img { border-style: solid; border-color: rgba(16,185,129,.5); }
         .logo-preview-img { width: 80px; height: 80px; border-radius: 16px; object-fit: cover; margin-bottom: 8px; display: none; }
         .logo-upload-icon { font-size: 36px; color: #10b981; margin-bottom: 8px; }
-        .logo-upload-label { font-size: 14px; font-weight: 600; color: #94a3b8; }
-        .logo-upload-hint { font-size: 11px; color: #475569; margin-top: 4px; }
+        .logo-upload-label { font-size: 14px; font-weight: 600; color: #f8fafc; }
+        .logo-upload-hint { font-size: 11px; color: #e2e8f0; margin-top: 4px; }
 
         /* Form fields */
         .form-group { margin-bottom: 18px; }
         .form-group label {
             display: block; font-size: 13px; font-weight: 700;
-            color: #94a3b8; margin-bottom: 8px;
+            color: #f8fafc; margin-bottom: 8px;
         }
         .form-group label span.req { color: #ef4444; margin-right: 3px; }
         .input-wrap { position: relative; }
         .input-wrap i {
             position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
-            color: #475569; font-size: 18px; pointer-events: none;
+            color: #e2e8f0; font-size: 18px; pointer-events: none;
         }
         .form-input {
             width: 100%; padding: 13px 44px 13px 14px;
@@ -135,11 +135,11 @@
             transition: all .2s; outline: none;
         }
         .form-input:focus { border-color: rgba(16,185,129,.5); background: rgba(16,185,129,.04); box-shadow: 0 0 0 3px rgba(16,185,129,.1); }
-        .form-input::placeholder { color: #334155; }
+        .form-input::placeholder { color: #94a3b8; }
 
         .pwd-toggle {
             position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
-            background: none; border: none; color: #475569; cursor: pointer;
+            background: none; border: none; color: #e2e8f0; cursor: pointer;
             font-size: 18px; padding: 0;
         }
         .pwd-toggle:hover { color: #10b981; }
@@ -163,12 +163,12 @@
         .btn-next:disabled { opacity: .5; cursor: not-allowed; transform: none; }
         .btn-back {
             width: 100%; padding: 12px;
-            background: transparent; border: 1px solid rgba(255,255,255,.08);
-            border-radius: 14px; color: #64748b;
+            background: transparent; border: 1px solid rgba(255,255,255,.2);
+            border-radius: 14px; color: #f8fafc;
             font-family: 'Cairo', sans-serif; font-size: 14px; cursor: pointer;
             transition: all .2s; margin-top: 8px;
         }
-        .btn-back:hover { border-color: rgba(255,255,255,.2); color: #94a3b8; }
+        .btn-back:hover { border-color: rgba(255,255,255,.4); color: #fff; }
 
         /* Summary card in step 3 */
         .summary-row {
@@ -178,7 +178,7 @@
             margin-bottom: 10px;
         }
         .summary-row i { color: #10b981; font-size: 20px; }
-        .summary-row-label { font-size: 12px; color: #64748b; }
+        .summary-row-label { font-size: 12px; color: #e2e8f0; }
         .summary-row-value { font-size: 14px; font-weight: 700; color: #fff; }
 
         /* Success state */
@@ -430,10 +430,10 @@
                         <img id="done-logo" src="2222.png" style="width:50px;height:50px;border-radius:12px;object-fit:cover;">
                         <div style="text-align:right;">
                             <div style="font-size:16px;font-weight:800;color:#10b981;" id="done-name">اسم المطعم</div>
-                            <div style="font-size:12px;color:#64748b;" id="done-user">اسم المدير</div>
+                            <div style="font-size:12px;color:#e2e8f0;" id="done-user">اسم المدير</div>
                         </div>
                     </div>
-                    <div style="font-size:13px;color:#475569;" id="redirect-msg">جاري توجيهك لشاشة الدخول في <strong id="cnt">3</strong> ثوان...</div>
+                    <div style="font-size:13px;color:#e2e8f0;" id="redirect-msg">جاري توجيهك لشاشة الدخول في <strong id="cnt">3</strong> ثوان...</div>
                 </div>
             </div>
 
@@ -620,6 +620,15 @@
             // 5. Log this setup completion
             localStorage.setItem('setup_complete', '1');
             localStorage.setItem('setup_admin', user);
+            localStorage.setItem('admin_fullname', full);
+
+            try {
+                const { ipcRenderer } = require('electron');
+                ipcRenderer.send('license-mark-setup-complete', {
+                    restaurantName: name,
+                    adminUsername: user,
+                });
+            } catch (_) {}
 
             // Show done screen
             setTimeout(() => {
@@ -644,7 +653,7 @@
                     if (cnt) cnt.textContent = c;
                     if (c <= 0) {
                         clearInterval(t);
-                        window.location.href = 'login.html';
+                        window.location.href = 'activation.html';
                     }
                 }, 1000);
             }, 1200);

@@ -475,7 +475,10 @@
         }
     });
 
-    const CHECK_MS = 45000;
+    const CHECK_MS =
+        window.MC_PERF && typeof window.MC_PERF.getInventoryCheckMs === 'function'
+            ? window.MC_PERF.getInventoryCheckMs()
+            : 45000;
     setInterval(runInventoryCheck, CHECK_MS);
 
     if (typeof window.registerPosDatabaseRefresh === 'function') {

@@ -1,5 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
-
+document.addEventListener('DOMContentLoaded', async () => {
     const form      = document.getElementById('loginForm');
     const userInp   = document.getElementById('username');
     const pwdInp    = document.getElementById('password');
@@ -54,6 +53,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // التركيز الفوري على حقل كلمة المرور
         setTimeout(() => { pwdInp.focus(); }, 100);
     }
+
+    setTimeout(async () => {
+        try {
+            const { ipcRenderer } = require('electron');
+            const access = await ipcRenderer.invoke('license-evaluate-access');
+            if (!access.ok) {
+                const lock = access.lock ? '?lock=' + encodeURIComponent(access.lock) : '';
+                window.location.href = 'activation.html' + lock;
+            }
+        } catch (_) {}
+    }, 0);
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
