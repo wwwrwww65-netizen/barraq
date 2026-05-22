@@ -321,7 +321,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
-    initCharts();
     loadData();
 
     if (typeof window.registerPosDatabaseRefresh === 'function') {
