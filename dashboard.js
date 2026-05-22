@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadDashboardData(period = 'today') {
         let db;
         if (typeof window.dbReadSlice === 'function') {
-            db = await window.dbReadSlice(['orders', 'returns', 'hrExpenses', 'expenses']);
+            db = await window.dbReadSlice(['orders', 'returns', 'hrExpenses', 'expenses', 'deliveryCompanies']);
         } else {
             db = await window.dbRead();
         }
@@ -126,15 +126,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             );
         }
 
-        // بعد إقفال اليوم/الوردية: عرض «اليوم» = الجلسة الحالية فقط (من last_z_report_time)
-        if (period === 'today' && lastZReport > 0) {
-            const orderTs = (o) => (o.timestamp || o.createdAt || 0);
-            const returnTs = (r) => (r.timestamp || (r.date ? new Date(r.date).getTime() : 0) || 0);
-            const expenseTs = (h) => (h.timestamp || (h.date ? new Date(h.date).getTime() : 0) || h.createdAt || 0);
-            orders = orders.filter(o => orderTs(o) >= lastZReport);
-            returns = returns.filter(r => returnTs(r) >= lastZReport);
-            hrExpenses = hrExpenses.filter(h => expenseTs(h) >= lastZReport);
-        }
+        // تمت إزالة فلتر الوردية هنا لكي تعرض بطاقات "اليوم" بيانات اليوم كاملاً 00:00 إلى 23:59.
+        // حسابات الدرج وتقارير الوردية سيتم تصفيتها لاحقاً في الأسفل.
 
         // --- 1. CALCULATE KPIs ---
     let dailySales = 0;
@@ -241,7 +234,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     let totalExp = 0;
-    hrExpenses.forEach(h => totalExp += h.amount);
+    hrExpenses.forEach(h => totalExp += Number(h.amount) || 0);
+
+    // حساب إحصائيات التوصيل لليوم كاملاً (لعرضها في البطاقات)
+    let dailyDeliveryStats = {}; 
+    orders.forEach(o => {
+        const pay = splitOrderAmounts(o);
+        if (pay.hungerStation > 0 && pay.deliveryBreakdown) {
+            for (const [comp, amt] of Object.entries(pay.deliveryBreakdown)) {
+                if (!dailyDeliveryStats[comp]) dailyDeliveryStats[comp] = { amount: 0, count: 0 };
+                dailyDeliveryStats[comp].amount += amt;
+                dailyDeliveryStats[comp].count += 1;
+            }
+        }
+    });
 
     // Drawer balance: جلسة اليوم الحالية (بعد آخر Z أو إقفال يوم)
     const shiftCashFloat = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
@@ -348,7 +354,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         companies.forEach(c => {
             if (c.isActive === false) return; // Skip inactive
             
-            const stats = deliveryStats[c.name] || { amount: 0, count: 0 };
+            const stats = dailyDeliveryStats[c.name] || { amount: 0, count: 0 };
             const amountStr = curNum(stats.amount);
             const countStr = stats.count;
             const glowStyle = stats.amount > 0 ? 'style="color: var(--accent-orange); text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);"' : '';
@@ -421,8 +427,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             tbody.innerHTML = recentRows.join('');
         }
     }
-
-
     // --- 3. POPULATE TOP SELLING ITEMS ---
     const itemsContainer = document.querySelector('.items-list');
     if(itemsContainer) {
@@ -470,6 +474,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             dailySales * 0.4, dailySales * 0.7, dailySales * 0.5,
             dailySales * 0.9, dailySales * 0.6, dailySales * 1.1, dailySales,
         ];
+        const isLight = document.body.classList.contains('light-theme') || document.documentElement.getAttribute('data-theme') === 'light';
+        const gridColor = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+        const ticksColor = isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)';
+
         if (dashboardChart) dashboardChart.destroy();
         dashboardChart = new Chart(ctx, {
             type: 'line',
@@ -496,16 +504,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                 scales: {
                     x: {
                         grid: { display: false, drawBorder: false },
-                        ticks: { color: 'rgba(255,255,255,0.5)', font: { family: 'Cairo' } },
+                        ticks: { color: ticksColor, font: { family: 'Cairo' } },
                     },
                     y: {
-                        grid: { color: 'rgba(255,255,255,0.05)' },
-                        ticks: { color: 'rgba(255,255,255,0.5)', font: { family: 'Cairo' } },
+                        grid: { color: gridColor },
+                        ticks: { color: ticksColor, font: { family: 'Cairo' } },
                     },
                 },
             },
         });
     }
+
+    // Listener for dynamic theme changes — lightweight, only update colors
+    window.addEventListener('themeChanged', () => {
+        if (dashboardChart) {
+            const isL = document.body.classList.contains('light-theme') || document.documentElement.getAttribute('data-theme') === 'light';
+            const gridColor = isL ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+            const ticksColor = isL ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)';
+            dashboardChart.options.scales.x.ticks.color = ticksColor;
+            dashboardChart.options.scales.y.ticks.color = ticksColor;
+            dashboardChart.options.scales.y.grid.color = gridColor;
+            dashboardChart.update('none'); // instant, no animation
+        }
+    });
     if (window.MC_PERF && typeof window.MC_PERF.runWhenIdle === 'function') {
         window.MC_PERF.runWhenIdle(renderDashboardChart, 150);
     } else {

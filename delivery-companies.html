@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <script>
@@ -120,6 +120,31 @@
 
     <script src="currency-helper.js"></script>
     <script src="db-helper.js"></script>
+    <script src="modern-dialogs.js"></script>
+    <script>
+        // دوال المودال المصغّرة — مستقلة عن script.js
+        (function () {
+            window.openModalLayer = function (el, focusSel) {
+                if (!el) return;
+                el.removeAttribute('inert');
+                el.classList.add('active');
+                document.body.style.overflow = 'hidden';
+                requestAnimationFrame(function () {
+                    requestAnimationFrame(function () {
+                        var inp = focusSel
+                            ? el.querySelector(focusSel)
+                            : el.querySelector('input:not([type="hidden"]):not([disabled]),select:not([disabled]),textarea:not([disabled])');
+                        if (inp) { try { inp.focus({ preventScroll: true }); } catch (e) {} }
+                    });
+                });
+            };
+            window.closeModalLayer = function (el) {
+                if (!el) return;
+                el.classList.remove('active');
+                document.body.style.overflow = '';
+            };
+        })();
+    </script>
     <script src="delivery-companies.js"></script>
     <script>
         // Load sidebar dynamically

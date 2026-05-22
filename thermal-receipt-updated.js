@@ -166,6 +166,7 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
     const rTaxLabel = snap ? snap.taxLabel : (el('r-tax-rate-label') ? el('r-tax-rate-label').innerText : '');
     const rTax = snap ? snap.taxText : (el('r-tax') ? el('r-tax').innerText : '');
     const rPay = snap ? snap.paymentText : (el('r-payment-method') ? el('r-payment-method').innerText : '');
+    const rNotes = snap && snap.notesText ? snap.notesText : (el('r-order-notes') ? el('r-order-notes').innerText : '');
     let qrSrc = '';
     if (snap && snap.qrSrc) qrSrc = snap.qrSrc;
     else {
@@ -497,6 +498,7 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
         ${rTable ? `<div class="order-number">${rTable}</div>` : ''}
         <div class="order-number">رقم الطلب: ${rOrderId}</div>
         <div class="order-date">${rDate}</div>
+        ${rNotes ? `<div style="margin: 2mm 0; padding: 1.5mm; border: 1px dashed #000; font-weight: 700; font-size: 10pt; text-align: center; word-wrap: break-word;">ملاحظات: ${rNotes}</div>` : ''}
         
         <div class="divider-thick"></div>
         

@@ -82,6 +82,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     initCharts();
 
+    window.addEventListener('themeChanged', () => {
+        if (ordersChart) {
+            const isL = document.body.classList.contains('light-theme') || document.documentElement.getAttribute('data-theme') === 'light';
+            Chart.defaults.color = isL ? '#64748b' : 'rgba(255, 255, 255, 0.5)';
+            ordersChart.options.scales.y.grid.color = isL ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+            ordersChart.update('none');
+        }
+        if (donutChart) {
+            donutChart.update('none');
+        }
+    });
+
     // --- Initial Data Load ---
     async function loadData() {
         try {

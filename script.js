@@ -634,7 +634,7 @@ try {
             border-radius: 50%;
             border: 1px solid rgba(255,255,255,0.1);
             background: rgba(255,255,255,0.05);
-            color: #94a3b8;
+            color: #ffffff;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -690,9 +690,22 @@ try {
     badge.id = 'net-sync-badge';
     badge.innerHTML =
         '<div class="sync-badge-text"><div class="dot"></div><span id="sync-label">الشبكة: جاري الاستكشاف...</span></div>' +
-        '<button type="button" id="net-sync-refresh-btn" title="تحديث: جلب قاعدة البيانات من الشبكة وتحديث عدد الأجهزة">' +
-        '<i class="ph-bold ph-arrows-clockwise" style="font-size:15px"></i></button>';
+        '<button type="button" id="net-sync-refresh-btn" title="اضغط لتحديث البحث عن الأجهزة المتصلة وجلب قاعدة البيانات">' +
+        '<i class="ph ph-arrows-clockwise" style="font-size:18px; display:block; line-height:1; color: #ffffff !important;"></i></button>';
     document.body.appendChild(badge);
+
+    // ── استعادة آخر حالة محفوظة فوراً (يمنع "جاري الاستكشاف" في كل صفحة) ──
+    try {
+        const cached = sessionStorage.getItem('_net_sync_state');
+        if (cached) {
+            const s = JSON.parse(cached);
+            if (s && s.state) {
+                badge.classList.add(s.state);
+                const lab = document.getElementById('sync-label');
+                if (lab && s.label) lab.textContent = s.label;
+            }
+        }
+    } catch (_) {}
 
     const refreshBtn = document.getElementById('net-sync-refresh-btn');
 
@@ -701,13 +714,22 @@ try {
         badge.classList.add(state);
         const lab = document.getElementById('sync-label');
         if (!lab) return;
+        let finalLabel;
         if (label != null && label !== '') {
-            lab.textContent = label;
+            finalLabel = label;
         } else if (state === 'connected') {
-            lab.textContent = connectedLabelText();
+            finalLabel = connectedLabelText();
         } else {
-            lab.textContent = 'الشبكة';
+            finalLabel = 'الشبكة';
         }
+        lab.textContent = finalLabel;
+        // حفظ الحالة في sessionStorage لعرضها فوراً عند تحميل الصفحة التالية
+        try {
+            // لا نحفظ حالة "جاري الاستكشاف" — نحفظ فقط النتائج النهائية
+            if (state === 'connected' || state === 'error') {
+                sessionStorage.setItem('_net_sync_state', JSON.stringify({ state, label: finalLabel }));
+            }
+        } catch (_) {}
     }
 
     function refreshConnectedLabel() {
@@ -764,9 +786,20 @@ try {
             });
         }
 
-        setTimeout(() => setSyncState('connected'), 3500);
-        // تم تغيير التحديث من كل 10 ثوانٍ إلى كل 30 ثانية لتقليل استهلاك المعالج
-        setInterval(refreshConnectedLabel, 30000);
+        // إذا لم توجد حالة محفوظة من قبل — انتظر 3.5 ثانية ثم اعرض "متصل"
+        // إذا كانت موجودة — تم عرضها فوراً أعلاه فلا داعي لإعادة البحث
+        try {
+            const cached = sessionStorage.getItem('_net_sync_state');
+            if (!cached) {
+                // أول مرة فقط: أرسل broadcast واعرض النتيجة بعد 3.5 ثانية
+                ipcRenderer.send('lan-broadcast-presence');
+                setTimeout(() => setSyncState('connected'), 3500);
+            }
+        } catch (_) {
+            setTimeout(() => setSyncState('connected'), 3500);
+        }
+        // تحديث عدد الأجهزة كل دقيقتين (بدلاً من 30 ثانية) لتقليل الضغط
+        setInterval(refreshConnectedLabel, 120000);
     } catch (e) {
         if (refreshBtn) refreshBtn.style.display = 'none';
         setSyncState('error', 'الشبكة: التطبيق الكامل فقط (.exe)');
@@ -1859,10 +1892,13 @@ window.isDateInPeriod = function(dateInput, period) {
             // Check saved theme globally
             const savedTheme = localStorage.getItem('sys_theme') || 'dark';
             
-            function applyTheme(theme) {
+            function applyTheme(theme, dispatchEvent = false) {
+                const de = document.documentElement;
                 if(theme === 'light') {
                     body.classList.remove('dark-theme');
                     body.classList.add('light-theme');
+                    de.setAttribute('data-theme', 'light');
+                    de.style.backgroundColor = '#f1f5f9';
                     if (themeBtn) {
                         themeBtn.innerHTML = '<i class="ph-fill ph-moon"></i>';
                         themeBtn.style.color = '#3b82f6';
@@ -1870,15 +1906,22 @@ window.isDateInPeriod = function(dateInput, period) {
                 } else {
                     body.classList.remove('light-theme');
                     body.classList.add('dark-theme');
+                    de.setAttribute('data-theme', 'dark');
+                    de.style.backgroundColor = '#0b0f19';
                     if (themeBtn) {
                         themeBtn.innerHTML = '<i class="ph-fill ph-sun"></i>';
                         themeBtn.style.color = '#f59e0b';
                     }
                 }
+                
+                // Only dispatch event when triggered by user (not on initial page load)
+                if (dispatchEvent) {
+                    window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: theme } }));
+                }
             }
             
-            // Always apply theme on load regardless of header actions
-            applyTheme(savedTheme);
+            // Apply on load — silent, no event (charts not ready yet)
+            applyTheme(savedTheme, false);
 
             // Add toggle button to header if it exists
             const headerActions = document.querySelector('.header-actions');
@@ -1896,14 +1939,14 @@ window.isDateInPeriod = function(dateInput, period) {
                     headerActions.appendChild(themeBtn);
                 }
                 
-                // Set initial icon correctly based on applied theme
-                applyTheme(localStorage.getItem('sys_theme') || 'dark');
+                // Set initial icon correctly — silent, no event
+                applyTheme(localStorage.getItem('sys_theme') || 'dark', false);
                 
                 themeBtn.addEventListener('click', () => {
                     const isLight = body.classList.contains('light-theme');
                     const newTheme = isLight ? 'dark' : 'light';
                     localStorage.setItem('sys_theme', newTheme);
-                    applyTheme(newTheme);
+                    applyTheme(newTheme, true); // dispatch event only on user click
                 });
             }
         });

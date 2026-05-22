@@ -78,6 +78,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    initCharts();
+
+    window.addEventListener('themeChanged', () => {
+        if (topItemsChart) {
+            const isL = document.body.classList.contains('light-theme') || document.documentElement.getAttribute('data-theme') === 'light';
+            Chart.defaults.color = isL ? "#64748b" : "rgba(255, 255, 255, 0.5)";
+            topItemsChart.options.scales.y.grid.color = isL ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+            topItemsChart.update('none');
+        }
+        if (contributionDonutChart) {
+            contributionDonutChart.update('none');
+        }
+    });
+
     async function loadData() {
         allOrders = await ipcRenderer.invoke('db-get-orders') || [];
         processAndRender();

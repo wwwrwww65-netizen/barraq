@@ -256,6 +256,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const ctx = document.getElementById('financeChart');
         if(ctx) {
+            const isL = document.body.classList.contains('light-theme') || document.documentElement.getAttribute('data-theme') === 'light';
+            const tickColor = isL ? '#64748b' : '#94a3b8';
+            const textColor = isL ? '#1e293b' : '#fff';
+
             if(accChart) accChart.destroy();
             accChart = new Chart(ctx, {
                 type: 'line',
@@ -266,7 +270,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         { label: 'توريد + مصروفات + سندات موظفين', data: outByDay, borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.1)', fill:true, tension:0.4 }
                     ]
                 },
-                options: { responsive:true, color:'#fff', scales: { x:{ticks:{color:'#94a3b8'}}, y:{ticks:{color:'#94a3b8'}} } }
+                options: { responsive:true, color: textColor, scales: { x:{ticks:{color: tickColor}}, y:{ticks:{color: tickColor}} } }
             });
         }
 
@@ -1611,5 +1615,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (typeof window.registerPosDatabaseRefresh === 'function') {
         window.registerPosDatabaseRefresh(() => loadAccountingData(currentAccPeriod));
     }
+
+    window.addEventListener('themeChanged', () => {
+        // Only update chart colors — do NOT reload all data (expensive)
+        if (accChart) {
+            const isL = document.body.classList.contains('light-theme') || document.documentElement.getAttribute('data-theme') === 'light';
+            const tickColor = isL ? '#64748b' : '#94a3b8';
+            accChart.options.scales.x.ticks.color = tickColor;
+            accChart.options.scales.y.ticks.color = tickColor;
+            accChart.update('none'); // 'none' = no animation, instant
+        }
+    });
 });
 })();

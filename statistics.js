@@ -74,10 +74,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         categoryDonutChart = new Chart(ctxDonut, {
             type: 'doughnut',
             data: {
-                labels: ['مبيعات نقدية (كاش)', 'مبيعات شبكة', 'هنقرستيشن'],
+                labels: ['مبيعات نقدية (كاش)', 'مبيعات شبكة'],
                 datasets: [{
-                    data: [0, 0, 0],
-                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b'],
+                    data: [0, 0],
+                    backgroundColor: ['#3b82f6', '#10b981'],
                     borderWidth: 0, hoverOffset: 10
                 }]
             },
@@ -89,6 +89,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     initCharts();
+
+    window.addEventListener('themeChanged', () => {
+        const isL = document.body.classList.contains('light-theme') || document.documentElement.getAttribute('data-theme') === 'light';
+        Chart.defaults.color = isL ? '#64748b' : 'rgba(255, 255, 255, 0.5)';
+        if (mainTrendChart) {
+            mainTrendChart.options.scales.y.grid.color = isL ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)';
+            mainTrendChart.update('none');
+        }
+        if (categoryDonutChart) {
+            categoryDonutChart.update('none');
+        }
+    });
 
     // ======================================================
     // MAIN DATA FETCH & RENDER
@@ -129,7 +141,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         function splitOrderAmounts(o) {
             if (window.PaymentSplit) {
                 const pay = window.PaymentSplit.splitOrderAmounts(o);
-                const compName = o.deliveryCompany || (o.hungerStation === true ? 'هنقرستيشن' : 'توصيل');
+                // أولوية: حقل deliveryCompany الصريح، ثم paymentMethod إذا كان اسم شركة، ثم 'توصيل' كقيمة عامة
+                const compName = o.deliveryCompany ||
+                    (o.hungerStation === true
+                        ? (o.paymentMethod && o.paymentMethod !== 'توصيل' ? o.paymentMethod : 'هنقرستيشن')
+                        : (o.orderType === 'توصيل' && o.paymentMethod && o.paymentMethod !== 'توصيل'
+                            ? o.paymentMethod
+                            : 'توصيل'));
                 const deliveryAmount = pay.hungerStation > 0 ? pay.hungerStation : 0;
                 return {
                     cash: pay.cash,
@@ -140,6 +158,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             const pm = String(o.paymentMethod || '').trim();
             const total = Number(o.total) || 0;
+            const isDelivery = o.hungerStation === true || o.orderType === 'توصيل';
+            if (isDelivery) {
+                const compName = o.deliveryCompany || pm || 'توصيل';
+                return { cash: 0, card: 0, deliveryAmount: total, compName };
+            }
             if (pm.includes('كاش') || pm === 'cash') return { cash: total, card: 0, deliveryAmount: 0 };
             return { cash: 0, card: total, deliveryAmount: 0 };
         }

@@ -99,21 +99,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Render dynamic delivery companies in POS payment modal (Pills UI)
     if (document.getElementById('dynamic-delivery-companies-pills')) {
         let companies = _db.deliveryCompanies || [];
-        if (companies.length === 0) {
-            companies = [{ name: 'هنقرستيشن', isActive: true }];
-        }
-        let html = '';
-        companies.forEach((c, index) => {
-            if (c.isActive !== false) {
+        const activeCompanies = companies.filter(c => c.isActive !== false);
+        
+        const deliveryPayRadio = document.querySelector('input[name="pay_method"][value="توصيل"]');
+        const deliveryPayLabel = deliveryPayRadio ? deliveryPayRadio.closest('.payment-method') : null;
+        
+        if (activeCompanies.length === 0) {
+            // Hide the delivery payment option completely
+            if (deliveryPayLabel) {
+                deliveryPayLabel.style.display = 'none';
+            }
+        } else {
+            // Ensure it's visible
+            if (deliveryPayLabel) {
+                deliveryPayLabel.style.display = ''; 
+            }
+            
+            let html = '';
+            activeCompanies.forEach((c, index) => {
                 const isSelected = index === 0 ? 'selected' : '';
                 html += `
                 <label class="delivery-pill ${isSelected}" style="display: inline-flex; align-items: center; justify-content: center; padding: 8px 15px; border: 1px solid #8b5cf6; border-radius: 20px; cursor: pointer; background: ${index === 0 ? '#8b5cf6' : 'transparent'}; color: ${index === 0 ? '#ffffff' : '#8b5cf6'} !important; font-size: 13px; font-weight: 700; transition: all 0.2s;">
                     <input type="radio" name="delivery_comp_select" value="${c.name}" ${index === 0 ? 'checked' : ''} style="display:none;">
                     ${c.name}
                 </label>`;
-            }
-        });
-        document.getElementById('dynamic-delivery-companies-pills').innerHTML = html;
+            });
+            document.getElementById('dynamic-delivery-companies-pills').innerHTML = html;
+        }
         
         // Add click events for pills via event delegation
         document.getElementById('dynamic-delivery-companies-pills').addEventListener('click', (e) => {
@@ -583,10 +595,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     deliverySelector.style.display = pt === 'توصيل' ? 'flex' : 'none';
                 }
                 
-                // Show notes field for Delivery, Network, and Bank Transfer
-                const showNotes = (isDelivery || pt === 'شبكة / بطاقة');
+                // Show notes field for all payment methods
                 const orderNotes = document.getElementById('order-notes-field');
-                if (orderNotes) orderNotes.style.display = showNotes ? 'flex' : 'none';
+                if (orderNotes) orderNotes.style.display = 'flex';
                 
                 // Delivery doesn't need calculator
                 if (isDelivery) {
@@ -695,7 +706,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // --- Validation for Cash Payment ---
             if (selectedPay === 'كاش') {
-                const received = parseFloat(document.getElementById('cash-received').value) || 0;
+                const cashInputStr = document.getElementById('cash-received').value.trim();
+                let received = parseFloat(cashInputStr);
+                
+                // If the user didn't write an amount, assume exact amount was received
+                if (cashInputStr === '' || isNaN(received)) {
+                    received = totalOrder;
+                }
+
                 if (received < totalOrder) {
                     alert('المبلغ المستلم أقل من الإجمالي المطلوب! يرجى التأكد من المبلغ.');
                     btnConfirmPay.disabled = false;
@@ -859,6 +877,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 taxLabel: document.getElementById('r-tax-rate-label').innerText,
                 taxText: document.getElementById('r-tax').innerText,
                 paymentText: document.getElementById('r-payment-method').innerText,
+                notesText: document.getElementById('r-order-notes') ? document.getElementById('r-order-notes').innerText : '',
                 qrSrc: (() => {
                     const q = document.getElementById('r-qr-code');
                     return q && q.src ? q.src : '';
@@ -1395,6 +1414,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="order-type">طريقة التقديم: <strong>${order.type}</strong></div>
             ${document.getElementById('k-table') && document.getElementById('k-table').innerText ? `<div class="order-type" style="font-weight: 900; font-size: 13pt; margin-top: 2mm;">${document.getElementById('k-table').innerText}</div>` : ''}
             <div class="order-date">${order.date}</div>
+            ${order.orderNotes ? `<div style="margin-top: 2mm; padding: 2mm; border: 1px dashed #000; font-weight: bold; text-align: center; font-size: 11pt;">ملاحظات الطلب: ${order.orderNotes}</div>` : ''}
         </div>
         
         <!-- Items Table -->

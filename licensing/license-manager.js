@@ -357,14 +357,47 @@ class LicenseManager {
     if (this.isSetupComplete()) {
       return { ok: false, page: 'activation.html', lock: null, message: null };
     }
-    // لا يوجد إعداد ولا ترخيص → صفحة الإعداد (وليس login مباشرة)
-    // يمنع حالة: حذف app-setup.json → الدخول لـ login بدون تحقق
+    // لا يوجد إعداد ولا ترخيص → التحقق من مصادر متعددة قبل الذهاب لـ setup.html
+    // المشكلة: عند تحديث التطبيق قد يكون كاش الترخيص فارغاً مؤقتاً
+    // لكن الـ Registry وقاعدة البيانات لا تزال تحتوي على بيانات العميل القديم
     const hasAnyLicenseData = !!(
       this.cache.trialBlob ||
       this.cache.trialStartedAt ||
       this.cache.status
     );
+
     if (!hasAnyLicenseData) {
+      // 🔒 التحقق من السجل (Registry) — لا يتأثر بتغيير مسار التثبيت عند التحديث
+      const regBlob = regGet();
+      if (regBlob) {
+        console.log('[License] ⚠️ Cache empty but Registry has trial data — existing customer installing update');
+        // استعادة البيانات من Registry إلى الكاش
+        this.cache.trialBlob = regBlob;
+        this.cache.status = 'trial';
+        this.saveCache();
+        // إعادة التقييم بعد استعادة البيانات
+        if (this.isLicenseActive()) {
+          return { ok: true, page: 'login.html' };
+        }
+        return { ok: false, page: 'activation.html', lock: null, message: null };
+      }
+
+      // 🔒 التحقق من قاعدة البيانات — مخبأة في مجلد userData
+      try {
+        const dbTrialData = this.readTrialFromDatabase(getDeviceId());
+        if (dbTrialData && dbTrialData.startedAt) {
+          console.log('[License] ⚠️ Cache empty but DB has trial data — existing customer installing update');
+          this.writeTrialTriple(getDeviceId(), dbTrialData.startedAt);
+          this.cache.status = 'trial';
+          this.saveCache();
+          if (this.isLicenseActive()) {
+            return { ok: true, page: 'login.html' };
+          }
+          return { ok: false, page: 'activation.html', lock: null, message: null };
+        }
+      } catch (_) {}
+
+      // لا توجد بيانات في أي مصدر → جهاز جديد فعلاً → صفحة الإعداد
       return { ok: true, page: 'setup.html' };
     }
     return { ok: false, page: 'activation.html', lock: null, message: null };

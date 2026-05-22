@@ -73,6 +73,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     initChart();
 
+    window.addEventListener('themeChanged', () => {
+        if (plChart) {
+            const isL = document.body.classList.contains('light-theme') || document.documentElement.getAttribute('data-theme') === 'light';
+            Chart.defaults.color = isL ? "#475569" : "rgba(255, 255, 255, 0.5)";
+            plChart.options.plugins.legend.labels.color = isL ? "#1e293b" : "#f8fafc";
+            plChart.options.scales.x.grid.color = isL ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+            plChart.options.scales.x.ticks.color = isL ? "#475569" : "rgba(255,255,255,0.7)";
+            plChart.options.scales.y.grid.color = isL ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+            plChart.options.scales.y.ticks.color = isL ? "#475569" : "rgba(255,255,255,0.7)";
+            plChart.update('none');
+        }
+    });
+
     async function loadProfitLossData(period = 'month') {
         const db = (await window.dbRead()) || {};
         /** نفس مصدر `acc.js` — الطلبات كاملة من القاعدة (لا حد 500 كما في db-get-orders) */
