@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadDashboardData(period = 'today') {
         let db;
         if (typeof window.dbReadSlice === 'function') {
-            db = await window.dbReadSlice(['orders', 'returns', 'hrExpenses', 'expenses', 'deliveryCompanies']);
+            db = await window.dbReadSlice(['orders', 'returns', 'hrExpenses', 'expenses', 'deliveryCompanies', 'inventory']);
         } else {
             db = await window.dbRead();
         }

@@ -2851,6 +2851,8 @@ function startNativeWaWindow(initialUrl) {
 
   waNativeWin.setSkipTaskbar(true);
   waNativeWin.setMenu(null);
+  // رفع حد المستمعين لتجنب تحذير MaxListenersExceededWarning
+  waNativeWin.webContents.setMaxListeners(30);
 
   waNativeWin.loadURL(initialUrl || 'https://web.whatsapp.com', {
     userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -2961,6 +2963,7 @@ async function waitForChatLoaded(win) {
   return await win.webContents.executeJavaScript(`
     new Promise(r => {
       let n = 0;
+      const MAX_WAIT = 1200; // 10 minutes (1200 × 500ms)
       const t = setInterval(() => {
         n++;
         // نتحقق من وجود قائمة الدردشات (#pane-side) أو حقل الإدخال
@@ -2968,9 +2971,12 @@ async function waitForChatLoaded(win) {
         if (chatList) {
           clearInterval(t);
           r(true);
-        } else if (n > 120) {
+        } else if (n > MAX_WAIT) {
           clearInterval(t);
           r(false);
+        } else if (n % 60 === 0) {
+          // سجّل كل 30 ثانية
+          console.log('[WA] Still waiting for chat list... ' + (n/2) + 's elapsed');
         }
       }, 500);
     })
@@ -3349,22 +3355,27 @@ async function handleWaSendMessage(event, data) {
         console.log('[WA][NATIVE] Window shown (opacity=0) so Chromium runs WA Web JS normally');
       }
 
-      // ── انتظار ديناميكي: بلا حد زمني ثابت ──────────────────────────────
-      // ── انتظار ديناميكي ───────────────────────────────────────────────────
-      // يتحقق كل ثانية. يُعيد التحميل فقط إذا انتهى التحميل (isLoading=false)
-      // ولم يظهر #pane-side — أي المعلق الحقيقي. إذا كانت الصفحة لا تزال
-      // تحمل (isLoading=true)، يُعيد العداد لأن هناك تقدماً.
+      // ── انتظار ديناميكي: ينتظر بصبر لأي وقت حتى تُحمَّل الدردشات ──────────────────
+      // يُعيد التحميل كل دقيقتين فقط إذا تعلقت الصفحة فعلاً.
+      // لا يُوقف الانتظار أبداً — يُكمل فقط عند ظهور #pane-side.
       await new Promise((resolve) => {
-        let stuckSeconds = 0;     // ثوانٍ بلا تقدم حقيقي (تحميل منتهٍ + لا #pane-side)
+        let stuckSeconds = 0;     // ثوانٍ بلا تقدم حقيقي
         let reloadCount = 0;
-        const MAX_RELOADS = 3;
-        const STUCK_THRESHOLD = 30; // ثانية من التعليق الفعلي قبل إعادة التحميل
+        const MAX_RELOADS = 5;        // حد أقصى 5 إعادات تحميل
+        const STUCK_THRESHOLD = 120;  // دقيقتان من التعليق الفعلي قبل إعادة التحميل
+        let totalWaitSeconds = 0;
 
         const checkInterval = setInterval(async () => {
           if (!waNativeWin || !waNativeWin.webContents) {
             clearInterval(checkInterval);
             resolve();
             return;
+          }
+
+          totalWaitSeconds++;
+          // سجّل كل 30 ثانية
+          if (totalWaitSeconds % 30 === 0) {
+            console.log(`[WA][NATIVE] Still waiting... ${totalWaitSeconds}s total (reloads: ${reloadCount}/${MAX_RELOADS})`);
           }
 
           try {
@@ -3375,7 +3386,7 @@ async function handleWaSendMessage(event, data) {
 
             if (ready) {
               clearInterval(checkInterval);
-              console.log(`[WA][NATIVE] WA Web ready ✅ (reloads used: ${reloadCount})`);
+              console.log(`[WA][NATIVE] ✅ WA Web ready after ${totalWaitSeconds}s (reloads: ${reloadCount})`);
               setTimeout(resolve, 1500);
               return;
             }
@@ -3384,39 +3395,36 @@ async function handleWaSendMessage(event, data) {
             const stillLoading = waNativeWin.webContents.isLoading();
 
             if (stillLoading) {
-              // الصفحة تُحمَّل بشكل طبيعي → تقدم حقيقي → نُعيد عداد التعليق
-              if (stuckSeconds > 0) {
-                console.log(`[WA][NATIVE] Page still loading... resetting stuck counter`);
-                stuckSeconds = 0;
-              }
+              // الصفحة تُحمَّل — تقدم حقيقي — نُعيد عداد التعليق
+              if (stuckSeconds > 0) stuckSeconds = 0;
             } else {
-              // الصفحة انتهى تحميلها لكن #pane-side غائب → تعليق حقيقي
+              // الصفحة انتهى تحميلها لكن #pane-side غائب → تعليق محتمل
               stuckSeconds++;
-              if (stuckSeconds % 10 === 0) {
-                console.log(`[WA][NATIVE] Truly stuck (load done, no chat list): ${stuckSeconds}s (reloads: ${reloadCount}/${MAX_RELOADS})`);
+              if (stuckSeconds % 30 === 0) {
+                console.log(`[WA][NATIVE] Page loaded but no chat list yet: ${stuckSeconds}s stuck`);
               }
-
-              if (stuckSeconds >= STUCK_THRESHOLD) {
-                if (reloadCount < MAX_RELOADS) {
-                  reloadCount++;
-                  stuckSeconds = 0;
-                  console.warn(`[WA][NATIVE] Truly stuck ${STUCK_THRESHOLD}s → reloading (attempt ${reloadCount}/${MAX_RELOADS})`);
-                  try {
-                    await waNativeWin.loadURL('https://web.whatsapp.com', {
-                      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                    });
-                  } catch (e) {
-                    console.warn('[WA][NATIVE] Reload error (ignored):', e?.message);
-                  }
-                } else {
-                  clearInterval(checkInterval);
-                  console.warn(`[WA][NATIVE] Max reloads (${MAX_RELOADS}) reached — proceeding anyway`);
-                  resolve();
+              // إعادة تحميل فقط بعد دقيقتين من التعليق الكامل
+              if (stuckSeconds >= STUCK_THRESHOLD && reloadCount < MAX_RELOADS) {
+                reloadCount++;
+                stuckSeconds = 0;
+                console.warn(`[WA][NATIVE] Reloading after ${STUCK_THRESHOLD}s stuck (attempt ${reloadCount}/${MAX_RELOADS})`);
+                try {
+                  await waNativeWin.loadURL('https://web.whatsapp.com', {
+                    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                  });
+                } catch (e) {
+                  console.warn('[WA][NATIVE] Reload error (ignored):', e?.message);
                 }
+              }
+              // بعد 5 إعادات وما زلنا عالقين → نكمل على أي حال
+              if (stuckSeconds >= STUCK_THRESHOLD && reloadCount >= MAX_RELOADS) {
+                clearInterval(checkInterval);
+                console.warn(`[WA][NATIVE] Max reloads (${MAX_RELOADS}) reached after ${totalWaitSeconds}s — proceeding anyway`);
+                resolve();
               }
             }
           } catch (e) {
-            // executeJavaScript فشل (النافذة لا تزال تُحمَّل) — نتابع
+            // executeJavaScript فشل (النافذة تُحمَّل) — نتابع
           }
         }, 1000);
       });
@@ -3511,9 +3519,20 @@ async function handleWaSendMessage(event, data) {
         throw new Error(`Failed to load WhatsApp URL after 3 attempts for ${phone}. Aborting to prevent sending to wrong chat.`);
       }
 
-      const chatLoaded = await waitForChatLoaded(waNativeWin);
+      let chatLoaded = await waitForChatLoaded(waNativeWin);
       if (!chatLoaded) {
-        console.error('[WA][NATIVE] Chat not loaded');
+        // إعادة محاولة: أعد تحميل URL المحادثة وانتظر مرة أخرى
+        console.warn('[WA][NATIVE] Chat not ready on first attempt, retrying URL load...');
+        try {
+          await waNativeWin.loadURL(url, {
+            userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+          });
+        } catch (e) { /* تجاهل ERR_ABORTED */ }
+        chatLoaded = await waitForChatLoaded(waNativeWin);
+      }
+
+      if (!chatLoaded) {
+        console.error('[WA][NATIVE] Chat not loaded after retry');
         try {
           const img = await waNativeWin.webContents.capturePage();
           require('fs').writeFileSync('e:\\baraaq\\wa_error.png', img.toPNG());

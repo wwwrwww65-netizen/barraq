@@ -395,15 +395,19 @@ window.saveKitchenReceive = async function() {
         const idx = (db.inventory || []).findIndex(
             (i) => i.name === itemName && (i.warehouseId || 'main') === sourceWh
         );
-        if (idx !== -1) {
-            db.inventory[idx].qty -= qty;
+        if (invIdx !== -1) {
+            db.inventory[idx].qty -= qty * (invItem.standardYield || 1);
+            if (db.inventory[idx].physicalQty != null) {
+                db.inventory[idx].physicalQty -= qty;
+            }
         }
 
         // 3. Add to kitchen internal stock tracker AND inventory
+        const addedStdQty = qty * (invItem.standardYield || 1);
         if (!db.kitchenStock) db.kitchenStock = [];
         const kIdx = db.kitchenStock.findIndex(k => k.name === itemName);
         if (kIdx !== -1) {
-            db.kitchenStock[kIdx].qty += qty;
+            db.kitchenStock[kIdx].qty += addedStdQty;
             if (db.kitchenStock[kIdx].minQty == null && invItem.minQty != null) {
                 db.kitchenStock[kIdx].minQty = Number(invItem.minQty);
             }
@@ -412,7 +416,7 @@ window.saveKitchenReceive = async function() {
                 name: itemName,
                 sku: invItem.sku,
                 unit: invItem.unit || '',
-                qty: qty,
+                qty: addedStdQty,
                 minQty: invItem.minQty != null ? Number(invItem.minQty) : 3
             });
         }
@@ -424,19 +428,36 @@ window.saveKitchenReceive = async function() {
             invIdxRes = db.inventory.findIndex(i => i.name === itemName && i.warehouseId === 'restaurant');
         }
 
+        const addedCost = invItem.cost || 0;
+        const addedPhysicalCost = invItem.physicalCost || (addedCost * (invItem.standardYield || 1));
+
         if (invIdxRes !== -1) {
-            db.inventory[invIdxRes].qty = (Number(db.inventory[invIdxRes].qty) || 0) + qty;
-            db.inventory[invIdxRes].physicalQty = (Number(db.inventory[invIdxRes].physicalQty) || 0) + qty;
+            const oldQty = Number(db.inventory[invIdxRes].qty) || 0;
+            const oldPhysicalQty = Number(db.inventory[invIdxRes].physicalQty) || 0;
+            const oldCost = Number(db.inventory[invIdxRes].cost) || 0;
+            const oldPhysicalCost = Number(db.inventory[invIdxRes].physicalCost) || (oldCost * (db.inventory[invIdxRes].standardYield || 1));
+            
+            const totalValue = (oldQty * oldCost) + (addedStdQty * addedCost);
+            const totalPhysicalValue = (oldPhysicalQty * oldPhysicalCost) + (qty * addedPhysicalCost);
+            
+            const newTotalQty = oldQty + addedStdQty;
+            const newTotalPhysicalQty = oldPhysicalQty + qty;
+
+            db.inventory[invIdxRes].qty = newTotalQty;
+            db.inventory[invIdxRes].physicalQty = newTotalPhysicalQty;
+            db.inventory[invIdxRes].cost = newTotalQty > 0 ? (totalValue / newTotalQty) : addedCost;
+            db.inventory[invIdxRes].physicalCost = newTotalPhysicalQty > 0 ? (totalPhysicalValue / newTotalPhysicalQty) : addedPhysicalCost;
             db.inventory[invIdxRes].standardYield = invItem.standardYield || 1;
         } else {
             db.inventory.push({
                 name: itemName,
                 sku: invItem.sku,
-                qty: qty,
+                qty: addedStdQty,
                 physicalQty: qty,
                 unit: invItem.unit || '',
                 warehouseId: 'restaurant',
-                cost: invItem.cost || 0,
+                cost: addedCost,
+                physicalCost: addedPhysicalCost,
                 standardYield: invItem.standardYield || 1
             });
         }
