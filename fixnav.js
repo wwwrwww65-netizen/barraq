@@ -8,7 +8,7 @@ const replacements = [
     // Append the Permissions linking next to settings (already done)
     { 
         from: /<a href="pos.html" class="nav-item"><i class="ph ph-monitor"><\/i><span>نقطة البيع \(الكاشير\)<\/span><\/a>/g, 
-        to: '<a href="pos.html" class="nav-item"><i class="ph ph-monitor"></i><span>نقطة البيع (الكاشير)</span></a>\n                <a href="kitchen.html" class="nav-item"><i class="ph ph-cooking-pot"></i><span>شاشة المطبخ (KDS)</span></a>' 
+        to: '<a href="pos.html" class="nav-item"><i class="ph ph-monitor"></i><span>نقطة البيع (الكاشير)</span></a>\n                <a href="manufacturing-kds.html" class="nav-item"><i class="ph ph-cooking-pot"></i><span>شاشة التصنيع (KDS)</span></a>'
     }
 ];
 
@@ -16,8 +16,8 @@ files.forEach(file => {
     let content = fs.readFileSync(path.join(dir, file), 'utf8');
     let changed = false;
     
-    // Prevent double injection if kitchen.html already added
-    if(content.indexOf('kitchen.html') > -1) {
+    // Prevent double injection if manufacturing-kds.html already added
+    if(content.indexOf('manufacturing-kds.html') > -1) {
         return; 
     }
 

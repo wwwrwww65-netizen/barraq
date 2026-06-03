@@ -6,7 +6,7 @@ const injection = `
     const dynDelivNav = document.getElementById('dynamic-delivery-companies-nav');
     if (dynDelivNav && typeof window.dbRead === 'function') {
         window.dbRead().then(_db => {
-            const companies = _db.deliveryCompanies || [];
+            const companies = _db.sales_channels || [];
             let html = '';
             companies.forEach(c => {
                 if (c.name !== 'هنقرستيشن' && c.isActive !== false) {

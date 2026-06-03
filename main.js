@@ -1166,10 +1166,26 @@ ipcMain.on('get-db-path', (event) => {
   event.returnValue = path.join(app.getPath('userData'), 'pos_database.json');
 });
 
+// === ERP Module Security Middleware ===
+let _erpModulesCache = { pos: true, inventory: true, manufacturing: false, accounting: false, hr: true };
+ipcMain.on('sync-erp-modules', (event, modules) => {
+  if (modules && typeof modules === 'object') {
+    _erpModulesCache = { ..._erpModulesCache, ...modules };
+  }
+});
+
+function _checkModuleEnabled(moduleName) {
+  if (_erpModulesCache[moduleName] === false) {
+    return false;
+  }
+  return true;
+}
+
 // === Database IPC Handlers ===
 const dbAPI = require('./database');
 
 ipcMain.handle('db-save-order', async (event, data) => {
+  if (!_checkModuleEnabled('pos')) throw new Error('POS module disabled');
   if (!_dbCacheReady) await _loadDbIntoCache();
   const result = dbAPI.saveOrder(data);
 
@@ -1210,6 +1226,7 @@ ipcMain.handle('db-get-categories', async () => {
 });
 
 ipcMain.handle('db-get-inventory', async () => {
+  if (!_checkModuleEnabled('inventory')) throw new Error('Inventory module disabled');
   if (!_dbCacheReady) await _loadDbIntoCache();
   return _dbCache.inventory || [];
 });
@@ -1228,6 +1245,7 @@ ipcMain.handle('db-save-category', async (event, data) => {
   return result;
 });
 ipcMain.handle('db-save-inventory', async (event, item) => {
+  if (!_checkModuleEnabled('inventory')) throw new Error('Inventory module disabled');
   if (!_dbCacheReady) await _loadDbIntoCache();
   const result = dbAPI.saveInventoryItem(item);
   setImmediate(() => broadcastDBChanged());
@@ -1237,7 +1255,7 @@ ipcMain.handle('db-save-inventory', async (event, item) => {
 // Async full-DB read/write — used by renderer files to avoid blocking readFileSync on UI thread
 const _dbPath = path.join(app.getPath('userData'), 'pos_database.json');
 const _auditLogPath = path.join(app.getPath('userData'), 'pos_database_audit.log');
-const _emptyDB = { orders: [], products: [], categories: [], inventory: [], purchases: [], suppliers: [], inventoryTx: [], returns: [], expenses: [], bankTransfers: [], hrExpenses: [], otherIncome: [], employees: [], attendance: [], penaltyRules: [], chartOfAccounts: [], journalEntries: [], systemNotifications: [], inventoryAlertState: {}, deliveryCompanies: [] };
+const _emptyDB = { orders: [], products: [], categories: [], inventory: [], purchases: [], suppliers: [], inventoryTx: [], returns: [], expenses: [], bankTransfers: [], hrExpenses: [], otherIncome: [], employees: [], attendance: [], penaltyRules: [], chartOfAccounts: [], journalEntries: [], systemNotifications: [], inventoryAlertState: {}, sales_channels: [] };
 
 // ⚡ In-Memory Cache — يُخزَّن في الذاكرة لتجنب قراءة القرص في كل مرة
 let _dbCache = null;

@@ -62,6 +62,7 @@
                     .replace(/&/g, '&amp;')
                     .replace(/</g, '&lt;')
                     .replace(/"/g, '&quot;');
+                const costCenterSafe = e.costCenter ? `<br><span style="font-size:11px;color:#aaa;">مركز التكلفة: ${e.costCenter}</span>` : '';
                 tr.innerHTML =
                     '<td dir="ltr">' +
                     (e.date || '') +
@@ -70,7 +71,7 @@
                     '</strong></td><td>' +
                     (e.sourceType || '') +
                     '</td><td>' +
-                    memoSafe +
+                    memoSafe + costCenterSafe +
                     '</td><td><code style="font-size:12px;">' +
                     String(e.id || '').replace(/</g, '&lt;') +
                     '</code></td><td><button type="button" class="btn btn-outline btn-sm btn-toggle-je" data-row="' +
@@ -241,6 +242,7 @@
 
         btnSaveManual?.addEventListener('click', async () => {
             const memo = (document.getElementById('manual-je-memo').value || '').trim();
+            const costCenter = (document.getElementById('manual-je-cost-center').value || '').trim();
             const db = await loadDb();
             JC.ensureChartOfAccounts(db);
             const chart = db.chartOfAccounts;
@@ -260,6 +262,7 @@
                 memo: memo || 'قيد يدوي',
                 sourceType: 'manual',
                 sourceId: '',
+                costCenter: costCenter,
                 lines,
             };
             const v = JC.validateManualEntry(entry);

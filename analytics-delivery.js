@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (filtered.length === 0) {
-            const emptyRow = `<tr><td colspan="6" style="text-align:center; padding:30px;">لا توجد بيانات لشركات التوصيل في هذه الفترة</td></tr>`;
+            const emptyRow = `<tr><td colspan="6" style="text-align:center; padding:30px;">لا توجد بيانات لقنوات البيع في هذه الفترة</td></tr>`;
             tbody.innerHTML = emptyRow;
             if (ptBody) ptBody.innerHTML = emptyRow;
             return;

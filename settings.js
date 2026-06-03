@@ -354,6 +354,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let base64Logo = '';
 
+    window.saveModulesSettings = async function() {
+        const btn = document.querySelector('.btn-save-settings');
+        if(btn) btn.click();
+    };
+
     function toggleCurrencyCustom() {
         if (!wrapCurrencyCustom || !selCurrencyPreset) return;
         wrapCurrencyCustom.style.display = selCurrencyPreset.value === 'CUSTOM' ? 'block' : 'none';
@@ -378,6 +383,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selCurrencyPreset && d.currencyPreset) selCurrencyPreset.value = d.currencyPreset;
         if (inputCurrencySymbol && d.currencySymbol) inputCurrencySymbol.value = d.currencySymbol;
         if (inputCurrencyLabel && d.currencyLabel) inputCurrencyLabel.value = d.currencyLabel;
+
+        if (d.modules) {
+            if (document.getElementById('module-pos')) document.getElementById('module-pos').checked = d.modules.pos !== false;
+            if (document.getElementById('module-inventory')) document.getElementById('module-inventory').checked = d.modules.inventory !== false;
+            if (document.getElementById('module-manufacturing')) document.getElementById('module-manufacturing').checked = d.modules.manufacturing === true;
+            if (document.getElementById('module-accounting')) document.getElementById('module-accounting').checked = d.modules.accounting === true;
+            if (document.getElementById('module-hr')) document.getElementById('module-hr').checked = d.modules.hr !== false;
+        }
     }
     toggleCurrencyCustom();
     if (selCurrencyPreset) selCurrencyPreset.addEventListener('change', toggleCurrencyCustom);
@@ -470,6 +483,13 @@ document.addEventListener('DOMContentLoaded', () => {
             footer: inputFooter.value,
             logo: base64Logo || '2222.png',
             currencyPreset: selCurrencyPreset ? selCurrencyPreset.value : 'SAR',
+            modules: {
+                pos: document.getElementById('module-pos').checked,
+                inventory: document.getElementById('module-inventory').checked,
+                manufacturing: document.getElementById('module-manufacturing').checked,
+                accounting: document.getElementById('module-accounting').checked,
+                hr: document.getElementById('module-hr').checked
+            }
         };
         if (data.currencyPreset === 'CUSTOM') {
             data.currencySymbol = inputCurrencySymbol ? inputCurrencySymbol.value.trim() : '';

@@ -1,0 +1,230 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>إدارة المقبوضات والمدفوعات</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/regular/style.css">
+    <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/fill/style.css">
+    <script src="demo-mock.js"></script>
+    <style>
+        .receivables-container { padding: 20px; }
+        .card { background: var(--bg-card); border-radius: 8px; padding: 20px; border: 1px solid var(--border-color); margin-bottom: 20px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        .tab-btn { background: none; border: none; color: var(--text-muted); font-family: inherit; font-size: 16px; cursor: pointer; padding: 10px 20px; border-radius: 6px; }
+        .tab-btn.active { background: rgba(59, 130, 246, 0.1); color: var(--accent-blue); font-weight: bold; }
+        .form-control { padding: 10px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; font-family: inherit; width: 100%; max-width: 300px; }
+        table { width: 100%; border-collapse: collapse; text-align: right; }
+        th, td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        th { color: var(--text-muted); font-weight: normal; }
+    </style>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <span>Mister Casher <span class="highlight">ERP</span></span>
+            </div>
+            <nav class="nav-menu">
+                <a href="index.html" class="nav-item"><i class="ph ph-arrow-right"></i><span>العودة للرئيسية</span></a>
+                <a href="erp-sales.html" class="nav-item"><i class="ph ph-file-text"></i><span>المبيعات الإدارية</span></a>
+                <a href="erp-purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>المشتريات الإدارية</span></a>
+                <a href="receivables.html" class="nav-item active"><i class="ph ph-money"></i><span>التحصيل والمقبوضات</span></a>
+            </nav>
+        </aside>
+        <main class="main-content">
+            <header class="top-header" style="padding: 15px 20px; border-bottom: 1px solid var(--border-color);">
+                <h2>إدارة التحصيل (العملاء) والمدفوعات (الموردين)</h2>
+            </header>
+
+            <div class="receivables-container">
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchTab('customers', this)">مقبوضات العملاء (Receivables)</button>
+                    <button class="tab-btn" onclick="switchTab('suppliers', this)">مدفوعات الموردين (Payables)</button>
+                </div>
+
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+                        <select id="entity-select" class="form-control" onchange="loadInvoices()">
+                            <option value="">اختر العميل/المورد...</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="openPaymentModal()"><i class="ph ph-plus"></i> سند قبض/صرف</button>
+                    </div>
+
+                    <h3 style="margin-bottom:15px; color:var(--accent-blue);">الفواتير المستحقة (Aging)</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>رقم الفاتورة</th>
+                                <th>التاريخ</th>
+                                <th>إجمالي الفاتورة</th>
+                                <th>المسدد</th>
+                                <th>المتبقي</th>
+                                <th>الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoices-tbody">
+                            <tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">اختر عميلاً لعرض الفواتير</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="payment-modal" style="display:none;">
+        <div class="modal-content" style="max-width:500px;">
+            <div class="modal-header">
+                <h3 id="payment-modal-title">سند جديد</h3>
+                <button type="button" class="close-modal" onclick="document.getElementById('payment-modal').style.display='none'"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted);">المبلغ</label>
+                    <input type="number" id="pay-amount" class="form-control" style="max-width:100%;" min="1">
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted);">الفاتورة المرتبطة (اختياري)</label>
+                    <select id="pay-invoice" class="form-control" style="max-width:100%;">
+                        <option value="">بدون تحديد (دفعة مقدمة / على الحساب)</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px; color:var(--text-muted);">طريقة الدفع</label>
+                    <select id="pay-method" class="form-control" style="max-width:100%;">
+                        <option value="cash">نقدي (صندوق)</option>
+                        <option value="bank">تحويل بنكي</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-actions" style="padding:15px; border-top:1px solid var(--border-color); text-align:left;">
+                <button class="btn btn-primary" onclick="savePayment()">حفظ وتوليد قيد تسوية</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        let currentDb = null;
+        let currentTab = 'customers';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            currentDb = await window.dbRead();
+            populateEntities();
+        });
+
+        function switchTab(tab, btnElement) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active');
+            populateEntities();
+            document.getElementById('invoices-tbody').innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">اختر من القائمة لعرض الفواتير</td></tr>';
+        }
+
+        function populateEntities() {
+            const sel = document.getElementById('entity-select');
+            const list = currentTab === 'customers' ? (currentDb.customers || []) : (currentDb.suppliers || []);
+            sel.innerHTML = '<option value="">اختر...</option>' + list.map(x => `<option value="${x.name}">${x.name}</option>`).join('');
+        }
+
+        function loadInvoices() {
+            const entityName = document.getElementById('entity-select').value;
+            const tbody = document.getElementById('invoices-tbody');
+            const paySel = document.getElementById('pay-invoice');
+
+            if (!entityName) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">اختر من القائمة</td></tr>';
+                paySel.innerHTML = '<option value="">بدون تحديد</option>';
+                return;
+            }
+
+            const docsList = currentTab === 'customers' ? (currentDb.erpSalesDocs || []) : (currentDb.erpPurchasesDocs || []);
+            // Get unpaid or partially paid invoices for this entity
+            const invoices = docsList.filter(d => (d.customerName === entityName || d.supplierName === entityName) && d.type === 'invoice');
+
+            if (invoices.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">لا توجد فواتير مالية</td></tr>';
+                paySel.innerHTML = '<option value="">بدون تحديد</option>';
+                return;
+            }
+
+            let html = '';
+            let optHtml = '<option value="">بدون تحديد (دفعة مقدمة / على الحساب)</option>';
+
+            invoices.forEach(inv => {
+                const paid = inv.paidAmount || 0;
+                const remain = inv.total - paid;
+                const status = remain <= 0 ? '<span style="color:green;">مسددة</span>' : (paid > 0 ? '<span style="color:orange;">تسديد جزئي</span>' : '<span style="color:red;">غير مسددة</span>');
+
+                html += `
+                    <tr>
+                        <td>${inv.id}</td>
+                        <td>${inv.date}</td>
+                        <td>${inv.total.toFixed(2)}</td>
+                        <td style="color:green;">${paid.toFixed(2)}</td>
+                        <td style="color:red; font-weight:bold;">${remain.toFixed(2)}</td>
+                        <td>${status}</td>
+                    </tr>
+                `;
+
+                if (remain > 0) {
+                    optHtml += `<option value="${inv.id}">${inv.id} (متبقي ${remain.toFixed(2)})</option>`;
+                }
+            });
+
+            tbody.innerHTML = html;
+            paySel.innerHTML = optHtml;
+        }
+
+        function openPaymentModal() {
+            if (!document.getElementById('entity-select').value) {
+                alert('يجب اختيار العميل/المورد أولاً');
+                return;
+            }
+            document.getElementById('payment-modal-title').innerText = currentTab === 'customers' ? 'سند قبض جديد' : 'سند صرف جديد';
+            document.getElementById('pay-amount').value = '';
+            document.getElementById('payment-modal').style.display = 'flex';
+        }
+
+        async function savePayment() {
+            const amt = parseFloat(document.getElementById('pay-amount').value);
+            if (!amt || amt <= 0) return;
+
+            const invId = document.getElementById('pay-invoice').value;
+            const docsList = currentTab === 'customers' ? (currentDb.erpSalesDocs || []) : (currentDb.erpPurchasesDocs || []);
+
+            if (invId) {
+                const inv = docsList.find(d => d.id === invId);
+                if (inv) {
+                    inv.paidAmount = (inv.paidAmount || 0) + amt;
+                }
+            }
+
+            // Auto Journal Entry for Knock-off
+            if (!currentDb.journalEntries) currentDb.journalEntries = [];
+            const isCust = currentTab === 'customers';
+            const method = document.getElementById('pay-method').value;
+            const assetAcc = method === 'cash' ? '1110' : '1120'; // Cash / Bank
+            const entityAcc = isCust ? '1130' : '2110'; // AR / AP
+
+            currentDb.journalEntries.push({
+                id: 'JE-PAY-' + Date.now(),
+                date: new Date().toISOString().slice(0, 10),
+                timestamp: Date.now(),
+                memo: `تسوية فاتورة ${invId || 'مقدمة'} لـ ${document.getElementById('entity-select').value}`,
+                sourceType: 'payment',
+                lines: isCust
+                    ? [ { accountCode: assetAcc, accountName: 'أصول', debit: amt, credit: 0 }, { accountCode: entityAcc, accountName: 'ذمم', debit: 0, credit: amt } ]
+                    : [ { accountCode: entityAcc, accountName: 'ذمم', debit: amt, credit: 0 }, { accountCode: assetAcc, accountName: 'أصول', debit: 0, credit: amt } ]
+            });
+
+            await window.dbWrite(currentDb);
+            document.getElementById('payment-modal').style.display = 'none';
+            loadInvoices();
+            alert('تم التسديد وتوليد قيد اليومية بنجاح');
+        }
+    </script>
+</body>
+</html>

@@ -67,14 +67,13 @@ if (!_isPublicAuthPage) {
             const pageMap = {
                 // نقطة البيع والمبيعات
                 'pos.html':           'pos_access',
-                'kitchen.html':       'pos_access',
                 'sales.html':         'sales_access',
                 'returns.html':       'pos_return',
                 'customers.html':     'sales_access',
                 'orders.html':        'sales_access',
                 'cashier-report.html': 'sales_access',
 
-                // الأصناف والمنيو
+                // الأصناف والمنتجات والأصناف
                 'menu.html':          'menu_manage',
                 'add-category.html':  'menu_manage',
                 'add-item.html':      'menu_manage',
@@ -84,7 +83,10 @@ if (!_isPublicAuthPage) {
                 'purchases.html':     'inv_manage',
                 'inv-documents.html': 'inv_manage',
                 'suppliers.html':     'inv_manage',
-                'kitchen-production.html': 'inv_manage',
+
+                // التصنيع
+                'manufacturing.html': 'inv_manage',
+                'manufacturing-kds.html': 'inv_manage',
 
                 // الموظفين والمحاسبة
                 'staff.html':         'hr_manage',
@@ -955,7 +957,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Dynamic Global Back Button ---
     const path = window.location.pathname;
-    const isRootOrMain = path.endsWith('index.html') || path.endsWith('pos.html') || path.endsWith('kitchen.html') || path.endsWith('login.html');
+    const isRootOrMain = path.endsWith('index.html') || path.endsWith('pos.html') || path.endsWith('manufacturing-kds.html') || path.endsWith('login.html');
     
     const headerLeft = document.querySelector('.top-header .header-left');
     if (headerLeft && !isRootOrMain) {
@@ -1342,6 +1344,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (typeof window.syncGlobalPermissionsUI === 'function') {
         window.syncGlobalPermissionsUI();
     }
+
+    // Apply ERP Modules Visibility dynamically on all pages
+    window.applyModulesVisibility = function() {
+        try {
+            const settingsStr = localStorage.getItem('restaurant_settings');
+            if (settingsStr) {
+                const settings = JSON.parse(settingsStr);
+                const modules = settings.modules || {
+                    pos: true,
+                    inventory: true,
+                    manufacturing: false,
+                    accounting: false,
+                    hr: true
+                };
+
+                const toggleNav = (hrefMatch, isVisible) => {
+                    const links = document.querySelectorAll(`a[href*="${hrefMatch}"]`);
+                    links.forEach(l => {
+                        if (isVisible) l.style.display = '';
+                        else l.style.display = 'none';
+                    });
+                };
+
+                toggleNav('pos.html', modules.pos);
+                toggleNav('inventory.html', modules.inventory);
+                toggleNav('manufacturing.html', modules.manufacturing);
+                toggleNav('manufacturing-kds.html', modules.manufacturing);
+                toggleNav('accounting.html', modules.accounting);
+                toggleNav('acc-banks.html', modules.accounting);
+                toggleNav('acc-expenses.html', modules.accounting);
+                toggleNav('acc-tree.html', modules.accounting);
+                toggleNav('acc-reports.html', modules.accounting);
+                toggleNav('journal.html', modules.accounting);
+                toggleNav('staff.html', modules.hr);
+
+                try {
+                    const { ipcRenderer } = require('electron');
+                    ipcRenderer.send('sync-erp-modules', modules);
+                } catch(err) {}
+            }
+        } catch (e) {
+            console.error('[Modules] Error applying visibility', e);
+        }
+    };
+    window.applyModulesVisibility();
 
     const isLoginPage = window.location.pathname.includes('login.html') ||
                         window.location.href.includes('login.html');
@@ -1783,7 +1830,7 @@ function showSyncWizard(ipcRenderer) {
         const steps = [
             { pct:10, label:'جاري الاتصال بالجهاز...' },
             { pct:28, label:'جاري استلام الإعدادات والمستخدمين...' },
-            { pct:48, label:'جاري استلام المنيو والأصناف...' },
+            { pct:48, label:'جاري استلام المنتجات والأصناف والأصناف...' },
             { pct:65, label:'جاري استلام النظام المحاسبي...' },
             { pct:80, label:'جاري استلام بيانات المخازن والمشتريات...' },
             { pct:95, label:'جاري التحقق وحفظ البيانات...' },
@@ -1958,13 +2005,13 @@ document.addEventListener("DOMContentLoaded", function() {
     const dynDelivNav = document.getElementById('dynamic-delivery-companies-nav');
     if (dynDelivNav && typeof window.dbRead === 'function') {
         window.dbRead().then(_db => {
-            const companies = _db.deliveryCompanies || [];
+            const companies = _db.sales_channels || [];
             let html = '';
             companies.forEach(c => {
                 if (c.name !== 'هنقرستيشن' && c.isActive !== false) {
                     const isActiveCompany = window.location.href.includes(`company=${encodeURIComponent(c.name)}`);
                     html += `
-                    <a href="hungerstation.html?company=${encodeURIComponent(c.name)}" class="nav-item ${isActiveCompany ? 'active' : ''}" style="padding-right: 25px;">
+                    <a href="sales-channel-integration.html?company=${encodeURIComponent(c.name)}" class="nav-item ${isActiveCompany ? 'active' : ''}" style="padding-right: 25px;">
                         <i class="ph ph-motorcycle"></i><span>${c.name}</span>
                     </a>`;
                 }
@@ -1973,11 +2020,11 @@ document.addEventListener("DOMContentLoaded", function() {
             
             // Remove active state from original hungerstation link if we are viewing a different company
             const urlParams = new URLSearchParams(window.location.search);
-            const hsLink = document.getElementById('nav-hs') || document.querySelector('a[href="hungerstation.html"]');
+            const hsLink = document.getElementById('nav-hs') || document.querySelector('a[href="sales-channel-integration.html"]');
             if (hsLink) {
                 if (urlParams.has('company') && urlParams.get('company') !== 'هنقرستيشن') {
                     hsLink.classList.remove('active');
-                } else if (window.location.pathname.includes('hungerstation.html') && !urlParams.has('company')) {
+                } else if (window.location.pathname.includes('sales-channel-integration.html') && !urlParams.has('company')) {
                     hsLink.classList.add('active');
                 }
             }

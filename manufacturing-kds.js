@@ -56,23 +56,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             return ts >= todayStart.getTime();
         });
 
-        // Assign kitchenStatus to new orders that don't have it + persist back to DB
+        // Assign manufacturingStatus to new orders that don't have it + persist back to DB
         let modified = false;
         const db = await window.dbRead();
         orders.forEach(o => {
             // Find matching order in db.orders
             const dbOrder = (db.orders || []).find(x => x.orderId === o.orderId);
-            if(dbOrder && !dbOrder.kitchenStatus) {
-                dbOrder.kitchenStatus = 'new';
+            if(dbOrder && !dbOrder.manufacturingStatus) {
+                dbOrder.manufacturingStatus = 'new';
                 dbOrder.createdAt = dbOrder.timestamp || Date.now();
                 modified = true;
             }
-            // Reflect kitchenStatus from DB into our local variable
+            // Reflect manufacturingStatus from DB into our local variable
             if(dbOrder) {
-                o.kitchenStatus = dbOrder.kitchenStatus || 'new';
+                o.manufacturingStatus = dbOrder.manufacturingStatus || 'new';
                 o.createdAt = dbOrder.createdAt || dbOrder.timestamp || Date.now();
             } else {
-                o.kitchenStatus = o.kitchenStatus || 'new';
+                o.manufacturingStatus = o.manufacturingStatus || 'new';
                 o.createdAt = o.timestamp || Date.now();
             }
         });
@@ -88,21 +88,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         const dbOrder = (db.orders || []).find(o => o.orderId === orderId);
         
         if(dbOrder) {
-            dbOrder.kitchenStatus = nextStatus;
+            dbOrder.manufacturingStatus = nextStatus;
             
             // عند تفعيل «خصم تلقائي من المخزن عند البيع» في إعدادات المطبخ: تم خصم المستودع من نقطة البيع — لا نكرر التسليم التلقائي على مخزون المطبخ الداخلي
             let skipAutoHandover = false;
             try {
-                const kp = JSON.parse(localStorage.getItem('kitchen_prefs') || '{}');
+                const kp = JSON.parse(localStorage.getItem('manufacturing_prefs') || '{}');
                 skipAutoHandover = kp.autoDeductOnSale === true;
             } catch (e) {}
 
-            if (nextStatus === 'done' && !dbOrder.kitchenTxHandoverCreated) {
+            if (nextStatus === 'done' && !dbOrder.manufacturing_ordersHandoverCreated) {
                 if (skipAutoHandover) {
-                    dbOrder.kitchenTxHandoverCreated = true;
+                    dbOrder.manufacturing_ordersHandoverCreated = true;
                 } else {
-                    if (!db.kitchenTx) db.kitchenTx = [];
-                    if (!db.kitchenStock) db.kitchenStock = [];
+                    if (!db.manufacturing_orders) db.manufacturing_orders = [];
+                    if (!db.manufacturing_stock) db.manufacturing_stock = [];
 
                     (dbOrder.items || []).forEach((item) => {
                         const itemName = item.name || item.nameAr || 'صنف غير معروف';
@@ -117,15 +117,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                             date: new Date().toISOString(),
                             user: 'KDS (آلي)'
                         };
-                        db.kitchenTx.push(newTx);
+                        db.manufacturing_orders.push(newTx);
 
-                        const kIdx = db.kitchenStock.findIndex((k) => k.name === itemName);
+                        const kIdx = db.manufacturing_stock.findIndex((k) => k.name === itemName);
                         if (kIdx !== -1) {
-                            db.kitchenStock[kIdx].qty -= qty;
+                            db.manufacturing_stock[kIdx].qty -= qty;
                         }
                     });
 
-                    dbOrder.kitchenTxHandoverCreated = true;
+                    dbOrder.manufacturing_ordersHandoverCreated = true;
                 }
             }
             
@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Update local reference too
         const localOrder = orders.find(o => o.orderId === orderId);
-        if(localOrder) localOrder.kitchenStatus = nextStatus;
+        if(localOrder) localOrder.manufacturingStatus = nextStatus;
         
         // تأجيل إعادة التحميل لمنع الشاشة السوداء
         requestAnimationFrame(() => {
@@ -158,7 +158,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         orders.forEach(o => {
             // Robust status detection
-            let status = (o.kitchenStatus || 'new').toString().toLowerCase();
+            let status = (o.manufacturingStatus || 'new').toString().toLowerCase();
             if (status === 'undefined' || status === 'null') status = 'new';
 
             // Skip completed or archived

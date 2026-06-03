@@ -50,7 +50,7 @@
 
                 <div class="nav-group">
                     <p class="nav-label">الإدارة</p>
-                    <a href="menu.html" class="nav-item active"><i class="ph ph-pizza"></i><span>الأصناف والمنيو</span></a>
+                    <a href="menu.html" class="nav-item active"><i class="ph ph-pizza"></i><span>الأصناف والمنتجات والأصناف</span></a>
                     <a href="inventory.html" class="nav-item"><i class="ph ph-package"></i><span>المخازن</span></a>
                     <a href="purchases.html" class="nav-item"><i class="ph ph-shopping-cart"></i><span>المشتريات</span></a>
                 </div>
@@ -62,7 +62,7 @@
             <!-- Header specific to Add Item -->
             <header class="top-header">
                 <div class="header-left-title breadcrumbs">
-                    <a href="menu.html" class="back-link"><i class="ph ph-arrow-right"></i> إدارة المنيو</a>
+                    <a href="menu.html" class="back-link"><i class="ph ph-arrow-right"></i> إدارة المنتجات والأصناف</a>
                     <span class="separator">/</span>
                     <h2>إضافة صنف جديد</h2>
                 </div>
@@ -76,6 +76,15 @@
                         <div class="form-card">
                             <h3 class="card-title-small"><i class="ph ph-info"></i> المعلومات الأساسية</h3>
                             
+                            <div class="form-group">
+                                <label>نوع الصنف <span class="required">*</span></label>
+                                <select id="item-type-select" class="input-modern" style="margin-bottom:15px;">
+                                    <option value="finished">منتج تام الصنع (يُباع)</option>
+                                    <option value="raw">مادة خام (تدخل في التصنيع ولا تُباع مباشرة)</option>
+                                    <option value="service">خدمة (بدون مخزون)</option>
+                                </select>
+                            </div>
+
                             <div class="form-group-row">
                                 <div class="form-group">
                                     <label>اسم الصنف (عربي) <span class="required">*</span></label>

@@ -106,8 +106,13 @@ function buildLineDeductions(db, lineItem, warehouseId, orderId = '') {
         const cleanName = (invName || "").trim();
         const cleanSku = (invSku || "").trim();
         
-        // POS deduction priority: Restaurant (Kitchen) -> Beverages -> Main
-        const priorities = ['restaurant', 'beverages', 'main'];
+        // POS deduction priority: If warehouseId is specified, try that first, else fallback to old priority
+        let priorities = [];
+        if (useWh) {
+            priorities.push(warehouseId);
+        } else {
+            priorities = ['restaurant', 'beverages', 'main'];
+        }
         
         // 1. Try matching by SKU (if provided) in priority warehouses
         if (cleanSku) {
@@ -127,7 +132,7 @@ function buildLineDeductions(db, lineItem, warehouseId, orderId = '') {
             if (match) return match;
         }
 
-        // 3. Fallback to requested wh or any match (SKU first, then Name)
+        // 3. Fallback to any match (SKU first, then Name)
         if (useWh) {
             if (cleanSku) {
                 const skuMatch = (db.inventory || []).find(
@@ -175,8 +180,8 @@ function buildLineDeductions(db, lineItem, warehouseId, orderId = '') {
             
             // Record kitchen transaction if deducted from restaurant warehouse
             if ((row.warehouseId || 'main') === 'restaurant') {
-                if (!db.kitchenTx) db.kitchenTx = [];
-                db.kitchenTx.push({
+                if (!db.manufacturing_orders) db.manufacturing_orders = [];
+                db.manufacturing_orders.push({
                     id: 'SALE-' + Date.now() + '-' + Math.floor(Math.random()*1000),
                     type: 'pos_sale',
                     itemName: row.name,

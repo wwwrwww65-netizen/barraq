@@ -5,16 +5,16 @@ files.filter(f => f.endsWith('.html')).forEach(f => {
     let changed = false;
 
     // Add Delivery Companies before settings
-    if (html.includes('href="settings.html"') && !html.includes('delivery-companies.html')) {
+    if (html.includes('href="settings.html"') && !html.includes('sales-channels.html')) {
         html = html.replace(
             /(<a\s+href="settings\.html"\s+class="nav-item".*?>)/,
-            '<a href="delivery-companies.html" class="nav-item"><i class="ph ph-buildings"></i><span>شركات التوصيل</span></a>\n                    $1'
+            '<a href="sales-channels.html" class="nav-item"><i class="ph ph-buildings"></i><span>قنوات البيع</span></a>\n                    $1'
         );
         changed = true;
     }
 
     // Add container for dynamic delivery companies after hungerstation
-    if (html.includes('href="hungerstation.html"') && !html.includes('id="dynamic-delivery-companies-nav"')) {
+    if (html.includes('href="sales-channel-integration.html"') && !html.includes('id="dynamic-delivery-companies-nav"')) {
         html = html.replace(
             /(<a\s+href="hungerstation\.html"\s+class="nav-item".*?>.*?<\/a>)/,
             '$1\n                    <div id="dynamic-delivery-companies-nav"></div>'

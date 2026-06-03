@@ -42,15 +42,15 @@
             <nav class="nav-menu">
                 <a href="index.html" class="nav-item"><i class="ph ph-squares-four"></i><span>الرئيسية</span></a>
                 <a href="pos.html" class="nav-item"><i class="ph ph-monitor"></i><span>نقطة البيع (الكاشير)</span></a>
-                <a href="kitchen-production.html" class="nav-item"><i class="ph ph-cooking-pot"></i><span>المطبخ والإنتاج</span></a>
+                <a href="manufacturing.html" class="nav-item"><i class="ph ph-cooking-pot"></i><span>إدارة التصنيع والإنتاج</span></a>
                 <a href="orders.html" class="nav-item"><i class="ph ph-list-numbers"></i><span>سجل الطلبات</span></a>
                 <a href="sales.html" class="nav-item"><i class="ph ph-receipt"></i><span>المبيعات</span></a>
-                <a href="menu.html" class="nav-item"><i class="ph ph-list-dashes"></i><span>الأصناف والمنيو</span></a>
+                <a href="menu.html" class="nav-item"><i class="ph ph-list-dashes"></i><span>الأصناف والمنتجات والأصناف</span></a>
                 
                 
                 <div class="nav-divider"></div>
-                <p class="nav-label">شركات التوصيل</p>
-                <a href="hungerstation.html" class="nav-item" id="nav-hs"><i class="ph ph-motorcycle"></i><span>هنقرستيشن</span></a>
+                <p class="nav-label">قنوات البيع</p>
+                <a href="sales-channel-integration.html" class="nav-item" id="nav-hs"><i class="ph ph-motorcycle"></i><span>هنقرستيشن</span></a>
                 <div id="dynamic-delivery-companies-nav"></div>
                 <div class="nav-divider"></div>
                 <p class="nav-label">العمليات والمخزون</p>
@@ -65,7 +65,7 @@
                 <a href="accounting.html" class="nav-item"><i class="ph ph-calculator"></i><span>النظام المحاسبي</span></a>
                 <a href="statistics.html" class="nav-item"><i class="ph ph-chart-pie"></i><span>الإحصائيات</span></a>
                     <a href="profit-loss.html" class="nav-item"><i class="ph ph-scales"></i><span>الأرباح والخسائر</span></a>
-                <a href="delivery-companies.html" class="nav-item"><i class="ph ph-buildings"></i><span>شركات التوصيل</span></a>
+                <a href="sales-channels.html" class="nav-item"><i class="ph ph-buildings"></i><span>قنوات البيع</span></a>
                     <a href="settings.html" class="nav-item"><i class="ph ph-gear"></i><span>الإعدادات</span></a>
  
                 <div class="nav-divider" style="margin: 15px 0; border-top: 1px solid var(--border-color); width: 80%; align-self: center;"></div>
@@ -172,7 +172,7 @@
                             <div class="perm-grid">
                                 <div class="perm-toggle-row">
                                     <div class="perm-text">
-                                        <h5>إدارة الأصناف والمنيو</h5>
+                                        <h5>إدارة الأصناف والمنتجات والأصناف</h5>
                                         <p>السماح بإضافة وتعديل وحذف أنواع المأكولات والمشروبات.</p>
                                     </div>
                                     <label class="switch"><input type="checkbox" id="p_menu_manage"><span class="slider"></span></label>
@@ -189,35 +189,35 @@
 
                         <!-- Group: Kitchen & Production -->
                         <div class="perm-group">
-                            <h4 class="perm-group-title"><i class="ph-fill ph-cooking-pot"></i> المطبخ والإنتاج</h4>
+                            <h4 class="perm-group-title"><i class="ph-fill ph-cooking-pot"></i> إدارة التصنيع والإنتاج</h4>
                             <div class="perm-grid">
                                 <div class="perm-toggle-row">
                                     <div class="perm-text">
-                                        <h5>الوصول لصفحة المطبخ والإنتاج</h5>
+                                        <h5>الوصول لصفحة إدارة التصنيع والإنتاج</h5>
                                         <p>السماح برؤية لوحة الإنتاج الرئيسية وشاشة KDS ومتابعة الطلبات.</p>
                                     </div>
-                                    <label class="switch"><input type="checkbox" id="p_kitchen_access"><span class="slider"></span></label>
+                                    <label class="switch"><input type="checkbox" id="p_manufacturing_access"><span class="slider"></span></label>
                                 </div>
                                 <div class="perm-toggle-row">
                                     <div class="perm-text">
                                         <h5>استلام المواد من المخزن للمطبخ</h5>
                                         <p>تسجيل سندات الاستلام من المستودع لداخل المطبخ وخصمها من الرصيد.</p>
                                     </div>
-                                    <label class="switch"><input type="checkbox" id="p_kitchen_receive"><span class="slider"></span></label>
+                                    <label class="switch"><input type="checkbox" id="p_manufacturing_receive"><span class="slider"></span></label>
                                 </div>
                                 <div class="perm-toggle-row">
                                     <div class="perm-text">
                                         <h5>تسليم المنتجات للمبيعات</h5>
                                         <p>إصدار سندات تسليم الأصناف الجاهزة والمنتجة لنقطة البيع.</p>
                                     </div>
-                                    <label class="switch"><input type="checkbox" id="p_kitchen_handover"><span class="slider"></span></label>
+                                    <label class="switch"><input type="checkbox" id="p_manufacturing_handover"><span class="slider"></span></label>
                                 </div>
                                 <div class="perm-toggle-row">
                                     <div class="perm-text">
                                         <h5>تقارير وطباعة سندات المطبخ</h5>
                                         <p>الوصول لتقارير الاستلام والتسليم وطباعة الفواتير والسندات.</p>
                                     </div>
-                                    <label class="switch"><input type="checkbox" id="p_kitchen_reports"><span class="slider"></span></label>
+                                    <label class="switch"><input type="checkbox" id="p_manufacturing_reports"><span class="slider"></span></label>
                                 </div>
                             </div>
                         </div>

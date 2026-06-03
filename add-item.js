@@ -63,6 +63,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelector('.btn-save-publish').innerHTML = '<i class="ph ph-check-circle"></i> حفظ التعديلات';
         
         const formTbody = document.querySelector('.form-column');
+        const typeSelect = document.getElementById('item-type-select');
+        if (typeSelect && editingProduct.itemType) {
+            typeSelect.value = editingProduct.itemType;
+        }
         formTbody.querySelectorAll('input[type="text"]')[0].value = editingProduct.nameAr || '';
         formTbody.querySelectorAll('input[type="text"]')[1].value = editingProduct.nameEn || '';
         const descArea = document.querySelector('textarea');
@@ -306,9 +310,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const trackToggle = document.getElementById('track-inventory-toggle');
         const trackInventory = trackToggle ? trackToggle.checked : true;
+        const itemTypeSelect = document.getElementById('item-type-select');
+        const itemType = itemTypeSelect ? itemTypeSelect.value : 'finished';
 
         const newItem = {
             id: editingProduct ? editingProduct.id : ('ITM_' + Date.now()),
+            itemType: itemType,
             categoryId: catId,
             nameAr: nameAr,
             nameEn: nameEn,

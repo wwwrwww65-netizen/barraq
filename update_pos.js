@@ -86,7 +86,7 @@ content = content.replace(
     
     // Render dynamic delivery companies in POS payment modal
     if (document.getElementById('dynamic-delivery-methods')) {
-        let companies = _db.deliveryCompanies || [];
+        let companies = _db.sales_channels || [];
         if (companies.length === 0) {
             companies = [{ name: 'هنقرستيشن', isActive: true }];
         }

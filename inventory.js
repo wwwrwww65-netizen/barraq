@@ -43,9 +43,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     let erpTx = db.inventoryTx;
     if (!db.purchases) db.purchases = [];
 
+    // ── RBAC / Security ──────────────────────────────────────────────────────────
+    const cUserRaw = localStorage.getItem('currentUser');
+    const cUser = cUserRaw ? JSON.parse(cUserRaw) : null;
+    let allowedWarehouse = 'all';
+
+    if (cUser && cUser.role !== 'المدير العام') {
+        const dbCached = JSON.parse(localStorage.getItem('pos_database') || '{}');
+        const myEmp = (dbCached.employees || []).find(e => e.username === cUser.username);
+        if (myEmp && myEmp.warehouse && myEmp.warehouse !== 'all') {
+            allowedWarehouse = myEmp.warehouse;
+            // Force hide tabs other than allowed one
+            setTimeout(() => {
+                const whTabs = document.querySelectorAll('.warehouse-tab');
+                whTabs.forEach(t => {
+                    if (t.dataset.wh !== allowedWarehouse) t.style.display = 'none';
+                    else t.click();
+                });
+            }, 100);
+        }
+    }
+
     // ── Pending Receipts Panel (Warehouse Manager view) ──────────────────────
     const whNames = { main: 'المستودع الرئيسي', restaurant: 'مخزن المطعم', beverages: 'مخزن المشروبات' };
-    let currentWH = 'main';
+    let currentWH = allowedWarehouse !== 'all' ? allowedWarehouse : 'main';
     const viewFilters = { lowOnly: false, category: '' };
 
     const whTitles = {
@@ -303,7 +324,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         let destWh = order.destWh || order.destKey || 'main';
         
         // ربط أقسام المطبخ بمخزن المطعم الرئيسي لتوحيد الجرد
-        const kitchenKeys = ['restaurant', 'kitchen_main', 'kitchen', 'kitchen_cold', 'kitchen_grills', 'kitchen_pastry', 'production'];
+        const kitchenKeys = ['restaurant', 'manufacturing_main', 'kitchen', 'manufacturing_cold', 'manufacturing_grills', 'manufacturing_pastry', 'production'];
         if (kitchenKeys.includes(destWh)) {
             destWh = 'restaurant';
         }
@@ -363,8 +384,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // ── المزامنة مع سجل المطبخ ──
         if (destWh === 'restaurant') {
-            if (!db.kitchenTx) db.kitchenTx = [];
-            db.kitchenTx.push({
+            if (!db.manufacturing_orders) db.manufacturing_orders = [];
+            db.manufacturing_orders.push({
                 id: 'IN-' + order.id,
                 type: 'receive',
                 itemName: order.itemName,
@@ -474,8 +495,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // ── المزامنة مع سجل المطبخ ──
             if (destWh === 'restaurant') {
-                if (!db.kitchenTx) db.kitchenTx = [];
-                db.kitchenTx.push({
+                if (!db.manufacturing_orders) db.manufacturing_orders = [];
+                db.manufacturing_orders.push({
                     id: 'PUR-' + pur.id,
                     type: 'receive',
                     itemName: buyItem.name,
@@ -1601,9 +1622,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const destLabels = {
         restaurant: 'مخزن المطعم الداخلي { مخزون المطبخ }',
         beverages: 'مخزن المشروبات',
-        kitchen_cold: 'قسم التحضير البارد',
-        kitchen_grills: 'قسم المشويات',
-        kitchen_pastry: 'قسم الحلويات والمخبوزات',
+        manufacturing_cold: 'قسم التحضير البارد',
+        manufacturing_grills: 'قسم المشويات',
+        manufacturing_pastry: 'قسم الحلويات والمخبوزات',
         production: 'قسم الإنتاج والتجهيز',
         other: 'أخرى'
     };

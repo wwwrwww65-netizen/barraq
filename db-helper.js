@@ -13,7 +13,7 @@
         employees:[], attendance:[], penaltyRules:[],
         chartOfAccounts:[], journalEntries:[],
         customers:[],
-        systemNotifications:[], inventoryAlertState:{}, deliveryCompanies:[]
+        systemNotifications:[], inventoryAlertState:{}, sales_channels:[]
     };
 
     /**
