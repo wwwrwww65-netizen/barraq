@@ -25,12 +25,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadData() {
         try {
             const _db = await window.dbRead();
-            companies = _db.deliveryCompanies || [];
+            companies = _db.sales_channels || [];
             
             // Seed default if empty
             if (companies.length === 0) {
                 companies.push({ name: 'هنقرستيشن', phone: '', address: '', isActive: true });
-                _db.deliveryCompanies = companies;
+                _db.sales_channels = companies;
                 await window.dbWrite(_db);
             }
             
@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (await ModernDialog.confirm(`هل أنت متأكد من حذف شركة التوصيل (${c.name})؟`)) {
             companies.splice(idx, 1);
             const _db = await window.dbRead();
-            _db.deliveryCompanies = companies;
+            _db.sales_channels = companies;
             await window.dbWrite(_db);
             renderCompanies(searchInput ? searchInput.value.trim() : '');
         }
@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             companies.push(comp);
         }
         
-        _db.deliveryCompanies = companies;
+        _db.sales_channels = companies;
         await window.dbWrite(_db);
         window.closeModalLayer(modal);
         renderCompanies(searchInput ? searchInput.value.trim() : '');

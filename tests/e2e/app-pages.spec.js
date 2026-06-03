@@ -25,8 +25,8 @@ const PAGES_AFTER_LOGIN = [
   'settings.html',
   'permissions.html',
   'fatora.html',
-  'kitchen.html',
-  'kitchen-production.html',
+  'manufacturing-kds.html',
+  'manufacturing.html',
   'profile.html',
   'suppliers.html',
   'setup.html',
@@ -40,6 +40,9 @@ const PAGES_AFTER_LOGIN = [
   'add-item.html',
   'add-category.html',
   'day-closures.html',
+  'erp-sales.html',
+  'erp-purchases.html',
+  'receivables.html',
 ];
 
 test.describe.configure({ mode: 'serial' });
@@ -56,6 +59,13 @@ test('تسجيل الدخول ثم فتح الصفحات الأساسية', asyn
 
   try {
     await window.waitForLoadState('domcontentloaded', { timeout: 60000 });
+
+    // Handle setup screen redirect (first-time launch)
+    if (window.url().includes('setup.html')) {
+        await window.evaluate(() => { localStorage.setItem('admin_username', 'admin'); localStorage.setItem('currentUser', JSON.stringify({username:'admin', role:'المدير العام'})); });
+        await window.goto(pathToFileURL(path.join(projectRoot, 'login.html')).href);
+    }
+
     await window.fill('#username', 'admin');
     await window.fill('#password', '123456');
     await window.click('#btn-login-submit');

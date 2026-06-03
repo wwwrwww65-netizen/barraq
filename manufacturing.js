@@ -1,10 +1,10 @@
-// kitchen-production.js
+// manufacturing.js
 
 let currentDb = null;
 /** تبويب المطبخ النشط — لإعادة الرسم بعد مزامنة القاعدة */
 let kpActiveTab = 'dashboard';
 
-const KITCHEN_PREFS_KEY = 'kitchen_prefs';
+const KITCHEN_PREFS_KEY = 'manufacturing_prefs';
 
 const KITCHEN_PREFS_DEFAULT = {
     sourceWarehouse: 'restaurant',
@@ -21,13 +21,13 @@ function getKitchenPrefs() {
     }
 }
 
-function getKitchenSourceWh() {
+function getManufacturingSourceWh() {
     const w = getKitchenPrefs().sourceWarehouse;
     if (['main', 'restaurant', 'beverages'].includes(w)) return w;
     return 'restaurant';
 }
 
-function kitchenWhLabel(wh) {
+function manufacturingWhLabel(wh) {
     if (wh === 'main') return 'المستودع الرئيسي';
     if (wh === 'restaurant') return 'مخزن المطعم الداخلي';
     if (wh === 'beverages') return 'مخزن المشروبات';
@@ -36,11 +36,11 @@ function kitchenWhLabel(wh) {
 
 document.addEventListener('DOMContentLoaded', async () => {
     currentDb = await window.dbRead();
-    if (!currentDb.kitchenTx) {
+    if (!currentDb.manufacturing_orders) {
         await window.dbUpdate((db) => {
-            if (!db.kitchenTx) db.kitchenTx = [];
+            if (!db.manufacturing_orders) db.manufacturing_orders = [];
         });
-        currentDb.kitchenTx = [];
+        currentDb.manufacturing_orders = [];
     }
 
     // Add Force Refresh API
@@ -104,7 +104,7 @@ function playKitchenLowStockBeep() {
 function maybeRunKitchenStockSoundCheck(db) {
     const p = getKitchenPrefs();
     if (!p.soundAlertLowStock) return;
-    const list = db.kitchenStock || [];
+    const list = db.manufacturing_stock || [];
     for (const k of list) {
         const min = k.minQty != null ? Number(k.minQty) : 3;
         if ((Number(k.qty) || 0) <= min) {
@@ -137,7 +137,7 @@ async function sendKitchenHtmlToPrinter(fullHtmlDoc) {
 }
 
 function printKitchenReceiveReceipt(tx, copyLabel) {
-    const wh = kitchenWhLabel(tx.sourceWarehouse || getKitchenSourceWh());
+    const wh = manufacturingWhLabel(tx.sourceWarehouse || getManufacturingSourceWh());
     const label = copyLabel ? ` — نسخة ${copyLabel}` : '';
     const html = `
         <html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>سند استلام${label}</title>
@@ -211,6 +211,10 @@ async function switchTab(tab) {
                 maybeRunKitchenStockSoundCheck(currentDb);
             } catch (e) {}
         }, 400);
+    } else if (tab === 'work_orders') {
+        pageTitle.innerText = "أوامر التشغيل (Work Orders)";
+        contentArea.innerHTML = renderWorkOrders();
+        if (typeof bindWorkOrderEvents === 'function') bindWorkOrderEvents();
     } else if (tab === 'pending_issues') {
         pageTitle.innerText = "أوامر صرف بانتظار استلام المطبخ";
         contentArea.innerHTML = renderPendingIssues();
@@ -271,16 +275,16 @@ window.confirmKitchenReceiveOrder = async function(orderId) {
             sourceWarehouse: order.fromWh
         };
 
-        if (!db.kitchenTx) db.kitchenTx = [];
-        db.kitchenTx.push(newTx);
+        if (!db.manufacturing_orders) db.manufacturing_orders = [];
+        db.manufacturing_orders.push(newTx);
 
         // 3. Add to kitchen internal stock tracker
-        if (!db.kitchenStock) db.kitchenStock = [];
-        const kIdx = db.kitchenStock.findIndex(k => (k.sku && k.sku === order.sku) || k.name === order.itemName);
+        if (!db.manufacturing_stock) db.manufacturing_stock = [];
+        const kIdx = db.manufacturing_stock.findIndex(k => (k.sku && k.sku === order.sku) || k.name === order.itemName);
         if (kIdx !== -1) {
-            db.kitchenStock[kIdx].qty = (Number(db.kitchenStock[kIdx].qty) || 0) + stdQty;
+            db.manufacturing_stock[kIdx].qty = (Number(db.manufacturing_stock[kIdx].qty) || 0) + stdQty;
         } else {
-            db.kitchenStock.push({
+            db.manufacturing_stock.push({
                 name: order.itemName,
                 sku: order.sku,
                 unit: order.unit || '',
@@ -361,14 +365,14 @@ window.saveKitchenReceive = async function() {
 
     if (!invItem) {
         alert(
-            `⚠️ هذا الصنف غير موجود في ${kitchenWhLabel(sourceWh)}.\nغيّر «مستودع الاستلام» من إعدادات المطبخ أو انقل الرصيد من صفحة المخازن.`
+            `⚠️ هذا الصنف غير موجود في ${manufacturingWhLabel(sourceWh)}.\nغيّر «مستودع الاستلام» من إعدادات المطبخ أو انقل الرصيد من صفحة المخازن.`
         );
         return;
     }
 
     if (invItem.qty < qty) {
         alert(
-            `⚠️ الكمية المطلوبة (${qty}) تتجاوز الرصيد في ${kitchenWhLabel(sourceWh)} (${invItem.qty} ${invItem.unit || ''})!`
+            `⚠️ الكمية المطلوبة (${qty}) تتجاوز الرصيد في ${manufacturingWhLabel(sourceWh)} (${invItem.qty} ${invItem.unit || ''})!`
         );
         return;
     }
@@ -389,8 +393,8 @@ window.saveKitchenReceive = async function() {
     };
 
     await window.dbUpdate((db) => {
-        if (!db.kitchenTx) db.kitchenTx = [];
-        db.kitchenTx.push(newTx);
+        if (!db.manufacturing_orders) db.manufacturing_orders = [];
+        db.manufacturing_orders.push(newTx);
 
         const idx = (db.inventory || []).findIndex(
             (i) => i.name === itemName && (i.warehouseId || 'main') === sourceWh
@@ -404,15 +408,15 @@ window.saveKitchenReceive = async function() {
 
         // 3. Add to kitchen internal stock tracker AND inventory
         const addedStdQty = qty * (invItem.standardYield || 1);
-        if (!db.kitchenStock) db.kitchenStock = [];
-        const kIdx = db.kitchenStock.findIndex(k => k.name === itemName);
+        if (!db.manufacturing_stock) db.manufacturing_stock = [];
+        const kIdx = db.manufacturing_stock.findIndex(k => k.name === itemName);
         if (kIdx !== -1) {
-            db.kitchenStock[kIdx].qty += addedStdQty;
-            if (db.kitchenStock[kIdx].minQty == null && invItem.minQty != null) {
-                db.kitchenStock[kIdx].minQty = Number(invItem.minQty);
+            db.manufacturing_stock[kIdx].qty += addedStdQty;
+            if (db.manufacturing_stock[kIdx].minQty == null && invItem.minQty != null) {
+                db.manufacturing_stock[kIdx].minQty = Number(invItem.minQty);
             }
         } else {
-            db.kitchenStock.push({
+            db.manufacturing_stock.push({
                 name: itemName,
                 sku: invItem.sku,
                 unit: invItem.unit || '',
@@ -498,8 +502,8 @@ window.saveKitchenHandover = async function() {
 
     await window.dbUpdate(db => {
         // 1. Save the transaction
-        if (!db.kitchenTx) db.kitchenTx = [];
-        db.kitchenTx.push(newTx);
+        if (!db.manufacturing_orders) db.manufacturing_orders = [];
+        db.manufacturing_orders.push(newTx);
         // (No inventory deduction on handover — items were already pulled from warehouse on receive)
     });
 
@@ -510,15 +514,403 @@ window.saveKitchenHandover = async function() {
 };
 
 
+// ==========================================
+// Work Orders UI & Logic (Kanban / Table)
+// ==========================================
+let workOrderViewMode = 'kanban'; // or 'table'
+
+function renderWorkOrders() {
+    const orders = (currentDb && currentDb.workOrders) ? currentDb.workOrders : [];
+
+    // Header controls
+    let html = `
+        <div class="kp-card" style="margin-bottom: 20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <button class="btn btn-primary" onclick="openNewWorkOrderModal()"><i class="ph ph-plus"></i> أمر تشغيل جديد</button>
+                </div>
+                <div class="view-toggle" style="background:#f1f5f9; padding:4px; border-radius:8px; display:inline-flex;">
+                    <button class="btn btn-sm ${workOrderViewMode === 'kanban' ? 'btn-primary' : 'btn-outline'}" onclick="setWorkOrderView('kanban')" style="border:none; box-shadow:none;"><i class="ph ph-kanban"></i> لوحة كانبان</button>
+                    <button class="btn btn-sm ${workOrderViewMode === 'table' ? 'btn-primary' : 'btn-outline'}" onclick="setWorkOrderView('table')" style="border:none; box-shadow:none;"><i class="ph ph-list-dashes"></i> جدول بيانات</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    if (workOrderViewMode === 'kanban') {
+        html += renderWorkOrdersKanban(orders);
+    } else {
+        html += renderWorkOrdersTable(orders);
+    }
+
+    // Modal HTML for New Work Order
+    html += `
+        <div class="modal-overlay" id="work-order-modal">
+            <div class="modal-content" style="max-width:600px;">
+                <div class="modal-header">
+                    <h3><i class="ph ph-factory"></i> إصدار أمر تشغيل جديد</h3>
+                    <button class="close-modal" onclick="closeWorkOrderModal()"><i class="ph ph-x"></i></button>
+                </div>
+                <div class="modal-body">
+                    <div class="kp-form-group">
+                        <label>المنتج المطلوب تصنيعه <span style="color:red">*</span></label>
+                        <select id="wo-product-select" class="kp-select" onchange="previewWorkOrderBom()">
+                            <option value="">اختر المنتج...</option>
+                            ${(currentDb.products || []).filter(p => p.itemType === 'finished' && p.rawMaterials && p.rawMaterials.length > 0).map(p => `<option value="${p.id}">${p.nameAr}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="kp-form-group">
+                        <label>الكمية المستهدفة <span style="color:red">*</span></label>
+                        <input type="number" id="wo-qty-input" class="kp-input" value="1" min="1" onchange="previewWorkOrderBom()">
+                    </div>
+                    <div id="wo-bom-preview" style="margin-top:15px; background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0; display:none;">
+                        <h4 style="font-size:14px; margin-bottom:10px; color:#475569;">المواد الخام المطلوبة (BOM)</h4>
+                        <table class="kp-table" style="font-size:13px;">
+                            <thead><tr><th>المادة الخام</th><th>الكمية للوحدة</th><th>الإجمالي المطلوب</th><th>المخزون الحالي</th><th>الحالة</th></tr></thead>
+                            <tbody id="wo-bom-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-actions" style="padding:15px; border-top:1px solid #eee; display:flex; justify-content:flex-end; gap:10px;">
+                    <button class="btn btn-outline" onclick="closeWorkOrderModal()">إلغاء</button>
+                    <button class="btn btn-primary" id="btn-save-wo" onclick="saveNewWorkOrder()" disabled>حفظ كمسودة</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    return html;
+}
+
+function renderWorkOrdersKanban(orders) {
+    const statuses = [
+        { id: 'draft', title: 'مسودة', color: '#94a3b8' },
+        { id: 'pending', title: 'قيد الانتظار', color: '#f59e0b' },
+        { id: 'in_progress', title: 'قيد التنفيذ', color: '#3b82f6' },
+        { id: 'quality_check', title: 'قيد الفحص', color: '#8b5cf6' }
+    ];
+
+    let html = `<div style="display:flex; gap:15px; overflow-x:auto; padding-bottom:10px;">`;
+
+    statuses.forEach(st => {
+        const columnOrders = orders.filter(o => o.status === st.id);
+        html += `
+            <div class="kanban-column" style="flex:1; min-width:280px; background:#f8fafc; border-radius:8px; padding:10px; border-top:4px solid ${st.color};">
+                <h4 style="font-size:14px; margin-bottom:15px; color:#333; display:flex; justify-content:space-between;">
+                    ${st.title} <span style="background:#e2e8f0; padding:2px 8px; border-radius:12px; font-size:12px;">${columnOrders.length}</span>
+                </h4>
+                <div class="kanban-items" style="min-height:200px; display:flex; flex-direction:column; gap:10px;">
+                    ${columnOrders.map(o => `
+                        <div class="kanban-card" style="background:#fff; padding:12px; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.1); border:1px solid #e2e8f0;">
+                            <div style="font-size:11px; color:#64748b; margin-bottom:5px; display:flex; justify-content:space-between;">
+                                <span>#${o.id}</span>
+                                <span>${o.date}</span>
+                            </div>
+                            <strong style="display:block; margin-bottom:8px; font-size:14px; color:#0f172a;">${o.productName}</strong>
+                            <div style="font-size:13px; color:#475569; margin-bottom:10px;">
+                                الكمية: <span style="font-weight:bold; color:#10b981;">${o.qty}</span>
+                            </div>
+                            <select class="kp-select" style="padding:4px; font-size:12px; height:auto;" onchange="changeWorkOrderStatus('${o.id}', this.value)">
+                                <option value="draft" ${o.status==='draft'?'selected':''}>مسودة</option>
+                                <option value="pending" ${o.status==='pending'?'selected':''}>قيد الانتظار</option>
+                                <option value="in_progress" ${o.status==='in_progress'?'selected':''}>قيد التنفيذ</option>
+                                <option value="quality_check" ${o.status==='quality_check'?'selected':''}>قيد الفحص</option>
+                                <option value="completed" style="color:green;">مكتمل</option>
+                                <option value="canceled" style="color:red;">ملغي</option>
+                            </select>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+    return html;
+}
+
+function renderWorkOrdersTable(orders) {
+    if(orders.length === 0) return `<div class="kp-empty-state"><i class="ph ph-factory"></i><p>لا توجد أوامر تشغيل.</p></div>`;
+
+    const statusAr = {
+        'draft': 'مسودة', 'pending': 'قيد الانتظار', 'in_progress': 'قيد التنفيذ',
+        'quality_check': 'قيد الفحص', 'completed': 'مكتمل', 'canceled': 'ملغي'
+    };
+
+    let html = `
+        <div class="kp-card kp-table-container">
+            <table class="kp-table">
+                <thead>
+                    <tr>
+                        <th>رقم الأمر</th>
+                        <th>التاريخ</th>
+                        <th>المنتج</th>
+                        <th>الكمية</th>
+                        <th>الحالة</th>
+                        <th>إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${orders.sort((a,b)=>b.timestamp-a.timestamp).map(o => `
+                        <tr>
+                            <td>${o.id}</td>
+                            <td>${o.date}</td>
+                            <td><strong>${o.productName}</strong></td>
+                            <td>${o.qty}</td>
+                            <td><span class="kp-badge" style="background:#e2e8f0; color:#333;">${statusAr[o.status] || o.status}</span></td>
+                            <td>
+                                ${o.status !== 'completed' && o.status !== 'canceled' ? `
+                                    <select class="kp-select" style="padding:4px; font-size:12px; height:auto; width:120px;" onchange="changeWorkOrderStatus('${o.id}', this.value)">
+                                        <option value="" disabled selected>تغيير الحالة...</option>
+                                        <option value="draft">مسودة</option>
+                                        <option value="pending">قيد الانتظار</option>
+                                        <option value="in_progress">قيد التنفيذ</option>
+                                        <option value="quality_check">قيد الفحص</option>
+                                        <option value="completed" style="color:green;">مكتمل</option>
+                                        <option value="canceled" style="color:red;">ملغي</option>
+                                    </select>
+                                ` : '-'}
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    return html;
+}
+
+window.setWorkOrderView = function(mode) {
+    workOrderViewMode = mode;
+    switchTab('work_orders');
+};
+
+window.openNewWorkOrderModal = function() {
+    document.getElementById('wo-product-select').value = '';
+    document.getElementById('wo-qty-input').value = '1';
+    document.getElementById('wo-bom-preview').style.display = 'none';
+    document.getElementById('btn-save-wo').disabled = true;
+    window.openModalLayer(document.getElementById('work-order-modal'));
+};
+
+window.closeWorkOrderModal = function() {
+    window.closeModalLayer(document.getElementById('work-order-modal'));
+};
+
+window.previewWorkOrderBom = function() {
+    const prodId = document.getElementById('wo-product-select').value;
+    const qty = parseFloat(document.getElementById('wo-qty-input').value) || 0;
+    const btnSave = document.getElementById('btn-save-wo');
+    const previewDiv = document.getElementById('wo-bom-preview');
+    const tbody = document.getElementById('wo-bom-table-body');
+
+    if (!prodId || qty <= 0) {
+        previewDiv.style.display = 'none';
+        btnSave.disabled = true;
+        return;
+    }
+
+    const prod = (currentDb.products || []).find(p => String(p.id) === String(prodId));
+    if (!prod || !prod.rawMaterials) return;
+
+    let canProduce = true;
+    let rowsHtml = '';
+
+    prod.rawMaterials.forEach(rm => {
+        const requiredTotal = rm.qtyPerUnit * qty;
+        // Check main inventory (since manufacturing typically pulls from main or specific warehouse)
+        // Here we assume it pulls from 'main' or standardizes the check
+        const invItem = (currentDb.inventory || []).find(i => (i.sku === rm.sku || i.name === rm.name) && (i.warehouseId || 'main') === 'main');
+        const currentStock = invItem ? parseFloat(invItem.qty) : 0;
+        const isEnough = currentStock >= requiredTotal;
+        if (!isEnough) canProduce = false;
+
+        rowsHtml += `
+            <tr>
+                <td>${rm.name}</td>
+                <td>${rm.qtyPerUnit}</td>
+                <td><strong>${requiredTotal}</strong></td>
+                <td>${currentStock}</td>
+                <td>
+                    ${isEnough ? '<span style="color:green;"><i class="ph ph-check-circle"></i> متوفر</span>' : '<span style="color:red;"><i class="ph ph-warning-circle"></i> ناقص</span>'}
+                </td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = rowsHtml;
+    previewDiv.style.display = 'block';
+
+    // Allow saving as draft even if short on stock, but prevent moving to pending/in_progress later
+    btnSave.disabled = false;
+};
+
+window.saveNewWorkOrder = async function() {
+    const prodId = document.getElementById('wo-product-select').value;
+    const qty = parseFloat(document.getElementById('wo-qty-input').value) || 0;
+    const prod = (currentDb.products || []).find(p => String(p.id) === String(prodId));
+
+    if (!prod) return;
+
+    const newOrder = {
+        id: 'WO-' + Date.now(),
+        productId: prodId,
+        productName: prod.nameAr,
+        qty: qty,
+        status: 'draft',
+        date: new Date().toISOString().slice(0, 10),
+        timestamp: Date.now(),
+        bomSnapshot: JSON.parse(JSON.stringify(prod.rawMaterials))
+    };
+
+    if (!currentDb.workOrders) currentDb.workOrders = [];
+    currentDb.workOrders.push(newOrder);
+
+    await window.dbWrite(currentDb);
+    closeWorkOrderModal();
+    switchTab('work_orders');
+};
+
+window.changeWorkOrderStatus = async function(orderId, newStatus) {
+    if (!currentDb.workOrders) return;
+    const order = currentDb.workOrders.find(o => String(o.id) === String(orderId));
+    if (!order) return;
+
+    // Validation for starting (in_progress)
+    if (newStatus === 'in_progress' && order.status !== 'in_progress') {
+        let missing = false;
+        let missingNames = [];
+        order.bomSnapshot.forEach(rm => {
+            const requiredTotal = rm.qtyPerUnit * order.qty;
+            const invItem = (currentDb.inventory || []).find(i => (i.sku === rm.sku || i.name === rm.name) && (i.warehouseId || 'main') === 'main');
+            const currentStock = invItem ? parseFloat(invItem.qty) : 0;
+            if (currentStock < requiredTotal) {
+                missing = true;
+                missingNames.push(rm.name);
+            }
+        });
+        if (missing) {
+            alert('لا يمكن بدء التنفيذ! المواد الخام التالية ناقصة في المستودع:\n' + missingNames.join('\n'));
+            switchTab('work_orders'); // Reset UI
+            return;
+        }
+
+        // Reserve stock: deduct from inventory into WIP
+        if (!currentDb.inventoryTx) currentDb.inventoryTx = [];
+        let totalMatCost = 0;
+
+        order.bomSnapshot.forEach(rm => {
+            const requiredTotal = rm.qtyPerUnit * order.qty;
+            const invIdx = (currentDb.inventory || []).findIndex(i => (i.sku === rm.sku || i.name === rm.name) && (i.warehouseId || 'main') === 'main');
+            if (invIdx > -1) {
+                const item = currentDb.inventory[invIdx];
+                const cost = parseFloat(item.cost) || 0;
+                totalMatCost += cost * requiredTotal;
+
+                // Deduct from real stock
+                currentDb.inventory[invIdx].qty = parseFloat(currentDb.inventory[invIdx].qty) - requiredTotal;
+
+                // Log inventory Tx
+                currentDb.inventoryTx.push({
+                    id: 'TX-' + Date.now() + Math.floor(Math.random()*1000),
+                    date: new Date().toISOString().slice(0, 10),
+                    timestamp: Date.now(),
+                    type: 'out',
+                    sku: item.sku,
+                    name: item.name,
+                    qty: requiredTotal,
+                    unit: item.unit || '',
+                    cost: cost,
+                    total: cost * requiredTotal,
+                    sourceWh: 'main',
+                    destWh: 'WIP', // Sent to Work In Progress
+                    notes: `صرف لأمر تشغيل ${order.id}`
+                });
+            }
+        });
+
+        order.totalMaterialCost = totalMatCost; // Save for COGS calculation later
+    }
+
+    // Validation for completion
+    if (newStatus === 'completed' && order.status !== 'completed') {
+        if (!confirm('تأكيد اكتمال أمر التشغيل وإضافة المنتجات للمستودع؟')) {
+            switchTab('work_orders');
+            return;
+        }
+
+        // Add Finished Good to Inventory
+        if (!currentDb.inventoryTx) currentDb.inventoryTx = [];
+        let fgCost = (order.totalMaterialCost || 0) / order.qty;
+
+        let invIdx = (currentDb.inventory || []).findIndex(i => String(i.id) === String(order.productId) && (i.warehouseId || 'main') === 'main');
+        if (invIdx > -1) {
+            currentDb.inventory[invIdx].qty = parseFloat(currentDb.inventory[invIdx].qty) + order.qty;
+            // Weighted average cost update could be done here if needed
+        } else {
+            // Create FG item in inventory if it doesn't exist
+            currentDb.inventory.push({
+                id: 'FG-' + Date.now(),
+                sku: 'FG-' + order.productId,
+                name: order.productName,
+                qty: order.qty,
+                cost: fgCost,
+                unit: 'حبة',
+                warehouseId: 'main'
+            });
+        }
+
+        currentDb.inventoryTx.push({
+            id: 'TX-' + Date.now() + Math.floor(Math.random()*1000),
+            date: new Date().toISOString().slice(0, 10),
+            timestamp: Date.now(),
+            type: 'in',
+            sku: 'FG-' + order.productId,
+            name: order.productName,
+            qty: order.qty,
+            unit: 'حبة',
+            cost: fgCost,
+            total: fgCost * order.qty,
+            sourceWh: 'WIP',
+            destWh: 'main',
+            notes: `استلام من أمر تشغيل ${order.id}`
+        });
+
+        // Auto Journal Entry for Manufacturing (COGM)
+        if (!currentDb.journalEntries) currentDb.journalEntries = [];
+        currentDb.journalEntries.push({
+            id: 'JE-MFG-' + order.id,
+            date: new Date().toISOString().slice(0, 10),
+            timestamp: Date.now(),
+            memo: `قيد تكلفة تصنيع أمر التشغيل ${order.id}`,
+            sourceType: 'manufacturing',
+            sourceId: order.id,
+            lines: [
+                { accountCode: '5110', accountName: 'المشتريات والبضاعة (WIP)', debit: 0, credit: order.totalMaterialCost }, // Credit raw materials
+                { accountCode: '1151', accountName: 'مخزون منتجات تامة (FG)', debit: order.totalMaterialCost, credit: 0 } // Debit FG inventory
+            ]
+        });
+    }
+
+    order.status = newStatus;
+    order.updatedAt = Date.now();
+    await window.dbWrite(currentDb);
+    switchTab('work_orders');
+}
+
+function bindWorkOrderEvents() {
+    // any DOM events inside kanban
+}
+
 function renderDashboard() {
-    const txs = (currentDb && currentDb.kitchenTx) ? currentDb.kitchenTx : [];
+    const txs = (currentDb && currentDb.manufacturing_orders) ? currentDb.manufacturing_orders : [];
     
     // --- Pending Issue Orders from Warehouse ---
-    const kitchenDestinations = ['restaurant', 'kitchen_main', 'kitchen', 'kitchen_cold', 'kitchen_grills', 'kitchen_pastry', 'production'];
+    const manufacturingDestinations = ['restaurant', 'manufacturing_main', 'kitchen', 'manufacturing_cold', 'manufacturing_grills', 'manufacturing_pastry', 'production'];
     const pendingOrders = (currentDb && currentDb.issueOrders)
         ? currentDb.issueOrders.filter(o =>
             o.status === 'قيد الاستلام' &&
-            (kitchenDestinations.includes(o.destWh) || kitchenDestinations.includes(o.destKey))
+            (manufacturingDestinations.includes(o.destWh) || manufacturingDestinations.includes(o.destKey))
           )
         : [];
     
@@ -656,7 +1048,7 @@ function renderDashboard() {
                 </div>
                 <div class="kp-stat-details">
                     <p>أصناف قاربت على النفاذ</p>
-                    <h3>${(currentDb.kitchenStock || []).filter(k => (Number(k.qty)||0) <= (Number(k.minQty)||3)).length} أصناف</h3>
+                    <h3>${(currentDb.manufacturing_stock || []).filter(k => (Number(k.qty)||0) <= (Number(k.minQty)||3)).length} أصناف</h3>
                 </div>
             </div>
             <div class="kp-stat-card">
@@ -697,11 +1089,11 @@ function renderDashboard() {
  * ريندر لصفحة مستقلة مخصصة فقط للأوامر المعلقة (عند الضغط من السايدبار)
  */
 function renderPendingIssues() {
-    const kitchenDestinations = ['restaurant', 'kitchen_main', 'kitchen'];
+    const manufacturingDestinations = ['restaurant', 'manufacturing_main', 'kitchen'];
     const pendingOrders = (currentDb && currentDb.issueOrders)
         ? currentDb.issueOrders.filter(o =>
             o.status === '\u0642\u064a\u062f \u0627\u0644\u0627\u0633\u062a\u0644\u0627\u0645' &&
-            (kitchenDestinations.includes(o.destWh) || kitchenDestinations.includes(o.destKey))
+            (manufacturingDestinations.includes(o.destWh) || manufacturingDestinations.includes(o.destKey))
           )
         : [];
     
@@ -768,7 +1160,7 @@ window.updateRcvItemsList = function() {
 };
 
 function renderReceive() {
-    const wh = getKitchenSourceWh();
+    const wh = getManufacturingSourceWh();
     let inventoryItems = currentDb && currentDb.inventory ? currentDb.inventory : [];
     inventoryItems = inventoryItems.filter((i) => (i.warehouseId || 'main') === wh);
     
@@ -848,7 +1240,7 @@ function renderHandover() {
 
     let optionsJSON = menuItems.length > 0
         ? menuItems.map((i) => `<option value="${i.nameAr}">${i.nameAr} — منيو (${xf(i.price)})</option>`).join('')
-        : '<option value="" disabled>المنيو فارغ</option>';
+        : '<option value="" disabled>المنتجات والأصناف فارغ</option>';
 
     return `
         <div class="kp-card" style="border-top: 4px solid var(--accent-blue);">
@@ -874,7 +1266,7 @@ function renderHandover() {
             </div>
 
             <div class="kp-form-group" style="margin-top:20px; background:rgba(0,0,0,0.15); padding:15px; border-radius:8px; border:1px solid rgba(255,255,255,0.03);">
-                <label style="color:#60a5fa;"><i class="ph ph-hamburger"></i> الصنف المنتج الجاهز (من المنيو)</label>
+                <label style="color:#60a5fa;"><i class="ph ph-hamburger"></i> الصنف المنتج الجاهز (من المنتجات والأصناف)</label>
                 <select class="kp-select" id="kp-out-item" style="font-weight:bold;">
                     <option value="" disabled selected>-- اختر الصنف الجاهز المُسلّم --</option>
                     ${optionsJSON}
@@ -946,7 +1338,7 @@ window.showKitchenReport = function() {
     const type = document.getElementById('rpt-type').value;
     const resultDiv = document.getElementById('rpt-result');
 
-    let txs = (currentDb && currentDb.kitchenTx) ? [...currentDb.kitchenTx] : [];
+    let txs = (currentDb && currentDb.manufacturing_orders) ? [...currentDb.manufacturing_orders] : [];
 
     // Filter by period
     const now = new Date();
@@ -1013,7 +1405,7 @@ window.showKitchenReport = function() {
 window.printKitchenReport = function() {
     const period = document.getElementById('rpt-period')?.value || 'all';
     const type = document.getElementById('rpt-type')?.value || 'all';
-    let txs = (currentDb && currentDb.kitchenTx) ? [...currentDb.kitchenTx] : [];
+    let txs = (currentDb && currentDb.manufacturing_orders) ? [...currentDb.manufacturing_orders] : [];
     const now = new Date();
     txs = txs.filter(t => {
         const d = new Date(t.date);
@@ -1034,7 +1426,7 @@ window.printKitchenReport = function() {
             <td>${t.user || '-'}</td>
         </tr>`).join('');
     const html = `
-        <html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير المطبخ والإنتاج</title>
+        <html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير إدارة التصنيع والإنتاج</title>
         <style>
             @page { size: 80mm auto; margin: 0; }
             html { overflow: visible; }
@@ -1070,7 +1462,7 @@ window.printKitchenReport = function() {
         </style></head>
         <body>
             <div class="receipt-wrapper">
-            <h1>🍽 تقرير المطبخ والإنتاج</h1>
+            <h1>🍽 تقرير إدارة التصنيع والإنتاج</h1>
             <p class="sub">طُبع بتاريخ: ${new Date().toLocaleString('ar-SA')}</p>
             <table>
                 <thead><tr><th>رقم السند</th><th>النوع</th><th>الصنف</th><th>الكمية</th><th>التاريخ</th><th>المسؤول</th></tr></thead>
@@ -1085,7 +1477,7 @@ window.printKitchenReport = function() {
 };
 
 window.printSingleTx = function(txId) {
-    const txs = (currentDb && currentDb.kitchenTx) ? currentDb.kitchenTx : [];
+    const txs = (currentDb && currentDb.manufacturing_orders) ? currentDb.manufacturing_orders : [];
     const t = txs.find(x => x.id === txId);
     if (!t) return;
     const typeName = t.type === 'receive' ? 'سند استلام من المخزن' : 'سند تسليم للمبيعات';
@@ -1127,7 +1519,7 @@ window.printSingleTx = function(txId) {
         <body>
             <div class="receipt-wrapper">
             <div class="logo">🍽 Mister Casher</div>
-            <div class="subtitle">المطبخ والإنتاج</div>
+            <div class="subtitle">إدارة التصنيع والإنتاج</div>
             <div class="type-badge">${typeName}</div>
             <div class="details">
                 <p><span class="label">رقم السند:</span> #${t.id}</p>
@@ -1151,7 +1543,7 @@ window.printSingleTx = function(txId) {
 
 function renderOptions() {
     const p = getKitchenPrefs();
-    const wh = getKitchenSourceWh();
+    const wh = getManufacturingSourceWh();
     return `
         <div class="kp-card">
             <h3><i class="ph ph-gear"></i> الإعدادات المتقدمة للمطبخ والانتاج</h3>
@@ -1278,7 +1670,7 @@ function renderStock() {
 // --- Migration / Auto-Sync Logic ---
 function renderStock() {
     const inv = (currentDb && currentDb.inventory) ? currentDb.inventory.filter(i => i.warehouseId === 'restaurant') : [];
-    const txs = (currentDb && currentDb.kitchenTx) ? currentDb.kitchenTx : [];
+    const txs = (currentDb && currentDb.manufacturing_orders) ? currentDb.manufacturing_orders : [];
 
     // Grouping and sorting
     const grouped = {};
@@ -1367,7 +1759,7 @@ function renderStock() {
     `;
 }
 
-// Syncs kitchenStock purely from the global inventory (the master source of truth)
+// Syncs manufacturing_stock purely from the global inventory (the master source of truth)
 async function syncKitchenStockToInventory(forceFromLog = false) {
     const db = await window.dbRead();
     let changed = false;
@@ -1380,8 +1772,8 @@ async function syncKitchenStockToInventory(forceFromLog = false) {
         unit: i.unit || '',
         minQty: i.minQty != null ? i.minQty : 3
     }));
-    if (JSON.stringify(db.kitchenStock) !== JSON.stringify(newStock)) {
-        db.kitchenStock = newStock;
+    if (JSON.stringify(db.manufacturing_stock) !== JSON.stringify(newStock)) {
+        db.manufacturing_stock = newStock;
         changed = true;
     }
     if (changed) {

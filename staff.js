@@ -343,7 +343,7 @@ function openHrModal(modalId) {
 const roleConfig = {
     'إدارة': { badge: 'role-admin', icon: 'ph-crown', color: '#8b5cf6' },
     'كاشير': { badge: 'role-cashier', icon: 'ph-cash-register', color: '#3b82f6' },
-    'مطبخ': { badge: 'role-kitchen', icon: 'ph-cooking-pot', color: '#f59e0b' },
+    'مطبخ': { badge: 'role-manufacturing', icon: 'ph-cooking-pot', color: '#f59e0b' },
 
     'خدمة': { badge: 'role-service', icon: 'ph-broom', color: '#ec4899' }
 };
@@ -818,6 +818,8 @@ window.openFullProfile = function (id) {
     document.getElementById('pro-btn-edit').onclick = () => {
         document.getElementById('ne-name').value = emp.name || '';
         document.getElementById('ne-role').value = emp.role || '';
+        document.getElementById('ne-branch').value = emp.branch || 'all';
+        document.getElementById('ne-warehouse').value = emp.warehouse || 'all';
         document.getElementById('ne-nationality').value = emp.nationality || '';
         document.getElementById('ne-phone').value = emp.phone || '';
         document.getElementById('ne-iqama').value = emp.iqama || '';
@@ -1288,6 +1290,8 @@ document.getElementById('form-new-emp')?.addEventListener('submit', async (e) =>
             id: editId || 'EMP-' + Math.floor(Math.random() * 90000 + 10000),
             name: document.getElementById('ne-name').value.trim(),
             role: document.getElementById('ne-role').value,
+            branch: document.getElementById('ne-branch').value,
+            warehouse: document.getElementById('ne-warehouse').value,
             nationality: document.getElementById('ne-nationality').value.trim(),
             phone: document.getElementById('ne-phone').value.trim(),
             iqama: document.getElementById('ne-iqama').value.trim(),

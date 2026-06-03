@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadDashboardData(period = 'today') {
         let db;
         if (typeof window.dbReadSlice === 'function') {
-            db = await window.dbReadSlice(['orders', 'returns', 'hrExpenses', 'expenses', 'deliveryCompanies', 'inventory']);
+            db = await window.dbReadSlice(['orders', 'returns', 'hrExpenses', 'expenses', 'sales_channels', 'inventory']);
         } else {
             db = await window.dbRead();
         }
@@ -348,7 +348,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 6. Dynamic Delivery Company Cards
     const deliveryContainer = document.getElementById('dynamic-delivery-kpi-container');
     if (deliveryContainer) {
-        const companies = db.deliveryCompanies || [{ name: 'هنقرستيشن', isActive: true }];
+        const companies = db.sales_channels || [{ name: 'هنقرستيشن', isActive: true }];
         let cardsHtml = '';
         
         companies.forEach(c => {
@@ -1227,6 +1227,34 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (typeof window.printDayReport === 'function') {
                 await window.printDayReport();
+            }
+
+            // ── Auto Journal Entry for Day Closure (Aggregate POS Sales) ──
+            if (snap.dayTotalIncome > 0) {
+                const db = await window.dbRead();
+                if (!db.journalEntries) db.journalEntries = [];
+                const totalCash = snap.dayTotalCash || 0;
+                const totalNet = snap.dayTotalNet || 0;
+                const totalIncome = snap.dayTotalIncome || 0;
+                const totalTax = snap.dayTotalTax || 0;
+                const revenueNet = totalIncome - totalTax; // Subtract tax from total to get net revenue
+
+                // We're pushing a composite Journal Entry for the day
+                db.journalEntries.push({
+                    id: 'JE-CLOSURE-' + closedAt,
+                    date: snap.dayDate,
+                    timestamp: closedAt,
+                    memo: `قيد إقفال يومية المبيعات (${snap.dayDate})`,
+                    sourceType: 'day_closure',
+                    sourceId: closureId,
+                    lines: [
+                        { accountCode: '1110', accountName: 'الصندوق النقدي', debit: totalCash, credit: 0 },
+                        { accountCode: '1120', accountName: 'البنك', debit: totalNet, credit: 0 },
+                        { accountCode: '4110', accountName: 'إيرادات المبيعات', debit: 0, credit: revenueNet },
+                        { accountCode: '2110', accountName: 'ضريبة المبيعات', debit: 0, credit: totalTax } // Assuming 2110 or creating a dedicated tax account
+                    ]
+                });
+                await window.dbWrite(db);
             }
 
             const successMsg = `تم إقفال اليوم بالكامل بنجاح.\n\nملخص اليوم:\n- عدد الورديات: ${(snap.allDayShifts || []).length}\n- الطلبات: ${snap.dayTotalOrders || 0}\n- المبيعات: ${curPlain(snap.dayTotalIncome || 0)}\n- المصروفات: ${curPlain(snap.dayTotalExp || 0)}\n- رصيد الدرج المحفوظ للوردية الجديدة: ${curPlain(drawerToKeep)}\n\nملاحظة: الطلبات والمبيعات في لوحة القيادة تبدأ من صفر للوردية الجديدة — السجل الكامل في «سجلات الإقفال».`;

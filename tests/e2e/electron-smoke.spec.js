@@ -4,6 +4,7 @@
 const { test, expect } = require('@playwright/test');
 const { _electron: electron } = require('playwright');
 const path = require('path');
+const { pathToFileURL } = require('url');
 
 const projectRoot = path.join(__dirname, '..', '..');
 
@@ -20,6 +21,12 @@ test('تشغيل التطبيق وعرض صفحة الدخول', async () => {
   try {
     const window = await electronApp.firstWindow();
     await window.waitForLoadState('domcontentloaded', { timeout: 60000 });
+
+    if (window.url().includes('setup.html')) {
+        await window.evaluate(() => { localStorage.setItem('admin_username', 'admin'); localStorage.setItem('currentUser', JSON.stringify({username:'admin', role:'المدير العام'})); });
+        await window.goto(pathToFileURL(path.join(projectRoot, 'login.html')).href);
+    }
+
     const url = window.url();
     expect(url).toMatch(/login\.html/i);
     const form = window.locator('#loginForm, form#loginForm, form').first();

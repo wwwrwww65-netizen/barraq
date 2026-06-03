@@ -50,6 +50,7 @@
                 <a href="#" class="nav-item active settings-tab" data-target="page-info"><i class="ph ph-info"></i><span>المعلومات والبيانات</span></a>
                 <a href="#" class="nav-item settings-tab" data-target="page-whatsapp"><i class="ph ph-whatsapp-logo"></i><span>الربط مع واتساب</span></a>
                 <a href="#" class="nav-item settings-tab" data-target="page-backup"><i class="ph ph-hard-drives"></i><span>التخزين والنسخ</span></a>
+                <a href="#" class="nav-item settings-tab" data-target="page-modules"><i class="ph ph-puzzle-piece"></i><span>إدارة الوحدات (ERP Modules)</span></a>
                 <a href="#" class="nav-item settings-tab" data-target="page-license"><i class="ph ph-medal"></i><span>الإصدار والاشتراكات</span></a>
                 <a href="#" class="nav-item settings-tab" data-target="page-advanced"><i class="ph ph-warning"></i><span>خيارات متقدمة</span></a>
                 <a href="#" class="nav-item settings-tab" data-target="page-support"><i class="ph ph-headset"></i><span>الدعم الفني والخدمات</span></a>
@@ -483,6 +484,73 @@
                             </div>
                         </div>
 
+                        <!-- ERP Modules Page -->
+                        <div id="page-modules" class="settings-page" style="display:none;">
+                            <div class="settings-grid">
+                                <div class="settings-card" style="grid-column: 1 / -1;">
+                                    <div class="sc-header">
+                                        <i class="ph-fill ph-puzzle-piece"></i>
+                                        <h3>تفعيل وتعطيل وحدات النظام</h3>
+                                    </div>
+                                    <div class="sc-body">
+                                        <div class="setting-item toggle-row">
+                                            <div class="si-info">
+                                                <label>نقطة البيع السريعة (POS)</label>
+                                                <span>للكاشير ومحلات التجزئة</span>
+                                            </div>
+                                            <label class="switch">
+                                                <input type="checkbox" id="module-pos" checked>
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                        <div class="setting-item toggle-row">
+                                            <div class="si-info">
+                                                <label>إدارة المخزون والمستودعات</label>
+                                                <span>للتحكم بالكميات والجرد</span>
+                                            </div>
+                                            <label class="switch">
+                                                <input type="checkbox" id="module-inventory" checked>
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                        <div class="setting-item toggle-row">
+                                            <div class="si-info">
+                                                <label>إدارة التصنيع والإنتاج</label>
+                                                <span>للمصانع والمعامل والأسر المنتجة</span>
+                                            </div>
+                                            <label class="switch">
+                                                <input type="checkbox" id="module-manufacturing">
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                        <div class="setting-item toggle-row">
+                                            <div class="si-info">
+                                                <label>النظام المحاسبي الشامل (قيود اليومية)</label>
+                                                <span>مراكز تكلفة وأصول ثابتة (متقدم)</span>
+                                            </div>
+                                            <label class="switch">
+                                                <input type="checkbox" id="module-accounting">
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                        <div class="setting-item toggle-row">
+                                            <div class="si-info">
+                                                <label>نظام الموارد البشرية (HR)</label>
+                                                <span>سلفيات، رواتب، وحضور وانصراف</span>
+                                            </div>
+                                            <label class="switch">
+                                                <input type="checkbox" id="module-hr" checked>
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="sc-footer" style="margin-top: 15px;">
+                                        <button class="btn btn-primary" onclick="saveModulesSettings()"><i class="ph ph-floppy-disk"></i> حفظ الإعدادات</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Page 4: Advanced -->
                         <div id="page-advanced" class="settings-page">
                             <div class="settings-grid">
@@ -517,7 +585,7 @@
                                                 <h4 style="margin:0 0 6px; color:#fde68a; font-size:15px;">تصفير العمليات الحسابية فقط</h4>
                                                 <p style="color: var(--text-secondary); font-size: 0.85rem; line-height: 1.6; margin: 0 0 12px;">
                                                     يحذف <strong style="color:#fde68a;">جميع العمليات التجريبية</strong>: الطلبات، المبيعات، المشتريات، المرتجعات، المصروفات، السحبيات، حركات المخزون، القيود المحاسبية، سجل الحضور والغياب. <br>
-                                                    <strong style="color:#86efac;">✓ تبقى:</strong> الأصناف، المنتجات، الصور، المنيو، الموردين، الموظفين، المخزون الحالي، وجميع الإعدادات كما هي.
+                                                    <strong style="color:#86efac;">✓ تبقى:</strong> الأصناف، المنتجات، الصور، المنتجات والأصناف، الموردين، الموظفين، المخزون الحالي، وجميع الإعدادات كما هي.
                                                 </p>
                                                 <button type="button" id="btn-ops-reset-open" class="btn btn-primary" style="background: #d97706; border: none; color: white; display:inline-flex; align-items:center; gap:8px;">
                                                     <i class="ph-fill ph-eraser"></i> تصفير العمليات الحسابية
@@ -655,7 +723,7 @@
             <h3 id="ops-confirm-title" class="factory-modal-title"><i class="ph-fill ph-eraser" style="color:#f59e0b;"></i> تأكيد تصفير العمليات</h3>
             <p class="factory-modal-text">سيتم حذف <strong>جميع العمليات الحسابية</strong> (الطلبات، المبيعات، المشتريات، المرتجعات، المصروفات، السحبيات، حركات المخزون، القيود المحاسبية، الحضور والغياب). لا يمكن التراجع عن هذا الإجراء.</p>
             <p class="factory-modal-text" style="background:rgba(134,239,172,0.1); border:1px solid rgba(134,239,172,0.3); border-radius:8px; padding:10px; color:#86efac; font-size:13px;">
-                <i class="ph-fill ph-check-circle"></i> <strong>ستبقى كاملةً:</strong> الأصناف، المنتجات، الصور، المنيو، الموردين، الموظفين، رصيد المخزون الحالي، وجميع إعدادات النظام.
+                <i class="ph-fill ph-check-circle"></i> <strong>ستبقى كاملةً:</strong> الأصناف، المنتجات، الصور، المنتجات والأصناف، الموردين، الموظفين، رصيد المخزون الحالي، وجميع إعدادات النظام.
             </p>
             <div class="factory-modal-actions">
                 <button type="button" id="btn-ops-confirm-no" class="factory-btn factory-btn-muted">لا، إلغاء</button>

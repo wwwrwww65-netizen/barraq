@@ -1,6 +1,24 @@
 document.addEventListener('DOMContentLoaded', async () => {
 
     /* ===============================
+       RBAC / Security
+    =============================== */
+    const cUserRaw = localStorage.getItem('currentUser');
+    const cUser = cUserRaw ? JSON.parse(cUserRaw) : null;
+    let allowedWarehouse = 'main'; // default POS deducts from main
+
+    if (cUser && cUser.role !== 'المدير العام') {
+        const dbCached = JSON.parse(localStorage.getItem('pos_database') || '{}');
+        const myEmp = (dbCached.employees || []).find(e => e.username === cUser.username);
+        if (myEmp && myEmp.warehouse && myEmp.warehouse !== 'all') {
+            allowedWarehouse = myEmp.warehouse;
+        }
+    }
+
+    // Inject the allowed warehouse globally so the checkout/deduction logic can use it instead of 'main'
+    window.POS_CURRENT_WAREHOUSE = allowedWarehouse;
+
+    /* ===============================
        POS State Management
     =============================== */
     let cart = [];
@@ -98,7 +116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Render dynamic delivery companies in POS payment modal (Pills UI)
     if (document.getElementById('dynamic-delivery-companies-pills')) {
-        let companies = _db.deliveryCompanies || [];
+        let companies = _db.sales_channels || [];
         const activeCompanies = companies.filter(c => c.isActive !== false);
         
         const deliveryPayRadio = document.querySelector('input[name="pay_method"][value="توصيل"]');
@@ -775,6 +793,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 items: [...cart],
                 // Order notes
                 orderNotes: document.getElementById('checkout-order-notes').value || '',
+                // Ensure inventory deducts from this user's warehouse
+                inventoryDeductWarehouse: window.POS_CURRENT_WAREHOUSE || 'main',
                 // HungerStation specific fields
                 hungerStation: isDelivery,
                 deliveryCompany: isDelivery ? selectedPay : undefined,
@@ -784,7 +804,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             try {
-                const kp = JSON.parse(localStorage.getItem('kitchen_prefs') || '{}');
+                const kp = JSON.parse(localStorage.getItem('manufacturing_prefs') || '{}');
                 if (kp.autoDeductOnSale === true) {
                     const wh = kp.sourceWarehouse;
                     if (wh === 'main' || wh === 'restaurant' || wh === 'beverages') {

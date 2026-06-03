@@ -2,7 +2,7 @@ const fs = require('fs');
 let html = fs.readFileSync('customers.html', 'utf8');
 
 // Replace title
-html = html.replace('<title>Mister Casher - إدارة العملاء</title>', '<title>Mister Casher - شركات التوصيل</title>');
+html = html.replace('<title>Mister Casher - إدارة العملاء</title>', '<title>Mister Casher - قنوات البيع</title>');
 
 // Replace css links
 html = html.replace('<link rel="stylesheet" href="customers.css">', '');
@@ -10,8 +10,8 @@ html = html.replace('<link rel="stylesheet" href="customers.css">', '');
 // Title: 
 html = html.replace(/<div class="dashboard-header">[\s\S]*?<\/div>\s*<\/div>/, `<div class="dashboard-header">
                 <div>
-                    <h1>شركات التوصيل</h1>
-                    <p>إدارة وتتبع شركات التوصيل والمناديب المعتمدين</p>
+                    <h1>قنوات البيع</h1>
+                    <p>إدارة وتتبع قنوات البيع والمناديب المعتمدين</p>
                 </div>
                 <div class="header-actions">
                     <button class="btn-primary" id="btn-add-company"><i class="ph ph-plus"></i> إضافة شركة توصيل</button>
@@ -96,7 +96,7 @@ html = html.replace(/<div class="modal-overlay" id="add-customer-modal">[\s\S]*?
     <!-- Script overrides -->`);
 
 // Replace script imports
-html = html.replace(/<script src="customers\.js"><\/script>/, '<script src="delivery-companies.js"></script>');
+html = html.replace(/<script src="customers\.js"><\/script>/, '<script src="sales-channels.js"></script>');
 
-fs.writeFileSync('delivery-companies.html', html);
-console.log('delivery-companies.html created');
+fs.writeFileSync('sales-channels.html', html);
+console.log('sales-channels.html created');

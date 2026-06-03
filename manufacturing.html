@@ -16,7 +16,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>المطبخ والانتاج - Mister Casher</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="kitchen-production.css">
+    <link rel="stylesheet" href="manufacturing.css">
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/regular/style.css">
     <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/fill/style.css">
@@ -42,6 +42,7 @@
                 <div class="nav-group">
                     <p class="nav-label">العمليات اليومية</p>
                     <a href="#" class="nav-item active" data-tab="dashboard"><i class="ph ph-presentation-chart"></i><span>اللوحة الرئيسية</span></a>
+                    <a href="#" class="nav-item" data-tab="work_orders"><i class="ph ph-factory"></i><span>أوامر التشغيل (Work Orders)</span></a>
                     <a href="#" class="nav-item" data-tab="pending_issues" id="kp-nav-pending" style="display:none;"><i class="ph ph-clock" style="color:var(--accent-orange)"></i><span>أوامر معلقة <span id="kp-pending-count" style="background:var(--accent-orange);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-right:4px;">0</span></span></a>
                     <a href="#" class="nav-item" data-tab="receive"><i class="ph ph-download-simple"></i><span>استلام من المخزن</span></a>
                     <a href="#" class="nav-item" data-tab="stock"><i class="ph ph-list-numbers"></i><span>مخزون المطبخ</span></a>
@@ -50,7 +51,7 @@
 
                 <div class="nav-group">
                     <p class="nav-label">المراقبة والتقارير</p>
-                    <a href="kitchen.html" class="nav-item"><i class="ph ph-cooking-pot"></i><span>شاشة المطبخ (KDS)</span></a>
+                    <a href="manufacturing-kds.html" class="nav-item"><i class="ph ph-cooking-pot"></i><span>شاشة التصنيع (KDS)</span></a>
                     <a href="#" class="nav-item" data-tab="reports"><i class="ph ph-file-text"></i><span>التقارير والاسناد</span></a>
                     <a href="#" class="nav-item" data-tab="options"><i class="ph ph-gear"></i><span>خيارات المطبخ</span></a>
                 </div>
@@ -93,6 +94,6 @@
     <script src="currency-helper.js"></script>
     <script src="script.js"></script>
     <script src="db-helper.js"></script>
-    <script src="kitchen-production.js"></script>
+    <script src="manufacturing.js"></script>
 </body>
 </html>
