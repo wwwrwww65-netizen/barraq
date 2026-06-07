@@ -823,9 +823,21 @@ body.light-theme .cat-radio:hover input:checked + .cat-box {
     color: white !important;
 }
 
-/* Also ensure kds-nav-btn.active doesn't lose its background */
+/* Also ensure kds-nav-btn doesn't lose its background and icon colors are correct */
+body.light-theme .kds-nav-btn {
+    color: #94a3b8 !important;
+}
+
+body.light-theme .kds-nav-btn i {
+    color: #94a3b8 !important;
+}
+
 body.light-theme .kds-nav-btn.active {
     background: var(--accent-blue) !important;
+    color: white !important;
+}
+
+body.light-theme .kds-nav-btn.active i {
     color: white !important;
 }
 
@@ -1132,5 +1144,46 @@ body.light-theme .p-btn-delete i {
     opacity: 1 !important;
     visibility: visible !important;
     display: inline-block !important;
+}
+
+/* ============================================
+   KPI ICON COLORS FIX FOR LIGHT THEME
+   إصلاح ألوان أيقونات بطاقات KPI في الثيم النهاري
+   ============================================ */
+body.light-theme .kpi-icon.blue,
+body.light-theme .kpi-icon.blue i {
+    color: var(--accent-blue) !important;
+}
+
+body.light-theme .kpi-icon.green,
+body.light-theme .kpi-icon.green i {
+    color: var(--accent-green) !important;
+}
+
+body.light-theme .kpi-icon.orange,
+body.light-theme .kpi-icon.orange i {
+    color: var(--accent-orange) !important;
+}
+
+body.light-theme .kpi-icon.red,
+body.light-theme .kpi-icon.red i {
+    color: var(--accent-red) !important;
+}
+
+body.light-theme .kpi-icon.red-light,
+body.light-theme .kpi-icon.red-light i {
+    color: #f43f5e !important;
+}
+
+/* أيقونة رصيد الدرج - الزمردي */
+body.light-theme .kpi-icon.emerald,
+body.light-theme .kpi-icon.emerald i {
+    color: #10b981 !important;
+    background: rgba(16, 185, 129, 0.15) !important;
+}
+
+body.light-theme .kpi-icon.purple,
+body.light-theme .kpi-icon.purple i {
+    color: #8b5cf6 !important;
 }
 
