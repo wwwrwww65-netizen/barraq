@@ -36,7 +36,7 @@
     }
 
     async function paintAccTree() {
-        const db = (await window.dbRead()) || {};
+        const db = (await window.dbReadSlice(['orders', 'purchases', 'expenses', 'bankTransfers', 'returns', 'hrExpenses', 'otherIncome'])) || {};
         const posOrders = db.orders || [];
         const erpPurchases = db.purchases || [];
         const erpExpenses = db.expenses || [];

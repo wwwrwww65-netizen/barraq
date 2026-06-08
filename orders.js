@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const grid = document.getElementById('orders-grid');
     const searchInput = document.getElementById('order-search');
     const typeFilter = document.getElementById('order-type-filter');
+    const periodFilter = document.getElementById('order-period-filter');
     const dateFilter = document.getElementById('order-date-filter');
     
     // State
@@ -17,7 +18,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Load Data
     async function loadData() {
-        const db = await window.dbRead();
+        if (grid) {
+            grid.innerHTML = Array(8).fill(`
+                <div class="skeleton-card" style="height: 180px;">
+                    <div class="skeleton-content">
+                        <div class="skeleton-line medium" style="margin-bottom: 12px;"></div>
+                        <div class="skeleton-line full" style="margin-bottom: 8px;"></div>
+                        <div class="skeleton-line short" style="margin-bottom: 8px;"></div>
+                        <div class="skeleton-line full" style="margin-bottom: 16px;"></div>
+                        <div class="skeleton-line medium"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        const db = await window.dbReadSlice(['orders_all', 'returns']);
         allOrders = db.orders || [];
         allOrders = allOrders.sort((a, b) => b.timestamp - a.timestamp);
         const returns = db.returns || [];
@@ -39,6 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const sq    = searchInput.value.toLowerCase().trim();
         const fType = typeFilter.value;
+        const fPeriod = periodFilter ? periodFilter.value : 'all';
         const fDate = dateFilter.value;
 
         let filtered = allOrders.filter(o => {
@@ -48,10 +63,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 String(o.paymentMethod).toLowerCase().includes(sq);
             const matchType = fType === 'all' || (o.type && String(o.type).includes(fType));
             let matchDate = true;
-            if (fDate) {
-                const d  = new Date(o.timestamp || o.date);
-                const ds = d.toISOString().split('T')[0];
-                matchDate = ds === fDate;
+            
+            if (fPeriod !== 'all') {
+                if (fPeriod === 'custom') {
+                    if (fDate) {
+                        const d  = new Date(o.timestamp || o.date);
+                        const year = d.getFullYear();
+                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        const ds = `${year}-${month}-${day}`;
+                        matchDate = ds === fDate;
+                    }
+                } else if (window.isDateInPeriod) {
+                    matchDate = window.isDateInPeriod(o.timestamp || o.date, fPeriod);
+                } else {
+                    const d = new Date(o.timestamp || o.date);
+                    const now = new Date();
+                    if (fPeriod === 'today') {
+                        matchDate = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+                    }
+                }
             }
             return matchSearch && matchType && matchDate;
         });
@@ -81,7 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             let itemsHtml = '';
             if (o.items && Array.isArray(o.items)) {
                 o.items.slice(0, 4).forEach(itm => {
-                    const img = itm.image || 'placeholder.svg';
+                    const img = itm.image || itm.imgSrc || 'placeholder.svg';
                     itemsHtml += `<img src="${img}" title="${itm.name} (x${itm.qty})" onerror="this.src='placeholder.svg'">`;
                 });
                 if (o.items.length > 4)
@@ -195,7 +226,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             order.items.forEach(itm => {
                 const tr = document.createElement('div');
                 tr.className = 'om-item-row';
-                const img = itm.image || 'placeholder.svg';
+                const img = itm.image || itm.imgSrc || 'placeholder.svg';
                 tr.innerHTML = `
                     <img src="${img}" class="om-item-img" onerror="this.src='placeholder.svg'">
                     <div class="om-item-info">
@@ -342,6 +373,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         _ordersSearchTimer = setTimeout(() => { currentPage = 1; renderOrders(); }, 300);
     });
     typeFilter.addEventListener('change', () => { currentPage = 1; renderOrders(); });
+    if (periodFilter) {
+        periodFilter.addEventListener('change', (e) => {
+            if (e.target.value === 'custom') {
+                dateFilter.style.display = 'inline-block';
+            } else {
+                dateFilter.style.display = 'none';
+            }
+            currentPage = 1; renderOrders();
+        });
+    }
     dateFilter.addEventListener('change', () => { currentPage = 1; renderOrders(); });
 
     // Initial

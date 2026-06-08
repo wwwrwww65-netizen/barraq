@@ -14,7 +14,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Database Operations ---
     async function loadCustomers() {
-        const db = await window.dbRead();
+        if (customersListContainer) {
+            customersListContainer.innerHTML = Array(8).fill(`
+                <div class="skeleton-card" style="height: 200px;">
+                    <div class="skeleton-content">
+                        <div class="skeleton-line full" style="margin-bottom: 12px;"></div>
+                        <div class="skeleton-line medium" style="margin-bottom: 8px;"></div>
+                        <div class="skeleton-line short" style="margin-bottom: 16px;"></div>
+                        <div class="skeleton-line full"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        const db = await window.dbReadSlice(['customers']);
         allCustomers = db.customers || [];
         renderCustomers();
         updateKPIs();

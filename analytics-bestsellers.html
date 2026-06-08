@@ -1,6 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+    <script src="page-transition.js"></script>
     <script>
         (function () {
             try {
@@ -19,6 +20,9 @@
     <link rel="stylesheet" href="light-theme-fixes.css">
     <link rel="stylesheet" href="analytics-bestsellers.css">
     <!-- Google Fonts -->
+    <!-- Preload Fonts to prevent FOUC -->
+    <link rel="preload" href="node_modules/@fontsource/cairo/files/cairo-arabic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="node_modules/@fontsource/cairo/files/cairo-arabic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -117,7 +121,7 @@
         <!-- Main Content -->
         <main class="main-content">
             <!-- Header -->
-            <header class="top-header">
+            <header class="top-header">`n    <script src="page-transition.js"></script>
                 <div class="header-left">
                     <div class="breadcrumbs pt-0">
                         <h2>تحليلات الأصناف الأكثر مبيعاً</h2>

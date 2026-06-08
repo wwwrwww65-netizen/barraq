@@ -1,6 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+    <script src="page-transition.js"></script>
     <script>
         (function () {
             try {
@@ -17,6 +18,9 @@
     <title>بوابة زاتكا للربط المباشر - Mister Casher</title>
     <link rel="stylesheet" href="styles.css">
     <!-- Google Fonts -->
+    <!-- Preload Fonts to prevent FOUC -->
+    <link rel="preload" href="node_modules/@fontsource/cairo/files/cairo-arabic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="node_modules/@fontsource/cairo/files/cairo-arabic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Phosphor Icons -->
@@ -153,7 +157,7 @@
         </aside>
 
         <main class="main-content" style="background: transparent;">
-            <header class="top-header">
+            <header class="top-header">`n    <script src="page-transition.js"></script>
                 <div class="header-left">
                     <div class="breadcrumbs pt-0">
                         <h2>الربط المباشر مع الزكاة (Onboarding)</h2>

@@ -655,7 +655,7 @@ window.openFullProfile = function (id) {
             let allOrders = [];
             try {
                 if (window.dbRead) {
-                    const posDb = await window.dbRead();
+                    const posDb = await window.dbReadSlice(['orders']);
                     allOrders = posDb.orders || [];
                 } else {
                     const { ipcRenderer } = require('electron');
@@ -2184,7 +2184,21 @@ window.generateVoucher = async function (typeStr) {
 
 // ── DOM Init ──────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-    db = await window.dbRead();
+    const empGrid = document.getElementById('employees-grid');
+    if (empGrid) {
+        empGrid.innerHTML = Array(6).fill(`
+            <div class="skeleton-card" style="height: 180px;">
+                <div class="skeleton-content">
+                    <div class="skeleton-line medium" style="margin-bottom: 12px;"></div>
+                    <div class="skeleton-line full" style="margin-bottom: 8px;"></div>
+                    <div class="skeleton-line short" style="margin-bottom: 8px;"></div>
+                    <div class="skeleton-line medium"></div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    db = await window.dbReadSlice(['employees', 'hrExpenses', 'attendance', 'hrMeta', 'hrCycle']);
     if (!db.employees) db.employees = [];
     if (!db.hrExpenses) db.hrExpenses = [];
     if (!db.attendance) db.attendance = [];
@@ -2341,7 +2355,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (typeof window.registerPosDatabaseRefresh === 'function') {
         window.registerPosDatabaseRefresh(async () => {
-            db = await window.dbRead();
+            db = await window.dbReadSlice(['employees', 'hrExpenses', 'attendance', 'hrMeta', 'hrCycle']);
             if (!db.employees) db.employees = [];
             if (!db.hrExpenses) db.hrExpenses = [];
             if (!db.attendance) db.attendance = [];

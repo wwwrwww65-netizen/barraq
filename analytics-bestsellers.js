@@ -124,9 +124,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const qty = Number(it.qty) || 1;
                 const price = Number(it.price) || 0;
                 const revenue = qty * price;
+                const image = it.image || it.imgSrc || 'placeholder.svg';
 
                 if (!itemMap.has(name)) {
-                    itemMap.set(name, { name, qty: 0, revenue: 0 });
+                    itemMap.set(name, { name, qty: 0, revenue: 0, image });
                 }
                 const existing = itemMap.get(name);
                 existing.qty += qty;
@@ -264,7 +265,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td>${getRankBadge(index)}</td>
                 <td>
                     <div class="item-name-cell">
-                        <div class="item-avatar"><i class="ph-fill ph-bowl-food"></i></div>
+                        <div class="item-avatar" style="overflow:hidden; display:flex; align-items:center; justify-content:center; background:rgba(59,130,246,0.1); padding:0;">
+                            <img src="${item.image}" alt="${item.name}" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='placeholder.svg'">
+                        </div>
                         <span style="font-weight:700;">${item.name}</span>
                     </div>
                 </td>

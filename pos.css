@@ -1015,3 +1015,56 @@ body.light-theme .btn-pay,
 body.light-theme .btn-pay i {
     color: #ffffff !important;
 }
+
+/* =========================================
+   SKELETON LOADERS
+   ========================================= */
+@keyframes skeleton-pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 0.3; }
+    100% { opacity: 0.6; }
+}
+
+.skeleton-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: skeleton-pulse 1.5s infinite ease-in-out;
+}
+
+.skeleton-img {
+    height: 140px;
+    background: rgba(255,255,255,0.05);
+}
+body.light-theme .skeleton-img { background: rgba(0,0,0,0.05); }
+
+.skeleton-content {
+    padding: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.skeleton-line {
+    height: 16px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+}
+body.light-theme .skeleton-line { background: rgba(0,0,0,0.05); }
+
+.skeleton-line.short { width: 60%; }
+.skeleton-line.price { height: 20px; width: 40%; margin-top: auto; }
+
+.skeleton-cat {
+    min-width: 110px;
+    height: 80px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    animation: skeleton-pulse 1.5s infinite ease-in-out;
+}
+body.light-theme .skeleton-cat { background: #fff !important; }

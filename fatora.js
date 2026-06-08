@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const apiKeyInput = document.getElementById('fatora_api_key');
 
     // Load settings
-    const db = await window.dbRead();
+    const db = await window.dbReadSlice(['fatora_settings']);
     if (db.fatora_settings) {
         let envRadio = document.querySelector(`input[name="fatora_env"][value="${db.fatora_settings.env || 'sandbox'}"]`);
         if(envRadio) envRadio.checked = true;
@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (typeof window.registerPosDatabaseRefresh === 'function') {
         window.registerPosDatabaseRefresh(async () => {
-            const db = await window.dbRead();
+            const db = await window.dbReadSlice(['fatora_settings']);
             if (db.fatora_settings) {
                 const envRadio = document.querySelector(`input[name="fatora_env"][value="${db.fatora_settings.env || 'sandbox'}"]`);
                 if (envRadio) envRadio.checked = true;

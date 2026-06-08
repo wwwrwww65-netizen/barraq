@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load data
     async function loadData() {
         try {
-            const dbData = await window.dbRead();
+            const dbData = await window.dbReadSlice(['orders']);
             const targetCompany = new URLSearchParams(window.location.search).get('company') || 'هنقرستيشن';
             
             // تحديث نصوص الواجهة لتناسب الشركة المختارة
@@ -495,7 +495,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const notes = document.getElementById('hs-payment-notes-' + orderId).value || '';
 
         try {
-            const dbData = await window.dbRead();
+            const dbData = await window.dbReadArchive();
             const orderIndex = dbData.orders.findIndex(o => o.orderId === orderId);
             
             if (orderIndex === -1) {
@@ -756,7 +756,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
-            const dbData = await window.dbRead();
+            const dbData = await window.dbReadArchive();
             const now = new Date();
             const periodNote = `الفترة: ${dateLabel}`;
 

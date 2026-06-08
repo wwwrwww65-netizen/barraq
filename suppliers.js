@@ -18,7 +18,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modal = document.getElementById('supModal');
     if (!tbody || !searchInput || !modal) return;
 
-    let db = await window.dbRead();
+    if (tbody) {
+        tbody.innerHTML = Array(6).fill(`
+            <tr class="skeleton-row">
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+            </tr>
+        `).join('');
+    }
+
+    let db = await window.dbReadSlice(['suppliers', 'supplierPayments', 'purchases']);
     if (!db.suppliers) db.suppliers = [];
     if (!db.supplierPayments) db.supplierPayments = [];
     let suppliers = db.suppliers;
@@ -204,7 +217,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function openSupplierProfile(id) {
         // Refresh DB to ensure we have latest purchases/payments
-        db = await window.dbRead();
+        db = await window.dbReadSlice(['suppliers', 'supplierPayments', 'purchases']);
         
         activeSupId = id;
         const sup = (db.suppliers || []).find(s => s.id === id);
@@ -539,7 +552,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (typeof window.registerPosDatabaseRefresh === 'function') {
         window.registerPosDatabaseRefresh(async () => {
-            db = await window.dbRead();
+            db = await window.dbReadSlice(['suppliers', 'supplierPayments', 'purchases']);
             suppliers = db.suppliers || [];
             await render();
         });

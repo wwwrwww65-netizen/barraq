@@ -48,7 +48,32 @@
     }
 
     async function refreshLiquidity() {
-        const db = (await window.dbRead()) || {};
+        const bankTrxBodyInit = document.getElementById('bank-trx-body');
+        if (bankTrxBodyInit) {
+            bankTrxBodyInit.innerHTML = Array(6).fill(`
+                <tr class="skeleton-row">
+                    <td><div class="skeleton-line short"></div></td>
+                    <td><div class="skeleton-line medium"></div></td>
+                    <td><div class="skeleton-line medium"></div></td>
+                    <td><div class="skeleton-line full"></div></td>
+                </tr>
+            `).join('');
+        }
+        const oiTbodyInit = document.getElementById('oi-tbody');
+        if (oiTbodyInit) {
+            oiTbodyInit.innerHTML = Array(6).fill(`
+                <tr class="skeleton-row">
+                    <td><div class="skeleton-line short"></div></td>
+                    <td><div class="skeleton-line medium"></div></td>
+                    <td><div class="skeleton-line full"></div></td>
+                    <td><div class="skeleton-line medium"></div></td>
+                    <td><div class="skeleton-line short"></div></td>
+                    <td><div class="skeleton-line short"></div></td>
+                </tr>
+            `).join('');
+        }
+
+        const db = (await window.dbReadSlice(['orders', 'purchases', 'expenses', 'bankTransfers', 'returns', 'hrExpenses', 'otherIncome'])) || {};
         const posOrders = db.orders || [];
         const erpPurchases = db.purchases || [];
         const erpExpenses = db.expenses || [];
@@ -210,7 +235,7 @@
             btn.addEventListener('click', async () => {
                 const id = btn.getAttribute('data-oid');
                 if (!id || !confirm('حذف هذا الإيراد من السجل؟')) return;
-                const db = await window.dbRead();
+                const db = await window.dbReadArchive();
                 db.otherIncome = (db.otherIncome || []).filter((r) => String(r.id) !== String(id));
                 await window.dbWrite(db);
                 await refreshLiquidity();
@@ -258,7 +283,7 @@
                     date: new Date().toISOString(),
                 };
 
-                const db = await window.dbRead();
+                const db = await window.dbReadArchive();
                 if (!db.bankTransfers) db.bankTransfers = [];
                 db.bankTransfers.push(trx);
                 await window.dbWrite(db);
@@ -308,7 +333,7 @@
                     date: now.toISOString().split('T')[0],
                     timestamp: now.getTime(),
                 };
-                const db = await window.dbRead();
+                const db = await window.dbReadArchive();
                 if (!db.otherIncome) db.otherIncome = [];
                 db.otherIncome.push(row);
                 await window.dbWrite(db);

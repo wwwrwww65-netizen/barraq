@@ -58,8 +58,9 @@ function isNonZeroMoneyDisplay(s) {
 
 /**
  * @param {object} [receiptSnap] — إن وُجد يُبنى HTML منه (أمثل قبل مسح السلة/بعد IPC طويل). وإلا يُقرأ من عناصر #r-* في الصفحة.
+ * @param {string} [cachedLogo] — شعار base64 مُحمَّل مسبقاً — يتجنب قراءة القرص في كل فاتورة
  */
-async function printCustomerReceipt(receiptSnap) {
+async function printCustomerReceipt(receiptSnap, cachedLogo) {
     const { ipcRenderer } = require('electron');
     const path = require('path');
     const fs = require('fs');
@@ -70,7 +71,8 @@ async function printCustomerReceipt(receiptSnap) {
     let restTax = '310000000000003';
     let restBranch = 'شارع المعارض جوار محطة مزايا';
     let restPhone = '';
-    let logoBase64 = '';
+    // ⚡ استخدم الشعار المُمرَّر مباشرةً إن توفّر — بدون أي قراءة للقرص
+    let logoBase64 = cachedLogo || '';
     
     if (sysSet) {
         try {
@@ -85,22 +87,24 @@ async function printCustomerReceipt(receiptSnap) {
             if (s.branch) restBranch = s.branch;
             if (s.phone) restPhone = s.phone;
             
-            // Handle logo - convert to base64 if needed
-            if (s.logo && s.logo.startsWith('data:')) {
-                logoBase64 = s.logo; // Already base64
-            } else if (s.logo) {
-                // Convert image file to base64
-                try {
-                    const logoPath = path.join(__dirname, s.logo);
-                    if (fs.existsSync(logoPath)) {
-                        const logoBuffer = fs.readFileSync(logoPath);
-                        const ext = path.extname(s.logo).toLowerCase();
-                        const mimeType = ext === '.png' ? 'image/png' : 
-                                       ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'image/png';
-                        logoBase64 = `data:${mimeType};base64,${logoBuffer.toString('base64')}`;
+            // Handle logo — فقط إذا لم يُمرَّر شعار مُخزَّن مسبقاً
+            if (!logoBase64) {
+                if (s.logo && s.logo.startsWith('data:')) {
+                    logoBase64 = s.logo; // Already base64
+                } else if (s.logo) {
+                    // Convert image file to base64
+                    try {
+                        const logoPath = path.join(__dirname, s.logo);
+                        if (fs.existsSync(logoPath)) {
+                            const logoBuffer = fs.readFileSync(logoPath);
+                            const ext = path.extname(s.logo).toLowerCase();
+                            const mimeType = ext === '.png' ? 'image/png' : 
+                                           ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'image/png';
+                            logoBase64 = `data:${mimeType};base64,${logoBuffer.toString('base64')}`;
+                        }
+                    } catch(e) {
+                        console.error('Logo conversion error:', e);
                     }
-                } catch(e) {
-                    console.error('Logo conversion error:', e);
                 }
             }
         } catch(e){}

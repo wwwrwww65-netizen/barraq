@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const returnsTbody = document.getElementById('returns-tbody');
     const emptyReturns = document.getElementById('empty-returns');
 
-    let db = await window.dbRead();
+    let db = await window.dbReadSlice(['orders', 'returns']);
     if (!db.orders) db.orders = [];
     if (!db.returns) db.returns = [];
 
@@ -141,7 +141,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function refreshUi() {
-        db = await window.dbRead();
+        if (returnsTbody) {
+            emptyReturns.style.display = 'none';
+            returnsTbody.innerHTML = Array(5).fill(`
+                <tr class="skeleton-row">
+                    <td><div class="skeleton-line short"></div></td>
+                    <td><div class="skeleton-line medium"></div></td>
+                    <td><div class="skeleton-line short"></div></td>
+                    <td><div class="skeleton-line medium"></div></td>
+                    <td><div class="skeleton-line short"></div></td>
+                    <td><div class="skeleton-line short"></div></td>
+                </tr>
+            `).join('');
+        }
+        db = await window.dbReadSlice(['orders', 'returns']);
         if (!db.orders) db.orders = [];
         if (!db.returns) db.returns = [];
         renderReturnsTable();
@@ -154,7 +167,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert('الرجاء إدخال رقم الطلب.');
             return;
         }
-        db = await window.dbRead();
+        db = await window.dbReadSlice(['orders', 'returns']);
         if (!db.orders) db.orders = [];
         if (!db.returns) db.returns = [];
 
@@ -206,7 +219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             timestamp: Date.now(),
         };
 
-        const writeDb = await window.dbRead();
+        const writeDb = await window.dbReadArchive();
         if (!writeDb.returns) writeDb.returns = [];
         if (!writeDb.orders) writeDb.orders = [];
 

@@ -44,6 +44,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     let orders = [];
 
     async function fetchOrders() {
+        const colNew = document.getElementById('col-new');
+        const colPrep = document.getElementById('col-prep');
+        const colReady = document.getElementById('col-ready');
+        
+        const skeletonHtml = Array(3).fill(`
+            <div class="skeleton-card kds-ticket" style="height: 200px; margin-bottom: 15px;">
+                <div class="skeleton-content">
+                    <div class="skeleton-line full" style="margin-bottom: 12px;"></div>
+                    <div class="skeleton-line medium" style="margin-bottom: 8px;"></div>
+                    <div class="skeleton-line short"></div>
+                </div>
+            </div>
+        `).join('');
+
+        if (colNew) colNew.innerHTML = skeletonHtml;
+        if (colPrep) colPrep.innerHTML = skeletonHtml;
+        if (colReady) colReady.innerHTML = skeletonHtml;
+
         // ✅ Fetch from JSON database via IPC
         const allOrders = await ipcRenderer.invoke('db-get-orders') || [];
 
@@ -58,7 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Assign kitchenStatus to new orders that don't have it + persist back to DB
         let modified = false;
-        const db = await window.dbRead();
+        const db = await window.dbReadSlice(['orders', 'kitchenTx', 'kitchenStock']);
         orders.forEach(o => {
             // Find matching order in db.orders
             const dbOrder = (db.orders || []).find(x => x.orderId === o.orderId);
@@ -84,7 +102,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Handle Button Clicks - Update Kitchen Status in DB
     window.updateKDSStatus = async function(orderId, nextStatus) {
-        const db = await window.dbRead();
+        const db = await window.dbReadSlice(['orders', 'kitchenTx', 'kitchenStock']);
         const dbOrder = (db.orders || []).find(o => o.orderId === orderId);
         
         if(dbOrder) {

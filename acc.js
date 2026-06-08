@@ -9,7 +9,36 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.MisterCasherCurrency
                 ? MisterCasherCurrency.format(n)
                 : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س';
-        const db = await window.dbRead();
+        const bankTrxBodyInit = document.getElementById('bank-trx-body');
+        if(bankTrxBodyInit) {
+            bankTrxBodyInit.innerHTML = Array(6).fill(`
+                <tr class="skeleton-row">
+                    <td><div class="skeleton-line short"></div></td>
+                    <td><div class="skeleton-line medium"></div></td>
+                    <td><div class="skeleton-line medium"></div></td>
+                    <td><div class="skeleton-line full"></div></td>
+                </tr>
+            `).join('');
+        }
+        
+        const expTbodyInit = document.getElementById('exp-tbody');
+        if (expTbodyInit) {
+            expTbodyInit.innerHTML = Array(6).fill(`
+                <tr class="skeleton-row">
+                    <td><div class="skeleton-line short"></div></td>
+                    <td><div class="skeleton-line short"></div></td>
+                    <td><div class="skeleton-line medium"></div></td>
+                    <td><div class="skeleton-line full"></div></td>
+                    <td><div class="skeleton-line medium"></div></td>
+                    <td><div class="skeleton-line medium"></div></td>
+                    <td><div class="skeleton-line short"></div></td>
+                    <td><div class="skeleton-line medium"></div></td>
+                    <td><div class="skeleton-line short"></div></td>
+                </tr>
+            `).join('');
+        }
+
+        const db = await window.dbReadSlice(['orders_all', 'purchases', 'expenses', 'bankTransfers', 'returns', 'hrExpenses', 'otherIncome']);
         let posOrders = db.orders || [];
         let erpPurchases = db.purchases || [];
         let erpExpenses = db.expenses || [];
@@ -871,7 +900,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
             
             try {
-                const dbNow = await window.dbRead();
+                const dbNow = await window.dbReadArchive();
                 if(!dbNow.expenses) dbNow.expenses = [];
                 
                 // التأكد من عدم التكرار قبل الإضافة
@@ -1188,7 +1217,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!confirmed) return;
 
             try {
-                const dbNow = await window.dbRead();
+                const dbNow = await window.dbReadArchive();
                 if (!dbNow.expenses) dbNow.expenses = [];
                 const idx = dbNow.expenses.findIndex(x => x.id === expRec.id);
                 if (idx > -1) dbNow.expenses.splice(idx, 1);
@@ -1227,7 +1256,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!ok) return;
             
             try {
-                const dbNow = await window.dbRead();
+                const dbNow = await window.dbReadArchive();
                 if (!dbNow.hrExpenses) dbNow.hrExpenses = [];
                 if (hrIdx < 0 || hrIdx >= dbNow.hrExpenses.length) return;
                 const oldRec = dbNow.hrExpenses[hrIdx];
@@ -1324,7 +1353,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return;
                 }
 
-                const dbNow = await window.dbRead();
+                const dbNow = await window.dbReadArchive();
                 if (!dbNow.expenses) dbNow.expenses = [];
                 if (!dbNow.hrExpenses) dbNow.hrExpenses = [];
 

@@ -35,7 +35,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tbody = document.querySelector('.inv-table tbody');
     if (!tbody) return;
 
-    let db = await window.dbRead();
+    tbody.innerHTML = Array(6).fill(`
+        <tr class="skeleton-row">
+            <td><div class="skeleton-line short"></div></td>
+            <td><div class="skeleton-line medium"></div></td>
+            <td><div class="skeleton-line short"></div></td>
+            <td><div class="skeleton-line short"></div></td>
+            <td><div class="skeleton-line medium"></div></td>
+            <td><div class="skeleton-line medium"></div></td>
+            <td><div class="skeleton-line short"></div></td>
+            <td><div class="skeleton-line short"></div></td>
+        </tr>
+    `).join('');
+
+    let db = await window.dbReadSlice(['inventory', 'inventoryTx', 'purchases', 'suppliers', 'deliveryCompanies']);
     if (!db.inventory) db.inventory = [];
     if (!db.inventoryTx) db.inventoryTx = [];
 

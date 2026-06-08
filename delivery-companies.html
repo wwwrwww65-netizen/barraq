@@ -1,6 +1,7 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+    <script src="page-transition.js"></script>
     <script>
         (function () {
             try {
@@ -17,6 +18,9 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="light-theme-fixes.css">
     <link rel="stylesheet" href="delivery-companies.css">
+    <!-- Preload Fonts to prevent FOUC -->
+    <link rel="preload" href="node_modules/@fontsource/cairo/files/cairo-arabic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="node_modules/@fontsource/cairo/files/cairo-arabic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/regular/style.css">
     <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/fill/style.css">
@@ -42,7 +46,7 @@
         <aside class="sidebar" id="sidebar-placeholder"></aside>
         
         <main class="main-content">
-            <header class="top-header">
+            <header class="top-header">`n    <script src="page-transition.js"></script>
                 <div class="header-left-title">
                     <h1>إدارة شركات التوصيل</h1>
                     <p>أضف وقم بتعديل شركاء التوصيل لتوزيع مبالغ المبيعات</p>

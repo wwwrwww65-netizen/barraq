@@ -92,6 +92,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const container = document.getElementById('dynamic-delivery-kpi-container');
             if (container) container.innerHTML = snap.deliveryHtml;
         }
+        // Restore recent orders and top items
+        if (snap && snap.recentOrdersHtml) {
+            const tbody = document.querySelector('.recent-orders tbody');
+            if(tbody) tbody.innerHTML = snap.recentOrdersHtml;
+        }
+        if (snap && snap.topItemsHtml) {
+            const itemsContainer = document.querySelector('.items-list');
+            if(itemsContainer) itemsContainer.innerHTML = snap.topItemsHtml;
+        }
     } catch(e) {}
 
     let dashboardChart = null;
@@ -102,7 +111,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (typeof window.dbReadSlice === 'function') {
             db = await window.dbReadSlice(['orders', 'returns', 'hrExpenses', 'expenses', 'deliveryCompanies', 'inventory']);
         } else {
-            db = await window.dbRead();
+            db = await window.dbReadArchive();
         }
         let orders = db.orders || [];
         let returns = db.returns || [];
@@ -114,20 +123,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Apply global date filter and Z-report session cutoff
         if(window.isDateInPeriod) {
-            orders = orders.filter(o => 
-                o.status !== 'returned' &&
-                window.isDateInPeriod(o.timestamp || o.dateStr || o.date, period)
-            );
-            returns = returns.filter(r => 
-                window.isDateInPeriod(r.timestamp || r.date, period)
-            );
-            hrExpenses = hrExpenses.filter(h => 
-                window.isDateInPeriod(h.timestamp || h.date, period)
-            );
+            orders = orders.filter(o => {
+                const t = o.timestamp || o.createdAt || o.dateStr || o.date || 0;
+                return o.status !== 'returned' &&
+                       window.isDateInPeriod(t, period) &&
+                       (period !== 'today' || t >= lastZReport);
+            });
+            returns = returns.filter(r => {
+                const t = r.timestamp || r.date || 0;
+                return window.isDateInPeriod(t, period) &&
+                       (period !== 'today' || t >= lastZReport);
+            });
+            hrExpenses = hrExpenses.filter(h => {
+                const t = h.timestamp || h.createdAt || h.date || 0;
+                return window.isDateInPeriod(t, period) &&
+                       (period !== 'today' || t >= lastZReport);
+            });
         }
 
-        // تمت إزالة فلتر الوردية هنا لكي تعرض بطاقات "اليوم" بيانات اليوم كاملاً 00:00 إلى 23:59.
-        // حسابات الدرج وتقارير الوردية سيتم تصفيتها لاحقاً في الأسفل.
+        // تم إعادة فلتر الوردية لكي تتصفر بيانات لوحة القيادة عند إقفال اليوم/الوردية
+        // وتصحيح حساب رصيد الدرج لتجنب التكرار.
 
         // --- 1. CALCULATE KPIs ---
     let dailySales = 0;
@@ -220,7 +235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             o.items.forEach(itm => {
                 totalItemsNum += itm.qty;
                 if(!itemSalesMap[itm.name]) {
-                    itemSalesMap[itm.name] = { qty: 0, revenue: 0, category: 'موجبات' };
+                    itemSalesMap[itm.name] = { qty: 0, revenue: 0, category: 'موجبات', image: itm.image || itm.imgSrc || 'placeholder.svg' };
                 }
                 itemSalesMap[itm.name].qty += itm.qty;
                 itemSalesMap[itm.name].revenue += (itm.price * itm.qty);
@@ -378,11 +393,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         deliveryContainer.innerHTML = cardsHtml;
     }
 
-    // ⚡ حفظ لقطة (Snapshot) للأرقام في LocalStorage لعرضها فوراً المرة القادمة
+    // ⚡ حفظ لقطة (Snapshot) للأرقام واللوائح في LocalStorage لعرضها فوراً المرة القادمة
     try {
+        const tbody = document.querySelector('.recent-orders tbody');
+        const itemsContainer = document.querySelector('.items-list');
         const snap = { 
             kpis: Array.from(kpiValues).slice(0,6).map(el => el.innerHTML),
-            deliveryHtml: deliveryContainer ? deliveryContainer.innerHTML : ''
+            deliveryHtml: deliveryContainer ? deliveryContainer.innerHTML : '',
+            recentOrdersHtml: tbody ? tbody.innerHTML : '',
+            topItemsHtml: itemsContainer ? itemsContainer.innerHTML : ''
         };
         localStorage.setItem('_dashboard_kpi_snap', JSON.stringify(snap));
     } catch(e) {}
@@ -436,7 +455,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 name: k,
                 qty: itemSalesMap[k].qty,
                 revenue: itemSalesMap[k].revenue,
-                cat: itemSalesMap[k].category
+                cat: itemSalesMap[k].category,
+                image: itemSalesMap[k].image
             };
         }).sort((a,b) => b.qty - a.qty).slice(0, 4); // Top 4
 
@@ -447,8 +467,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             const topItemsRows = topItems.map((itm) => `
                 <div class="item-row">
-                    <div style="width:45px; height:45px; border-radius:8px; background:rgba(59, 130, 246, 0.1); display:flex; align-items:center; justify-content:center; color:var(--accent-blue); font-size:24px;">
-                        <i class="ph-fill ph-pizza"></i>
+                    <div style="width:45px; height:45px; border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; background:rgba(59, 130, 246, 0.1);">
+                        <img src="${itm.image}" alt="${itm.name}" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='placeholder.svg'">
                     </div>
                     <div class="item-info">
                         <h4>${itm.name}</h4>
@@ -499,7 +519,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: window.MC_PERF && window.MC_PERF.isWeak ? false : undefined,
+                animation: false, // Disabled to prevent the "reloading from scratch" feel
                 plugins: { legend: { display: false } },
                 scales: {
                     x: {
@@ -773,7 +793,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const db =
             typeof window.dbReadSlice === 'function'
                 ? await window.dbReadSlice(['orders', 'returns', 'hrExpenses', 'expenses'])
-                : await window.dbRead();
+                : await window.dbReadArchive();
         const allOrders = db.orders || [];
         const allReturns = db.returns || [];
         const allExpenses = (db.hrExpenses || []).concat(db.expenses || []);
@@ -898,7 +918,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         let db =
             typeof window.dbReadSlice === 'function'
                 ? await window.dbReadSlice(['orders', 'returns', 'hrExpenses', 'expenses'])
-                : await window.dbRead();
+                : await window.dbReadArchive();
         if (!db || typeof db !== 'object') {
             throw new Error('صيغة قاعدة البيانات غير صالحة (dbRead لم يرجع كائن).');
         }
@@ -1187,7 +1207,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 saved = r && r.success;
             }
             if (!saved) {
-                const db = await window.dbRead();
+                const db = await window.dbReadArchive();
                 const mergeClosures = typeof window.mergeDayClosureRecords === 'function'
                     ? window.mergeDayClosureRecords
                     : (dbList, hist) => (dbList || []).concat(hist || []);

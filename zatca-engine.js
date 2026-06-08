@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const child_process = require('child_process');
+const sqlDb = require('./sql-database');
 
 class ZatcaEngine {
     constructor(dbPath) {
@@ -149,12 +150,21 @@ class ZatcaEngine {
     }
 
     getDbData() {
-        try { return JSON.parse(fs.readFileSync(this.dbPath, 'utf8')); }
+        try { 
+            const slice = sqlDb.readSlice(['zatca_keys', 'zatca_csid']); 
+            return {
+                zatca_keys: slice.zatca_keys || null,
+                zatca_csid: slice.zatca_csid || null
+            };
+        }
         catch(e) { return {}; }
     }
 
     saveDbData(data) {
-        fs.writeFileSync(this.dbPath, JSON.stringify(data, null, 2));
+        const payload = {};
+        if (data.zatca_keys !== undefined) payload.zatca_keys = data.zatca_keys;
+        if (data.zatca_csid !== undefined) payload.zatca_csid = data.zatca_csid;
+        sqlDb.writeFull(payload);
     }
 
     saveKeysToDB(egs) {

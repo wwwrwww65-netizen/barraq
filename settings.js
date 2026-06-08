@@ -655,8 +655,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnGdRestore.addEventListener('click', async () => {
         if (
-            !confirm(
-                'تحذير: سيتم استبدال قاعدة البيانات على هذا الجهاز وإعدادات localStorage من آخر نسخة على Drive.\n\nأنصح بأخذ نسخة يدوية أولاً.\n\nهل تريد المتابعة؟'
+            !await ModernDialog.confirm(
+                'تحذير: سيتم استبدال قاعدة البيانات على هذا الجهاز وإعدادات localStorage من آخر نسخة على Drive.\n\nأنصح بأخذ نسخة يدوية أولاً.\n\nهل تريد المتابعة؟',
+                'تأكيد الاستعادة السحابية'
             )
         ) {
             return;
@@ -675,10 +676,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     } catch (e) {}
                 });
                 ipcRenderer.send('notify-db-changed');
-                alert('تمت الاستعادة. سيتم إعادة تحميل الصفحة.');
+                await ModernDialog.alert('تمت الاستعادة بنجاح. سيتم الآن إعادة تحميل الشاشة.', 'نجاح');
                 location.reload();
             } else {
-                alert('فشل الاستعادة: ' + (res.message || res.error || 'غير معروف'));
+                await ModernDialog.alert('فشل الاستعادة: ' + (res.message || res.error || 'غير معروف'), 'فشل');
             }
         } catch (e) {
             alert('خطأ: ' + (e && e.message));
@@ -853,12 +854,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (res.canceled) {
                     /* لا شيء */
                 } else if (res.success) {
-                    alert('تم حفظ النسخة في:\n' + (res.destDir || ''));
+                    await ModernDialog.alert('تم حفظ النسخة بنجاح في:\n' + (res.destDir || ''), 'اكتمل النسخ الاحتياطي');
                 } else {
-                    alert('فشل النسخ: ' + (res.error || 'غير معروف'));
+                    await ModernDialog.alert('فشل النسخ: ' + (res.error || 'غير معروف'), 'خطأ');
                 }
             } catch (e) {
-                alert('خطأ: ' + (e && e.message));
+                await ModernDialog.alert('خطأ: ' + (e && e.message), 'خطأ');
             }
             btnLocalNow.innerHTML = orig;
             btnLocalNow.style.pointerEvents = 'auto';
@@ -930,7 +931,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 `📂 النسخة المختارة:\n${selectedRestoreFolder}\n\n` +
                 `هل أنت متأكد من المتابعة؟`;
 
-            if (!confirm(confirmMsg)) {
+            if (!await ModernDialog.confirm(confirmMsg, 'تأكيد الاستعادة')) {
                 return;
             }
 
@@ -945,13 +946,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (res.success) {
-                    alert('✅ تم استعادة النسخة الاحتياطية بنجاح!\n\nسيتم إعادة تشغيل التطبيق الآن.');
+                    await ModernDialog.alert('✅ تم استعادة النسخة الاحتياطية بنجاح!\n\nسيتم الآن إعادة تشغيل البرنامج لتطبيق البيانات الجديدة.', 'نجاح الاستعادة');
                     ipcRenderer.send('app-reload');
                 } else {
-                    alert('❌ فشلت عملية الاستعادة:\n' + (res.error || 'خطأ غير معروف'));
+                    await ModernDialog.alert('❌ فشلت عملية الاستعادة:\n' + (res.error || 'خطأ غير معروف'), 'فشل');
                 }
             } catch (e) {
-                alert('❌ خطأ أثناء الاستعادة:\n' + (e && e.message));
+                await ModernDialog.alert('❌ خطأ أثناء الاستعادة:\n' + (e && e.message), 'خطأ');
             } finally {
                 btnRestoreConfirm.innerHTML = origText;
                 btnRestoreConfirm.disabled = false;

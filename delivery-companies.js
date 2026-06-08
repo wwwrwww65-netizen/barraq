@@ -24,7 +24,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load data from DB
     async function loadData() {
         try {
-            const _db = await window.dbRead();
+            if (gridEl) {
+                gridEl.innerHTML = Array(6).fill(`
+                    <div class="skeleton-card company-card" style="height: 180px;">
+                        <div class="skeleton-content">
+                            <div class="skeleton-line full" style="margin-bottom: 12px;"></div>
+                            <div class="skeleton-line medium" style="margin-bottom: 8px;"></div>
+                            <div class="skeleton-line short"></div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            const _db = await window.dbReadSlice(['deliveryCompanies']);
             companies = _db.deliveryCompanies || [];
             
             // Seed default if empty

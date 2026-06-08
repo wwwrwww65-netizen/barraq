@@ -16,13 +16,23 @@
         systemNotifications:[], inventoryAlertState:{}, deliveryCompanies:[]
     };
 
+    window.dbReadArchive = async function() {
+        try {
+            const result = await ipcRenderer.invoke('db-read-full');
+            return result || _empty;
+        } catch(e) {
+            console.warn('[db-helper] dbReadArchive error:', e);
+            return _empty;
+        }
+    };
+
     /**
-     * قراءة كاملة لقاعدة البيانات — async (لا تعلّق الواجهة)
+     * قراءة كاملة لقاعدة البيانات المخصصة للواجهات السريعة — async
      * الاستخدام: const db = await window.dbRead();
      */
     window.dbRead = async function() {
         try {
-            const result = await ipcRenderer.invoke('db-read-full');
+            const result = await ipcRenderer.invoke('db-read-ui');
             return result || _empty;
         } catch(e) {
             console.warn('[db-helper] dbRead error:', e);
@@ -51,15 +61,48 @@
         }
     };
 
-    /** قراءة مفاتيح محددة فقط — أسرع من dbRead() على قواعد بيانات كبيرة */
+    /** 
+     * كاش ذكي في الذاكرة — يحتفظ بآخر نتيجة لكل slice
+     * يُعيد البيانات فوراً من الكاش ويُحدّث الخلفية بصمت
+     */
+    const _sliceCache = {};
+    const _CACHE_TTL = 5000; // 5 ثوانٍ كافية لمنع طلبات مكررة في نفس الصفحة
+
     window.dbReadSlice = async function(keys) {
+        const cacheKey = keys.join('|');
+        const now = Date.now();
+        const hit = _sliceCache[cacheKey];
+
+        // إذا يوجد كاش حديث (أقل من 5 ثوانٍ) → أعد فوراً
+        if (hit && (now - hit.ts) < _CACHE_TTL) {
+            return hit.data;
+        }
+
+        // إذا يوجد كاش قديم → أعده فوراً ثم حدّث في الخلفية (stale-while-revalidate)
+        if (hit) {
+            ipcRenderer.invoke('db-read-slice', keys).then(fresh => {
+                if (fresh && typeof fresh === 'object') {
+                    _sliceCache[cacheKey] = { data: fresh, ts: Date.now() };
+                }
+            }).catch(() => {});
+            return hit.data;
+        }
+
+        // أول مرة → انتظر الـ IPC وخزّن في الكاش
         try {
             const slice = await ipcRenderer.invoke('db-read-slice', keys);
-            return slice && typeof slice === 'object' ? slice : {};
+            const result = slice && typeof slice === 'object' ? slice : {};
+            _sliceCache[cacheKey] = { data: result, ts: Date.now() };
+            return result;
         } catch (e) {
             console.warn('[db-helper] dbReadSlice error:', e);
             return {};
         }
+    };
+
+    /** امسح الكاش عند تغيّر قاعدة البيانات */
+    window._invalidateDbSliceCache = function() {
+        Object.keys(_sliceCache).forEach(k => delete _sliceCache[k]);
     };
 
     window.dbUpdateOrder = async function(orderData) {
@@ -146,6 +189,10 @@
         }
         return Array.from(byKey.values());
     };
+
+    // امسح الكاش تلقائياً عند أي تغيير في قاعدة البيانات
+    ipcRenderer.on('db-file-updated', () => window._invalidateDbSliceCache());
+    ipcRenderer.on('notify-db-changed', () => window._invalidateDbSliceCache());
 
     console.log('[db-helper] ✅ Async DB helpers ready: dbRead(), dbWrite(), dbUpdate()');
 })();

@@ -21,7 +21,7 @@
         let expandedRow = null;
 
         async function loadDb() {
-            dbCache = await window.dbRead();
+            dbCache = await window.dbReadSlice(['journalEntries', 'chartOfAccounts']);
             return dbCache;
         }
 
@@ -115,6 +115,18 @@
         }
 
         async function refresh() {
+            if (tbody) {
+                tbody.innerHTML = Array(6).fill(`
+                    <tr class="skeleton-row">
+                        <td><div class="skeleton-line short"></div></td>
+                        <td><div class="skeleton-line medium"></div></td>
+                        <td><div class="skeleton-line medium"></div></td>
+                        <td><div class="skeleton-line full"></div></td>
+                        <td><div class="skeleton-line short"></div></td>
+                        <td><div class="skeleton-line short"></div></td>
+                    </tr>
+                `).join('');
+            }
             const db = await loadDb();
             JC.ensureChartOfAccounts(db);
             const entries = db.journalEntries || [];

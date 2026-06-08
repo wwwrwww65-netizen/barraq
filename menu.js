@@ -9,7 +9,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const xf = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
 
-    let db = await window.dbRead();
+    const pTbody = document.getElementById('products-table-body');
+    const cTbody = document.getElementById('categories-table-body');
+    if (pTbody) {
+        pTbody.innerHTML = Array(6).fill(`
+            <tr class="skeleton-row">
+                <td><div class="skeleton-img" style="width:50px; height:50px; border-radius:6px;"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+            </tr>
+        `).join('');
+    }
+    if (cTbody) {
+        cTbody.innerHTML = Array(6).fill(`
+            <tr class="skeleton-row">
+                <td><div class="skeleton-img" style="width:40px; height:40px; border-radius:8px;"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+            </tr>
+        `).join('');
+    }
+
+    let db = await window.dbReadSlice(['categories', 'products']);
     if(!db.categories) db.categories = [];
     if(!db.products) db.products = [];
 
@@ -254,7 +282,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function reloadMenuFromDb() {
-        db = await window.dbRead();
+        db = await window.dbReadSlice(['categories', 'products']);
         if (!db.categories) db.categories = [];
         if (!db.products) db.products = [];
         categories = db.categories;

@@ -1,6 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+    <script src="page-transition.js"></script>
     <script>
         (function () {
             try {
@@ -19,6 +20,9 @@
     <link rel="stylesheet" href="light-theme-fixes.css">
     <link rel="stylesheet" href="purchases.css">
     <link rel="stylesheet" href="purchases_modern.css">
+    <!-- Preload Fonts to prevent FOUC -->
+    <link rel="preload" href="node_modules/@fontsource/cairo/files/cairo-arabic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="node_modules/@fontsource/cairo/files/cairo-arabic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/regular/style.css">
     <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/fill/style.css">
@@ -62,7 +66,7 @@
 
         <!-- Main Content -->
         <main class="main-content pur-main">
-            <header class="top-header pur-header">
+            <header class="top-header pur-header">`n    <script src="page-transition.js"></script>
                 <div>
                     <h2>المشتريات وفواتير الموردين</h2>
                     <p style="color:var(--text-secondary); font-size:14px; margin-top:5px;">سجل المشتريات الذي يغذي المخازن ويرتبط بحسابات الموردين المباشرة.</p>

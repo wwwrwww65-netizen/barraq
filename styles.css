@@ -1258,7 +1258,7 @@ body:not(.light-theme) .theme-toggle-btn:hover {
 @media (max-width: 480px) {
     .kpi-cards { grid-template-columns: 1fr 1fr; gap: 6px; }
     .kpi-card { padding: 10px 8px; }
-    .kpi-value { /* keep clamp() from base */ }
+
     .currency { font-size: 10px; }
     .dashboard-grid { padding: 8px; gap: 8px; }
     /* الـ modal: عرض كامل تقريباً */
@@ -1521,7 +1521,69 @@ body:not(.light-theme) .theme-toggle-btn:hover {
 }
 
 /* Force Instant UI Globally (Requested by User) */
-* {
+*:not(.skeleton-line):not(.skeleton-card):not(.skeleton-cat) {
     transition-duration: 0.01s !important;
     animation-duration: 0.01s !important;
 }
+
+/* =========================================
+   GLOBAL SKELETON LOADERS
+   ========================================= */
+@keyframes skeleton-pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 0.3; }
+    100% { opacity: 0.6; }
+}
+
+.skeleton-row td {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.skeleton-line {
+    height: 16px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+    animation: skeleton-pulse 1.5s infinite ease-in-out !important;
+}
+body.light-theme .skeleton-line { background: rgba(0,0,0,0.05); }
+
+.skeleton-line.short { width: 40%; }
+.skeleton-line.medium { width: 70%; }
+.skeleton-line.full { width: 100%; }
+
+.skeleton-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: skeleton-pulse 1.5s infinite ease-in-out !important;
+}
+body.light-theme .skeleton-card { background: #fff !important; }
+
+.skeleton-img {
+    height: 140px;
+    background: rgba(255,255,255,0.05);
+}
+body.light-theme .skeleton-img { background: rgba(0,0,0,0.05); }
+
+.skeleton-content {
+    padding: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.skeleton-line.price { height: 20px; width: 40%; margin-top: auto; }
+
+.skeleton-cat {
+    min-width: 110px;
+    height: 80px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    animation: skeleton-pulse 1.5s infinite ease-in-out !important;
+}
+body.light-theme .skeleton-cat { background: #fff !important; }

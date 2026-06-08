@@ -35,7 +35,7 @@ function kitchenWhLabel(wh) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    currentDb = await window.dbRead();
+    currentDb = await window.dbReadSlice(['kitchenTx', 'kitchenStock', 'inventory', 'issueOrders']);
     if (!currentDb.kitchenTx) {
         await window.dbUpdate((db) => {
             if (!db.kitchenTx) db.kitchenTx = [];
@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (typeof window.registerPosDatabaseRefresh === 'function') {
         window.registerPosDatabaseRefresh(async () => {
-            currentDb = await window.dbRead();
+            currentDb = await window.dbReadSlice(['kitchenTx', 'kitchenStock', 'inventory', 'issueOrders']);
             await switchTab(kpActiveTab);
             navItems.forEach((nav) => {
                 nav.classList.toggle('active', nav.getAttribute('data-tab') === kpActiveTab);
@@ -201,7 +201,7 @@ async function switchTab(tab) {
     contentArea.innerHTML = '';
     
     // Always fetch latest DB before rendering any tab to ensure dropdowns and stats are strictly synced
-    currentDb = await window.dbRead();
+    currentDb = await window.dbReadSlice(['kitchenTx', 'kitchenStock', 'inventory', 'issueOrders']);
 
     if (tab === 'dashboard') {
         pageTitle.innerText = 'لوحة رئيسية الإنتاج';
@@ -240,7 +240,7 @@ function generateTxId(prefix) {
 // UI Actions API bound to window so they work from generic HTML strings
 window.confirmKitchenReceiveOrder = async function(orderId) {
     try {
-        const db = await window.dbRead();
+        const db = await window.dbReadSlice(['issueOrders', 'kitchenTx', 'kitchenStock', 'inventory']);
         if (!db.issueOrders) return;
         
         const orderIdx = db.issueOrders.findIndex(o => o.id === orderId);
@@ -354,7 +354,7 @@ window.saveKitchenReceive = async function() {
         return;
     }
 
-    const db = await window.dbRead();
+    const db = await window.dbReadSlice(['inventory', 'kitchenTx', 'kitchenStock']);
     const invItem = (db.inventory || []).find(
         (i) => i.name === itemName && (i.warehouseId || 'main') === sourceWh
     );
@@ -463,7 +463,7 @@ window.saveKitchenReceive = async function() {
         }
     });
 
-    currentDb = await window.dbRead();
+    currentDb = await window.dbReadSlice(['kitchenTx', 'kitchenStock', 'inventory', 'issueOrders']);
 
     const prefs = getKitchenPrefs();
     if (prefs.autoPrintReceive) {
@@ -503,7 +503,7 @@ window.saveKitchenHandover = async function() {
         // (No inventory deduction on handover — items were already pulled from warehouse on receive)
     });
 
-    currentDb = await window.dbRead();
+    currentDb = await window.dbReadSlice(['kitchenTx', 'kitchenStock', 'inventory', 'issueOrders']);
 
     alert(`✅ تم حفظ سند التسليم #${newTx.id} للمبيعات بنجاح!`);
     switchTab('dashboard');
@@ -1369,7 +1369,7 @@ function renderStock() {
 
 // Syncs kitchenStock purely from the global inventory (the master source of truth)
 async function syncKitchenStockToInventory(forceFromLog = false) {
-    const db = await window.dbRead();
+    const db = await window.dbReadSlice(['inventory', 'kitchenStock']);
     let changed = false;
     if (!db.inventory) { db.inventory = []; }
     const restaurantInv = db.inventory.filter(i => i.warehouseId === 'restaurant');

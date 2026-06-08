@@ -59,25 +59,54 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function generateOrderId() {
         try {
-            const dbData = await window.dbRead();
-            const ord = dbData.orders || [];
-            zatcaMeta.icv = ord.length > 0 ? ord.length + 1 : 1;
+            // ⚡ جلب رقم الطلب الأعلى مباشرة من SQL — لا نجلب البيانات الكاملة للطلبات
+            const [maxNum, lastMeta] = await Promise.all([
+                ipcRenderer.invoke('db-get-max-order-number'),
+                ipcRenderer.invoke('db-get-last-order-meta'),
+            ]);
 
-            if (ord.length > 0) {
-                const prev = ord[ord.length - 1];
-                if (prev.invoiceHash) zatcaMeta.pih = prev.invoiceHash;
+            const maxId = Number(maxNum) || 0;
+            zatcaMeta.icv = maxId > 0 ? maxId + 1 : 1;
+
+            if (lastMeta && lastMeta.invoiceHash) {
+                zatcaMeta.pih = lastMeta.invoiceHash;
             }
 
             zatcaMeta.uuid = crypto.randomUUID();
-            return '#INV-' + String(zatcaMeta.icv).padStart(5, '0');
+            return "#INV-" + String(zatcaMeta.icv).padStart(5, "0");
         } catch(e) {
+            console.error(e);
             zatcaMeta.icv++;
             zatcaMeta.uuid = crypto.randomUUID();
-            return '#INV-' + String(zatcaMeta.icv).padStart(5, '0');
+            return "#INV-" + String(zatcaMeta.icv).padStart(5, "0");
         }
     }
 
-    let orderId = await generateOrderId();
+    // ⚡ إظهار شاشات الهيكل (Skeleton Screens) أثناء انتظار البيانات
+    const _tempGrid = document.getElementById('products-grid');
+    const _tempCat = document.querySelector('.pos-categories');
+    if (_tempGrid) {
+        _tempGrid.innerHTML = Array(12).fill(`
+            <div class="skeleton-card">
+                <div class="skeleton-img"></div>
+                <div class="skeleton-content">
+                    <div class="skeleton-line"></div>
+                    <div class="skeleton-line short"></div>
+                    <div class="skeleton-line price"></div>
+                </div>
+            </div>`).join('');
+    }
+    if (_tempCat) {
+        _tempCat.innerHTML = Array(6).fill(`<div class="skeleton-cat"></div>`).join('');
+    }
+
+    // ⚡ تشغيل generateOrderId و dbReadSlice بالتوازي (بدلاً من الانتظار التسلسلي)
+    // يقلص وقت تحميل الصفحة إلى النصف تقريباً
+    const [orderId_init, _db] = await Promise.all([
+        generateOrderId(),
+        window.dbReadSlice(['categories', 'deliveryCompanies', 'products'])
+    ]);
+    let orderId = orderId_init;
     document.getElementById('display-order-id').innerText = orderId;
 
     // Elements
@@ -89,10 +118,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     const formatCurrency = (amount) =>
         window.MisterCasherCurrency ? MisterCasherCurrency.format(amount) : Number(amount).toFixed(2) + ' ر.س';
 
+    // ⚡ تحميل الشعار مرة واحدة فقط عند تشغيل الصفحة — يتجنب قراءة القرص في كل فاتورة
+    let _cachedLogoBase64 = '';
+    (function _preloadLogo() {
+        try {
+            const _fs = require('fs');
+            const _path = require('path');
+            const ss = JSON.parse(localStorage.getItem('restaurant_settings') || '{}');
+            if (ss.logo && ss.logo.startsWith('data:')) {
+                _cachedLogoBase64 = ss.logo;
+            } else if (ss.logo) {
+                const lp = _path.join(__dirname, ss.logo);
+                if (_fs.existsSync(lp)) {
+                    const buf = _fs.readFileSync(lp);
+                    const ext = _path.extname(ss.logo).toLowerCase();
+                    const mime = ext === '.png' ? 'image/png' : (ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'image/png');
+                    _cachedLogoBase64 = `data:${mime};base64,${buf.toString('base64')}`;
+                }
+            }
+            if (!_cachedLogoBase64) {
+                const def = _path.join(__dirname, '2222.png');
+                if (_fs.existsSync(def)) {
+                    const buf = _fs.readFileSync(def);
+                    _cachedLogoBase64 = `data:image/png;base64,${buf.toString('base64')}`;
+                }
+            }
+        } catch(e) { console.warn('[POS] Logo preload failed:', e.message); }
+    })();
+
     /* ===============================
        Dynamic Data Loading from JSON DB
     =============================== */
-    const _db = await window.dbRead();
 
     let catData = _db.categories || JSON.parse(localStorage.getItem('pos_categories') || '[]');
     
@@ -835,7 +891,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Fatora Integration Hook
             try {
-                const dbData = await window.dbRead();
+                const dbData = await window.dbReadSlice(['fatora_settings']);
                 if (dbData.fatora_settings && dbData.fatora_settings.autoSync && dbData.fatora_settings.apiKey) {
                     console.log(`[Fatora ZATCA API] Sending invoice ${orderId} to ZATCA...`);
                     // Create notification
@@ -898,8 +954,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             isEditingOrder = false;
             editingOrderId = '';
             setEditModeBadge(false);
-            orderId = await generateOrderId();
-            document.getElementById('display-order-id').innerText = orderId;
+            // ⚡ fire-and-forget: لا نُعيق الواجهة — رقم الطلب يتحدث في الخلفية
+            generateOrderId().then(newId => {
+                orderId = newId;
+                document.getElementById('display-order-id').innerText = orderId;
+            }).catch(() => {
+                zatcaMeta.icv++;
+                zatcaMeta.uuid = crypto.randomUUID();
+                orderId = '#INV-' + String(zatcaMeta.icv).padStart(5, '0');
+                document.getElementById('display-order-id').innerText = orderId;
+            });
 
             // Non-blocking notification instead of alert()
             const successNotif = document.createElement('div');
@@ -915,15 +979,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             // 1. Open drawer and show notification (Immediate)
             openCashDrawer();
 
-            // 2. Print Customer Receipt Ticket (Next priority)
+            // 2. Print Customer Receipt Ticket (Next priority) — نمرر الشعار المخزّن بدلاً من إعادة قراءة القرص
             try {
-                await printCustomerReceipt(thermalReceiptSnap);
+                await printCustomerReceipt(thermalReceiptSnap, _cachedLogoBase64);
             } catch(e) { console.error('Customer receipt printing failed', e); }
 
-            // 3. Silent print to category-specific printers (Kitchen/Last priority)
-            try {
-                await printToCategoryPrinters(orderData);
-            } catch(e) { console.error('Category printing failed', e); }
+            // 3. Silent print to category-specific printers (Kitchen) — فير اند فورغت: لا تحتاج انتظار الكاشير
+            printToCategoryPrinters(orderData).catch(e =>
+                console.error('Category printing failed', e)
+            );
 
         } catch(e) {
             console.error("Save or Print Failed", e);
@@ -1735,7 +1799,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function reloadPosCatalogFromNetwork() {
         if (cart.length > 0) return;
-        const d = await window.dbRead();
+        const d = await window.dbReadSlice(['categories', 'products']);
         catData = d.categories || JSON.parse(localStorage.getItem('pos_categories') || '[]');
         prodData = d.products || JSON.parse(localStorage.getItem('pos_products') || '[]');
         try {

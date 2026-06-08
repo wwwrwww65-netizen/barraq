@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // MAIN DATA FETCH & RENDER
     // ======================================================
     async function fetchRealDataAndUpdateCharts(range = 'all') {
-        const _db = (await window.dbRead()) || {};
+        const _db = (await window.dbReadSlice(['returns', 'hrExpenses', 'purchases'])) || {};
 
         // Live orders from SQLite
         let orders = await ipcRenderer.invoke('db-get-orders') || [];

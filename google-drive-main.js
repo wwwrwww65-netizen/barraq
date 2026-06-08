@@ -147,15 +147,8 @@ async function runDriveBackup(app, getDbPath, localStorageSnapshot) {
   const { google } = require('googleapis');
   const drive = google.drive({ version: 'v3', auth: oauth2Client });
 
-  const dbPath = getDbPath();
-  let databaseObj = {};
-  try {
-    if (fs.existsSync(dbPath)) {
-      databaseObj = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-    }
-  } catch (e) {
-    console.warn('[Google Drive] db read', e.message);
-  }
+  const sqlDb = require('./sql-database');
+  let databaseObj = sqlDb.readFull();
 
   const payload = {
     misterCasherPosBackupVersion: 1,
@@ -458,8 +451,8 @@ function setupGoogleDriveIpc(ipcMain, app, getDbPath) {
       return { success: false, error: 'invalid_backup' };
     }
 
-    const dbPath = getDbPath();
-    fs.writeFileSync(dbPath, JSON.stringify(payload.database, null, 2), 'utf8');
+    const sqlDb = require('./sql-database');
+    sqlDb.writeFull(payload.database);
 
     saveMeta(app, {
       ...meta,

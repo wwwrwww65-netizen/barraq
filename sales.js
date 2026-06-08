@@ -9,7 +9,7 @@ let _salesSearchTimer;
 // Auto-fix negative split values in database
 async function autoFixNegativeSplitValues() {
     try {
-        const db = await window.dbRead();
+        const db = await window.dbReadSlice(['orders_all']);
         const orders = db.orders || [];
         
         console.log(`\n🔍 [Auto-Fix] Scanning ${orders.length} orders...`);
@@ -152,6 +152,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadSales() {
+    // ⚡ إظهار شاشات الهيكل (Skeleton Screens) للجدول أثناء انتظار البيانات
+    const tbody = document.getElementById('sales-tbody');
+    const tbl = document.querySelector('.sales-table');
+    const emptyState = document.getElementById('empty-state');
+    
+    if (tbody) {
+        if(emptyState) emptyState.style.display = 'none';
+        if(tbl) tbl.style.display = 'table';
+        tbody.innerHTML = Array(8).fill(`
+            <tr class="skeleton-row">
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line full"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+            </tr>
+        `).join('');
+    }
+
     // إصلاح القيم السالبة مرة واحدة لكل جلسة — لا يُعاد مسح آلاف الطلبات عند كل فتح
     const shouldFix =
         !window.MC_PERF ||
@@ -165,7 +188,7 @@ async function loadSales() {
     }
     
     // Read from SQLite JSON database via IPC
-    allSalesOrders = await ipcRenderer.invoke('db-get-orders');
+    allSalesOrders = await ipcRenderer.invoke('db-get-orders-all');
     if (!allSalesOrders) allSalesOrders = [];
 
     // Filter out returned orders to match closing reports
@@ -472,7 +495,7 @@ window.addEventListener('afterprint', () => {
 async function clearSales() {
     if(confirm('هل أنت متأكد من مسح جميع سجلات المبيعات الحالية؟ لا يمكن التراجع!')) {
         try {
-            const db = await window.dbRead();
+            const db = await window.dbReadSlice(['orders_all']);
             db.orders = [];
             await window.dbWrite(db);
         } catch(e) { console.error(e); }
@@ -485,7 +508,7 @@ async function fixNegativeBalances() {
     alert('جاري فحص البيانات...');
     
     try {
-        const db = await window.dbRead();
+        const db = await window.dbReadSlice(['orders_all']);
         const allOrders = db.orders || [];
         
         // Show ALL orders with dates
@@ -565,7 +588,7 @@ function openInvoicesFolder() {
 async function viewOrderDetails(orderId) {
     try {
         const { ipcRenderer } = require('electron');
-        const orders = await ipcRenderer.invoke('db-get-orders');
+        const orders = await ipcRenderer.invoke('db-get-orders-all');
         const order = orders.find(o => o.orderId === orderId);
         
         if (!order) {
@@ -740,7 +763,7 @@ async function reprintOrder(orderId) {
         
         // Get orders from database
         const { ipcRenderer } = require('electron');
-        const orders = await ipcRenderer.invoke('db-get-orders');
+        const orders = await ipcRenderer.invoke('db-get-orders-all');
         const order = orders.find(o => o.orderId === orderId);
         
         if (!order) {

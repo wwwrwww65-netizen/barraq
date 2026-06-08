@@ -335,3 +335,29 @@ body.light-theme .sales-split-row {
 body.light-theme .sales-split-row td { color: #0f172a !important; }
 body.light-theme .split-cash-val { color: #059669 !important; margin-left: 20px; }
 body.light-theme .split-net-val { color: #2563eb !important; }
+
+/* =========================================
+   SKELETON LOADERS FOR TABLE
+   ========================================= */
+@keyframes skeleton-pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 0.3; }
+    100% { opacity: 0.6; }
+}
+
+.skeleton-row td {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.skeleton-line {
+    height: 16px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+    animation: skeleton-pulse 1.5s infinite ease-in-out;
+}
+body.light-theme .skeleton-line { background: rgba(0,0,0,0.05); }
+
+.skeleton-line.short { width: 40%; }
+.skeleton-line.medium { width: 70%; }
+.skeleton-line.full { width: 100%; }

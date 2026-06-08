@@ -23,7 +23,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    let db = await window.dbRead();
+    if (txBody) {
+        txBody.innerHTML = Array(6).fill(`
+            <tr class="skeleton-row">
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line full"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+            </tr>
+        `).join('');
+    }
+
+    let db = await window.dbReadSlice(['inventoryTx']);
     if (!db.inventoryTx) db.inventoryTx = [];
     let erpTx = db.inventoryTx;
 
@@ -147,7 +160,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (typeof window.registerPosDatabaseRefresh === 'function') {
         window.registerPosDatabaseRefresh(async () => {
-            db = await window.dbRead();
+            db = await window.dbReadSlice(['inventoryTx']);
             erpTx = db.inventoryTx || [];
             render();
         });

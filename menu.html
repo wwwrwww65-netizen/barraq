@@ -1,6 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+    <script src="page-transition.js"></script>
     <script>
         (function () {
             try {
@@ -21,6 +22,9 @@
     <!-- Google Fonts -->
     
     
+    <!-- Preload Fonts to prevent FOUC -->
+    <link rel="preload" href="node_modules/@fontsource/cairo/files/cairo-arabic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="node_modules/@fontsource/cairo/files/cairo-arabic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <!-- Phosphor Icons -->
     <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/regular/style.css">
@@ -81,7 +85,7 @@
         <!-- Main Content for Menu -->
         <main class="main-content">
             <!-- Header specific to Menu -->
-            <header class="top-header menu-header">
+            <header class="top-header menu-header">`n    <script src="page-transition.js"></script>
                 <div class="header-left-title">
                     <h2>إدارة قائمة الطعام والأصناف</h2>
                     <p>إدارة الوجبات، الأقسام، الأسعار، وحالة التوفر.</p>

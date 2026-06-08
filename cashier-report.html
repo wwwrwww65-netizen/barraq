@@ -1,6 +1,7 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+    <script src="page-transition.js"></script>
     <script>
         (function () {
             try {
@@ -15,6 +16,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تقارير الكاشيرين — Mister Casher</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- Preload Fonts to prevent FOUC -->
+    <link rel="preload" href="node_modules/@fontsource/cairo/files/cairo-arabic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="node_modules/@fontsource/cairo/files/cairo-arabic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/regular/style.css">
     <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/fill/style.css">
@@ -250,7 +254,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cashierSelect = document.getElementById('filter-cashier');
 
     async function pullCashierReportDb() {
-        const db = await window.dbRead();
+        const db = await window.dbReadArchive();
         allOrders = db.orders || [];
         allReturns = db.returns || [];
         if (isAdmin && cashierSelect) {

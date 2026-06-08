@@ -1,6 +1,7 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+    <script src="page-transition.js"></script>
     <script>
         (function () {
             try {
@@ -17,6 +18,9 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="accounting.css">
     <link rel="stylesheet" href="staff.css">
+    <!-- Preload Fonts to prevent FOUC -->
+    <link rel="preload" href="node_modules/@fontsource/cairo/files/cairo-arabic-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="node_modules/@fontsource/cairo/files/cairo-arabic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="node_modules/@fontsource/cairo/index.css">
     <script src="demo-mock.js"></script>
     <link rel="stylesheet" href="node_modules/@phosphor-icons/web/src/regular/style.css">
@@ -73,7 +77,7 @@
         <!-- Main Content -->
         <main class="main-content acc-main">
             <!-- Header -->
-            <header class="top-header acc-header">
+            <header class="top-header acc-header">`n    <script src="page-transition.js"></script>
                 <div class="header-left-title">
                     <h2>إدارة النظام المحاسبي</h2>
                     <span class="fiscal-year-badge">السنة المالية: 2026</span>

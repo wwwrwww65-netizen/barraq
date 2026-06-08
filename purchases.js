@@ -9,7 +9,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const xf = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س');
 
-    let db = await window.dbRead();
+    const purTbody = document.getElementById('pur-tbody');
+    if (purTbody) {
+        purTbody.innerHTML = Array(6).fill(`
+            <tr class="skeleton-row">
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line medium"></div></td>
+                <td><div class="skeleton-line short"></div></td>
+            </tr>
+        `).join('');
+    }
+    let db = await window.dbReadSlice(['purchases', 'suppliers', 'inventory', 'inventoryTx']);
     if(!db.purchases) db.purchases = [];
     if(!db.suppliers) db.suppliers = [];
     if(!db.inventory) db.inventory = [];
@@ -266,7 +280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (typeof window.registerPosDatabaseRefresh === 'function') {
         window.registerPosDatabaseRefresh(async () => {
-            db = await window.dbRead();
+            db = await window.dbReadSlice(['purchases', 'suppliers', 'inventory', 'inventoryTx']);
             purchases = db.purchases || [];
             suppliers = db.suppliers || [];
             inventory = db.inventory || [];

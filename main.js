@@ -581,26 +581,26 @@ function fetchDatabaseFromPeer(ip, callback) {
       }
       try {
         const parsed = JSON.parse(body);
-        const dbPath = path.join(app.getPath('userData'), 'pos_database.json');
+        const dbPath = path.join(app.getPath('userData'), 'pos_database.db');
 
         // 🔒 PROTECTION: Check if we already have local data
         try {
-          if (fs.existsSync(dbPath)) {
-            const localDb = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-            const hasLocalOrders = localDb.orders && localDb.orders.length > 0;
-            const hasLocalProducts = localDb.products && localDb.products.length > 0;
+          const dbAPI = require('./sql-database');
+          const localOrders = dbAPI.getOrders(1);
+          const localProducts = dbAPI.getProducts();
+          const hasLocalOrders = localOrders && localOrders.length > 0;
+          const hasLocalProducts = localProducts && localProducts.length > 0;
 
-            if (hasLocalOrders || hasLocalProducts) {
-              console.warn('[HTTP Sync] ⚠️ Local database has data - skipping automatic overwrite');
-              console.warn('[HTTP Sync] Local orders:', localDb.orders?.length || 0, ', Products:', localDb.products?.length || 0);
-              writeAuditLog('SYNC_BLOCKED_LOCAL_DATA', {
-                peerIp: ip,
-                localOrders: localDb.orders?.length || 0,
-                localProducts: localDb.products?.length || 0
-              });
-              if (cb) cb(new Error('local_data_exists'));
-              return;
-            }
+          if (hasLocalOrders || hasLocalProducts) {
+            console.warn('[HTTP Sync] ⚠️ Local database has data - skipping automatic overwrite');
+            console.warn('[HTTP Sync] Local orders:', localOrders?.length || 0, ', Products:', localProducts?.length || 0);
+            writeAuditLog('SYNC_BLOCKED_LOCAL_DATA', {
+              peerIp: ip,
+              localOrders: localOrders?.length || 0,
+              localProducts: localProducts?.length || 0
+            });
+            if (cb) cb(new Error('local_data_exists'));
+            return;
           }
         } catch (checkErr) {
           console.warn('[HTTP Sync] Could not check local DB:', checkErr.message);
@@ -626,53 +626,29 @@ function fetchDatabaseFromPeer(ip, callback) {
             }
           }
         } catch (backupErr) {
-          console.warn('[HTTP Sync] Backup warning:', backupErr.message);
+          console.warn("[HTTP Sync] Backup warning:", backupErr.message);
         }
 
-        writeAuditLog('SYNC_FROM_PEER_START', { peerIp: ip });
+        writeAuditLog("SYNC_FROM_PEER_START", { peerIp: ip });
 
-        // ✍️ Atomic write: write to temp file first, then rename
-        const tempPath = dbPath + '.tmp';
-        fs.promises.writeFile(tempPath, JSON.stringify(parsed, null, 2)).then(async () => {
-          // Robust rename with retries for Windows
-          let success = false;
-          for (let i = 0; i < 5; i++) {
-            try {
-              if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
-              fs.renameSync(tempPath, dbPath);
-              success = true;
-              break;
-            } catch (renameErr) {
-              console.warn(`[HTTP Sync] Rename attempt ${i + 1} failed, retrying...`);
-              await new Promise(r => setTimeout(r, 200));
-            }
-          }
-          if (!success) throw new Error('Could not rename sync file after retries');
+        // Write parsed data to SQLite
+        const dbAPI = require('./sql-database');
+        const writeSuccess = dbAPI.writeFull(parsed);
+        if (!writeSuccess) throw new Error("writeFull to SQLite returned false");
 
-          console.log(`[HTTP Sync] ✅ Database pulled and saved from ${ip} (atomic write)`);
-
-          // ⚡ Refresh cache immediately after sync
-          _refreshDbCache().catch(e => console.error('[HTTP Sync] Cache refresh failed:', e.message));
-
-          writeAuditLog('SYNC_FROM_PEER_SUCCESS', {
-            peerIp: ip,
-            orders: parsed.orders?.length || 0,
-            products: parsed.products?.length || 0
-          });
-          probePeerWaReady(ip, (capable) => {
-            if (capable) notifyLanSyncHubCandidate(ip);
-          });
-          BrowserWindow.getAllWindows().forEach((win) => {
-            if (!win.isDestroyed()) win.webContents.send('db-file-updated');
-          });
-          if (cb) cb(null);
-        }).catch(e => {
-          console.error('[HTTP Sync] ❌ Write error from', ip, ':', e.message);
-          writeAuditLog('SYNC_FROM_PEER_ERROR', { peerIp: ip, error: e.message });
-          // Clean up temp file if exists
-          try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch (e) { }
-          if (cb) cb(e);
+        console.log("[HTTP Sync] Database pulled from peer and saved to SQLite:", ip);
+        writeAuditLog("SYNC_FROM_PEER_SUCCESS", {
+          peerIp: ip,
+          orders: parsed.orders ? parsed.orders.length : 0,
+          products: parsed.products ? parsed.products.length : 0
         });
+        probePeerWaReady(ip, (capable) => {
+          if (capable) notifyLanSyncHubCandidate(ip);
+        });
+        BrowserWindow.getAllWindows().forEach((win) => {
+          if (!win.isDestroyed()) win.webContents.send("db-file-updated");
+        });
+        if (cb) cb(null);
       } catch (e) {
         console.error('[HTTP Sync] ❌ Failed to apply database from', ip, ':', e.message);
         if (cb) cb(e);
@@ -757,10 +733,15 @@ function setupHTTPServer() {
     }
 
     if (req.method === 'GET' && req.url === '/database') {
-      // تم التحويل إلى async لمنع حجب Main Process عند خدمة الأجهزة الأخرى على الشبكة
-      fs.promises.readFile(dbPath, 'utf8')
-        .then(content => { res.writeHead(200); res.end(content); })
-        .catch(e => { res.writeHead(500); res.end(JSON.stringify({ error: e.message })); });
+      try {
+        const dbAPI = require('./sql-database');
+        const dbData = dbAPI.readFull();
+        res.writeHead(200);
+        res.end(JSON.stringify(dbData));
+      } catch (e) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: e.message }));
+      }
     } else {
       res.writeHead(200);
       res.end(
@@ -881,20 +862,17 @@ function setupNetworkSync() {
       } else if (data.type === 'db_changed') {
         // Only auto-fetch if we don't have local data
         try {
-          const dbPath = path.join(app.getPath('userData'), 'pos_database.json');
-          if (fs.existsSync(dbPath)) {
-            const localDb = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-            const hasLocalData = (localDb.orders?.length || 0) > 0 || (localDb.products?.length || 0) > 0;
-            if (!hasLocalData) {
-              writeAuditLog('DB_CHANGED_FETCH_PEER', { peerIp: rinfo.address, reason: 'no_local_data' });
-              fetchDatabaseFromPeer(rinfo.address);
-            } else {
-              console.log('[Sync] Ignoring db_changed - local data exists');
-              writeAuditLog('DB_CHANGED_IGNORED', { peerIp: rinfo.address, reason: 'has_local_data' });
-            }
-          } else {
-            writeAuditLog('DB_CHANGED_FETCH_PEER', { peerIp: rinfo.address, reason: 'no_db_file' });
+          const dbAPI = require('./sql-database');
+          const localOrders = dbAPI.getOrders(1);
+          const localProducts = dbAPI.getProducts();
+          const hasLocalData = (localOrders?.length || 0) > 0 || (localProducts?.length || 0) > 0;
+          
+          if (!hasLocalData) {
+            writeAuditLog('DB_CHANGED_FETCH_PEER', { peerIp: rinfo.address, reason: 'no_local_data' });
             fetchDatabaseFromPeer(rinfo.address);
+          } else {
+            console.log('[Sync] Ignoring db_changed - local data exists');
+            writeAuditLog('DB_CHANGED_IGNORED', { peerIp: rinfo.address, reason: 'has_local_data' });
           }
         } catch (e) {
           writeAuditLog('DB_CHANGED_FETCH_PEER', { peerIp: rinfo.address, reason: 'check_error', error: e.message });
@@ -1167,10 +1145,9 @@ ipcMain.on('get-db-path', (event) => {
 });
 
 // === Database IPC Handlers ===
-const dbAPI = require('./database');
+const dbAPI = require('./sql-database');
 
 ipcMain.handle('db-save-order', async (event, data) => {
-  if (!_dbCacheReady) await _loadDbIntoCache();
   const result = dbAPI.saveOrder(data);
 
   setImmediate(() => broadcastDBChanged());
@@ -1189,179 +1166,69 @@ ipcMain.handle('db-save-order', async (event, data) => {
 
   return result;
 });
-function _sortedOrdersFromCache() {
-  const list = (_dbCache && _dbCache.orders) ? _dbCache.orders : [];
-  return list.slice().sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 500);
-}
 
 ipcMain.handle('db-get-orders', async () => {
-  if (!_dbCacheReady) await _loadDbIntoCache();
-  return _sortedOrdersFromCache();
+  return dbAPI.getOrders();
+});
+
+ipcMain.handle('db-get-orders-all', async () => {
+  return dbAPI.getOrders(0);
+});
+
+// ⚡ جلب بيانات آخر طلب فقط لتوليد رقم الفاتورة — أسرع بكثير من جلب 500 سجل
+ipcMain.handle('db-get-last-order-meta', async () => {
+  return dbAPI.getLastOrderMeta();
+});
+
+// ⚡ جلب أعلى رقم تسلسلي للطلبات مباشرة دون جلب بيانات الطلبات
+ipcMain.handle('db-get-max-order-number', async () => {
+  return dbAPI.getMaxOrderNumber();
 });
 
 ipcMain.handle('db-get-products', async () => {
-  if (!_dbCacheReady) await _loadDbIntoCache();
-  return _dbCache.products || [];
+  return dbAPI.getProducts();
 });
 
 ipcMain.handle('db-get-categories', async () => {
-  if (!_dbCacheReady) await _loadDbIntoCache();
-  return _dbCache.categories || [];
+  return dbAPI.getCategories();
 });
 
 ipcMain.handle('db-get-inventory', async () => {
-  if (!_dbCacheReady) await _loadDbIntoCache();
-  return _dbCache.inventory || [];
+  return dbAPI.getInventory();
 });
 
 ipcMain.handle('db-save-product', async (event, data) => {
-  if (!_dbCacheReady) await _loadDbIntoCache();
   const result = dbAPI.saveProduct(data);
   setImmediate(() => broadcastDBChanged());
   return result;
 });
 
 ipcMain.handle('db-save-category', async (event, data) => {
-  if (!_dbCacheReady) await _loadDbIntoCache();
   const result = dbAPI.saveCategory(data);
   setImmediate(() => broadcastDBChanged());
   return result;
 });
+
 ipcMain.handle('db-save-inventory', async (event, item) => {
-  if (!_dbCacheReady) await _loadDbIntoCache();
   const result = dbAPI.saveInventoryItem(item);
   setImmediate(() => broadcastDBChanged());
   return result;
 });
 
-// Async full-DB read/write — used by renderer files to avoid blocking readFileSync on UI thread
+// Paths and helpers
 const _dbPath = path.join(app.getPath('userData'), 'pos_database.json');
 const _auditLogPath = path.join(app.getPath('userData'), 'pos_database_audit.log');
 const _emptyDB = { orders: [], products: [], categories: [], inventory: [], purchases: [], suppliers: [], inventoryTx: [], returns: [], expenses: [], bankTransfers: [], hrExpenses: [], otherIncome: [], employees: [], attendance: [], penaltyRules: [], chartOfAccounts: [], journalEntries: [], systemNotifications: [], inventoryAlertState: {}, deliveryCompanies: [] };
 
-// ⚡ In-Memory Cache — يُخزَّن في الذاكرة لتجنب قراءة القرص في كل مرة
-let _dbCache = null;
-let _dbCacheReady = false;
-let _dbWriteQueue = Promise.resolve();
 
-function _dayClosureRecordKey(c) {
-  const t = Number(c && c.closedAt) || 0;
-  if (t > 1e11) return 't:' + t;
-  if (c && c.id) return 'id:' + c.id;
-  return '';
-}
-
-function _dayClosureId(c) {
-  if (!c || typeof c !== 'object') return '';
-  if (c.id) return String(c.id);
-  const t = Number(c.closedAt) || 0;
-  return t > 0 ? 'DAY-' + t : '';
-}
-
-function _stripShiftsFromClosure(c) {
-  if (!c || typeof c !== 'object') return c;
-  const out = { ...c };
-  delete out.shifts;
-  delete out.allDayShifts;
-  return out;
-}
-
-/** نقل shifts إلى day_closure_details لتصغير حجم pos_database.json */
-function _migrateDayClosureStorage(db) {
-  if (!db || typeof db !== 'object' || db._dayClosuresCompactV1) return false;
-  if (!Array.isArray(db.day_closures)) db.day_closures = [];
-  if (!db.day_closure_details || typeof db.day_closure_details !== 'object') {
-    db.day_closure_details = {};
-  }
-  let changed = false;
-  for (const raw of db.day_closures) {
-    if (!raw || typeof raw !== 'object') continue;
-    const shifts = raw.shifts || raw.allDayShifts;
-    if (!Array.isArray(shifts) || shifts.length === 0) continue;
-    const id = _dayClosureId(raw);
-    if (!id) continue;
-    if (!db.day_closure_details[id]) {
-      db.day_closure_details[id] = { shifts };
-      changed = true;
-    }
-    delete raw.shifts;
-    delete raw.allDayShifts;
-    changed = true;
-  }
-  db._dayClosuresCompactV1 = true;
-  return changed;
-}
-
-function _mergeDayClosures(existing, incoming) {
-  const map = new Map();
-  for (const list of [existing, incoming]) {
-    if (!Array.isArray(list)) continue;
-    for (const c of list) {
-      if (!c || typeof c !== 'object') continue;
-      const key = _dayClosureRecordKey(c);
-      if (!key) continue;
-      const prev = map.get(key);
-      if (!prev || (Number(c.closedAt) || 0) >= (Number(prev.closedAt) || 0)) map.set(key, c);
-    }
-  }
-  return Array.from(map.values());
-}
-
-function _writeDbAtomicQueued(data) {
-  const payload = global._mcCompactDbWrites
-    ? JSON.stringify(data)
-    : JSON.stringify(data, null, 2);
-  const tmpPath = `${_dbPath}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  _dbWriteQueue = _dbWriteQueue
-    .catch(() => {})
-    .then(async () => {
-      await fs.promises.writeFile(tmpPath, payload, 'utf8');
-      await fs.promises.rename(tmpPath, _dbPath);
-    })
-    .catch(async (err) => {
-      try { await fs.promises.unlink(tmpPath); } catch (_) {}
-      console.error('[DB Write] Queued write failed:', err.message);
-      writeAuditLog('DB_WRITE_ERROR', { error: err.message, queued: true });
-      throw err;
-    });
-  return _dbWriteQueue;
-}
-
-async function _loadDbIntoCache() {
-  try {
-    const data = await fs.promises.readFile(_dbPath, 'utf8');
-    _dbCache = JSON.parse(data);
-    if (_migrateDayClosureStorage(_dbCache)) {
-      console.log('[DB Cache] ضغط سجلات إقفال اليوم (فصل تفاصيل الورديات)');
-      const persistMigration = () => void _writeDbAtomicQueued(_dbCache);
-      if (effectiveWeakHost) setTimeout(persistMigration, 12000);
-      else setImmediate(persistMigration);
-    }
-    _dbCacheReady = true;
-    console.log('[DB Cache] ✅ Database loaded into memory cache.');
-  } catch (e) {
-    console.warn('[DB Cache] ⚠️ Could not load DB into cache, using empty:', e.message);
-    _dbCache = JSON.parse(JSON.stringify(_emptyDB));
-    _dbCacheReady = true;
-  }
-}
-
-// ⚡ وظيفة لتحديث الكاش فوراً بعد أي عملية حفظ تتم عبر النظام القديم
-async function _refreshDbCache() {
-  await _loadDbIntoCache();
-}
-
-// تحميل قاعدة البيانات للذاكرة + ربط database.js بالكاش (بدون قراءة قرص متكررة)
+// تحميل قاعدة البيانات وتهيئتها
 app.whenReady().then(async () => {
-  await _loadDbIntoCache();
-  dbAPI.setMemoryBackend(
-    () => _dbCache,
-    (db) => {
-      _dbCache = db;
-      _dbCacheReady = true;
-      void _writeDbAtomicQueued(db);
-    }
-  );
+  const sqlDbPath = path.join(app.getPath('userData'), 'pos_database.db');
+  dbAPI.initDb(sqlDbPath);
+  
+  const sqlMigrator = require('./sql-migrator');
+  await sqlMigrator.migrate(_dbPath);
+
   if (effectiveWeakHost) {
     console.log('[MisterCasherPOS] Low-power mode: safe graphics, compact DB writes, background throttling.');
   }
@@ -1409,207 +1276,45 @@ function writeAuditLog(action, details) {
   }
 }
 // ⚡ قراءة فورية من الذاكرة (Cache) بدلاً من القرص في كل مرة
-function _dayClosureListItem(c) {
-  if (!c || typeof c !== 'object') return c;
-  const shifts = c.shifts || c.allDayShifts || [];
-  const ordersFromShifts =
-    shifts.length > 0
-      ? shifts.reduce((s, sh) => s + (sh.ordersCount || sh.totalOrders || sh.orders_count || 0), 0)
-      : 0;
-  const id = _dayClosureId(c);
-  const detailsMap = _dbCache && _dbCache.day_closure_details;
-  const hasStoredDetails =
-    Boolean(id && detailsMap && detailsMap[id] && Array.isArray(detailsMap[id].shifts) && detailsMap[id].shifts.length > 0);
-  return {
-    id: c.id,
-    closedAt: c.closedAt,
-    date: c.date,
-    closedBy: c.closedBy,
-    shiftsCount: c.shiftsCount || shifts.length || 0,
-    ordersCount: c.ordersCount || ordersFromShifts || 0,
-    totalIncome: c.totalIncome || 0,
-    drawerTotal: c.drawerTotal || 0,
-    totalCash: c.totalCash,
-    totalNetwork: c.totalNetwork,
-    totalTax: c.totalTax,
-    totalReturns: c.totalReturns,
-    totalExpenses: c.totalExpenses,
-    hungerStationUnpaid: c.hungerStationUnpaid,
-    deliveryBreakdown: c.deliveryBreakdown,
-    hasShiftDetails: shifts.length > 0 || hasStoredDetails,
-  };
-}
-
 ipcMain.handle('db-read-day-closures', async () => {
-  try {
-    if (!_dbCacheReady) await _loadDbIntoCache();
-    const list = Array.isArray(_dbCache?.day_closures) ? _dbCache.day_closures : [];
-    return list.map(_dayClosureListItem);
-  } catch (e) {
-    console.error('[DB Read] day_closures:', e.message);
-    return [];
-  }
+  return dbAPI.getDayClosures();
 });
 
-/** قراءة أجزاء من القاعدة فقط — يقلل حجم IPC (لوحة القيادة، إلخ) */
 ipcMain.handle('db-read-slice', async (event, keys) => {
-  try {
-    if (!_dbCacheReady) await _loadDbIntoCache();
-    const list = Array.isArray(keys) ? keys : [];
-    const out = {};
-    for (const key of list) {
-      if (!key || typeof key !== 'string') continue;
-      const val = _dbCache[key];
-      if (Array.isArray(val)) out[key] = val.slice();
-      else if (val && typeof val === 'object') out[key] = { ...val };
-      else out[key] = val;
-    }
-    return out;
-  } catch (e) {
-    console.error('[DB Read] slice:', e.message);
-    return {};
-  }
+  return dbAPI.readSlice(keys);
 });
 
-/** تحديث طلب واحد دون إرسال القاعدة كاملة عبر IPC */
 ipcMain.handle('db-update-order', async (event, orderData) => {
-  try {
-    if (!_dbCacheReady) await _loadDbIntoCache();
-    if (!orderData || orderData.orderId == null) {
-      return { success: false, error: 'invalid order' };
-    }
-    if (!_dbCache.orders) _dbCache.orders = [];
-    const idx = _dbCache.orders.findIndex((o) => String(o.orderId) === String(orderData.orderId));
-    if (idx >= 0) {
-      const old = _dbCache.orders[idx] || {};
-      _dbCache.orders[idx] = {
-        ...old,
-        ...orderData,
-        orderId: orderData.orderId,
-        timestamp: orderData.timestamp || old.timestamp,
-        editVersion: Number(old.editVersion || 0) + 1,
-        updatedAt: orderData.updatedAt || Date.now(),
-      };
-    } else {
-      orderData.editVersion = orderData.editVersion || 1;
-      _dbCache.orders.push(orderData);
-    }
-    void _writeDbAtomicQueued(_dbCache);
-    setImmediate(() => broadcastDBChanged());
-    return { success: true };
-  } catch (e) {
-    return { success: false, error: e.message };
-  }
+  const result = dbAPI.updateOrder(orderData);
+  if (result.success) setImmediate(() => broadcastDBChanged());
+  return result;
 });
 
-/** إضافة سجل إقفال يوم دون قراءة/كتابة القاعدة كاملة */
 ipcMain.handle('db-append-day-closure', async (event, payload) => {
-  try {
-    if (!_dbCacheReady) await _loadDbIntoCache();
-    const summary = payload && payload.summary;
-    const shifts = (payload && payload.shifts) || [];
-    if (!summary || !summary.id) return { success: false, error: 'invalid closure' };
-    if (!Array.isArray(_dbCache.day_closures)) _dbCache.day_closures = [];
-    if (!_dbCache.day_closure_details || typeof _dbCache.day_closure_details !== 'object') {
-      _dbCache.day_closure_details = {};
-    }
-    const dupKey = summary.id || ('DAY-' + (summary.closedAt || ''));
-    const exists = _dbCache.day_closures.some(
-      (c) => (c.id || ('DAY-' + (c.closedAt || ''))) === dupKey
-    );
-    if (!exists) _dbCache.day_closures.push(_stripShiftsFromClosure(summary));
-    _dbCache.day_closure_details[summary.id] = { shifts: Array.isArray(shifts) ? shifts : [] };
-    void _writeDbAtomicQueued(_dbCache);
-    setImmediate(() => broadcastDBChanged());
-    return { success: true };
-  } catch (e) {
-    return { success: false, error: e.message };
-  }
+  const summary = payload && payload.summary;
+  const shifts = (payload && payload.shifts) || [];
+  const result = dbAPI.appendDayClosure(summary, shifts);
+  if (result.success) setImmediate(() => broadcastDBChanged());
+  return result;
 });
 
 ipcMain.handle('db-read-day-closure-detail', async (event, closureId) => {
-  try {
-    if (!_dbCacheReady) await _loadDbIntoCache();
-    const list = Array.isArray(_dbCache?.day_closures) ? _dbCache.day_closures : [];
-    const id = String(closureId || '');
-    const found =
-      list.find((c) => c && c.id === id) ||
-      list.find((c) => c && 'DAY-' + c.closedAt === id);
-    if (!found) return null;
-    const key = _dayClosureId(found) || id;
-    const details = _dbCache.day_closure_details && key ? _dbCache.day_closure_details[key] : null;
-    const shifts =
-      (found.shifts || found.allDayShifts) ||
-      (details && details.shifts) ||
-      [];
-    return { ...found, shifts: Array.isArray(shifts) ? shifts : [] };
-  } catch (e) {
-    return null;
-  }
+  return dbAPI.getDayClosureDetail(closureId);
 });
 
 ipcMain.handle('db-read-full', async () => {
-  try {
-    // إذا كانت الكاش جاهزة ومكتملة — أرجعها فوراً بدون I/O
-    if (_dbCacheReady && _dbCache && _dbCache.inventory) {
-      return _dbCache;
-    }
-    // Fallback: قراءة من القرص إذا لم تكن الكاش جاهزة بعد أو كانت ناقصة
-    const data = await fs.promises.readFile(_dbPath, 'utf8');
-    const parsed = JSON.parse(data);
-    if (parsed && parsed.inventory) {
-      _dbCache = parsed;
-      _dbCacheReady = true;
-    }
-    return _dbCache || parsed;
-  } catch (e) {
-    console.error('[DB Read] Error reading database:', e.message);
-    writeAuditLog('DB_READ_ERROR', { error: e.message });
-    // لا ترجع null أبداً إذا كان هناك كاش قديم
-    return (_dbCache && _dbCache.inventory) ? _dbCache : _emptyDB;
-  }
+  return dbAPI.readFull();
 });
+
+ipcMain.handle('db-read-ui', async () => {
+  return dbAPI.readUI();
+});
+
 ipcMain.handle('db-write-full', async (event, data, opts) => {
-  try {
-    // منع فقدان سجلات الإقفال عند حفظ لقطة قديمة من نافذة أخرى (بدون day_closures)
-    const cacheClosures = _dbCache && Array.isArray(_dbCache.day_closures) ? _dbCache.day_closures : [];
-    const cacheClosureDetails =
-      _dbCache && _dbCache.day_closure_details && typeof _dbCache.day_closure_details === 'object'
-        ? _dbCache.day_closure_details
-        : null;
-    const incomingHasCore =
-      (data.orders?.length || 0) > 0 ||
-      (data.products?.length || 0) > 0 ||
-      (data.inventory?.length || 0) > 0;
-    if (cacheClosures.length > 0 && incomingHasCore) {
-      if (!Array.isArray(data.day_closures)) {
-        data.day_closures = cacheClosures.slice();
-      } else if (data.day_closures.length < cacheClosures.length) {
-        data.day_closures = _mergeDayClosures(cacheClosures, data.day_closures);
-      }
-    }
-    if (cacheClosureDetails && incomingHasCore) {
-      if (!data.day_closure_details || typeof data.day_closure_details !== 'object') {
-        data.day_closure_details = { ...cacheClosureDetails };
-      } else {
-        data.day_closure_details = { ...cacheClosureDetails, ...data.day_closure_details };
-      }
-    }
-    _migrateDayClosureStorage(data);
-
-    _dbCache = data;
-    _dbCacheReady = true;
-
-    void _writeDbAtomicQueued(data);
-
-    const broadcast = !opts || opts.broadcast !== false;
-    if (broadcast) setImmediate(() => broadcastDBChanged());
-    return true;
-  } catch (e) {
-    console.error('[DB Write] ❌ Error:', e.message);
-    writeAuditLog('DB_WRITE_ERROR', { error: e.message });
-    return false;
-  }
+  const success = dbAPI.writeFull(data);
+  const broadcast = !opts || opts.broadcast !== false;
+  if (success && broadcast) setImmediate(() => broadcastDBChanged());
+  return success;
 });
 
 // بث أمر تصفير التخزين المحلي على الأجهزة الأخرى (بعد أن تُكتب القاعدة الفارغة على الجهاز المرسل)
@@ -1654,27 +1359,41 @@ function saveLocalDiskBackupSettings(data) {
   fs.writeFileSync(_localBackupSettingsPath(), JSON.stringify(data, null, 2), 'utf8');
 }
 
-function runLocalDiskBackupJob(parentDir, dbFilePath, localStorageSnapshot) {
+async function runLocalDiskBackupJob(parentDir, dbFilePath, localStorageSnapshot) {
   try {
-    if (!parentDir || typeof parentDir !== 'string') return { success: false, error: 'no_folder' };
+    if (!parentDir || typeof parentDir !== "string") return { success: false, error: "no_folder" };
     const norm = path.normalize(parentDir.trim());
-    if (!fs.existsSync(norm)) return { success: false, error: 'folder_missing' };
-    if (!fs.statSync(norm).isDirectory()) return { success: false, error: 'not_a_directory' };
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const destDir = path.join(norm, `MisterCasherPOS_backup_${stamp}`);
+    if (!fs.existsSync(norm)) return { success: false, error: "folder_missing" };
+    if (!fs.statSync(norm).isDirectory()) return { success: false, error: "not_a_directory" };
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const destDir = path.join(norm, "MisterCasherPOS_backup_" + stamp);
     fs.mkdirSync(destDir, { recursive: true });
-    let dbRaw = '{}';
-    if (fs.existsSync(dbFilePath)) dbRaw = fs.readFileSync(dbFilePath, 'utf8');
-    const dbObj = JSON.parse(dbRaw);
-    fs.writeFileSync(path.join(destDir, 'pos_database.json'), JSON.stringify(dbObj, null, 2), 'utf8');
-    const ls = localStorageSnapshot && typeof localStorageSnapshot === 'object' ? localStorageSnapshot : {};
-    fs.writeFileSync(path.join(destDir, 'mistercasher_localStorage.json'), JSON.stringify(ls, null, 2), 'utf8');
+
+    // Flush all pending orders and data from WAL to main DB file before backup
+    dbAPI.checkpointDb();
+
+    // Read full database from SQLite (always current)
+    const dbObj = dbAPI.readFull();
+
+    // 1. Save JSON snapshot (compatible with all restore tools)
+    // Using fs.promises and removing JSON format indentation prevents UI freeze
+    await fs.promises.writeFile(path.join(destDir, "pos_database.json"), JSON.stringify(dbObj), "utf8");
+
+    // 2. Copy raw SQLite file (fast direct restore)
+    const sqlDbPath = path.join(app.getPath("userData"), "pos_database.db");
+    if (fs.existsSync(sqlDbPath)) {
+      await fs.promises.copyFile(sqlDbPath, path.join(destDir, "pos_database.db"));
+    }
+
+    const ls = localStorageSnapshot && typeof localStorageSnapshot === "object" ? localStorageSnapshot : {};
+    await fs.promises.writeFile(path.join(destDir, "mistercasher_localStorage.json"), JSON.stringify(ls), "utf8");
     const manifest = {
-      misterCasherLocalBackupVersion: 1,
+      misterCasherLocalBackupVersion: 2,
       exportedAt: new Date().toISOString(),
       hostname: os.hostname(),
+      hasSqlite: true,
     };
-    fs.writeFileSync(path.join(destDir, 'backup_manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
+    await fs.promises.writeFile(path.join(destDir, "backup_manifest.json"), JSON.stringify(manifest), "utf8");
     return { success: true, destDir };
   } catch (err) {
     return { success: false, error: err && err.message ? err.message : String(err) };
@@ -1778,131 +1497,112 @@ ipcMain.handle('restore-backup-get-info', async (event, backupFolder) => {
 
 ipcMain.handle('restore-backup-execute', async (event, options) => {
   try {
-    // التحقق من المدخلات
     if (!options || !options.backupFolder) {
       return { success: false, error: 'لم يتم تحديد مجلد النسخة الاحتياطية' };
     }
 
     const backupFolder = String(options.backupFolder).trim();
-    if (!backupFolder) {
-      return { success: false, error: 'مسار المجلد فارغ' };
-    }
-
-    if (!fs.existsSync(backupFolder)) {
+    if (!backupFolder || !fs.existsSync(backupFolder)) {
       return { success: false, error: 'المجلد غير موجود: ' + backupFolder };
     }
 
     const dbFile = path.join(backupFolder, 'pos_database.json');
+    const sqliteFile = path.join(backupFolder, 'pos_database.db');
     const lsFile = path.join(backupFolder, 'mistercasher_localStorage.json');
 
-    // التحقق من وجود قاعدة البيانات
-    if (!fs.existsSync(dbFile)) {
-      return { success: false, error: 'ملف قاعدة البيانات غير موجود في المجلد:\n' + dbFile };
-    }
-
-    // قراءة بيانات النسخة والتحقق من صحتها
-    let backupDb;
-    try {
-      const raw = fs.readFileSync(dbFile, 'utf8');
-      backupDb = JSON.parse(raw);
-    } catch (parseErr) {
-      return { success: false, error: 'ملف قاعدة البيانات تالف أو غير صالح:\n' + parseErr.message };
-    }
-
-    // التحقق من أن البيانات كائن صحيح
-    if (!backupDb || typeof backupDb !== 'object') {
-      return { success: false, error: 'تنسيق قاعدة البيانات غير صحيح' };
+    // Must have at least one of JSON or SQLite
+    if (!fs.existsSync(dbFile) && !fs.existsSync(sqliteFile)) {
+      return { success: false, error: 'لم يتم العثور على ملف قاعدة البيانات في المجلد:\n' + backupFolder };
     }
 
     console.log('[Restore] Starting restore from:', backupFolder);
 
-    // إنشاء backup للقاعدة الحالية قبل الاستعادة
-    try {
-      if (fs.existsSync(_dbPath)) {
-        const currentBackup = _dbPath + `.pre-restore.${Date.now()}`;
-        await fs.promises.copyFile(_dbPath, currentBackup);
-        writeAuditLog('RESTORE_BACKUP_CREATED', {
-          backupPath: currentBackup,
-          restoreFrom: backupFolder
-        });
-      }
-    } catch (backupErr) {
-      console.warn('[Restore] Backup current DB warning:', backupErr.message);
-    }
-
-    // استعادة قاعدة البيانات (atomic write)
-    try {
-      const tempPath = _dbPath + '.tmp';
-
-      // التأكد من حذف الملف المؤقت إذا كان موجوداً
-      if (fs.existsSync(tempPath)) {
-        await fs.promises.unlink(tempPath);
-      }
-
-      await fs.promises.writeFile(tempPath, JSON.stringify(backupDb, null, 2));
-      await fs.promises.rename(tempPath, _dbPath);
-
-      console.log('[Restore] ✅ Database restored successfully from:', backupFolder);
-      writeAuditLog('DATABASE_RESTORED', {
-        from: backupFolder,
-        orders: backupDb.orders?.length || 0,
-        products: backupDb.products?.length || 0
-      });
-    } catch (writeErr) {
-      console.error('[Restore] ❌ Failed to write database:', writeErr.message);
-      writeAuditLog('RESTORE_WRITE_ERROR', { error: writeErr.message });
-
-      // تنظيف الملف المؤقت إذا وجد
+    // === Case 1: SQLite file exists in backup (direct copy - fastest) ===
+    if (fs.existsSync(sqliteFile)) {
       try {
-        const tempPath = _dbPath + '.tmp';
-        if (fs.existsSync(tempPath)) {
-          await fs.promises.unlink(tempPath);
-        }
-      } catch (e) { }
+        const sqlDbPath = path.join(app.getPath('userData'), 'pos_database.db');
+        // Close DB, copy, reopen
+        dbAPI.closeDb();
+        fs.copyFileSync(sqliteFile, sqlDbPath);
+        dbAPI.initDb(sqlDbPath);
+        console.log('[Restore] Restored from SQLite file directly');
+        writeAuditLog('DATABASE_RESTORED_SQLITE', { from: backupFolder });
+      } catch (e) {
+        return { success: false, error: 'فشل استعادة ملف SQLite:\n' + e.message };
+      }
+    }
+    // === Case 2: JSON file exists - convert to SQLite ===
+    else {
+      let backupDb;
+      try {
+        const raw = fs.readFileSync(dbFile, 'utf8');
+        backupDb = JSON.parse(raw);
+      } catch (parseErr) {
+        return { success: false, error: 'ملف قاعدة البيانات تالف:\n' + parseErr.message };
+      }
 
-      return { success: false, error: 'فشل كتابة قاعدة البيانات:\n' + writeErr.message };
+      if (!backupDb || typeof backupDb !== 'object') {
+        return { success: false, error: 'تنسيق قاعدة البيانات غير صحيح' };
+      }
+
+      // Clear all existing SQLite data then write backup
+      try {
+        const sqlDbPath = path.join(app.getPath('userData'), 'pos_database.db');
+        dbAPI.closeDb();
+        // Delete old SQLite and create fresh one
+        if (fs.existsSync(sqlDbPath)) fs.unlinkSync(sqlDbPath);
+        const walPath = sqlDbPath + '-wal';
+        const shmPath = sqlDbPath + '-shm';
+        if (fs.existsSync(walPath)) fs.unlinkSync(walPath);
+        if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath);
+        dbAPI.initDb(sqlDbPath);
+
+        const success = dbAPI.writeFull(backupDb);
+        if (!success) throw new Error('writeFull returned false');
+
+        console.log('[Restore] Restored from JSON to SQLite:', Object.keys(backupDb).length, 'keys');
+        writeAuditLog('DATABASE_RESTORED_JSON_TO_SQLITE', {
+          from: backupFolder,
+          orders: backupDb.orders ? backupDb.orders.length : 0,
+          products: backupDb.products ? backupDb.products.length : 0
+        });
+      } catch (writeErr) {
+        console.error('[Restore] Failed to write to SQLite:', writeErr.message);
+        return { success: false, error: 'فشل كتابة قاعدة البيانات:\n' + writeErr.message };
+      }
     }
 
-    // استعادة localStorage إذا وجد
+    // Restore localStorage if available
     if (fs.existsSync(lsFile)) {
       try {
-        const raw = fs.readFileSync(lsFile, 'utf8');
-        const lsData = JSON.parse(raw);
-
+        const lsData = JSON.parse(fs.readFileSync(lsFile, 'utf8'));
         if (lsData && typeof lsData === 'object') {
-          // إرسال البيانات للواجهة لاستعادتها
           BrowserWindow.getAllWindows().forEach((win) => {
-            if (!win.isDestroyed()) {
-              win.webContents.send('restore-local-storage', lsData);
-            }
+            if (!win.isDestroyed()) win.webContents.send('restore-local-storage', lsData);
           });
-          writeAuditLog('LOCALSTORAGE_RESTORE_QUEUED', { keysCount: Object.keys(lsData).length });
         }
       } catch (lsErr) {
         console.warn('[Restore] LocalStorage warning:', lsErr.message);
       }
     }
 
-    console.log('[Restore] ✅ Restore completed successfully!');
+    // We do NOT send 'db-file-updated' here anymore because it instantly reloads
+    // the UI, preventing the user from seeing the "Success" alert popup.
+    // The UI handles calling 'app-reload' explicitly after showing the alert.
+
+    console.log('[Restore] Restore completed successfully!');
     return { success: true };
   } catch (e) {
-    console.error('[Restore] ❌ Fatal error:', e.message);
-    console.error('[Restore] Stack:', e.stack);
-    writeAuditLog('RESTORE_ERROR', {
-      error: e.message,
-      stack: e.stack
-    });
+    console.error('[Restore] Fatal error:', e.message);
+    writeAuditLog('RESTORE_ERROR', { error: e.message });
     return { success: false, error: 'خطأ غير متوقع:\n' + e.message };
   }
 });
 
-// إعادة تحميل التطبيق
+// إعادة تشغيل التطبيق بالكامل (Relaunch)
 ipcMain.on('app-reload', () => {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    if (!win.isDestroyed()) {
-      win.reload();
-    }
-  });
+  app.relaunch();
+  app.exit(0);
 });
 
 const LOCAL_DISK_AUTO_CHECK_MS = 60 * 1000;
@@ -1929,7 +1629,7 @@ function startLocalDiskAutoScheduler(appRef, BrowserWindowRef) {
       const last = new Date(auto.lastAutoRunAt).getTime();
       if (Number.isNaN(last) || Date.now() - last < intervalMs) return;
       const snap = await collectLocalStorageSnapshot(BrowserWindowRef);
-      const res = runLocalDiskBackupJob(auto.folderPath, _dbPath, snap);
+      const res = await runLocalDiskBackupJob(auto.folderPath, _dbPath, snap);
       const next = loadLocalDiskBackupSettings();
       if (res.success) {
         next.lastAutoRunAt = new Date().toISOString();
@@ -2042,6 +1742,9 @@ function createWindow() {
       win.focus();
     }
   });
+
+  // تم إزالة أكواد الإخفاء والوميض الاصطناعية بناءً على طلب المستخدم
+  // بحيث تفتح الصفحة وتُعرض فوراً وبشكل طبيعي جداً بدون أي خلفية أو شاشة تغطيها.
 
   mainWindow = win;
   win.on('closed', () => {
