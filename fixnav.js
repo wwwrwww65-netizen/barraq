@@ -8,7 +8,7 @@ const replacements = [
     // Append the Permissions linking next to settings (already done)
     { 
         from: /<a href="pos.html" class="nav-item"><i class="ph ph-monitor"><\/i><span>نقطة البيع \(الكاشير\)<\/span><\/a>/g, 
-        to: '<a href="pos.html" class="nav-item"><i class="ph ph-monitor"></i><span>نقطة البيع (الكاشير)</span></a>\n                <a href="kitchen.html" class="nav-item"><i class="ph ph-cooking-pot"></i><span>شاشة المطبخ (KDS)</span></a>' 
+        to: '<a href="pos.html" class="nav-item"><i class="ph ph-monitor"></i><span>نقطة البيع (الكاشير)</span></a>'
     }
 ];
 

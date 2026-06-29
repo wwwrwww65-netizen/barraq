@@ -25,8 +25,8 @@ const PAGES_AFTER_LOGIN = [
   'settings.html',
   'permissions.html',
   'fatora.html',
-  'kitchen.html',
-  'kitchen-production.html',
+
+
   'profile.html',
   'suppliers.html',
   'setup.html',

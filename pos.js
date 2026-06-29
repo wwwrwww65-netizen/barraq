@@ -102,9 +102,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ⚡ تشغيل generateOrderId و dbReadSlice بالتوازي (بدلاً من الانتظار التسلسلي)
     // يقلص وقت تحميل الصفحة إلى النصف تقريباً
+    let activePromotions = [];
     const [orderId_init, _db] = await Promise.all([
         generateOrderId(),
-        window.dbReadSlice(['categories', 'deliveryCompanies', 'products'])
+        window.dbReadSlice(['categories', 'deliveryCompanies', 'products', 'promotions'])
     ]);
     let orderId = orderId_init;
     document.getElementById('display-order-id').innerText = orderId;
@@ -150,7 +151,8 @@ document.addEventListener('DOMContentLoaded', async () => {
        Dynamic Data Loading from JSON DB
     =============================== */
 
-    let catData = _db.categories || JSON.parse(localStorage.getItem('pos_categories') || '[]');
+    activePromotions = _db.promotions || [];
+    catData = _db.categories || JSON.parse(localStorage.getItem('pos_categories') || '[]');
     
     // Render dynamic delivery companies in POS payment modal (Pills UI)
     if (document.getElementById('dynamic-delivery-companies-pills')) {
@@ -346,6 +348,55 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     let _posSearchTimer;
+
+    searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const val = e.target.value.toLowerCase().trim();
+
+            // Barcode Scale Parser
+            if (val.startsWith('2') && val.length >= 12) {
+                const itemCode = val.substring(1, 6); // 5 digit code
+                const priceWeightPart = val.substring(6, 12); // next 6 digits
+                // Logic depends on scale setup: assume priceWeight is price in fils/halalas
+                const scalePrice = parseInt(priceWeightPart, 10) / 100;
+
+                const product = activeProducts.find(p => p.sku && p.sku.endsWith(itemCode));
+                if (product) {
+                    const price = scalePrice > 0 ? scalePrice : product.price; // use scale price if valid
+
+                    const existingItem = cart.find(item => String(item.id).trim() === String(product.id).trim());
+                    if (existingItem) {
+                        existingItem.qty++;
+                        // For scales, usually each barcode scan is a new unique weight, so we might want to update price or treat as separate lines, but for simplicity we increase qty or we can just push a new line. Let's push a new line or override price. Actually, standard is to increase qty if price is the same, but for scale items price varies.
+                        // To be safe, add as new item by giving it a unique ID variant
+                        cart.push({ id: product.id + '-' + Date.now(), name: product.nameAr, price: price, imgSrc: product.image || 'placeholder.svg', qty: 1 });
+                    } else {
+                        cart.push({ id: product.id, name: product.nameAr, price: price, imgSrc: product.image || 'placeholder.svg', qty: 1 });
+                    }
+                    renderCart();
+                    searchInput.value = '';
+                    renderPosProducts('الكل', '');
+                    return;
+                }
+            }
+
+            // Regular Barcode / Exact Match
+            const product = activeProducts.find(p => (p.sku && p.sku.toLowerCase() === val) || p.nameAr.toLowerCase() === val);
+            if (product) {
+                const existingItem = cart.find(item => String(item.id).trim() === String(product.id).trim());
+                if (existingItem) {
+                    existingItem.qty++;
+                } else {
+                    cart.push({ id: product.id, name: product.nameAr, price: parseFloat(product.price), imgSrc: product.image || 'placeholder.svg', qty: 1 });
+                }
+                renderCart();
+                searchInput.value = '';
+                renderPosProducts('الكل', '');
+            }
+        }
+    });
+
     searchInput.addEventListener('input', (e) => {
         clearTimeout(_posSearchTimer);
         const val = e.target.value.toLowerCase().trim();
@@ -515,9 +566,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Let's assume the POS items prices ARE final prices including VAT.
         // So Subtotal = Total before discount. Tax = Total / 1.15 * 0.15
         
+
+        // Apply Promotions
+        let promoDiscount = 0;
+        if (activePromotions && activePromotions.length > 0) {
+            cart.forEach(item => {
+                const matchedPromo = activePromotions.find(p => p.productId === item.id || p.productId === item.id.split('-')[0]);
+                if (matchedPromo && matchedPromo.percent) {
+                    promoDiscount += (item.price * item.qty) * (Number(matchedPromo.percent) / 100);
+                } else if (matchedPromo && matchedPromo.fixedDiscount) {
+                    promoDiscount += Number(matchedPromo.fixedDiscount) * item.qty;
+                }
+            });
+        }
+
         let grossAmount = subtotal;
-        let finalTotal = grossAmount - discountAmount;
+        let finalTotal = grossAmount - discountAmount - promoDiscount;
         if (finalTotal < 0) finalTotal = 0;
+
 
         const TAX_RATE = getTaxRate();
         let taxAmount = finalTotal - (finalTotal / (1 + TAX_RATE));
@@ -528,6 +594,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('btn-checkout-total').innerText = Number(finalTotal).toFixed(0); 
         
         currentFinalTotal = finalTotal; // Keep track for calculations
+
+        const savingsAmount = promoDiscount + discountAmount;
+        let savingsEl = document.getElementById('cart-savings-display');
+        if (!savingsEl) {
+            savingsEl = document.createElement('div');
+            savingsEl.id = 'cart-savings-display';
+            savingsEl.style.color = '#10b981';
+            savingsEl.style.fontWeight = 'bold';
+            savingsEl.style.padding = '10px 20px';
+            document.querySelector('.cart-summary').insertBefore(savingsEl, document.querySelector('.summary-line.tax'));
+        }
+        if (savingsAmount > 0) {
+            savingsEl.innerText = `إجمالي التوفير: ${formatCurrency(savingsAmount)}`;
+            savingsEl.style.display = 'block';
+        } else {
+            savingsEl.innerText = '';
+            savingsEl.style.display = 'none';
+        }
+
 
         // Sync with checkout modal
         document.getElementById('checkout-total-display').innerText = formatCurrency(finalTotal);
@@ -1799,7 +1884,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function reloadPosCatalogFromNetwork() {
         if (cart.length > 0) return;
-        const d = await window.dbReadSlice(['categories', 'products']);
+        const d = await window.dbReadSlice(['categories', 'products', 'promotions']);
+        activePromotions = d.promotions || [];
         catData = d.categories || JSON.parse(localStorage.getItem('pos_categories') || '[]');
         prodData = d.products || JSON.parse(localStorage.getItem('pos_products') || '[]');
         try {

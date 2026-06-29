@@ -28,8 +28,8 @@ const APP_HTML_PAGES = [
   'settings.html',
   'permissions.html',
   'fatora.html',
-  'kitchen.html',
-  'kitchen-production.html',
+
+
   'profile.html',
   'suppliers.html',
   'setup.html',

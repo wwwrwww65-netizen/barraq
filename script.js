@@ -67,7 +67,6 @@ if (!_isPublicAuthPage) {
             const pageMap = {
                 // نقطة البيع والمبيعات
                 'pos.html':           'pos_access',
-                'kitchen.html':       'pos_access',
                 'sales.html':         'sales_access',
                 'returns.html':       'pos_return',
                 'customers.html':     'sales_access',
@@ -84,7 +83,6 @@ if (!_isPublicAuthPage) {
                 'purchases.html':     'inv_manage',
                 'inv-documents.html': 'inv_manage',
                 'suppliers.html':     'inv_manage',
-                'kitchen-production.html': 'inv_manage',
 
                 // الموظفين والمحاسبة
                 'staff.html':         'hr_manage',
@@ -955,7 +953,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Dynamic Global Back Button ---
     const path = window.location.pathname;
-    const isRootOrMain = path.endsWith('index.html') || path.endsWith('pos.html') || path.endsWith('kitchen.html') || path.endsWith('login.html');
+    const isRootOrMain = path.endsWith('index.html') || path.endsWith('pos.html') || path.endsWith('login.html');
     
     const headerLeft = document.querySelector('.top-header .header-left');
     if (headerLeft && !isRootOrMain) {

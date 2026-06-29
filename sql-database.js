@@ -37,6 +37,11 @@ function initDb(dbPath) {
             data TEXT
         );
 
+        CREATE TABLE IF NOT EXISTS promotions (
+            id TEXT PRIMARY KEY,
+            data TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS day_closures (
             id TEXT PRIMARY KEY,
             closedAt INTEGER,
@@ -44,11 +49,6 @@ function initDb(dbPath) {
         );
 
         CREATE TABLE IF NOT EXISTS day_closure_details (
-            id TEXT PRIMARY KEY,
-            data TEXT
-        );
-
-        CREATE TABLE IF NOT EXISTS kitchen_tx (
             id TEXT PRIMARY KEY,
             data TEXT
         );
@@ -383,7 +383,6 @@ function buildLineDeductions(lineItem, warehouseId, orderId) {
                     date: new Date().toISOString(),
                     notes: 'خصم مبيعات POS - فاتورة #' + (orderId || 'Direct')
                 };
-                db.prepare('INSERT OR IGNORE INTO kitchen_tx (id, data) VALUES (?, ?)').run(tx.id, JSON.stringify(tx));
             }
         }
     }
@@ -449,7 +448,7 @@ function appendDayClosure(summary, shifts) {
 const SYSTEM_KEYS = [
     'purchases', 'suppliers', 'inventoryTx', 'returns', 'expenses', 'bankTransfers',
     'hrExpenses', 'otherIncome', 'employees', 'attendance', 'penaltyRules',
-    'chartOfAccounts', 'journalEntries', 'systemNotifications', 'inventoryAlertState',
+    'chartOfAccounts', 'journalEntries', 'systemNotifications', 'inventoryAlertState', 'promotions',
     'deliveryCompanies', 'customers', 'zatca_keys', 'zatca_csid', 'migration_done'
 ];
 
@@ -469,10 +468,7 @@ function readSlice(keys) {
             out[key] = {};
             for (const r of rows) {
                 out[key][r.id] = JSON.parse(r.data);
-            }
-        } else if (key === 'kitchenTx') {
-            out[key] = _getAllFromTable('kitchen_tx');
-        } else {
+            } } else {
             const row = db.prepare('SELECT value FROM system_data WHERE key = ?').get(key);
             out[key] = row ? JSON.parse(row.value) : (SYSTEM_KEYS.includes(key) ? [] : null);
         }
@@ -487,8 +483,7 @@ function readFull() {
         categories: getCategories(),
         inventory: getInventory(),
         day_closures: getDayClosures(),
-        day_closure_details: readSlice(['day_closure_details']).day_closure_details || {},
-        kitchenTx: _getAllFromTable('kitchen_tx')
+        day_closure_details: readSlice(['day_closure_details']).day_closure_details || {}
     };
 
     const rows = db.prepare('SELECT key, value FROM system_data').all();
@@ -509,8 +504,7 @@ function readUI() {
         categories: getCategories(),
         inventory: getInventory(),
         day_closures: getDayClosures(),
-        day_closure_details: readSlice(['day_closure_details']).day_closure_details || {},
-        kitchenTx: _getAllFromTable('kitchen_tx')
+        day_closure_details: readSlice(['day_closure_details']).day_closure_details || {}
     };
 
     const rows = db.prepare('SELECT key, value FROM system_data').all();
@@ -563,15 +557,9 @@ function writeFull(data) {
                     stmt.run(id, JSON.stringify(data.day_closure_details[id]));
                 }
             }
-            if (Array.isArray(data.kitchenTx)) {
-                const stmt = db.prepare('INSERT OR REPLACE INTO kitchen_tx (id, data) VALUES (?, ?)');
-                for (const item of data.kitchenTx) {
-                    if (item && item.id) stmt.run(item.id, JSON.stringify(item));
-                }
-            }
 
             const sysStmt = db.prepare('INSERT OR REPLACE INTO system_data (key, value) VALUES (?, ?)');
-            const skipKeys = ['orders', 'products', 'categories', 'inventory', 'day_closures', 'day_closure_details', 'kitchenTx'];
+            const skipKeys = ['orders', 'products', 'categories', 'inventory', 'day_closures', 'day_closure_details'];
             for (const key of Object.keys(data)) {
                 if (!skipKeys.includes(key)) {
                     sysStmt.run(key, JSON.stringify(data[key]));
@@ -597,7 +585,26 @@ function checkpointDb() {
     }
 }
 
+
+// ---------------------------------------------------------
+// Promotions
+// ---------------------------------------------------------
+function savePromotion(promotion) {
+    try {
+        db.prepare('INSERT OR REPLACE INTO promotions (id, data) VALUES (?, ?)').run(promotion.id, JSON.stringify(promotion));
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+}
+
+function getPromotions() {
+    return _getAllFromTable('promotions');
+}
+
 module.exports = {
+    savePromotion,
+    getPromotions,
     initDb,
     closeDb,
     checkpointDb,
