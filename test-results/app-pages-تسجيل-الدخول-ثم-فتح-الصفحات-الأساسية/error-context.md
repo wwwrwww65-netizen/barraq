@@ -7,35 +7,14 @@
 # Test info
 
 - Name: app-pages.spec.js >> تسجيل الدخول ثم فتح الصفحات الأساسية
-- Location: tests\e2e\app-pages.spec.js:47:1
+- Location: tests/e2e/app-pages.spec.js:47:1
 
 # Error details
 
 ```
-Error: electron.launch: WebSocket error: read ECONNRESET
+TimeoutError: page.fill: Timeout 30000ms exceeded.
 Call log:
-  - <launching> "E:\baraaq\node_modules\electron\dist\electron.exe" "-r" "E:\baraaq\node_modules\playwright-core\lib\server\electron\loader.js" "--inspect=0" "--remote-debugging-port=0" "."
-  - <launched> pid=9376
-  - [pid=9376][out]
-  - [pid=9376][err] Debugger listening on ws://127.0.0.1:64357/c9c88167-eaa2-46d9-adf1-5a4953625260
-  - <ws connecting> ws://127.0.0.1:64357/c9c88167-eaa2-46d9-adf1-5a4953625260
-  - [pid=9376][err] For help, see: https://nodejs.org/en/docs/inspector
-  - [pid=9376][err] Debugger attached.
-  - <ws connected> ws://127.0.0.1:64357/c9c88167-eaa2-46d9-adf1-5a4953625260
-  - [pid=9376][out] [MisterCasherPOS] ⚠️ Another instance is already running — focusing existing window.
-  - [pid=9376][err]
-  - [pid=9376][err] DevTools listening on ws://127.0.0.1:64359/devtools/browser/a0f2d7af-1b58-4d19-ad52-563bc1268f58
-  - <ws connecting> ws://127.0.0.1:64359/devtools/browser/a0f2d7af-1b58-4d19-ad52-563bc1268f58
-  - <ws disconnected> ws://127.0.0.1:64357/c9c88167-eaa2-46d9-adf1-5a4953625260 code=1005 reason=
-  - <ws error> ws://127.0.0.1:64359/devtools/browser/a0f2d7af-1b58-4d19-ad52-563bc1268f58 error read ECONNRESET
-  - <ws connect error> ws://127.0.0.1:64359/devtools/browser/a0f2d7af-1b58-4d19-ad52-563bc1268f58 read ECONNRESET
-  - <ws disconnected> ws://127.0.0.1:64359/devtools/browser/a0f2d7af-1b58-4d19-ad52-563bc1268f58 code=1006 reason=
-  - [pid=9376] <kill>
-  - [pid=9376] <will force kill>
-  - [pid=9376] taskkill stderr: ERROR: The process "9376" not found.
-  - [pid=9376] <process did exit: exitCode=0, signal=null>
-  - [pid=9376] starting temporary directories cleanup
-  - [pid=9376] finished temporary directories cleanup
+  - waiting for locator('#username')
 
 ```
 
@@ -69,8 +48,8 @@ Call log:
   25 |   'settings.html',
   26 |   'permissions.html',
   27 |   'fatora.html',
-  28 |   'kitchen.html',
-  29 |   'kitchen-production.html',
+  28 |
+  29 |
   30 |   'profile.html',
   31 |   'suppliers.html',
   32 |   'setup.html',
@@ -91,8 +70,7 @@ Call log:
   47 | test('تسجيل الدخول ثم فتح الصفحات الأساسية', async () => {
   48 |   test.setTimeout(600000);
   49 | 
-> 50 |   const electronApp = await electron.launch({
-     |                       ^ Error: electron.launch: WebSocket error: read ECONNRESET
+  50 |   const electronApp = await electron.launch({
   51 |     cwd: projectRoot,
   52 |     args: ['.'],
   53 |   });
@@ -101,7 +79,8 @@ Call log:
   56 | 
   57 |   try {
   58 |     await window.waitForLoadState('domcontentloaded', { timeout: 60000 });
-  59 |     await window.fill('#username', 'admin');
+> 59 |     await window.fill('#username', 'admin');
+     |                  ^ TimeoutError: page.fill: Timeout 30000ms exceeded.
   60 |     await window.fill('#password', '123456');
   61 |     await window.click('#btn-login-submit');
   62 |     await window.waitForURL(/index\.html/i, { timeout: 30000 });

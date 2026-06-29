@@ -501,8 +501,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetBtn = document.getElementById('btn-reset-settings');
     if (resetBtn) {
         resetBtn.addEventListener('click', () => {
-            if(confirm('هل تريد استعادة شعار واسم "Mister Casher" ومسح بيانات المطعم الحالية؟')) {
-                // مسح بيانات المطعم وإعادة الشعار الرسمي للبرنامج
+            if(confirm('هل تريد استعادة شعار واسم "Mister Casher" ومسح بيانات السوبر ماركت الحالية؟')) {
+                // مسح بيانات السوبر ماركت وإعادة الشعار الرسمي للبرنامج
                 localStorage.removeItem('restaurant_settings');
                 location.reload();
             }
@@ -1495,7 +1495,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         } catch (e) {}
                         
-                        const message = `السلام عليكم، أحتاج دعم فني لنظام مستر كاشير.\nاسم المطعم: ${restaurantName}`;
+                        const message = `السلام عليكم، أحتاج دعم فني لنظام مستر كاشير.\nاسم السوبر ماركت: ${restaurantName}`;
                         const encodedMessage = encodeURIComponent(message);
                         
                         // Use direct web.whatsapp.com URL so the native window handles it smoothly without wa.me redirects

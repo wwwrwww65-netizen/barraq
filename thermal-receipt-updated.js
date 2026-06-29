@@ -167,6 +167,7 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
         : (el('r-subtotal') ? el('r-subtotal').innerText : (el('cart-subtotal') ? el('cart-subtotal').innerText : ''));
     const rTotal = snap ? snap.totalText : (el('r-total') ? el('r-total').innerText : '');
     const rDiscount = snap ? snap.discountText : (el('r-discount') ? el('r-discount').innerText : '');
+    const rSavings = snap ? snap.savingsText : (el('cart-savings-display') ? el('cart-savings-display').innerText.replace('إجمالي التوفير: ', '') : '');
     const rTaxLabel = snap ? snap.taxLabel : (el('r-tax-rate-label') ? el('r-tax-rate-label').innerText : '');
     const rTax = snap ? snap.taxText : (el('r-tax') ? el('r-tax').innerText : '');
     const rPay = snap ? snap.paymentText : (el('r-payment-method') ? el('r-payment-method').innerText : '');
@@ -532,6 +533,16 @@ function buildThermalReceiptHTML(logoBase64, restName, restTax, restBranch, rest
                     <div class="total-row">
                         <span class="total-label">الخصم:</span>
                         <span class="total-value">${rDiscount}</span>
+                    </div>`;
+                }
+                return '';
+            })()}
+            ${(() => {
+                if (isNonZeroMoneyDisplay(rSavings)) {
+                    return `
+                    <div class="total-row savings-row" style="color: #10b981;">
+                        <span class="total-label">إجمالي التوفير:</span>
+                        <span class="total-value">${rSavings}</span>
                     </div>`;
                 }
                 return '';
