@@ -1199,6 +1199,12 @@ ipcMain.handle('db-get-inventory', async () => {
 
 ipcMain.handle('db-save-product', async (event, data) => {
   const result = dbAPI.saveProduct(data);
+  if (data.barcodes && Array.isArray(data.barcodes)) {
+    data.barcodes.forEach(b => {
+      if (!b.product_id) b.product_id = data.id;
+      dbAPI.saveProductBarcode(b);
+    });
+  }
   setImmediate(() => broadcastDBChanged());
   return result;
 });

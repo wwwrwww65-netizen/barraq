@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Seed default if empty
             if (companies.length === 0) {
-                companies.push({ name: 'هنقرستيشن', phone: '', address: '', isActive: true });
+                companies.push({ name: 'جاهز', phone: '', address: '', isActive: true });
                 _db.deliveryCompanies = companies;
                 await window.dbWrite(_db);
             }
