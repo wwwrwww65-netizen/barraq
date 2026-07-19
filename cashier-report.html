@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <script src="page-transition.js"></script>
@@ -254,7 +254,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cashierSelect = document.getElementById('filter-cashier');
 
     async function pullCashierReportDb() {
-        const db = await window.dbReadArchive();
+        const db = typeof window.dbReadSlice === 'function' ? await window.dbReadSlice(['orders', 'returns']) : await window.dbReadArchive();
         allOrders = db.orders || [];
         allReturns = db.returns || [];
         if (isAdmin && cashierSelect) {

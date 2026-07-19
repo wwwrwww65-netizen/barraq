@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const c = companies[idx];
         if (await ModernDialog.confirm(`هل أنت متأكد من حذف شركة التوصيل (${c.name})؟`)) {
             companies.splice(idx, 1);
-            const _db = await window.dbRead();
+            const _db = await window.dbReadSlice(['deliveryCompanies']);
             _db.deliveryCompanies = companies;
             await window.dbWrite(_db);
             renderCompanies(searchInput ? searchInput.value.trim() : '');
@@ -151,7 +151,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (!comp.name) return alert('يرجى إدخال اسم الشركة');
 
-        const _db = await window.dbRead();
+        const _db = await window.dbReadSlice(['deliveryCompanies']);
         if (idx !== '') companies[parseInt(idx)] = comp;
         else {
             if (companies.some(c => c.name === comp.name)) return alert('الشركة موجودة مسبقاً');

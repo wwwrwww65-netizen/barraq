@@ -1046,7 +1046,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log(`[Inventory] 🔄 Database update notification received. Refreshing in ${staggerDelay}ms...`);
 
             setTimeout(async () => {
-                const newDb = await window.dbRead();
+                const newDb = await window.dbReadSlice(['inventory', 'inventoryTx', 'purchases', 'suppliers', 'deliveryCompanies']);
                 if (newDb && newDb.inventory && newDb.inventory.length > 0) {
                     db = newDb;
                     erpItems = db.inventory || [];

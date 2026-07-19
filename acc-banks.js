@@ -235,7 +235,7 @@
             btn.addEventListener('click', async () => {
                 const id = btn.getAttribute('data-oid');
                 if (!id || !confirm('حذف هذا الإيراد من السجل؟')) return;
-                const db = await window.dbReadArchive();
+                const db = await window.dbReadSlice(['otherIncome']);
                 db.otherIncome = (db.otherIncome || []).filter((r) => String(r.id) !== String(id));
                 await window.dbWrite(db);
                 await refreshLiquidity();
@@ -283,7 +283,7 @@
                     date: new Date().toISOString(),
                 };
 
-                const db = await window.dbReadArchive();
+                const db = await window.dbReadSlice(['bankTransfers']);
                 if (!db.bankTransfers) db.bankTransfers = [];
                 db.bankTransfers.push(trx);
                 await window.dbWrite(db);
@@ -333,7 +333,7 @@
                     date: now.toISOString().split('T')[0],
                     timestamp: now.getTime(),
                 };
-                const db = await window.dbReadArchive();
+                const db = await window.dbReadSlice(['otherIncome']);
                 if (!db.otherIncome) db.otherIncome = [];
                 db.otherIncome.push(row);
                 await window.dbWrite(db);

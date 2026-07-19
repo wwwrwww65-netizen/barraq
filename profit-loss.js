@@ -87,8 +87,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     async function loadProfitLossData(period = 'month') {
-        const db = (await window.dbReadSlice(['orders_all', 'returns', 'hrExpenses', 'purchases', 'expenses', 'otherIncome'])) || {};
-        /** نفس مصدر `acc.js` — الطلبات كاملة من القاعدة (لا حد 500 كما في db-get-orders) */
+        const db = (await window.dbReadSlice(['orders', 'returns', 'hrExpenses', 'purchases', 'expenses', 'otherIncome'])) || {};
+        /** جلب orders (الأحدث) بدلاً من orders_all يمنع التجميد الخانق للشاشة */
         let orders = db.orders || [];
         let returns = db.returns || [];
         let hrExpenses = db.hrExpenses || [];

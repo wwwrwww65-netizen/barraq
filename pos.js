@@ -861,7 +861,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     patched = patchRes && patchRes.success;
                 }
                 if (!patched) {
-                    const dbNow = await window.dbRead();
+                    const dbNow = await window.dbReadSlice(['orders']);
                     dbNow.orders = dbNow.orders || [];
                     const idx = dbNow.orders.findIndex((o) => String(o.orderId) === String(editingOrderId));
                     if (idx >= 0) {

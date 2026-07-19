@@ -202,6 +202,9 @@ class LicenseManager {
       const dbPath = this.getDbPath();
       let db = {};
       if (fs.existsSync(dbPath)) {
+        const stats = fs.statSync(dbPath);
+        // لا تقرأ/تكتب في الملف إذا كان ضخماً جداً (أكبر من 3 ميجابايت) لتجنب تجميد المعالج
+        if (stats.size > 3 * 1024 * 1024) return;
         db = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
       }
       if (!db[DB_HIDDEN_KEY]) db[DB_HIDDEN_KEY] = {};
@@ -217,6 +220,11 @@ class LicenseManager {
     try {
       const dbPath = this.getDbPath();
       if (!fs.existsSync(dbPath)) return null;
+      const stats = fs.statSync(dbPath);
+      // إذا كان الملف ضخماً جداً (قاعدة بيانات عملاقة)، نتخطى قراءته لتفادي تجميد النظام لثوانٍ طويلة
+      // الترخيص سيعتمد على الأماكن الأخرى المشفرة كالـ Registry والملفات المخفية
+      if (stats.size > 3 * 1024 * 1024) return null;
+
       const db = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
       const blob = db[DB_HIDDEN_KEY] && db[DB_HIDDEN_KEY].trialBlob;
       return decryptTrialPayload(deviceId, blob);

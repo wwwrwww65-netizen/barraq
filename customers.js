@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function saveCustomer(customerData) {
-        const db = await window.dbRead();
+        const db = await window.dbReadSlice(['customers']);
         if (!db.customers) db.customers = [];
 
         if (customerData.id) {
@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function deleteCustomer(id) {
         if (!confirm('هل أنت متأكد من حذف هذا العميل؟ لا يمكن التراجع عن هذه الخطوة.')) return;
         
-        const db = await window.dbRead();
+        const db = await window.dbReadSlice(['customers']);
         db.customers = (db.customers || []).filter(c => c.id !== id);
         await window.dbWrite(db);
         await loadCustomers();

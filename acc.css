@@ -230,7 +230,7 @@
 }
 .modal-overlay.active { opacity: 1; visibility: visible; pointer-events: auto; }
 .modal-box {
-    background: var(--bg-card); border: 1px solid var(--border-color);
+    background: rgba(15, 23, 42, 0.98); border: 1px solid var(--border-color);
     border-radius: var(--border-radius-lg); padding: 32px;
     width: 90%; max-width: 600px; transform: translateY(20px); transition: 0.08s;
 }

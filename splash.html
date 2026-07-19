@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mister Casher</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0b0f19;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 24px;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #94a3b8;
+    overflow: hidden;
+  }
+  
+  /* ستايل الثيم النهاري */
+  html.light, html.light body {
+    background: #f1f5f9;
+    color: #475569;
+  }
+  .logo-ring {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    border: 3px solid rgba(16,185,129,0.15);
+    border-top-color: #10b981;
+    animation: spin 0.8s linear infinite;
+  }
+  .app-name {
+    font-size: 22px;
+    font-weight: 700;
+    background: linear-gradient(90deg, #10b981, #34d399);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 1px;
+  }
+  .status {
+    font-size: 13px;
+    color: #475569;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+</style>
+<script>
+  // فحص الثيم قبل تحميل الـ Body كلياً لمنع الوميض الأسود
+  if (localStorage.getItem('sys_theme') === 'light') {
+    document.documentElement.classList.add('light');
+  }
+</script>
+</head>
+<body>
+  <div class="logo-ring"></div>
+  <div class="app-name">Mister Casher</div>
+  <div class="status">جاري التحميل...</div>
+</body>
+</html>

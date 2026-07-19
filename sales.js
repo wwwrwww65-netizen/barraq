@@ -9,7 +9,7 @@ let _salesSearchTimer;
 // Auto-fix negative split values in database
 async function autoFixNegativeSplitValues() {
     try {
-        const db = await window.dbReadSlice(['orders_all']);
+        const db = await window.dbReadSlice(['orders']);
         const orders = db.orders || [];
         
         console.log(`\n🔍 [Auto-Fix] Scanning ${orders.length} orders...`);
@@ -188,7 +188,7 @@ async function loadSales() {
     }
     
     // Read from SQLite JSON database via IPC
-    allSalesOrders = await ipcRenderer.invoke('db-get-orders-all');
+    allSalesOrders = await ipcRenderer.invoke('db-get-orders');
     if (!allSalesOrders) allSalesOrders = [];
 
     // Filter out returned orders to match closing reports
@@ -495,7 +495,7 @@ window.addEventListener('afterprint', () => {
 async function clearSales() {
     if(confirm('هل أنت متأكد من مسح جميع سجلات المبيعات الحالية؟ لا يمكن التراجع!')) {
         try {
-            const db = await window.dbReadSlice(['orders_all']);
+            const db = await window.dbReadSlice(['orders']);
             db.orders = [];
             await window.dbWrite(db);
         } catch(e) { console.error(e); }
@@ -508,8 +508,9 @@ async function fixNegativeBalances() {
     alert('جاري فحص البيانات...');
     
     try {
-        const db = await window.dbReadSlice(['orders_all']);
-        const allOrders = db.orders || [];
+        // استخدم 'orders' بدلاً من 'orders_all' لتفادي تجميد النظام عند فتح الصفحة
+        const db = await window.dbReadSlice(['orders']);
+        const allOrders = (db && db.orders) ? db.orders : [];
         
         // Show ALL orders with dates
         let todayStart = new Date();

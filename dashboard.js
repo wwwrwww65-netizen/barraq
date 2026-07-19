@@ -1207,7 +1207,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 saved = r && r.success;
             }
             if (!saved) {
-                const db = await window.dbReadArchive();
+                const db = typeof window.dbReadSlice === 'function' 
+                    ? await window.dbReadSlice(['day_closures', 'day_closure_details']) 
+                    : await window.dbReadArchive();
                 const mergeClosures = typeof window.mergeDayClosureRecords === 'function'
                     ? window.mergeDayClosureRecords
                     : (dbList, hist) => (dbList || []).concat(hist || []);

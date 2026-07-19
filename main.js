@@ -1459,26 +1459,38 @@ ipcMain.handle('restore-backup-get-info', async (event, backupFolder) => {
       return { success: false, error: 'folder_not_found' };
     }
 
-    // البحث عن ملف pos_database.json في المجلد
+    // البحث عن قاعدة البيانات في المجلد
     const dbFile = path.join(folder, 'pos_database.json');
-    if (!fs.existsSync(dbFile)) {
+    const sqliteFile = path.join(folder, 'pos_database.db');
+    
+    if (!fs.existsSync(dbFile) && !fs.existsSync(sqliteFile)) {
       return { success: false, error: 'database_not_found' };
     }
 
-    // قراءة معلومات قاعدة البيانات
-    const dbData = JSON.parse(fs.readFileSync(dbFile, 'utf8'));
+    // قراءة معلومات قاعدة البيانات لإظهارها (إذا توفر ملف JSON)
+    let dbData = {};
+    if (fs.existsSync(dbFile)) {
+      try {
+         dbData = JSON.parse(fs.readFileSync(dbFile, 'utf8'));
+      } catch(e) {}
+    }
 
-    // استخراج التاريخ من اسم المجلد
+    // استخراج التاريخ
     const folderName = path.basename(folder);
-    const dateMatch = folderName.match(/MisterCasherPOS_backup_(.+)/);
+    const dateMatch = folderName.match(/(?:MisterCasherPOS_backup_|HashPOS_backup_)(.+)/i);
     let dateStr = 'غير معروف';
     if (dateMatch) {
       try {
-        const datePart = dateMatch[1].replace(/-/g, '/').replace('T', ' ');
+        const datePart = dateMatch[1].replace(/-/g, '/').replace('T', ' ').replace(/_/g, ':');
         dateStr = new Date(datePart).toLocaleString('ar-SA');
       } catch (e) {
         dateStr = folderName;
       }
+    } else {
+      try {
+        const stats = fs.statSync(fs.existsSync(sqliteFile) ? sqliteFile : dbFile);
+        dateStr = stats.mtime.toLocaleString('ar-SA');
+      } catch (e) {}
     }
 
     return {
@@ -1487,7 +1499,7 @@ ipcMain.handle('restore-backup-get-info', async (event, backupFolder) => {
       ordersCount: dbData.orders?.length || 0,
       productsCount: dbData.products?.length || 0,
       inventoryCount: dbData.inventory?.length || 0,
-      hasLocalStorage: fs.existsSync(path.join(folder, 'mistercasher_localStorage.json'))
+      hasLocalStorage: fs.existsSync(path.join(folder, 'mistercasher_localStorage.json')) || fs.existsSync(path.join(folder, 'hashpos_localStorage.json'))
     };
   } catch (e) {
     console.error('[Restore] Error getting backup info:', e.message);
@@ -1508,7 +1520,11 @@ ipcMain.handle('restore-backup-execute', async (event, options) => {
 
     const dbFile = path.join(backupFolder, 'pos_database.json');
     const sqliteFile = path.join(backupFolder, 'pos_database.db');
-    const lsFile = path.join(backupFolder, 'mistercasher_localStorage.json');
+    let lsFile = path.join(backupFolder, 'mistercasher_localStorage.json');
+    if (!fs.existsSync(lsFile)) {
+      const oldLsFile = path.join(backupFolder, 'hashpos_localStorage.json');
+      if (fs.existsSync(oldLsFile)) lsFile = oldLsFile;
+    }
 
     // Must have at least one of JSON or SQLite
     if (!fs.existsSync(dbFile) && !fs.existsSync(sqliteFile)) {
@@ -1599,8 +1615,14 @@ ipcMain.handle('restore-backup-execute', async (event, options) => {
   }
 });
 
-// إعادة تشغيل التطبيق بالكامل (Relaunch)
-ipcMain.on('app-reload', () => {
+// إعادة تشغيل التطبيق بالكامل (Relaunch) مع حفظ البيانات المؤقتة
+ipcMain.on('app-reload', async () => {
+  try {
+    const { session } = require('electron');
+    if (session.defaultSession) {
+      await session.defaultSession.flushStorageData();
+    }
+  } catch(e) {}
   app.relaunch();
   app.exit(0);
 });
@@ -1673,9 +1695,8 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
-    show: effectiveWeakHost, // على الأجهزة الضعيفة: إظهار فوري يقلل إحساس «شاشة سوداء مجمدة»
-    paintWhenInitiallyHidden: true, // يجهّز الطبقة قبل الإظهار — انتقال أوضح وأقل تقطيع عند الفتح
-    backgroundColor: '#0b0f19', // لون خلفية مظلم يطابق لون التطبيق
+    show: false, // تبدأ مخفية حتى يكتمل تجهيز splash.html (أقل من 50 ملي ثانية)
+    paintWhenInitiallyHidden: true,
     autoHideMenuBar: false,
     icon: path.join(__dirname, '2222.png'),
     webPreferences: {
@@ -1713,6 +1734,10 @@ function createWindow() {
     }
   });
 
+  // ─── المرحلة 1: splash فورية — تظهر للمستخدم في أقل من ثانية ───────
+  win.loadFile('splash.html').catch(() => {});
+
+  // ─── المرحلة 2: في الخلفية — تحديد الصفحة الحقيقية وتحميلها ──────
   const loadStartupPage = async () => {
     try {
       const pageSpec = await licenseManager.resolveStartupPage();
@@ -1721,20 +1746,22 @@ function createWindow() {
         const file = pageSpec.slice(0, qIdx);
         const qs = new URLSearchParams(pageSpec.slice(qIdx + 1));
         const query = {};
-        qs.forEach((v, k) => {
-          query[k] = v;
-        });
+        qs.forEach((v, k) => { query[k] = v; });
         await win.loadFile(file, { query });
       } else {
         await win.loadFile(pageSpec);
       }
     } catch (e) {
       console.error('[License] startup page:', e.message);
-      await win.loadFile('login.html');
+      await win.loadFile('login.html').catch(() => {});
     }
   };
-  loadStartupPage();
 
+  // إعطاء واجهة المستخدم 250 جزء من الثانية لتتمكن من رسم (Paint) شاشة Splash
+  // قبل بدء التحقق من الترخيص أو فتح قواعد البيانات (مما قد يستهلك بعض الوقت)
+  setTimeout(loadStartupPage, 250);
+
+  // إظهار وتكبير النافذة فور أن تصبح splash.html جاهزة للرسم (أقل من 50 ملي ثانية)
   win.once('ready-to-show', () => {
     if (!win.isDestroyed()) {
       if (!win.isMaximized()) win.maximize();
@@ -1742,9 +1769,6 @@ function createWindow() {
       win.focus();
     }
   });
-
-  // تم إزالة أكواد الإخفاء والوميض الاصطناعية بناءً على طلب المستخدم
-  // بحيث تفتح الصفحة وتُعرض فوراً وبشكل طبيعي جداً بدون أي خلفية أو شاشة تغطيها.
 
   mainWindow = win;
   win.on('closed', () => {

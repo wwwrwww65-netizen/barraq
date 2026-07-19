@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             `).join('');
         }
-        const db = await window.dbReadSlice(['orders_all', 'returns']);
+        const db = await window.dbReadSlice(['orders', 'returns']);
         allOrders = db.orders || [];
         allOrders = allOrders.sort((a, b) => b.timestamp - a.timestamp);
         const returns = db.returns || [];

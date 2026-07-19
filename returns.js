@@ -219,7 +219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             timestamp: Date.now(),
         };
 
-        const writeDb = await window.dbReadArchive();
+        const writeDb = typeof window.dbReadSlice === 'function' ? await window.dbReadSlice(['returns', 'orders']) : await window.dbReadArchive();
         if (!writeDb.returns) writeDb.returns = [];
         if (!writeDb.orders) writeDb.orders = [];
 

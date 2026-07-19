@@ -1858,6 +1858,10 @@ window.isDateInPeriod = function(dateInput, period) {
         let startOfWeek = new Date(startOfToday.getTime());
         startOfWeek.setDate(startOfWeek.getDate() - 7);
         return d >= startOfWeek;
+    } else if(period === 'last10') {
+        let start10 = new Date(startOfToday.getTime());
+        start10.setDate(start10.getDate() - 10);
+        return d >= start10;
     } else if(period === 'month' || period === 'this_month') {
         let startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         return d >= startOfMonth;

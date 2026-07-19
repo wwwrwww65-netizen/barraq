@@ -20,6 +20,7 @@ function regSet(value) {
     execSync(`reg add "${REGISTRY_KEY}" /v ${REGISTRY_VALUE_TRIAL} /t REG_SZ /d "${escaped}" /f`, {
       windowsHide: true,
       timeout: 8000,
+      stdio: 'ignore'
     });
     _regTrialCache = value;
     _regTrialCacheAt = Date.now();
@@ -40,6 +41,7 @@ function regGet() {
       encoding: 'utf8',
       windowsHide: true,
       timeout: 8000,
+      stdio: ['ignore', 'pipe', 'ignore']
     });
     const m = out.match(/REG_SZ\s+(.+)$/m);
     const val = m ? m[1].trim() : null;

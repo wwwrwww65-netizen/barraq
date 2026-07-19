@@ -495,7 +495,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const notes = document.getElementById('hs-payment-notes-' + orderId).value || '';
 
         try {
-            const dbData = await window.dbReadArchive();
+            const dbData = typeof window.dbReadSlice === 'function' ? await window.dbReadSlice(['orders', 'receipt_vouchers']) : await window.dbReadArchive();
             const orderIndex = dbData.orders.findIndex(o => o.orderId === orderId);
             
             if (orderIndex === -1) {
@@ -756,7 +756,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
-            const dbData = await window.dbReadArchive();
+            const dbData = typeof window.dbReadSlice === 'function' ? await window.dbReadSlice(['orders', 'receipt_vouchers']) : await window.dbReadArchive();
             const now = new Date();
             const periodNote = `الفترة: ${dateLabel}`;
 

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <script src="page-transition.js"></script>
@@ -99,20 +99,31 @@
                 <div class="acc-panel">
                     <div class="acc-panel-title" style="display:flex; justify-content:space-between; align-items:center;">
                         <span>قائمة سندات الصرف الأخيرة</span>
-                        <div style="display:flex; gap:10px;">
-                            <select id="exp-period-filter" class="input-acc no-print" style="width:160px; font-size:13px; padding:6px 10px;">
+                        <div style="display:flex; gap:10px; position:relative;">
+                            <select id="exp-period-filter" class="input-acc no-print" style="width:160px; font-size:13px; padding:6px 10px; cursor:pointer;">
                                 <option value="all">كل الفترات</option>
                                 <option value="today" selected>اليوم</option>
                                 <option value="yesterday">أمس</option>
                                 <option value="week">هذا الأسبوع</option>
+                                <option value="last10">آخر 10 أيام</option>
                                 <option value="month">هذا الشهر</option>
                                 <option value="year">هذه السنة</option>
                                 <option value="custom">تاريخ محدد...</option>
                             </select>
-                            <div id="exp-custom-date-wrap" style="display:none; gap:5px; align-items:center;">
-                                <input type="date" id="exp-date-from" class="input-acc no-print" style="padding:5px; font-size:12px; width:110px;">
-                                <span style="color:var(--text-muted); font-size:12px;">إلى</span>
-                                <input type="date" id="exp-date-to" class="input-acc no-print" style="padding:5px; font-size:12px; width:110px;">
+                            
+                            <!-- مودال / قائمة منبثقة لتاريخ محدد -->
+                            <div id="exp-custom-overlay" style="display:none; position:fixed; inset:0; z-index:99; cursor:default;"></div>
+                            
+                            <div id="exp-custom-date-wrap" style="display:none; position:absolute; top:45px; right:0; background:var(--bg-panel, #1e293b); border:1px solid var(--border-color, #334155); padding:16px; border-radius:12px; z-index:100; box-shadow:0 15px 40px rgba(0,0,0,0.5); flex-direction:column; gap:12px; width:260px;">
+                                <div style="display:flex; flex-direction:column; gap:8px;">
+                                    <label style="font-size:12px; color:var(--text-muted); font-weight:700;">من تاريخ:</label>
+                                    <input type="date" id="exp-date-from" class="input-acc no-print" style="padding:10px; font-size:13px; width:100%; cursor:pointer; background:var(--bg-body, #0f172a); color:var(--text-primary, #fff); border:1px solid var(--border-color); border-radius:8px;">
+                                </div>
+                                <div style="display:flex; flex-direction:column; gap:8px;">
+                                    <label style="font-size:12px; color:var(--text-muted); font-weight:700;">إلى تاريخ:</label>
+                                    <input type="date" id="exp-date-to" class="input-acc no-print" style="padding:10px; font-size:13px; width:100%; cursor:pointer; background:var(--bg-body, #0f172a); color:var(--text-primary, #fff); border:1px solid var(--border-color); border-radius:8px;">
+                                </div>
+                                <button type="button" id="btn-apply-custom-date" class="btn btn-primary" style="margin-top:8px; width:100%; font-size:13px; border-radius:8px; display:flex; justify-content:center; align-items:center; gap:6px; background:var(--accent-blue, #3b82f6); color:#fff; border:none; padding:10px;"><i class="ph-bold ph-check"></i> تطبيق الفلتر</button>
                             </div>
                             <div class="search-box no-print" style="width:250px;">
                                 <i class="ph ph-magnifying-glass"></i>
@@ -372,6 +383,41 @@
             
             window.exportPageToPDF('المصروفات_' + restName + '_' + dateStr + '.pdf');
         }
+    </script>
+
+    <script>
+    (function initDatePopup() {
+        function closePop(reset) {
+            var w=document.getElementById('exp-custom-date-wrap');
+            var o=document.getElementById('exp-custom-overlay');
+            if(w)w.style.display='none';
+            if(o)o.style.display='none';
+            if(reset){
+                var s=document.getElementById('exp-period-filter');
+                if(s)s.value='today';
+                var opt=document.querySelector('#exp-period-filter option[value="custom"]');
+                if(opt)opt.textContent='تاريخ محدد...';
+            }
+        }
+        function applyDates() {
+            var f=(document.getElementById('exp-date-from')||{}).value||'';
+            var t=(document.getElementById('exp-date-to')||{}).value||'';
+            var opt=document.querySelector('#exp-period-filter option[value="custom"]');
+            if(opt)opt.textContent=(f&&t)?('من '+f+' إلى '+t):f?('من '+f+' فصاعداً'):t?('حتى '+t):'تاريخ محدد...';
+            closePop(false);
+            if(typeof window.mcRenderExp==='function')window.mcRenderExp();
+        }
+        var n=0;
+        var iv=setInterval(function(){
+            var btn=document.getElementById('btn-apply-custom-date');
+            var ovl=document.getElementById('exp-custom-overlay');
+            if(btn&&ovl){
+                clearInterval(iv);
+                btn.onclick=applyDates;
+                ovl.onclick=function(){closePop(true);if(typeof window.mcRenderExp==='function')window.mcRenderExp();};
+            } else if(++n>80) clearInterval(iv);
+        },100);
+    })();
     </script>
 </body>
 </html>
