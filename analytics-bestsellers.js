@@ -93,7 +93,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     async function loadData() {
-        allOrders = await ipcRenderer.invoke('db-get-orders') || [];
+        // Optimize load time: only fetch everything if we are looking beyond 'today'
+        const method = (currentRange === 'today') ? 'db-get-orders' : 'db-get-orders-all';
+        allOrders = await ipcRenderer.invoke(method) || [];
         processAndRender();
     }
 

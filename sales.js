@@ -175,6 +175,8 @@ async function loadSales() {
         `).join('');
     }
 
+    salesCurrentPage = 1; // Reset pagination when loading/filtering
+
     // إصلاح القيم السالبة مرة واحدة لكل جلسة — لا يُعاد مسح آلاف الطلبات عند كل فتح
     const shouldFix =
         !window.MC_PERF ||
@@ -187,14 +189,23 @@ async function loadSales() {
         }
     }
     
-    // Read from SQLite JSON database via IPC
-    allSalesOrders = await ipcRenderer.invoke('db-get-orders');
+    const period = document.getElementById('sales-period-filter')?.value || 'today';
+    
+    // ⚡ تعديل الأداء (Performance Fix): 
+    // إذا كان الفلتر 'اليوم' فقط، فلا نعطل النظام بجلب كل سنوات المبيعات! 
+    if (period === 'today') {
+        allSalesOrders = await ipcRenderer.invoke('db-get-orders');
+    } else {
+        // إذا كان الفلتر واسعاً نعرض أداة التحميل الكاملة
+        allSalesOrders = await ipcRenderer.invoke('db-get-orders-all');
+    }
+    
     if (!allSalesOrders) allSalesOrders = [];
 
     // Filter out returned orders to match closing reports
     allSalesOrders = allSalesOrders.filter(o => o.status !== 'returned');
 
-    const period = document.getElementById('sales-period-filter')?.value || 'today';
+
     let filteredList = [];
     
     if (period === 'all') {
@@ -202,10 +213,10 @@ async function loadSales() {
     } else if (period === 'custom') {
         const fromVal = document.getElementById('sales-date-from')?.value;
         const toVal = document.getElementById('sales-date-to')?.value;
-        if (fromVal && toVal) {
-            // ensure from/to is parsed correctly
-            const startMs = new Date(fromVal + 'T00:00:00').getTime();
-            const endMs = new Date(toVal + 'T23:59:59').getTime();
+        if (fromVal || toVal) {
+            // ensure from/to is parsed correctly, supporting open bounds
+            const startMs = fromVal ? new Date(fromVal + 'T00:00:00').getTime() : 0;
+            const endMs = toVal ? new Date(toVal + 'T23:59:59').getTime() : Number.MAX_SAFE_INTEGER;
             
             filteredList = allSalesOrders.filter(o => {
                 let ts = o.timestamp;
@@ -247,7 +258,9 @@ async function loadSales() {
 
     // Sort descending by timestamp
     allSalesOrders.sort((a, b) => b.timestamp - a.timestamp);
-    updateKPIs(allSalesOrders);
+    const dbData = await window.dbReadSlice(['deliveryCompanies']);
+    const delComps = dbData.deliveryCompanies || [];
+    updateKPIs(allSalesOrders, delComps);
 
     const searchStr = document.getElementById('sales-search')?.value.toLowerCase().trim() || '';
     renderSalesTable(searchStr);
@@ -370,56 +383,49 @@ function _renderSalesPagination(page, totalPages, total, tbody) {
     );
 }
 
-function updateKPIs(orders) {
+function updateKPIs(orders, delComps = []) {
     const xf = (n) => (window.MisterCasherCurrency ? MisterCasherCurrency.format(n) : Number(n).toFixed(2) + ' ر.س');
     let totalRev = 0;
     let cashRev = 0;
     let cardRev = 0;
     let orderCount = orders.length;
+    let deliveryTotals = {};
 
     console.log('\n💰 [Sales KPIs] Processing', orderCount, 'orders...');
-    console.log('[Sales KPIs] Payment methods found:', [...new Set(orders.map(o => o.paymentMethod))]);
 
     orders.forEach(o => {
         totalRev += o.total;
         
+        let deliveryCompany = o.deliveryCompany || 'توصيل';
+        if (o.hungerStation === true && !o.deliveryCompany) deliveryCompany = 'هنقرستيشن';
+
+        // Check if it's a delivery order
+        if (o.orderType === 'توصيل' || (o.paymentMethod || '').trim() === 'توصيل' || o.hungerStation === true) {
+            deliveryTotals[deliveryCompany] = (deliveryTotals[deliveryCompany] || 0) + o.total;
+        }
+
         // Handle split payment correctly
         const pm = (o.paymentMethod || '').trim();
         
         if (pm === 'مجزأ') {
-            // For split payment, use the stored split values
             const cashPart = Number(o.splitCash) || 0;
             const netPart = Number(o.splitNetwork) || 0;
-            
-            console.log(`[Sales] Split order ${o.orderId}: total=${o.total}, cash=${cashPart}, net=${netPart}`);
-            
-            // ALWAYS use split values for split payment orders
             cashRev += cashPart;
             cardRev += netPart;
-            
-            if (netPart < 0) {
-                console.error(`[Sales] ERROR: ${o.orderId} has NEGATIVE network ${netPart}!`);
-            }
         } else if (pm.includes('كاش') || pm === 'cash') {
             cashRev += o.total;
         } else if (pm.includes('شبكة') || pm === 'network' || pm.includes('بطاقة') || pm === 'card') {
             cardRev += o.total;
-            console.log(`[Sales] Network order ${o.orderId}: total=${o.total}`);
         } else if (pm === 'توصيل') {
-            // HungerStation - check if paid
+            // HungerStation or Delivery Co - check if paid
             if (o.hsPaymentStatus === 'paid' && o.hsPaymentMethod) {
                 if (o.hsPaymentMethod.includes('كاش') || o.hsPaymentMethod === 'cash') {
                     cashRev += o.total;
                 } else {
                     cardRev += o.total;
-                    console.log(`[Sales] HS paid order ${o.orderId}: total=${o.total}, method=${o.hsPaymentMethod}`);
                 }
-            } else {
-                console.log(`[Sales] HS unpaid order ${o.orderId}: EXCLUDED from totals`);
             }
         } else {
-            // Default: treat as network for safety
-            console.warn(`[Sales] Order ${o.orderId}: Unknown payment method "${pm}", treating as network`);
             cardRev += o.total;
         }
     });
@@ -436,6 +442,30 @@ function updateKPIs(orders) {
     if(el('kpi-total-orders')) el('kpi-total-orders').innerText = orderCount;
     if(el('kpi-cash-revenue')) el('kpi-cash-revenue').innerText = xf(cashRev);
     if(el('kpi-card-revenue')) el('kpi-card-revenue').innerText = xf(cardRev);
+
+    const kpiGrid = document.querySelector('.sales-kpi-grid');
+    if (kpiGrid) {
+        document.querySelectorAll('.dynamic-del-kpi').forEach(c => c.remove());
+        const colors = ['green', 'blue', 'orange', 'purple', 'teal', 'pink'];
+        delComps.forEach((comp, idx) => {
+            if (!comp.name) return;
+            const sum = deliveryTotals[comp.name] || 0;
+            const cStr = colors[(idx + 4) % colors.length];
+            let rawLogo = comp.logo || '';
+            if (rawLogo.startsWith('data:image')) {
+                // If it's a huge base64, we might want to scale it with CSS
+            }
+            const logoHtml = rawLogo && rawLogo.length > 10 ? `<img src="${rawLogo}" style="width:28px; height:28px; object-fit:contain; border-radius:4px;">` : `<i class="ph ph-motorcycle"></i>`;
+            
+            const cardHtml = `
+            <div class="sales-kpi-card ${cStr} dynamic-del-kpi">
+                <div class="sk-icon ${cStr}">${logoHtml}</div>
+                <p class="sk-title">مبيعات ${comp.name}</p>
+                <h3 class="sk-value">${xf(sum)}</h3>
+            </div>`;
+            kpiGrid.insertAdjacentHTML('beforeend', cardHtml);
+        });
+    }
 
     // Update table footer (for print and view)
     const tfoot = document.getElementById('sales-tfoot');

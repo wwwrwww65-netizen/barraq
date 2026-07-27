@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         let total = 0;
         (expenseList || []).forEach((ex) => {
             const pm = String(ex.pMethod || 'cash').trim();
-            if (pm !== 'bank' && pm !== 'network' && pm !== 'شبكة') {
+            if (pm !== 'bank' && pm !== 'network' && pm !== 'شبكة' && pm !== 'card') {
                 total += Number(ex.amount) || 0;
             }
         });
@@ -265,7 +265,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // Drawer balance: جلسة اليوم الحالية (بعد آخر Z أو إقفال يوم)
-    const shiftCashFloat = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
+    let shiftCashFloat = parseFloat(localStorage.getItem('shift_cash_float')) || 0;
+    // ⚠️ إصلاح تلقائي: إذا كانت العهدة المحفوظة سالبة (ناتجة عن خلل سابق)، نُصفّرها
+    // لأن العهدة الأصلية لا يمكن أن تكون سالبة أبداً
+    if (shiftCashFloat < 0) {
+        console.warn('[Dashboard] shift_cash_float was negative (' + shiftCashFloat + '), auto-resetting to 0');
+        shiftCashFloat = 0;
+        localStorage.setItem('shift_cash_float', '0');
+    }
     let shiftOrders;
     let shiftReturns;
     let shiftExpenses;
@@ -318,7 +325,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Only subtract CASH expenses from drawer — bank/network transfers do NOT touch the cash drawer
     shiftExpenses.forEach(h => {
         const pm = String(h.pMethod || 'cash').trim();
-        if (pm !== 'bank' && pm !== 'network' && pm !== 'شبكة') {
+        if (pm !== 'bank' && pm !== 'network' && pm !== 'شبكة' && pm !== 'card') {
             shiftTotalExp += Number(h.amount) || 0;
         }
     });
@@ -349,7 +356,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(lowStockCount > 0) {
         kpiValues[2].style.color = 'var(--accent-orange)';
         kpiValues[2].style.textShadow = '0 0 10px rgba(245, 158, 11, 0.5)';
+        const el = document.getElementById('trend-stock');
+        if (el) { el.innerHTML = `<i class="ph ph-trend-down"></i> يتطلب إجراء`; el.className = "kpi-trend negative"; }
+    } else {
+        const el = document.getElementById('trend-stock');
+        if (el) { el.innerHTML = `<i class="ph ph-check-circle"></i> المخزون سليم`; el.className = "kpi-trend positive"; }
     }
+    
     kpiValues[3].innerHTML = `${curNum(totalExp)}<span class="currency">${curSym()}</span>`;
     
     const dBalEl = kpiValues[4];
@@ -359,6 +372,58 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Network Balance Card (kpiValues[5])
     const networkEl = kpiValues[5];
     networkEl.innerHTML = `${curNum(networkSales)}<span class="currency">${curSym()}</span>`;
+
+    // --- Dynamic Trend Percentages ---
+    if (period === 'today') {
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const startOfYesterday = startOfToday - 86400000;
+        
+        let ySales = 0; let yOrders = 0; let yExp = 0;
+        (db.orders || []).forEach(o => {
+            if (o.status === 'returned') return;
+            const t = o.timestamp || o.createdAt || (o.dateStr ? new Date(o.dateStr).getTime() : 0) || 0;
+            if (t >= startOfYesterday && t < startOfToday) {
+                ySales += Number(o.total) || 0;
+                yOrders++;
+            }
+        });
+        (hrExpenses || []).forEach(h => {
+            const t = h.timestamp || h.createdAt || h.date || 0;
+            if (t >= startOfYesterday && t < startOfToday) {
+                yExp += Number(h.amount) || 0;
+            }
+        });
+
+        function formatTrend(curr, prev, elemId, invLogic = false) {
+            const el = document.getElementById(elemId);
+            if (!el) return;
+            if (prev === 0 && curr === 0) {
+                el.innerHTML = `<span style="opacity:0.6"><i class="ph ph-minus"></i> مستقر عن الأمس</span>`;
+                el.className = "kpi-trend";
+                return;
+            }
+            if (prev === 0 && curr > 0) {
+                el.innerHTML = `<i class="ph ph-trend-up"></i> +100% عن الأمس`;
+                el.className = `kpi-trend ${invLogic ? 'negative' : 'positive'}`;
+                return;
+            }
+            let pct = ((curr - prev) / prev) * 100;
+            let cls = pct > 0 ? (invLogic ? 'negative' : 'positive') : (pct < 0 ? (invLogic ? 'positive' : 'negative') : '');
+            let sign = pct > 0 ? '+' : '';
+            if (pct === 0) {
+                el.innerHTML = `<span style="opacity:0.6"><i class="ph ph-minus"></i> مطابق للأمس</span>`;
+                el.className = "kpi-trend";
+            } else {
+                el.innerHTML = `<i class="ph ${pct > 0 ? 'ph-trend-up' : 'ph-trend-down'}"></i> ${sign}${pct.toFixed(1)}% عن الأمس`;
+                el.className = `kpi-trend ${cls}`;
+            }
+        }
+
+        formatTrend(dailySales, ySales, 'trend-sales', false);
+        formatTrend(orders.length, yOrders, 'trend-orders', false);
+        formatTrend(totalExp, yExp, 'trend-expenses', true); // Inverse logic: more expenses = negative color
+    }
     
     // 6. Dynamic Delivery Company Cards
     const deliveryContainer = document.getElementById('dynamic-delivery-kpi-container');
@@ -772,7 +837,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.confirmCloseShift = async function() {
         const shiftOk = await window.mcasherConfirm(
-            'هل أنت متأكد من إغلاق الوردية وبدء وردية جديدة؟\nملاحظة: رصيد الدرج لن يتم تصفيره، سيتم الاحتفاظ به.',
+            'هل أنت متأكد من إغلاق الوردية وبدء وردية جديدة؟\nملاحظة: رصيد العهدة الافتتاحي للدرج سيبقى كما هو للوردية الجديدة.',
             'تأكيد إغلاق الوردية'
         );
         if (!shiftOk) return;
@@ -824,7 +889,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Separate cash vs bank expenses — only cash affects the drawer
         shiftExpenses.forEach(e => {
             const pm = String(e.pMethod || 'cash').trim();
-            if (pm === 'bank' || pm === 'network' || pm === 'شبكة') {
+            if (pm === 'bank' || pm === 'network' || pm === 'شبكة' || pm === 'card') {
                 shiftBankExp += Number(e.amount) || 0;
             } else {
                 shiftExp += Number(e.amount) || 0;
@@ -860,12 +925,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         zTimestamps.push({ startTime: lastZTime || closeTime - 3600000, endTime: closeTime, cashierName });
         localStorage.setItem('z_report_timestamps', JSON.stringify(zTimestamps));
 
-        // Mark current time as start of new shift - DO NOT RESET FLOAT
+        // Mark current time as start of new shift - carry full drawer balance to next shift
         localStorage.setItem('last_z_report_time', String(closeTime));
-        localStorage.setItem('shift_cash_float', shiftDrawerBalance);
+        // حفظ رصيد الدرج الحقيقي (عهدة + كاش - مصروفات) كرصيد افتتاحي للوردية الجديدة
+        // الحد الأدنى 0 لمنع تخزين قيمة سالبة (في حالة مصروفات أكبر من الكاش)
+        const safeDrawerBalance = Math.max(0, shiftDrawerBalance);
+        localStorage.setItem('shift_cash_float', String(safeDrawerBalance));
         try { localStorage.removeItem('_dashboard_kpi_snap'); } catch (e) {}
 
-        alert(`تم إغلاق الوردية بنجاح.\n\nملخص الوردية:\n- المبيعات: ${curPlain(shiftTotal)}\n- كاش: ${curPlain(shiftCash)}\n- شبكة: ${curPlain(shiftNetwork)}\n- المصروفات: ${curPlain(shiftExp)}\n- رصيد الدرج المحفوظ: ${curPlain(shiftDrawerBalance)}\n\nسيتم استخدام هذا الرصيد كرصيد افتتاحي للوردية الجديدة.`);
+        alert(`تم إغلاق الوردية بنجاح.\n\nملخص الوردية:\n- المبيعات: ${curPlain(shiftTotal)}\n- كاش: ${curPlain(shiftCash)}\n- شبكة: ${curPlain(shiftNetwork)}\n- المصروفات: ${curPlain(shiftExp)}\n- رصيد الدرج المحفوظ: ${curPlain(safeDrawerBalance)}\n\nسيتم استخدام هذا الرصيد كرصيد افتتاحي للوردية الجديدة.`);
         window.location.reload();
     };
 
@@ -874,16 +942,68 @@ document.addEventListener('DOMContentLoaded', async () => {
     // DAY CLOSE REPORT LOGIC
     // =============================================
 
-    window.openDayCloseReport = async function() {
+    window.openRetroCloseModal = function() {
+        const modal = document.getElementById('retroCloseModal');
+        if (modal) window.openModalLayer(modal);
+        // Set default date to yesterday
+        const dateInput = document.getElementById('retroCloseDate');
+        if (dateInput) {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            dateInput.value = yesterday.toISOString().split('T')[0];
+        }
+    };
+
+    window.closeRetroCloseModal = function() {
+        const modal = document.getElementById('retroCloseModal');
+        if (modal) window.closeModalLayer(modal);
+    };
+
+    window.submitRetroClose = async function() {
+        const dateInput = document.getElementById('retroCloseDate');
+        if (!dateInput || !dateInput.value) {
+            alert('يرجى اختيار التاريخ أولاً');
+            return;
+        }
+        
+        const selectedDate = new Date(dateInput.value);
+        // Date formatting based on noon to avoid timezone shifts
+        const checkDateStr = new Date(selectedDate.getTime() + 43200000).toLocaleDateString('ar-u-nu-latn', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        
+        // التحقق من قاعدة البيانات إذا كان هذا اليوم مقفل مسبقاً
+        let db = typeof window.dbReadSlice === 'function' ? await window.dbReadSlice(['day_closures']) : await window.dbReadArchive();
+        if (db && Array.isArray(db.day_closures)) {
+            const alreadyClosed = db.day_closures.some(c => c.date === checkDateStr);
+            if (alreadyClosed) {
+                if (typeof window.mcasherAlert === 'function') {
+                    window.mcasherAlert(`عفواً، يوم (${checkDateStr}) تم إقفاله مسبقاً.\nيمكنك مراجعة السجل من شاشة "سجلات الإقفال".`, 'تنبيه');
+                } else {
+                    alert('هذا اليوم مقفل مسبقاً ويوجد له سجل.');
+                }
+                return;
+            }
+        }
+
+        // Start of selected day
+        const targetTs = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()).getTime();
+        window.closeRetroCloseModal();
+        // Add artificial delay before opening the report to allow modal transition
+        setTimeout(() => {
+            window.openDayCloseReport(targetTs, true);
+        }, 100);
+    };
+
+    window.openDayCloseReport = async function(targetTs = null, isRetro = false) {
         try {
         const modal = document.getElementById('dayCloseModal');
         if (!modal) return;
 
-        const now = new Date();
+        const now = targetTs ? new Date(targetTs + 43200000) : new Date(); // Use noon for stable date string
         const todayStr = now.toLocaleDateString('ar-u-nu-latn', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
         // Fill header
-        document.getElementById('day-datetime').innerText = now.toLocaleString('ar-u-nu-latn', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const timeStr = targetTs ? '(إقفال استدراكي متأخر)' : now.toLocaleString('ar-u-nu-latn', { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('day-datetime').innerText = timeStr;
         document.getElementById('day-date').innerText = todayStr;
 
         const currentUserConf = localStorage.getItem('currentUser');
@@ -914,10 +1034,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (sysSet) { try { const s = JSON.parse(sysSet); if (s.taxRate !== undefined) taxRate = parseFloat(s.taxRate); } catch(e){} }
         const TAX_RATE = taxRate / 100;
 
-        // Read database (أجزاء مطلوبة فقط — أسرع على الأجهزة الضعيفة)
+        // Read database:
+        // - في الإقفال الاستدراكي: نجلب كل الطلبات (orders_all) لأن اليوم المطلوب قد يكون قبل آخر 500 طلب
+        // - في الإقفال العادي: نكتفي بآخر 500 طلب (أسرع)
+        const ordersKey = isRetro ? 'orders_all' : 'orders';
         let db =
             typeof window.dbReadSlice === 'function'
-                ? await window.dbReadSlice(['orders', 'returns', 'hrExpenses', 'expenses'])
+                ? await window.dbReadSlice([ordersKey, 'returns', 'hrExpenses', 'expenses', 'day_closures'])
                 : await window.dbReadArchive();
         if (!db || typeof db !== 'object') {
             throw new Error('صيغة قاعدة البيانات غير صالحة (dbRead لم يرجع كائن).');
@@ -935,6 +1058,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Filter only TODAY's data (full day, ignore shift boundaries)
         const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
         const endOfDay = startOfDay + 86400000;
+
+        // --- Auto-calculate float for retro closures ---
+        let retroOpeningFloat = 0;
+        if (isRetro && Array.isArray(db?.day_closures)) {
+            // نبحث عن أرصدة أدراج سابقة لنفس اليوم أو قبله مباشرة
+            const pastClosures = db.day_closures.filter(c => c.closedAt < startOfDay);
+            if (pastClosures.length > 0) {
+                // الأحدث أولاً
+                pastClosures.sort((a, b) => b.closedAt - a.closedAt);
+                const lastClosure = pastClosures[0];
+                retroOpeningFloat = (lastClosure.dayDrawerTotal != null && !isNaN(lastClosure.dayDrawerTotal))
+                    ? Number(lastClosure.dayDrawerTotal)
+                    : 0;
+            }
+        }
 
         function isToday(ts) {
             const t = typeof ts === 'string' ? new Date(ts).getTime() : (ts || 0);
@@ -972,15 +1110,34 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
 
-        // إضافة الوردية الحالية (مفتوحة)
-        shiftRanges.push({ startTime: lastZTime, endTime: now.getTime(), cashierName: managerName, isCurrent: true });
+        // إضافة الوردية الحالية (مفتوحة) إذا لم تكن استدراكية
+        if (!isRetro) {
+            shiftRanges.push({ startTime: lastZTime, endTime: now.getTime(), cashierName: managerName, isCurrent: true });
+        } else {
+            shiftRanges = [{ 
+                startTime: startOfDay, 
+                endTime: endOfDay - 1, 
+                cashierName: 'فريق العمل (إقفال استدراكي)', 
+                isClosed: true, 
+                isRetro: true,
+                retroFloat: retroOpeningFloat  // العهدة الافتتاحية المدخلة يدوياً
+            }];
+        }
 
         // ---- احتساب بيانات كل وردية من قاعدة البيانات الفعلية ----
+        // مساعد: تحويل أي قيمة (رقم أو نص) إلى timestamp رقمي لضمان المقارنة الصحيحة
+        function toTs(v) {
+            if (!v) return 0;
+            if (typeof v === 'number') return v;
+            const n = Number(v);
+            if (!isNaN(n) && n > 1000000000) return n;
+            return new Date(v).getTime() || 0;
+        }
+
         const allDayShifts = shiftRanges.map(range => {
-            // Filter out returned orders to avoid double counting
-            const rOrders   = todayOrders.filter(o   => { const t = o.timestamp || o.createdAt || 0; return t >= range.startTime && t < range.endTime; });
-            const rReturns  = todayReturns.filter(r  => { const t = r.timestamp || new Date(r.date||0).getTime() || 0; return t >= range.startTime && t < range.endTime; });
-            const rExpenses = todayExpenses.filter(e => { const t = e.timestamp || new Date(e.date||0).getTime() || 0; return t >= range.startTime && t < range.endTime; });
+            const rOrders   = todayOrders.filter(o   => { const t = toTs(o.timestamp || o.createdAt || o.dateStr || o.date); return t >= range.startTime && t < range.endTime; });
+            const rReturns  = todayReturns.filter(r  => { const t = toTs(r.timestamp || r.date); return t >= range.startTime && t < range.endTime; });
+            const rExpenses = todayExpenses.filter(e => { const t = toTs(e.timestamp || e.createdAt || e.date); return t >= range.startTime && t < range.endTime; });
 
             let cash = 0, net = 0, tax = 0, ret = 0, exp = 0, hsUnpaid = 0;
             let sDeliveryBreakdown = {};
@@ -1021,7 +1178,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 totalExpenses: exp,
                 hungerStationUnpaid: hsUnpaid,
                 deliveryBreakdown: sDeliveryBreakdown,
-                drawerBalance: floatAmt + cash - exp
+                // للوردية الحالية فقط: عهدة (تشمل كل الورديات السابقة) + كاش الوردية الحالية - مصروفات
+                // للورديات المغلقة: نعرض فقط مبيعات - مصروفات (بدون عهدة لأنها محفوظة ككرصيد إقفال الوردية)
+                drawerBalance: range.isCurrent
+                    ? Math.max(0, shiftFloat + cash - exp)
+                    : range.isRetro && range.retroFloat != null
+                        ? Math.max(0, range.retroFloat + cash - exp)  // عهدة مدخلة يدوياً
+                        : range.isRetro
+                            ? (cash - exp)  // عهدة غير معروفة — صافي الكاش
+                            : Math.max(0, cash - exp)  // وردية مغلقة عادية
             };
         });
 
@@ -1127,7 +1292,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         // Store snapshot for confirmCloseDay
-        window.__dayCloseSnapshot = { allDayShifts, dayTotalCash, dayTotalNet, dayTotalTax, dayTotalRet, dayTotalExp, dayTotalIncome, dayNetTotal, dayDrawerTotal, dayTotalOrders, dayDate: todayStr, closedAt: now.getTime(), dayTotalHSUnpaid, dayDeliveryBreakdown, shiftCashFloat: shiftFloat };
+        window.__dayCloseSnapshot = { allDayShifts, dayTotalCash, dayTotalNet, dayTotalTax, dayTotalRet, dayTotalExp, dayTotalIncome, dayNetTotal, dayDrawerTotal, dayTotalOrders, dayDate: todayStr, closedAt: now.getTime(), dayTotalHSUnpaid, dayDeliveryBreakdown, shiftCashFloat: shiftFloat, isRetro };
 
         window.openModalLayer(modal);
         } catch (error) {
@@ -1143,13 +1308,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.confirmCloseDay = async function() {
-        const dayOk = await window.mcasherConfirm(
-            'هل أنت متأكد من إقفال اليوم بالكامل؟\nسيتم حفظ السجل، طباعة التقرير، والانتقال لليوم الجديد.\nرصيد الدرج يُحفظ كما هو.',
-            'تأكيد إقفال اليوم'
-        );
+        const snap = window.__dayCloseSnapshot || {};
+        const isRetro = snap.isRetro === true;
+        
+        const confirmMsg = isRetro 
+            ? 'هل أنت متأكد من أداء "إقفال استدراكي" لهذا اليوم السابق؟\nسيتم حفظ السجل ولن يؤثر على عهدة اليوم الحالي.'
+            : 'هل أنت متأكد من إقفال اليوم بالكامل؟\nسيتم حفظ السجل، طباعة التقرير، والانتقال لليوم الجديد.\nملاحظة: رصيد العهدة الافتتاحي للدرج سيبقى كما هو.';
+            
+        const dayOk = await window.mcasherConfirm(confirmMsg, 'تأكيد إقفال اليوم');
         if (!dayOk) return;
 
-        const snap = window.__dayCloseSnapshot;
         if (!snap || !snap.dayDate) {
             if (typeof window.mcasherAlert === 'function') {
                 await window.mcasherAlert('افتح تقرير إقفال اليوم أولاً (زر «اقفال اليوم») ثم اضغط تأكيد الإقفال.', 'تنبيه');
@@ -1227,23 +1395,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 throw new Error('تعذر حفظ سجل الإقفال في قاعدة البيانات.');
             }
 
-            // احفظ رصيد الدرج الكامل من التقرير (وليس العهدة الافتتاحية فقط)
-            const drawerToKeep = (snap.dayDrawerTotal != null && !isNaN(snap.dayDrawerTotal))
-                ? Number(snap.dayDrawerTotal)
-                : (() => {
-                    const shifts = snap.allDayShifts || [];
-                    if (shifts.length) return Number(shifts[shifts.length - 1].drawerBalance) || 0;
-                    return parseFloat(localStorage.getItem('shift_cash_float')) || 0;
-                })();
+            // If it is a retroactive close, DO NOT mess with the current live float or Z-report time
+            if (!isRetro) {
+                // حفظ رصيد الدرج الحقيقي في نهاية اليوم (عهدة + كاش اليوم - مصروفات كاش اليوم)
+                const drawerToKeep = (snap.dayDrawerTotal != null && !isNaN(snap.dayDrawerTotal))
+                    ? Math.max(0, Number(snap.dayDrawerTotal))
+                    : (() => {
+                        const shifts = snap.allDayShifts || [];
+                        if (shifts.length) return Math.max(0, Number(shifts[shifts.length - 1].drawerBalance) || 0);
+                        return Math.max(0, parseFloat(localStorage.getItem('shift_cash_float')) || 0);
+                    })();
 
-            localStorage.setItem('shift_cash_float', String(drawerToKeep));
-            localStorage.setItem('last_z_report_time', String(closedAt));
-            localStorage.setItem('z_report_timestamps', '[]');
-            try {
-                localStorage.setItem('last_day_close_at', String(closedAt));
-                localStorage.setItem('last_day_close_drawer', String(drawerToKeep));
-                localStorage.removeItem('_dashboard_kpi_snap');
-            } catch (e) {}
+                localStorage.setItem('shift_cash_float', String(drawerToKeep));
+                localStorage.setItem('last_z_report_time', String(closedAt));
+                localStorage.setItem('z_report_timestamps', '[]');
+                try {
+                    localStorage.setItem('last_day_close_at', String(closedAt));
+                    localStorage.setItem('last_day_close_drawer', String(drawerToKeep));
+                    localStorage.removeItem('_dashboard_kpi_snap');
+                } catch (e) {}
+            }
 
             window.closeDayCloseReport();
 
@@ -1251,7 +1422,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await window.printDayReport();
             }
 
-            const successMsg = `تم إقفال اليوم بالكامل بنجاح.\n\nملخص اليوم:\n- عدد الورديات: ${(snap.allDayShifts || []).length}\n- الطلبات: ${snap.dayTotalOrders || 0}\n- المبيعات: ${curPlain(snap.dayTotalIncome || 0)}\n- المصروفات: ${curPlain(snap.dayTotalExp || 0)}\n- رصيد الدرج المحفوظ للوردية الجديدة: ${curPlain(drawerToKeep)}\n\nملاحظة: الطلبات والمبيعات في لوحة القيادة تبدأ من صفر للوردية الجديدة — السجل الكامل في «سجلات الإقفال».`;
+            const successMsg = isRetro 
+                ? `تم الإقفال الاستدراكي لليوم السابق (${snap.dayDate}) بنجاح.\n\nلم يتم تغيير عهدة أو حسابات اليوم الحالي.`
+                : `تم إقفال اليوم بالكامل بنجاح.\n\nملخص اليوم:\n- الطلبات: ${snap.dayTotalOrders || 0}\n- المبيعات: ${curPlain(snap.dayTotalIncome || 0)}\n- المصروفات: ${curPlain(snap.dayTotalExp || 0)}\n\nسيتم الاحتفاظ بالعهدة الأصلية للوردية/اليوم الجديد.`;
+            
             if (typeof window.mcasherAlert === 'function') {
                 await window.mcasherAlert(successMsg, 'تم إقفال اليوم');
             } else {

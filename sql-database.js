@@ -172,6 +172,37 @@ function getOrders(limit) {
     }
 }
 
+/** جلب جميع طلبات التوصيل بسرعة باستخدام فلتر نصي قبل الترجمة (Lightning Fast) */
+function getDeliveryOrders(sinceTimestamp) {
+    try {
+        let sql = `
+            SELECT data FROM orders 
+            WHERE (data LIKE '%"deliveryCompany"%' 
+               OR data LIKE '%"هنقرستيشن"%' 
+               OR data LIKE '%"hungerStation":true%')
+        `;
+        if (sinceTimestamp && typeof sinceTimestamp === 'number' && sinceTimestamp > 0) {
+            sql += ` AND timestamp >= ${sinceTimestamp} `;
+        }
+        sql += ` ORDER BY timestamp DESC `;
+        
+        const rows = db.prepare(sql).all();
+        
+        const results = [];
+        for (const r of rows) {
+            try {
+                const o = JSON.parse(r.data);
+                if (o.deliveryCompany || (o.orderType || '').includes('هنقرستيشن') || o.hungerStation === true) {
+                    results.push(o);
+                }
+            } catch(e) {}
+        }
+        return results;
+    } catch (e) {
+        return [];
+    }
+}
+
 /** جلب آخر طلب فقط لاستخراج رقم الفاتورة — أسرع بكثير من جلب 500 سجل */
 function getLastOrderMeta() {
     try {
@@ -631,6 +662,7 @@ module.exports = {
     saveOrder,
     updateOrder,
     getOrders,
+    getDeliveryOrders,
     getLastOrderMeta,
     getMaxOrderNumber,
     saveProduct,

@@ -181,7 +181,7 @@
                 const a = Number(e.amount) || 0;
                 totalExp += a;
                 if (e.pMethod === 'cash') cashExp += a;
-                if (e.pMethod === 'bank') bankExp += a;
+                else bankExp += a; // 'bank' or 'card' goes to bank
                 if (e.cat && e.cat.includes('رواتب')) salaries += a;
                 else if (e.cat && e.cat.includes('إيجار')) rent += a;
                 else others += a;
@@ -474,7 +474,7 @@
                     (db.expenses || []).forEach(e => {
                         if (!isIn(e.date)) return;
                         if (e.pMethod === 'cash') cash -= Number(e.amount) || 0;
-                        if (e.pMethod === 'bank') bank -= Number(e.amount) || 0;
+                        else bank -= Number(e.amount) || 0; // 'bank' or 'card'
                     });
                     (db.hrExpenses || []).forEach(h => {
                         if (!hrAffectsLiquidity(h) || !isIn(h.timestamp || h.date)) return;
@@ -602,6 +602,16 @@
                     const sumStr = fmt2(sum);
                     const wordsLine = sarAmountToArabicWords(sum);
 
+                    const kpiExp = document.getElementById('kpi-total-exp');
+                    if (kpiExp) {
+                        const qsSym = window.MisterCasherCurrency ? MisterCasherCurrency.getConfig().symbol : 'ر.س';
+                        kpiExp.innerHTML = sumStr + ' <span class="js-cur-sym" style="font-size:14px;">' + qsSym + '</span>';
+                        const titleEl = kpiExp.parentElement.querySelector('.kpi-title span');
+                        if (titleEl && periodSelect && periodSelect.selectedIndex >= 0) {
+                            titleEl.innerText = 'إجمالي المصروفات (' + periodSelect.options[periodSelect.selectedIndex].text + ')';
+                        }
+                    }
+
                     if (filt.length === 0) {
                         tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;">لا توجد مصروفات.</td></tr>';
                     } else {
@@ -617,7 +627,9 @@
                         dispFilt.forEach(e => {
                             const m = e._displayPMethod === 'cash'
                                 ? '<span class="inv-tag tag-safe" style="background:#0f172a; border:1px solid #334155; color:white;"><i class="ph-fill ph-money"></i> كاش نقدي</span>'
-                                : '<span class="inv-tag tag-safe" style="background:rgba(59,130,246,0.1); color:var(--accent-blue)"><i class="ph-fill ph-bank"></i> حوالة بنكية</span>';
+                                : e._displayPMethod === 'card' 
+                                    ? '<span class="inv-tag tag-safe" style="background:rgba(245,158,11,0.1); color:var(--accent-orange)"><i class="ph-fill ph-credit-card"></i> شبكة / بطاقة</span>' 
+                                    : '<span class="inv-tag tag-safe" style="background:rgba(59,130,246,0.1); color:var(--accent-blue)"><i class="ph-fill ph-bank"></i> حوالة بنكية</span>';
                             const amtStr = fmt2(e.amount);
                             const rbStr = fmt2(e._runningBal);
                             const isCancelled = e.status === 'ملغاة';
@@ -990,7 +1002,7 @@
                             if (document.getElementById('hr-v-amt')) document.getElementById('hr-v-amt').innerText = amtFmt;
                             if (document.getElementById('hr-v-amt-text')) document.getElementById('hr-v-amt-text').innerText = amtFmt;
                             if (document.getElementById('hr-v-reason-text')) document.getElementById('hr-v-reason-text').innerText = rec.reason || '';
-                            if (document.getElementById('hr-v-notes')) document.getElementById('hr-v-notes').innerText = rec.reason || '';
+                            if (document.getElementById('hr-v-notes')) document.getElementById('hr-v-notes').innerText = 'سند معتمد من النظام';
 
                             const typeStr = String(rec.type || '');
                             const docTitle = document.getElementById('hr-v-doc-title');
@@ -1057,8 +1069,8 @@
                             if (document.getElementById('ev-amt')) document.getElementById('ev-amt').innerText = window.xf ? window.xf(rec.amount) : rec.amount;
                             if (document.getElementById('ev-amt-balance')) document.getElementById('ev-amt-balance').innerText = window.xf ? window.xf(rec.amount) : rec.amount;
                             if (document.getElementById('ev-desc')) document.getElementById('ev-desc').innerText = rec.desc;
-                            if (document.getElementById('ev-pay')) document.getElementById('ev-pay').innerText = rec.pMethod === 'cash' ? 'كاش' : 'حوالة بنكية';
-                            if (document.getElementById('ev-notes')) document.getElementById('ev-notes').innerText = rec.desc || 'سند مصروف معتمد من النظام';
+                            if (document.getElementById('ev-pay')) document.getElementById('ev-pay').innerText = rec.pMethod === 'cash' ? 'كاش' : (rec.pMethod === 'card' ? 'بطاقة شبكة / مدى' : 'حوالة بنكية');
+                            if (document.getElementById('ev-notes')) document.getElementById('ev-notes').innerText = 'سند مصروف معتمد من النظام';
 
                             if (document.getElementById('ev-rest-name') && sysSet.name) document.getElementById('ev-rest-name').innerText = sysSet.name;
                             if (document.getElementById('ev-branch') && sysSet.branch) document.getElementById('ev-branch').innerText = sysSet.branch;
@@ -1080,15 +1092,7 @@
 
                         const canvas = await html2canvas(voucherEl, { scale: voucherCaptureScale, useCORS: true, backgroundColor: '#fff', width: 800, windowWidth: 1200, logging: false });
 
-                        const fc = document.createElement('canvas');
-                        fc.width = 1600;
-                        fc.height = 1132;
-                        const ctx2 = fc.getContext('2d');
-                        ctx2.fillStyle = '#fff';
-                        ctx2.fillRect(0, 0, 1600, 1132);
-                        ctx2.drawImage(canvas, 0, 0, 1600, 1132);
-
-                        const imgData = fc.toDataURL('image/jpeg', 0.95);
+                        const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
                         const link = document.createElement('a');
                         const safeId = source === 'hr' ? (rec.id || ('HR-' + (rec.timestamp || ''))) : rec.id;

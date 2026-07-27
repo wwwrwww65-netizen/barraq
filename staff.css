@@ -469,8 +469,11 @@
     --v-grey-box: #f3f4f6;
     background-color: #ffffff;
     width: 800px;
+    min-height: 1131px; /* A4 vertical proportion */
+    display: flex;
+    flex-direction: column;
     box-sizing: border-box;
-    padding: 36px 44px 28px;
+    padding: 40px 44px 30px;
     font-family: 'Cairo', 'Segoe UI', Arial, sans-serif;
     color: #1e3a8a;
     position: relative;
@@ -654,17 +657,22 @@
 
 .v-line {
     font-size: 17px;
-    line-height: 1.75;
+    line-height: 1.8;
     margin-bottom: 14px;
     color: var(--v-blue);
     font-weight: 600;
     text-align: right;
+    word-break: break-word;
+    white-space: normal;
 }
 .v-line:last-of-type {
     margin-bottom: 0;
 }
 .v-line-label {
     font-weight: 700;
+    white-space: nowrap;
+    display: inline-block;
+    margin-left: 6px;
 }
 .v-line-val strong {
     font-size: 18px;
@@ -712,10 +720,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 4px 0;
-    font-size: 12px;
-    color: #94a3b8;
-    font-weight: 600;
+    padding: 20px 4px 0;
+    margin-top: auto;
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 700;
 }
 .v-by {
     letter-spacing: 0.02em;

@@ -4,12 +4,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // State
     let hsOrders = [];
     let currentFilter = 'all';
-    let currentDateFilter = 'all'; // all, today, week, month, 2weeks, single, range
+    let currentDateFilter = 'today'; // all, today, week, month, 2weeks, single, range
     let customDateSingle = '';
     let customDateFrom = '';
     let customDateTo = '';
     let selectedOrderIds = new Set();
     let selectionTouched = false;
+    let hsCurrentPage = 1;
+    const hsItemsPerPage = 50;
 
     // Format currency
     const formatCurrency = (amount) =>
@@ -21,16 +23,56 @@ document.addEventListener('DOMContentLoaded', async () => {
         return 1.5;
     }
 
+    function getTimestampForFilter() {
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        
+        if (currentDateFilter === 'today') return todayStart;
+        if (currentDateFilter === 'week') return todayStart - (7 * 86400000);
+        if (currentDateFilter === 'month') {
+            const m = new Date(todayStart);
+            m.setMonth(m.getMonth() - 1);
+            return m.getTime();
+        }
+        if (currentDateFilter === '2weeks') return todayStart - (14 * 86400000);
+        if (currentDateFilter === 'single' && customDateSingle) {
+            return new Date(customDateSingle).getTime();
+        }
+        if (currentDateFilter === 'range' && customDateFrom) {
+            return new Date(customDateFrom).getTime();
+        }
+        return 0; // all times or no bottom limit
+    }
+
     // Load data
     async function loadData() {
         try {
-            const dbData = await window.dbReadSlice(['orders']);
+            // إظهار الهيكل الوهمي (Skeleton) لتوضيح عملية التحميل
+            const tbody = document.getElementById('hs-orders-table');
+            if (tbody) {
+                tbody.innerHTML = Array(6).fill(`
+                    <tr class="skeleton-row">
+                        <td><div class="skeleton-line short" style="margin:auto;"></div></td>
+                        <td><div class="skeleton-line medium"></div></td>
+                        <td><div class="skeleton-line short"></div></td>
+                        <td><div class="skeleton-line medium"></div></td>
+                        <td><div class="skeleton-line short"></div></td>
+                        <td><div class="skeleton-line full"></div></td>
+                        <td><div class="skeleton-line short"></div></td>
+                        <td><div class="skeleton-line medium"></div></td>
+                        <td><div class="skeleton-line short" style="margin:auto;"></div></td>
+                    </tr>
+                `).join('');
+            }
+
+            const sinceTimestamp = getTimestampForFilter();
+            const allOrders = await ipcRenderer.invoke('db-get-delivery-orders', sinceTimestamp);
             const targetCompany = new URLSearchParams(window.location.search).get('company') || 'هنقرستيشن';
             
             // تحديث نصوص الواجهة لتناسب الشركة المختارة
             updateUiText(targetCompany);
 
-            hsOrders = (dbData.orders || []).filter(o => {
+            hsOrders = (allOrders || []).filter(o => {
                 if (targetCompany === 'هنقرستيشن') {
                     return o.deliveryCompany === 'هنقرستيشن' || o.orderType === 'هنقرستيشن' || (o.hungerStation === true && !o.deliveryCompany);
                 }
@@ -247,16 +289,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Render orders table
-    function renderOrders(resetSelection = false) {
+    function renderOrders(resetSelection = false, isPageChange = false) {
         const tbody = document.getElementById('hs-orders-table');
         const filtered = getFilteredOrders();
 
-        if (resetSelection || !selectionTouched) {
+        if (resetSelection || (!isPageChange && !selectionTouched)) {
             resetSelectionToVisible(filtered);
-        } else {
+        } else if (!isPageChange) {
             const visibleIds = new Set(filtered.map(o => o.orderId).filter(Boolean));
             selectedOrderIds = new Set([...selectedOrderIds].filter(id => visibleIds.has(id)));
         }
+
+        if (!isPageChange) {
+            hsCurrentPage = 1; // reset pagination when filters change
+        }
+
+        const totalPages = Math.ceil(filtered.length / hsItemsPerPage) || 1;
+        if (hsCurrentPage > totalPages) hsCurrentPage = totalPages;
 
         if (filtered.length === 0) {
             const targetCompany = new URLSearchParams(window.location.search).get('company') || 'هنقرستيشن';
@@ -269,10 +318,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </tr>
             `;
             syncSelectAllCheckbox([]);
+            renderPaginationControls(0, 1);
             return;
         }
 
-        tbody.innerHTML = filtered.map(order => {
+        const startIndex = (hsCurrentPage - 1) * hsItemsPerPage;
+        const endIndex = startIndex + hsItemsPerPage;
+        const paginated = filtered.slice(startIndex, endIndex);
+
+        tbody.innerHTML = paginated.map(order => {
             const itemsCount = order.items ? order.items.length : 0;
             const statusClass = order.hsStatus || 'delivered';
             const statusText = 'مكتمل';
@@ -353,7 +407,67 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </tr>
             `;
         }
+        
+        renderPaginationControls(filtered.length, totalPages);
     }
+
+    function renderPaginationControls(totalItems, totalPages) {
+        let paginationContainer = document.getElementById('hs-pagination');
+        if (!paginationContainer) {
+            paginationContainer = document.createElement('div');
+            paginationContainer.id = 'hs-pagination';
+            paginationContainer.style.cssText = 'display:flex; justify-content:center; gap:8px; padding:15px; background:var(--bg-card); border:1px solid var(--border-color); border-top:none; border-radius:0 0 12px 12px; align-items:center; flex-wrap:wrap;';
+            const wrapper = document.querySelector('.hs-table-wrapper');
+            if (wrapper) wrapper.parentNode.insertBefore(paginationContainer, wrapper.nextSibling);
+        }
+        
+        if (totalItems <= hsItemsPerPage) {
+            paginationContainer.style.display = 'none';
+            return;
+        }
+        
+        paginationContainer.style.display = 'flex';
+        
+        let html = `<span style="font-size:12px; color:var(--text-secondary); margin-left:15px;">إجمالي: <strong>${totalItems}</strong> | صفحة ${hsCurrentPage} من ${totalPages}</span>`;
+        
+        html += `
+            <button class="hs-page-btn" ${hsCurrentPage === 1 ? 'disabled' : ''} onclick="hsChangePage(${hsCurrentPage - 1})" style="padding:6px 12px; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:6px; cursor:${hsCurrentPage === 1 ? 'not-allowed' : 'pointer'}; opacity:${hsCurrentPage === 1 ? '0.5' : '1'}; color:var(--text-primary);"><i class="ph ph-caret-right"></i> السابق</button>
+        `;
+
+        let startP = Math.max(1, hsCurrentPage - 2);
+        let endP = Math.min(totalPages, hsCurrentPage + 2);
+        
+        if (startP > 1) {
+            html += `<button class="hs-page-btn" onclick="hsChangePage(1)" style="padding:6px 12px; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:6px; cursor:pointer; color:var(--text-primary);">1</button>`;
+            if (startP > 2) html += `<span style="color:var(--text-muted);">...</span>`;
+        }
+        
+        for(let i = startP; i <= endP; i++) {
+            if (i === hsCurrentPage) {
+                html += `<button class="hs-page-btn" style="padding:6px 12px; background:#ff6b00; border:1px solid #ff6b00; border-radius:6px; color:#fff; font-weight:bold;">${i}</button>`;
+            } else {
+                html += `<button class="hs-page-btn" onclick="hsChangePage(${i})" style="padding:6px 12px; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:6px; cursor:pointer; color:var(--text-primary);">${i}</button>`;
+            }
+        }
+        
+        if (endP < totalPages) {
+            if (endP < totalPages - 1) html += `<span style="color:var(--text-muted);">...</span>`;
+            html += `<button class="hs-page-btn" onclick="hsChangePage(${totalPages})" style="padding:6px 12px; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:6px; cursor:pointer; color:var(--text-primary);">${totalPages}</button>`;
+        }
+        
+        html += `
+            <button class="hs-page-btn" ${hsCurrentPage === totalPages ? 'disabled' : ''} onclick="hsChangePage(${hsCurrentPage + 1})" style="padding:6px 12px; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:6px; cursor:${hsCurrentPage === totalPages ? 'not-allowed' : 'pointer'}; opacity:${hsCurrentPage === totalPages ? '0.5' : '1'}; color:var(--text-primary);">التالي <i class="ph ph-caret-left"></i></button>
+        `;
+        
+        paginationContainer.innerHTML = html;
+    }
+
+    window.hsChangePage = function(page) {
+        hsCurrentPage = page;
+        renderOrders(false, true);
+        const wrapper = document.querySelector('.hs-table-wrapper');
+        if (wrapper) wrapper.scrollIntoView({behavior: 'smooth', block: 'start'});
+    };
 
     // View order details
     window.viewOrder = function(orderId) {
@@ -495,24 +609,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         const notes = document.getElementById('hs-payment-notes-' + orderId).value || '';
 
         try {
-            const dbData = typeof window.dbReadSlice === 'function' ? await window.dbReadSlice(['orders', 'receipt_vouchers']) : await window.dbReadArchive();
-            const orderIndex = dbData.orders.findIndex(o => o.orderId === orderId);
+            const dbData = typeof window.dbReadSlice === 'function' ? await window.dbReadSlice(['receipt_vouchers']) : await window.dbReadArchive();
+            if (!dbData.receipt_vouchers) dbData.receipt_vouchers = [];
+
+            const order = hsOrders.find(o => o.orderId === orderId);
             
-            if (orderIndex === -1) {
+            if (!order) {
                 alert('لم يتم العثور على الطلب');
                 return;
             }
 
-            const order = dbData.orders[orderIndex];
             const now = new Date();
 
             // Update order
-            dbData.orders[orderIndex].hsPaymentStatus = 'paid';
-            dbData.orders[orderIndex].hsPaidDate = now.toLocaleString('ar-u-nu-latn');
-            dbData.orders[orderIndex].hsPaymentMethod = selectedMethod;
+            order.hsPaymentStatus = 'paid';
+            order.hsPaidDate = now.toLocaleString('ar-u-nu-latn');
+            order.hsPaymentMethod = selectedMethod;
+            
+            // Include only the updated order to optimize DB write
+            dbData.orders = [order];
             
             // Create receipt voucher (سند قبض)
-            if (!dbData.receipt_vouchers) dbData.receipt_vouchers = [];
             
             const newVoucher = {
                 id: 'RV-HS-' + Date.now(),
@@ -610,8 +727,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (fromEl) fromEl.value = '';
             if (toEl) toEl.value = '';
             setDateFilterActive('single');
-            renderDashboard();
-            renderOrders(true);
+            loadData();
         });
     }
 
@@ -635,8 +751,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.querySelectorAll('.hs-filter-btn[data-date]').forEach(b => b.classList.remove('active'));
             currentDateFilter = 'range';
             updateDateFilterLabel();
-            renderDashboard();
-            renderOrders(true);
+            loadData();
         });
     }
 
@@ -662,8 +777,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (fromEl) fromEl.value = '';
             if (toEl) toEl.value = '';
             setDateFilterActive(btn.dataset.date);
-            renderDashboard();
-            renderOrders(true);
+            loadData();
         });
     });
 
@@ -756,12 +870,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
-            const dbData = typeof window.dbReadSlice === 'function' ? await window.dbReadSlice(['orders', 'receipt_vouchers']) : await window.dbReadArchive();
+            const dbData = typeof window.dbReadSlice === 'function' ? await window.dbReadSlice(['receipt_vouchers']) : await window.dbReadArchive();
+            if (!dbData.receipt_vouchers) dbData.receipt_vouchers = [];
             const now = new Date();
             const periodNote = `الفترة: ${dateLabel}`;
 
             // Create receipt voucher (سند قبض)
-            if (!dbData.receipt_vouchers) dbData.receipt_vouchers = [];
             
             const newVoucher = {
                 id: 'RV-HS-' + Date.now(),
@@ -779,6 +893,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Mark selected orders as paid based on amount received
             const unpaidOrders = selectedUnpaid;
+            const updatedOrders = [];
             
             let remainingAmount = amount;
             let totalCashReceived = 0;
@@ -790,22 +905,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 if (remainingAmount >= orderTotal) {
                     // Full payment for this order
-                    const orderIndex = dbData.orders.findIndex(o => o.orderId === order.orderId);
-                    if (orderIndex !== -1) {
-                        dbData.orders[orderIndex].hsPaymentStatus = 'paid';
-                        dbData.orders[orderIndex].hsPaidDate = now.toLocaleString('ar-u-nu-latn');
-                        dbData.orders[orderIndex].hsPaymentMethod = paymentMethod;
-                    }
+                    order.hsPaymentStatus = 'paid';
+                    order.hsPaidDate = now.toLocaleString('ar-u-nu-latn');
+                    order.hsPaymentMethod = paymentMethod;
+                    updatedOrders.push(order);
+                    
                     remainingAmount -= orderTotal;
                     if (paymentMethod === 'كاش' || paymentMethod === 'cash') {
                         totalCashReceived += orderTotal;
                     }
                 } else {
-                    // Partial payment - stop here
+                    // Partial payment logic
+                    order.paidAmount = (order.paidAmount || 0) + remainingAmount;
+                    if (order.paidAmount >= orderTotal) {
+                        order.hsPaymentStatus = 'paid';
+                        order.hsPaidDate = now.toLocaleString('ar-u-nu-latn');
+                        order.hsPaymentMethod = paymentMethod;
+                    }
+                    updatedOrders.push(order);
+                    
+                    if (paymentMethod === 'كاش' || paymentMethod === 'cash') {
+                        totalCashReceived += remainingAmount;
+                    }
+                    remainingAmount = 0;
                     break;
                 }
             }
             
+            if (updatedOrders.length > 0) {
+                dbData.orders = updatedOrders;
+            }
             
             await window.dbWrite(dbData);
             closeBulkReceiveModal();

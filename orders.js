@@ -276,7 +276,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 type: order.type || 'محلي',
                 paymentMethod: order.paymentMethod || 'كاش',
                 items: Array.isArray(order.items) ? order.items : [],
-                timestamp: Date.now(),
+                timestamp: order.timestamp || Date.now(),
+                date: order.date,
+                uuid: order.uuid,
+                icv: order.icv,
+                pih: order.pih,
+                invoiceHash: order.invoiceHash
             }));
             window.location.href = 'pos.html?edit=1';
         } catch (e) {

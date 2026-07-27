@@ -549,6 +549,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    let editDraftMeta = null;
+
     function loadOrderEditDraftIfAny() {
         let raw = '';
         try {
@@ -574,6 +576,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const displayIdEl = document.getElementById('display-order-id');
                 if (displayIdEl) displayIdEl.innerText = editingOrderId;
             }
+            
+            editDraftMeta = {
+                timestamp: draft.timestamp,
+                date: draft.date,
+                uuid: draft.uuid,
+                icv: draft.icv,
+                pih: draft.pih,
+                invoiceHash: draft.invoiceHash
+            };
+            
             setEditModeBadge(true, editingOrderId);
             renderCart();
             localStorage.removeItem('pos_order_edit_draft');
@@ -814,13 +826,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const orderData = {
                 orderId: orderId,
-                uuid: zatcaMeta.uuid,
-                icv: zatcaMeta.icv,
-                pih: zatcaMeta.pih,
-                invoiceHash: crypto.createHash('sha256').update(zatcaMeta.uuid + orderId + totalOrder + now.getTime()).digest('base64'),
+                uuid: (isEditingOrder && editDraftMeta && editDraftMeta.uuid) ? editDraftMeta.uuid : zatcaMeta.uuid,
+                icv: (isEditingOrder && editDraftMeta && editDraftMeta.icv) ? editDraftMeta.icv : zatcaMeta.icv,
+                pih: (isEditingOrder && editDraftMeta && editDraftMeta.pih) ? editDraftMeta.pih : zatcaMeta.pih,
+                invoiceHash: (isEditingOrder && editDraftMeta && editDraftMeta.invoiceHash) ? editDraftMeta.invoiceHash : crypto.createHash('sha256').update(zatcaMeta.uuid + orderId + totalOrder + now.getTime()).digest('base64'),
                 cashier: cashierName,
-                date: now.toLocaleDateString('ar-u-nu-latn') + " " + now.toLocaleTimeString('ar-u-nu-latn'),
-                timestamp: now.getTime(),
+                date: (isEditingOrder && editDraftMeta && editDraftMeta.date) ? editDraftMeta.date : now.toLocaleDateString('ar-u-nu-latn') + " " + now.toLocaleTimeString('ar-u-nu-latn'),
+                timestamp: (isEditingOrder && editDraftMeta && editDraftMeta.timestamp) ? editDraftMeta.timestamp : now.getTime(),
                 type: currentOrderType,
                 orderType: currentOrderType,
                 paymentMethod: selectedPay,

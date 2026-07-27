@@ -186,6 +186,7 @@
                             <button class="btn btn-outline" style="border-color: #fcd34d; color: #fcd34d; background: transparent;" onclick="openShiftFloatModal()"><i class="ph ph-money"></i> رصيد مبدئي للدرج</button>
                             <button class="btn btn-outline" style="border-color: #22c55e; color: #22c55e; background: transparent;" onclick="addExtraDrawerFloat()"><i class="ph ph-plus-circle"></i> إضافة رصيد إضافي للدرج</button>
                             <button class="btn btn-danger" onclick="openShiftReport()"><i class="ph ph-lock-key"></i> إغلاق الوردية</button>
+                            <button class="btn btn-outline" style="border-color: #6366f1; color: #6366f1; background: transparent; margin-right: 5px;" onclick="openRetroCloseModal()"><i class="ph ph-calendar-dots"></i> إقفال مخصص</button>
                             <button class="btn btn-danger" style="background: linear-gradient(135deg, #7c3aed, #4f46e5); border:none;" onclick="openDayCloseReport()"><i class="ph ph-moon-stars"></i> اقفال اليوم</button>
                         </div>
                     </div>
@@ -200,7 +201,7 @@
                         <div class="kpi-details">
                             <p class="kpi-title">مبيعات اليوم</p>
                             <h3 class="kpi-value">...<span class="currency js-cur-sym">ر.س</span></h3>
-                            <p class="kpi-trend positive"><i class="ph ph-trend-up"></i> +12.5% عن الأمس</p>
+                            <p class="kpi-trend" id="trend-sales"></p>
                         </div>
                     </div>
                     <div class="card kpi-card">
@@ -210,7 +211,7 @@
                         <div class="kpi-details">
                             <p class="kpi-title">الطلبات المنجزة</p>
                             <h3 class="kpi-value">...</h3>
-                            <p class="kpi-trend positive"><i class="ph ph-trend-up"></i> +5.2% عن الأمس</p>
+                            <p class="kpi-trend" id="trend-orders"></p>
                         </div>
                     </div>
                     <div class="card kpi-card">
@@ -220,7 +221,7 @@
                         <div class="kpi-details">
                             <p class="kpi-title">نواقص المخزن</p>
                             <h3 class="kpi-value">... <span class="text-sm">أصناف</span></h3>
-                            <p class="kpi-trend negative"><i class="ph ph-trend-down"></i> يتطلب إجراء</p>
+                            <p class="kpi-trend" id="trend-stock"></p>
                         </div>
                     </div>
                     <div class="card kpi-card">
@@ -230,7 +231,7 @@
                         <div class="kpi-details">
                             <p class="kpi-title">المصروفات (الخوارج)</p>
                             <h3 class="kpi-value">...<span class="currency js-cur-sym">ر.س</span></h3>
-                            <p class="kpi-trend negative"><i class="ph ph-trend-up"></i> +1.5% عن الأمس</p>
+                            <p class="kpi-trend" id="trend-expenses"></p>
                         </div>
                     </div>
                     <div class="card kpi-card">
@@ -240,7 +241,6 @@
                         <div class="kpi-details">
                             <p class="kpi-title">الرصيد في الدرج</p>
                             <h3 class="kpi-value">...<span class="currency js-cur-sym">ر.س</span></h3>
-                            <p class="kpi-trend positive"><i class="ph ph-check-circle"></i> متطابق</p>
                         </div>
                     </div>
                     <div class="card kpi-card">
@@ -554,6 +554,29 @@
                 <div class="shift-modal-actions">
                     <button class="btn btn-outline" style="border-color:var(--border-color); color:var(--text-primary);" onclick="closeShiftFloatModal()">إلغاء</button>
                     <button id="floatModalSaveBtn" class="btn btn-primary" style="background:#fcd34d; border:none; color:#000; font-weight:bold;" onclick="saveShiftFloatModal()">حفظ الرصيد</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal لاختيار إقفال مخصص ليوم سابق -->
+        <div id="retroCloseModal" class="shift-modal" style="display:none;">
+            <div class="shift-modal-content" style="width: 380px;">
+                <div class="shift-modal-header" style="background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(79,70,229,0.15));">
+                    <h2 style="color: #818cf8;"><i class="ph ph-calendar-dots"></i> إقفال يوم מخصص (سابق)</h2>
+                    <button class="close-btn" onclick="closeRetroCloseModal()"><i class="ph ph-x"></i></button>
+                </div>
+                <div style="padding: 24px;">
+                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px; line-height: 1.5;">حدد تاريخ اليوم الذي ترغب في تجميع وإقفال مبيعاته. ستُجمع جميع حساباته كـ "إقفال استدراكي" دون أن تتأثر مبيعات أو عهدة اليوم الحالي.</p>
+                    <label style="display:block; margin-bottom:8px; font-weight:bold; color:var(--text-primary);">اختر التاريخ:</label>
+                    <input type="date" id="retroCloseDate" class="form-input" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-primary); font-size:16px;">
+                    <div style="margin-top: 15px; padding: 12px; background: rgba(52, 211, 153, 0.1); border-radius: 8px; border: 1px dashed #34d399;">
+                        <span style="color: #10b981; font-size: 13px; font-weight: bold;"><i class="ph ph-check-circle"></i> النظام ذكي:</span>
+                        <p style="font-size: 12px; color: var(--text-muted); margin-top: 5px; line-height: 1.5;">سيقوم النظام تلقائياً بالبحث في قاعدة البيانات عن أرصدة اليوم السابق، وسيضع العهدة الافتتاحية بشكل صحيح ومتسلسل.</p>
+                    </div>
+                </div>
+                <div class="shift-modal-actions">
+                    <button class="btn btn-outline" style="border-color:var(--border-color); color:var(--text-primary);" onclick="closeRetroCloseModal()">إلغاء</button>
+                    <button class="btn btn-primary" style="background:#6366f1; border:none; color:white; font-weight:bold;" onclick="submitRetroClose()">متابعة الإقفال</button>
                 </div>
             </div>
         </div>

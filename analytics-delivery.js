@@ -97,7 +97,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Initial Data Load ---
     async function loadData() {
         try {
-            allOrders = await ipcRenderer.invoke('db-get-orders') || [];
+            // Optimize load time: only fetch everything if we are looking beyond 'today'
+            const method = (currentRange === 'today') ? 'db-get-orders' : 'db-get-orders-all';
+            allOrders = await ipcRenderer.invoke(method) || [];
             await applyFilters();
         } catch (err) {
             console.error("Failed to load orders for delivery analytics", err);

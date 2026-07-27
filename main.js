@@ -1175,6 +1175,11 @@ ipcMain.handle('db-get-orders-all', async () => {
   return dbAPI.getOrders(0);
 });
 
+// ⚡ جلب طلبات التوصيل فقط بشكل سريع جداً دون تحميل آلاف الطلبات الأخرى
+ipcMain.handle('db-get-delivery-orders', async (event, sinceTimestamp) => {
+  return dbAPI.getDeliveryOrders(sinceTimestamp);
+});
+
 // ⚡ جلب بيانات آخر طلب فقط لتوليد رقم الفاتورة — أسرع بكثير من جلب 500 سجل
 ipcMain.handle('db-get-last-order-meta', async () => {
   return dbAPI.getLastOrderMeta();
