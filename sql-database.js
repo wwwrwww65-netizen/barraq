@@ -73,6 +73,16 @@ function closeDb() {
 // ---------------------------------------------------------
 function _getAllFromTable(tableName) {
     try {
+        // جلب id الصف أيضاً ودمجه في البيانات المُعادة لمنع مشكلة التكرار عند الحفظ
+        const hasIdColumn = ['inventory', 'products', 'categories', 'kitchen_tx'].includes(tableName);
+        if (hasIdColumn) {
+            const rows = db.prepare('SELECT id, data FROM ' + tableName).all();
+            return rows.map(function(r) {
+                const parsed = JSON.parse(r.data);
+                if (!parsed.id) parsed.id = r.id; // ضمان وجود id في الكائن
+                return parsed;
+            });
+        }
         const rows = db.prepare('SELECT data FROM ' + tableName).all();
         return rows.map(function(r) { return JSON.parse(r.data); });
     } catch (e) {
@@ -546,9 +556,26 @@ function writeFull(data) {
                 }
             }
             if (Array.isArray(data.inventory)) {
-                const stmt = db.prepare('INSERT OR REPLACE INTO inventory (id, sku, name, warehouseId, data) VALUES (?, ?, ?, ?, ?)');
+                // استخدم UPSERT ذكي يعتمد على (sku+warehouseId) أو (name+warehouseId) بدلاً من id
+                // لمنع تكرار السجلات عندما يكون item.id فارغاً
                 for (const item of data.inventory) {
-                    if (item) stmt.run(item.id || ('INV-' + Date.now()), item.sku || null, item.name || null, item.warehouseId || 'main', JSON.stringify(item));
+                    if (!item) continue;
+                    const wh = item.warehouseId || 'main';
+                    let existingRow = null;
+                    if (item.id) {
+                        existingRow = db.prepare('SELECT id FROM inventory WHERE id = ?').get(item.id);
+                    }
+                    if (!existingRow && item.sku) {
+                        existingRow = db.prepare('SELECT id FROM inventory WHERE sku = ? AND warehouseId = ?').get(item.sku, wh);
+                    }
+                    if (!existingRow && item.name) {
+                        existingRow = db.prepare('SELECT id FROM inventory WHERE name = ? AND warehouseId = ?').get(item.name, wh);
+                    }
+                    const finalId = (existingRow && existingRow.id) || item.id || ('INV-' + Date.now() + '-' + Math.floor(Math.random() * 9999));
+                    const merged = Object.assign({}, item, { id: finalId, warehouseId: wh });
+                    db.prepare('INSERT INTO inventory (id, sku, name, warehouseId, data) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET sku=excluded.sku, name=excluded.name, data=excluded.data').run(
+                        finalId, merged.sku || null, merged.name || null, wh, JSON.stringify(merged)
+                    );
                 }
             }
             if (Array.isArray(data.day_closures)) {

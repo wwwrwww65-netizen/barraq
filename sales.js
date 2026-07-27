@@ -203,11 +203,33 @@ async function loadSales() {
         const fromVal = document.getElementById('sales-date-from')?.value;
         const toVal = document.getElementById('sales-date-to')?.value;
         if (fromVal && toVal) {
-            const startStr = fromVal + 'T00:00:00';
-            const endStr = toVal + 'T23:59:59';
+            // ensure from/to is parsed correctly
+            const startMs = new Date(fromVal + 'T00:00:00').getTime();
+            const endMs = new Date(toVal + 'T23:59:59').getTime();
+            
             filteredList = allSalesOrders.filter(o => {
-                const ts = o.timestamp || new Date(o.dateStr || o.date).getTime();
-                return ts >= new Date(startStr).getTime() && ts <= new Date(endStr).getTime();
+                let ts = o.timestamp;
+                if (typeof ts === 'string' && !isNaN(Number(ts))) {
+                    ts = Number(ts);
+                } else if (typeof ts === 'string') {
+                    ts = new Date(ts).getTime();
+                }
+                
+                if (!ts || isNaN(ts) || typeof ts !== 'number') {
+                    let dateStrVal = o.dateStr || o.date || '';
+                    if (dateStrVal) {
+                        ts = new Date(dateStrVal).getTime();
+                        if (isNaN(ts) && typeof dateStrVal === 'string' && dateStrVal.includes('/')) {
+                            // Try parsing DD/MM/YYYY
+                            let parts = dateStrVal.split(/,?\s/)[0].split('/');
+                            if (parts.length === 3) {
+                                ts = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`).getTime();
+                            }
+                        }
+                    }
+                }
+                
+                return (!isNaN(ts)) && ts >= startMs && ts <= endMs;
             });
         } else {
             filteredList = allSalesOrders; // Fallback if dates are not selected

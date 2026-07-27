@@ -1,8 +1,40 @@
 const { ipcRenderer } = require('electron');
 
+// مؤشر يمنع إعادة تحميل الصفحة بكاش قديم بعد عملية حفظ محلية
+let _localSaveInProgress = false;
+let _localSaveTimer = null;
+
 async function saveDB(db) {
+    // علّم أن عملية حفظ محلية جارية لمنع الـ refresh التلقائي من استخدام كاش قديم
+    _localSaveInProgress = true;
+    clearTimeout(_localSaveTimer);
+    // امسح الكاش فوراً قبل الكتابة حتى تُقرأ البيانات من القاعدة دائماً
+    if (window._invalidateDbSliceCache) window._invalidateDbSliceCache();
     await window.dbWrite(db);
     try { ipcRenderer.send('notify-db-changed'); } catch (e) { }
+    // امنع الـ refresh التلقائي من الكاش القديم لمدة 10 ثوانٍ (أطول من TTL الكاش البالغ 5 ثوانٍ بأمان)
+    _localSaveTimer = setTimeout(() => {
+        _localSaveInProgress = false;
+        // امسح الكاش مرة أخيرة عند رفع الحماية لضمان قراءة بيانات حديثة في أي refresh لاحق
+        if (window._invalidateDbSliceCache) window._invalidateDbSliceCache();
+    }, 10000);
+}
+
+// قراءة المخزون من قاعدة البيانات وتحديث erpItems محلياً (بعد كل حفظ)
+async function reloadInventoryFromDB(dbRef, erpItemsRef) {
+    try {
+        if (window._invalidateDbSliceCache) window._invalidateDbSliceCache();
+        const fresh = await window.dbReadSlice(['inventory']);
+        if (fresh && Array.isArray(fresh.inventory)) {
+            // حدّث المصفوفة في مكانها دون استبدال المرجع
+            erpItemsRef.length = 0;
+            fresh.inventory.forEach(item => erpItemsRef.push(item));
+            dbRef.inventory = erpItemsRef;
+            console.log('[Inventory] ✅ In-place reload from DB:', erpItemsRef.length, 'items');
+        }
+    } catch (e) {
+        console.warn('[Inventory] reloadInventoryFromDB error:', e);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -1041,11 +1073,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (typeof window.registerPosDatabaseRefresh === 'function') {
         window.registerPosDatabaseRefresh(async () => {
+            // إذا كانت عملية حفظ محلية جارية، تجاهل الـ broadcast لأننا نمتلك البيانات الصحيحة بالفعل
+            if (_localSaveInProgress) {
+                console.log('[Inventory] ⏭️ Skipping auto-refresh — local save in progress.');
+                return;
+            }
+
             // Stagger staggered refresh to avoid file lock contention among windows
             const staggerDelay = Math.floor(Math.random() * 800) + 100;
             console.log(`[Inventory] 🔄 Database update notification received. Refreshing in ${staggerDelay}ms...`);
 
             setTimeout(async () => {
+                // تجاهل مرة أخرى إذا بدأت عملية حفظ محلية خلال فترة الانتظار
+                if (_localSaveInProgress) {
+                    console.log('[Inventory] ⏭️ Skipping auto-refresh — local save started during delay.');
+                    return;
+                }
+                // امسح الكاش لضمان قراءة البيانات الأحدث من القاعدة
+                if (window._invalidateDbSliceCache) window._invalidateDbSliceCache();
                 const newDb = await window.dbReadSlice(['inventory', 'inventoryTx', 'purchases', 'suppliers', 'deliveryCompanies']);
                 if (newDb && newDb.inventory && newDb.inventory.length > 0) {
                     db = newDb;
@@ -1586,6 +1631,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 db.inventory = erpItems;
                 await saveDB(db);
+                // أعد قراءة المخزون من القاعدة لضمان أن erpItems تعكس الواقع الكامل
+                await reloadInventoryFromDB(db, erpItems);
 
                 resetItemModal();
                 closeModal('itemModal');
