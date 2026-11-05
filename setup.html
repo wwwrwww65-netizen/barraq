@@ -317,57 +317,29 @@
                 </button>
             </div>
 
-            <!-- STEP 2: Admin Account -->
+            <!-- STEP 2: Owner-approved manager bootstrap -->
             <div class="step-content" id="step-2">
-                <div class="step-title">👤 حساب المدير النظام</div>
-                <div class="step-sub">هذا الحساب يمتلك الصلاحية المطلقة في إدارة النظام بالكامل. احتفظ بمعلوماته جيداً.</div>
+                <div class="step-title">🔐 اعتماد حساب المدير</div>
+                <div class="step-sub">لن يُنشأ حساب المدير قبل موافقة مالك النظام، حتى لا يحصل أي تثبيت جديد على صلاحية الإدارة تلقائياً.</div>
 
-                <div class="form-group">
-                    <label>اسم المستخدم (Username) <span class="req">*</span></label>
-                    <div class="input-wrap">
-                        <i class="ph ph-user-circle"></i>
-                        <input type="text" class="form-input" id="inp-username" placeholder="admin" autocomplete="off">
+                <div class="summary-row" style="align-items:flex-start;">
+                    <i class="ph-fill ph-shield-check"></i>
+                    <div>
+                        <div class="summary-row-label">آلية إنشاء الحساب</div>
+                        <div class="summary-row-value" style="font-size:13px;line-height:2;">
+                            1. ترسل طلب التفعيل من الشاشة التالية.<br>
+                            2. يراجع مالك النظام الطلب ويوافق عليه.<br>
+                            3. تستلم رمز اعتماد لمرة واحدة، ثم تنشئ اسم المستخدم وكلمة المرور.<br>
+                            4. لا تصبح مديراً إلا بعد اعتماد الرمز وتسجيل الحساب في Firebase.
+                        </div>
                     </div>
-                    <div class="field-error" id="err-username">يرجى إدخال اسم المستخدم</div>
-                </div>
-
-                <div class="form-group">
-                    <label>الاسم الكامل <span class="req">*</span></label>
-                    <div class="input-wrap">
-                        <i class="ph ph-identification-badge"></i>
-                        <input type="text" class="form-input" id="inp-fullname" placeholder="المدير العام">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>كلمة المرور <span class="req">*</span></label>
-                    <div class="input-wrap">
-                        <i class="ph ph-lock-key"></i>
-                        <input type="password" class="form-input" id="inp-pwd" placeholder="أدخل كلمة مرور (6 أحرف على الأقل)" autocomplete="new-password">
-                        <button class="pwd-toggle" type="button" onclick="togglePwd('inp-pwd', this)">
-                            <i class="ph ph-eye"></i>
-                        </button>
-                    </div>
-                    <div class="field-error" id="err-pwd">يجب أن تكون كلمة المرور 6 أحرف على الأقل</div>
-                </div>
-
-                <div class="form-group">
-                    <label>تأكيد كلمة المرور <span class="req">*</span></label>
-                    <div class="input-wrap">
-                        <i class="ph ph-lock-key-open"></i>
-                        <input type="password" class="form-input" id="inp-pwd2" placeholder="أعد إدخال كلمة المرور" autocomplete="new-password">
-                        <button class="pwd-toggle" type="button" onclick="togglePwd('inp-pwd2', this)">
-                            <i class="ph ph-eye"></i>
-                        </button>
-                    </div>
-                    <div class="field-error" id="err-pwd2">كلمتا المرور غير متطابقتين</div>
                 </div>
 
                 <button class="btn-next" id="btn-next-2" onclick="goStep(3)">
-                    مراجعة البيانات &nbsp;<i class="ph-bold ph-arrow-left"></i>
+                    متابعة &nbsp;<i class="ph-bold ph-arrow-left"></i>
                 </button>
                 <button class="btn-back" onclick="goStep(1)">
-                    <i class="ph-bold ph-arrow-right"></i>&nbsp; الغاء
+                    <i class="ph-bold ph-arrow-right"></i>&nbsp; رجوع
                 </button>
             </div>
 
@@ -401,14 +373,14 @@
                     <i class="ph-fill ph-user-circle"></i>
                     <div>
                         <div class="summary-row-label">حساب المدير</div>
-                        <div class="summary-row-value" id="sum-user">ـ</div>
+                        <div class="summary-row-value" id="sum-user">سيُنشأ بعد موافقة مالك النظام</div>
                     </div>
                 </div>
                 <div class="summary-row">
                     <i class="ph-fill ph-shield-check"></i>
                     <div>
                         <div class="summary-row-label">صلاحيات</div>
-                        <div class="summary-row-value" style="color:#10b981;">مدير نظام بكامل الصلاحيات ✅</div>
+                        <div class="summary-row-value" style="color:#10b981;">يمنحها مالك النظام بعد إنشاء الحساب</div>
                     </div>
                 </div>
 
@@ -426,8 +398,8 @@
                     <div class="success-icon">🎉</div>
                     <div class="step-title" style="font-size:22px; margin-bottom:8px;">تم الإعداد بنجاح!</div>
                     <div class="step-sub" style="margin-bottom:20px;line-height:1.8;">
-                        لقد تمت تهيئة النظام وبناء قاعدة البيانات وربط حسابك.<br>
-                        يمكنك البدء في العمل مباشرة.
+                        تم حفظ بيانات المنشأة بنجاح.<br>
+                        الخطوة التالية: طلب التفعيل، ثم موافقة مالك النظام، وبعدها إنشاء حساب المدير السحابي.
                     </div>
                     <div id="done-preview" style="display:flex;align-items:center;gap:12px;justify-content:center;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:14px;padding:14px 20px;margin-bottom:20px;">
                         <img id="done-logo" src="2222.png" style="width:50px;height:50px;border-radius:12px;object-fit:cover;">
@@ -436,7 +408,7 @@
                             <div style="font-size:12px;color:#e2e8f0;" id="done-user">اسم المدير</div>
                         </div>
                     </div>
-                    <div style="font-size:13px;color:#e2e8f0;" id="redirect-msg">جاري توجيهك لشاشة الدخول في <strong id="cnt">3</strong> ثوان...</div>
+                    <div style="font-size:13px;color:#e2e8f0;" id="redirect-msg">جاري نقلك إلى شاشة التفعيل في <strong id="cnt">3</strong> ثوان...</div>
                 </div>
             </div>
 
@@ -451,6 +423,7 @@
         </div>
     </div>
 
+    <script src="image-tools.js"></script>
     <script>
         let base64Logo = '';
         let currentStep = 1;
@@ -460,20 +433,24 @@
         const logoPreview = document.getElementById('logo-preview');
         const logoDrop = document.getElementById('logo-drop');
 
-        logoFile.addEventListener('change', (e) => {
+        logoFile.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                base64Logo = ev.target.result;
+            try {
+                const compressed = await window.MCImageTools.compressImage(file, {
+                    maxWidth: 900, maxHeight: 900, maxBytes: 420 * 1024, quality: 0.84
+                });
+                base64Logo = compressed.dataUrl;
                 logoPreview.src = base64Logo;
                 logoPreview.style.display = 'block';
                 document.getElementById('logo-placeholder').style.display = 'none';
                 logoDrop.classList.add('has-img');
-                // Live preview in header
                 document.getElementById('hdr-logo').src = base64Logo;
-            };
-            reader.readAsDataURL(file);
+            } catch (error) {
+                console.error('[Image] Setup logo compression failed:', error);
+                alert(error.message || 'تعذر ضغط الشعار. جرّب صورة أخرى.');
+                logoFile.value = '';
+            }
         });
 
         // Drag & drop
@@ -544,26 +521,17 @@
         }
 
         function validateStep2() {
-            let ok = true;
-            const user = document.getElementById('inp-username').value.trim();
-            const pwd  = document.getElementById('inp-pwd').value;
-            const pwd2 = document.getElementById('inp-pwd2').value;
-
-            if (!user) { showErr('err-username', true); ok = false; } else showErr('err-username', false);
-            if (!pwd || pwd.length < 6) { showErr('err-pwd', true); ok = false; } else showErr('err-pwd', false);
-            if (pwd !== pwd2) { showErr('err-pwd2', true); ok = false; } else showErr('err-pwd2', false);
-            return ok;
+            // حساب المدير لا يُنشأ قبل موافقة مالك النظام.
+            return true;
         }
 
         function buildSummary() {
-            const name= document.getElementById('inp-name').value.trim();
-            const phone= document.getElementById('inp-phone').value.trim();
-            const user= document.getElementById('inp-username').value.trim();
-            const full= document.getElementById('inp-fullname').value.trim() || user;
+            const name = document.getElementById('inp-name').value.trim();
+            const phone = document.getElementById('inp-phone').value.trim();
 
-            document.getElementById('sum-name').textContent  = name  || 'ـ';
+            document.getElementById('sum-name').textContent = name || 'ـ';
             document.getElementById('sum-phone').textContent = phone || 'غير محدد';
-            document.getElementById('sum-user').textContent  = full + ' (' + user + ')';
+            document.getElementById('sum-user').textContent = 'سيُنشأ بعد موافقة مالك النظام';
             if (base64Logo) document.getElementById('sum-logo').src = base64Logo;
         }
 
@@ -577,9 +545,6 @@
             const phone   = document.getElementById('inp-phone').value.trim();
             const tax     = document.getElementById('inp-tax').value.trim();
             const footer  = document.getElementById('inp-footer').value.trim();
-            const user    = document.getElementById('inp-username').value.trim();
-            const full    = document.getElementById('inp-fullname').value.trim() || 'مدير النظام';
-            const pwd     = document.getElementById('inp-pwd').value;
 
             // 1. Save restaurant_settings (same format as settings.js)
             const settings = {
@@ -590,11 +555,17 @@
             };
             localStorage.setItem('restaurant_settings', JSON.stringify(settings));
 
-            // 2. Save admin password (login.js reads this)
-            localStorage.setItem('admin_pwd', pwd);
-            localStorage.setItem('admin_username', user);
+            // 2. Remove legacy local administrator credentials.
+            // Passwords and manager privileges are created only through Firebase
+            // after the system owner approves the activation request.
+            localStorage.removeItem('admin_pwd');
+            localStorage.removeItem('admin_username');
+            localStorage.removeItem('employees_data');
+            localStorage.removeItem('setup_admin');
+            localStorage.removeItem('admin_fullname');
+            localStorage.removeItem('mc_cloud_identity_ready');
 
-            // 3. Create system_roles (مدير نظام role)
+            // 3. Keep only the local permission template; no user credentials.
             const adminRole = {
                 id: '1',
                 name: 'مدير نظام',
@@ -608,28 +579,14 @@
                 localStorage.setItem('system_roles', JSON.stringify([adminRole]));
             }
 
-            // 4. Create first employee to be able to login
-            const firstEmp = {
-                id: '1',
-                name: full,
-                role: '1', // Matches the admin role above
-                phone: phone,
-                pinCode: pwd // Make the password act as PIN code initially
-            };
-            if (!localStorage.getItem('employees_data')) {
-                localStorage.setItem('employees_data', JSON.stringify([firstEmp]));
-            }
-
-            // 5. Log this setup completion
+            // 4. Restaurant setup is complete; the first cloud manager is pending.
             localStorage.setItem('setup_complete', '1');
-            localStorage.setItem('setup_admin', user);
-            localStorage.setItem('admin_fullname', full);
+            localStorage.setItem('setup_pending_manager', '1');
 
             try {
                 const { ipcRenderer } = require('electron');
                 ipcRenderer.send('license-mark-setup-complete', {
                     restaurantName: name,
-                    adminUsername: user,
                 });
             } catch (_) {}
 
@@ -646,7 +603,7 @@
                 // Fill done preview
                 if (base64Logo) document.getElementById('done-logo').src = base64Logo;
                 document.getElementById('done-name').textContent = name;
-                document.getElementById('done-user').textContent = user + ' • ' + full;
+                document.getElementById('done-user').textContent = 'بانتظار موافقة مالك النظام';
 
                 // Countdown redirect
                 let c = 3;

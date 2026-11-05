@@ -25,13 +25,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             settings = JSON.parse(localStorage.getItem('restaurant_settings') || '{}');
         } catch (_) {}
         return {
-            restaurantName: settings.name || '',
-            branch: settings.branch || '',
-            phone: settings.phone || '',
-            tax: settings.tax || '',
-            adminUsername: localStorage.getItem('admin_username') || '',
-            adminFullName: localStorage.getItem('setup_admin') || '',
-            restaurantSettings: localStorage.getItem('restaurant_settings') || '',
+            restaurantName: String(settings.name || '').trim().slice(0, 120),
+            branch: String(settings.branch || '').trim().slice(0, 120),
+            phone: String(settings.phone || '').trim().slice(0, 40),
+            tax: String(settings.tax || '').trim().slice(0, 40),
         };
     }
 
@@ -78,6 +75,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             elTrialEnd.textContent = info.trialEndsAtLabel || '—';
             if (info.canLogin) {
                 btnLogin.style.display = 'flex';
+                btnLogin.innerHTML = info.managerProvisioned
+                    ? '<i class="ph ph-sign-in"></i> الدخول للنظام'
+                    : '<i class="ph ph-user-plus"></i> إنشاء حساب المدير';
             }
         } catch (e) {
             setMsg(e.message, 'err');
@@ -106,8 +106,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } catch (_) {}
                 setMsg(
                     r.offline
-                        ? 'بدأت التجربة محلياً. يُفضّل الاتصال بالإنترنت خلال 3 أيام للتوثيق.'
-                        : 'تم بدء التجربة وتوثيق المنشأة بنجاح.',
+                        ? 'بدأت التجربة محلياً مؤقتاً. اتصل بالإنترنت لإرسال طلب الاعتماد إلى مالك النظام.'
+                        : 'تم إرسال طلب التجربة إلى مالك النظام. بعد الموافقة سيصلك رمز إنشاء حساب المدير.',
                     'ok'
                 );
                 btnLogin.style.display = 'flex';
@@ -173,11 +173,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     btnLogin.addEventListener('click', async () => {
-        const access = await ipcRenderer.invoke('license-evaluate-access');
-        if (access.ok) {
-            window.location.href = 'login.html';
-        } else {
-            setMsg(access.message || 'لا يمكن الدخول حالياً.', 'err');
+        try {
+            await ipcRenderer.invoke('license-refresh-manual');
+            const access = await ipcRenderer.invoke('license-evaluate-access');
+            if (!access.ok) {
+                setMsg(access.message || 'لا يمكن الدخول حالياً.', 'err');
+                return;
+            }
+
+            const info = await ipcRenderer.invoke('license-get-info');
+            if (info.tenantId) localStorage.setItem('mc_tenant_id', info.tenantId);
+            window.location.href = info.managerProvisioned === true
+                ? 'login.html'
+                : 'manager-setup.html';
+        } catch (error) {
+            setMsg(error.message || 'تعذر التحقق من اعتماد الجهاز.', 'err');
         }
     });
 

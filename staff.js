@@ -425,16 +425,21 @@ const photoPreview = document.getElementById('avatar-preview');
 let currentAvatarBase64 = '';
 
 if (photoInput) {
-    photoInput.addEventListener('change', (e) => {
+    photoInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function (evt) {
-            currentAvatarBase64 = evt.target.result;
+        try {
+            const compressed = await window.MCImageTools.compressImage(file, {
+                maxWidth: 512, maxHeight: 512, maxBytes: 300 * 1024, quality: 0.82
+            });
+            currentAvatarBase64 = compressed.dataUrl;
             photoPreview.src = currentAvatarBase64;
             photoPreview.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
+        } catch (error) {
+            console.error('[Image] Employee avatar compression failed:', error);
+            alert(error.message || 'تعذر ضغط صورة الموظف. جرّب صورة أخرى.');
+            photoInput.value = '';
+        }
     });
 }
 
@@ -828,7 +833,7 @@ window.openFullProfile = function (id) {
         document.getElementById('ne-start').value = emp.startDate || '';
         document.getElementById('ne-notes').value = emp.notes || '';
         document.getElementById('ne-username').value = emp.username || '';
-        document.getElementById('ne-password').value = emp.password || '';
+        document.getElementById('ne-password').value = '';
         if (emp.avatar) {
             photoPreview.src = emp.avatar;
             photoPreview.style.display = 'block';
@@ -1275,15 +1280,36 @@ window.openAdvanceModalForCurrent = function () {
 document.getElementById('form-new-emp')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // منع الإرسال المزدوج
     const submitBtn = e.target.querySelector('button[type="submit"]');
     if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> جاري الحفظ...';
     }
 
+    let newlyAddedEmployeeId = null;
+
     try {
         const editId = e.target.dataset.editId;
+        const existingEmp = editId ? db.employees.find((item) => item.id === editId) : null;
+        const usernameInput = document.getElementById('ne-username').value.trim();
+        const passwordInput = document.getElementById('ne-password').value;
+
+        if (!existingEmp && Boolean(usernameInput) !== Boolean(passwordInput)) {
+            throw new Error('لإنشاء حساب دخول سحابي، أدخل اسم المستخدم وكلمة المرور معاً.');
+        }
+        if (existingEmp && !existingEmp.cloudUid && passwordInput && !usernameInput) {
+            throw new Error('أدخل اسم المستخدم مع كلمة المرور لإنشاء الحساب السحابي.');
+        }
+
+        if (existingEmp?.cloudUid) {
+            if (usernameInput && usernameInput !== existingEmp.username) {
+                throw new Error('لا يمكن تغيير اسم المستخدم بعد إنشاء حساب Firebase.');
+            }
+            if (passwordInput) {
+                throw new Error('تغيير كلمة مرور حساب الموظف يتم من خلال إجراء إعادة تعيين مستقل، وليس من نموذج تعديل البيانات.');
+            }
+        }
+
         const empData = {
             id: editId || 'EMP-' + Math.floor(Math.random() * 90000 + 10000),
             name: document.getElementById('ne-name').value.trim(),
@@ -1297,32 +1323,86 @@ document.getElementById('form-new-emp')?.addEventListener('submit', async (e) =>
             salary: Number(document.getElementById('ne-salary').value) || 0,
             startDate: document.getElementById('ne-start').value || new Date().toISOString().split('T')[0],
             notes: document.getElementById('ne-notes').value.trim(),
-            username: document.getElementById('ne-username').value.trim() || undefined,
-            password: document.getElementById('ne-password').value.trim() || undefined,
-            loans: editId ? (db.employees.find(e => e.id === editId)?.loans || 0) : 0,
-            status: 'active',
-            avatar: currentAvatarBase64
+            username: existingEmp?.username || usernameInput || undefined,
+            cloudUid: existingEmp?.cloudUid || undefined,
+            loans: existingEmp ? (existingEmp.loans || 0) : 0,
+            status: existingEmp?.status || 'active',
+            avatar: currentAvatarBase64 || existingEmp?.avatar || '',
         };
 
+        let rolePermissions = {};
+        try {
+            const roles = JSON.parse(localStorage.getItem('system_roles') || '[]');
+            const role = roles.find((item) => item.id === empData.role || item.name === empData.role);
+            rolePermissions = role?.perms || {};
+        } catch (_) {}
+
         if (editId) {
-            const idx = db.employees.findIndex(e => e.id === editId);
+            if (empData.cloudUid) {
+                const { updateEmployeeAccount } = require('./cloud/auth-service');
+                await updateEmployeeAccount({
+                    uid: empData.cloudUid,
+                    displayName: empData.name,
+                    jobRole: empData.role,
+                    permissions: rolePermissions,
+                    status: empData.status,
+                });
+            } else if (usernameInput && passwordInput) {
+                const { createEmployeeAccount } = require('./cloud/auth-service');
+                const cloud = await createEmployeeAccount({
+                    username: usernameInput,
+                    password: passwordInput,
+                    displayName: empData.name,
+                    employeeId: empData.id,
+                    jobRole: empData.role,
+                    permissions: rolePermissions,
+                });
+                empData.cloudUid = cloud.uid;
+                empData.username = cloud.username;
+            }
+
+            const idx = db.employees.findIndex((item) => item.id === editId);
             if (idx !== -1) db.employees[idx] = empData;
+            await persistDb();
         } else {
             db.employees.push(empData);
+            newlyAddedEmployeeId = empData.id;
+            await persistDb();
+
+            if (usernameInput && passwordInput) {
+                try {
+                    const { createEmployeeAccount } = require('./cloud/auth-service');
+                    const cloud = await createEmployeeAccount({
+                        username: usernameInput,
+                        password: passwordInput,
+                        displayName: empData.name,
+                        employeeId: empData.id,
+                        jobRole: empData.role,
+                        permissions: rolePermissions,
+                    });
+                    empData.cloudUid = cloud.uid;
+                    empData.username = cloud.username;
+                    await persistDb();
+                } catch (cloudError) {
+                    db.employees = db.employees.filter((item) => item.id !== newlyAddedEmployeeId);
+                    await persistDb();
+                    newlyAddedEmployeeId = null;
+                    throw new Error('تم إلغاء حفظ الموظف لأن إنشاء حساب Firebase لم يكتمل: ' + (cloudError.message || 'خطأ غير معروف'));
+                }
+            }
         }
 
-        await persistDb();
         e.target.reset();
         currentAvatarBase64 = '';
         delete e.target.dataset.editId;
 
-        // تأجيل إعادة التحميل لمنع الشاشة السوداء
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-                // استخدام Toast بدلاً من alert لمنع تجميد حقول الإدخال في Electron
                 const toast = document.createElement('div');
                 toast.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#10b981;color:white;padding:12px 24px;border-radius:8px;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,0.3);font-weight:bold;transition:0.5s;';
-                toast.innerHTML = `<i class="ph ph-check-circle"></i> تم ${editId ? 'تعديل' : 'حفظ'} ملف الموظف "${empData.name}" بنجاح!`;
+                toast.textContent = empData.cloudUid
+                    ? 'تم حفظ ملف الموظف وإنشاء حسابه السحابي بنجاح.'
+                    : 'تم حفظ ملف الموظف. لم يتم إنشاء حساب دخول له.';
                 document.body.appendChild(toast);
                 setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3000);
 
@@ -1331,7 +1411,7 @@ document.getElementById('form-new-emp')?.addEventListener('submit', async (e) =>
         });
     } catch (error) {
         console.error('Error saving employee:', error);
-        alert('حدث خطأ أثناء حفظ بيانات الموظف');
+        alert(error.message || 'حدث خطأ أثناء حفظ بيانات الموظف');
     } finally {
         if (submitBtn) {
             submitBtn.disabled = false;

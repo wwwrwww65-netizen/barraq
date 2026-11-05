@@ -426,21 +426,20 @@ document.addEventListener('DOMContentLoaded', () => {
         handleFiles(files);
     }
 
-    function handleFiles(files) {
+    async function handleFiles(files) {
         if (!files || files.length === 0) return;
         const file = files[0];
-        
-        if (!file.type.startsWith('image/')) {
-            alert('الرجاء رفع صورة فقط');
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onloadend = function() {
-            base64Logo = reader.result;
+        try {
+            const compressed = await window.MCImageTools.compressImage(file, {
+                maxWidth: 900, maxHeight: 900, maxBytes: 420 * 1024, quality: 0.84
+            });
+            base64Logo = compressed.dataUrl;
             previewLogo.src = base64Logo;
             previewLogo.style.display = 'block';
+        } catch (error) {
+            console.error('[Image] Restaurant logo compression failed:', error);
+            alert(error.message || 'تعذر ضغط الشعار. جرّب صورة أخرى.');
+            if (logoInput) logoInput.value = '';
         }
     }
 
@@ -1235,7 +1234,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { /* ignore */ }
 
         const wrap = document.getElementById('settings-factory-reset-wrap');
-        if (wrap && cUser.role === 'المدير العام') {
+        if (wrap && cUser.cloudRole === 'manager') {
             wrap.style.display = '';
         }
 

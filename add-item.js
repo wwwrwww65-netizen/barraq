@@ -90,27 +90,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             fileInput.click();
         });
 
-        fileInput.addEventListener('change', (e) => {
+        fileInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
-            if(file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 400; 
-                        const scaleSize = MAX_WIDTH / img.width;
-                        canvas.width = MAX_WIDTH;
-                        canvas.height = img.height * scaleSize;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        
-                        localItemImg = canvas.toDataURL('image/jpeg', 0.6); 
-                        uploadPlaceholder.innerHTML = `<img src="${localItemImg}" style="width:100%; height:150px; object-fit:cover; border-radius:8px;">`;
-                    };
-                    img.src = event.target.result;
-                };
-                reader.readAsDataURL(file);
+            if (!file) return;
+            try {
+                const compressed = await window.MCImageTools.compressImage(file, {
+                    maxWidth: 900, maxHeight: 900, maxBytes: 420 * 1024, quality: 0.84
+                });
+                localItemImg = compressed.dataUrl;
+                uploadPlaceholder.innerHTML = `<img src="${localItemImg}" alt="صورة الصنف" style="width:100%; height:150px; object-fit:cover; border-radius:8px;">`;
+            } catch (error) {
+                console.error('[Image] Product compression failed:', error);
+                alert(error.message || 'تعذر ضغط الصورة. جرّب صورة أخرى.');
+                fileInput.value = '';
             }
         });
     }

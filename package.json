@@ -39,7 +39,8 @@
       "!tests/**/*",
       "!test-results/**/*",
       "!scripts/**/*",
-      "!admin-dashboard.html"
+      "!admin-dashboard.html",
+      "!firebase-service-account.json"
     ],
     "extraResources": [
       {
@@ -65,11 +66,13 @@
     "vitest": "^3.0.5"
   },
   "dependencies": {
+    "@firebase/app": "^0.16.5",
+    "@firebase/auth": "^1.13.9",
+    "@firebase/firestore": "^4.19.1",
     "@fontsource/cairo": "^5.2.7",
     "@phosphor-icons/web": "^2.1.2",
     "better-sqlite3": "^12.8.0",
     "chart.js": "^4.5.1",
-    "firebase-admin": "^13.10.0",
     "googleapis": "^169.0.0",
     "html2canvas": "^1.4.1",
     "qrcode": "^1.5.4",

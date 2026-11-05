@@ -7,9 +7,11 @@ const {
   screen,
   globalShortcut,
   Menu,
+  safeStorage,
 } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 // ══════════════════════════════════════════════════════════════════════
 // الرسوميات والأداء (يجب قبل app.whenReady())
@@ -1848,6 +1850,151 @@ function setupLicenseIpc() {
   });
 }
 
+function setupCloudAuthCacheIpc() {
+  const cacheFile = path.join(app.getPath('userData'), 'cloud-auth-cache.enc');
+  const { normalizeUsername } = require('./cloud/username-identity');
+
+  function readCache() {
+    if (!fs.existsSync(cacheFile)) return { version: 1, accounts: {} };
+    const encrypted = fs.readFileSync(cacheFile);
+    const parsed = JSON.parse(safeStorage.decryptString(encrypted));
+    if (!parsed || parsed.version !== 1 || !parsed.accounts || typeof parsed.accounts !== 'object') {
+      throw new Error('ملف الدخول المحلي غير صالح.');
+    }
+    return parsed;
+  }
+
+  function writeCache(data) {
+    const encrypted = safeStorage.encryptString(JSON.stringify(data));
+    const tempFile = cacheFile + '.tmp';
+    fs.writeFileSync(tempFile, encrypted);
+    try { fs.rmSync(cacheFile, { force: true }); } catch (_) {}
+    fs.renameSync(tempFile, cacheFile);
+  }
+
+  function accountKey(tenantId, username) {
+    return crypto.createHash('sha256')
+      .update(String(tenantId))
+      .update('\0')
+      .update(String(username))
+      .digest('hex');
+  }
+
+  ipcMain.handle('cloud-cache-credentials', async (_event, payload = {}) => {
+    try {
+      if (!safeStorage.isEncryptionAvailable()) {
+        return { ok: false, code: 'encryption-unavailable' };
+      }
+
+      const username = normalizeUsername(payload.username);
+      const password = String(payload.password ?? '');
+      const profile = payload.profile && typeof payload.profile === 'object' ? payload.profile : {};
+      const tenantId = String(profile.tenantId ?? '').trim();
+
+      if (!password || password.length > 128 || !tenantId || !profile.uid) {
+        return { ok: false, code: 'invalid-payload' };
+      }
+      if (!['manager', 'employee'].includes(profile.role)) {
+        return { ok: false, code: 'invalid-role' };
+      }
+
+      const salt = crypto.randomBytes(16);
+      const hash = crypto.scryptSync(password, salt, 64, {
+        N: 1 << 15,
+        r: 8,
+        p: 1,
+        maxmem: 64 * 1024 * 1024,
+      });
+      const safeProfile = {
+        uid: String(profile.uid),
+        tenantId,
+        username,
+        displayName: String(profile.displayName || username).slice(0, 100),
+        role: profile.role,
+        jobRole: String(profile.jobRole || '').slice(0, 80),
+        employeeId: String(profile.employeeId || '').slice(0, 80),
+        permissions: profile.permissions && typeof profile.permissions === 'object'
+          ? profile.permissions
+          : {},
+        status: 'active',
+      };
+
+      const data = readCache();
+      data.accounts[accountKey(tenantId, username)] = {
+        username,
+        tenantId,
+        salt: salt.toString('base64'),
+        hash: hash.toString('base64'),
+        profile: safeProfile,
+        cachedAt: Date.now(),
+      };
+
+      const entries = Object.entries(data.accounts)
+        .sort((a, b) => Number(b[1].cachedAt || 0) - Number(a[1].cachedAt || 0))
+        .slice(0, 100);
+      data.accounts = Object.fromEntries(entries);
+      writeCache(data);
+
+      return { ok: true, cachedAt: Date.now() };
+    } catch (error) {
+      console.error('[Cloud auth cache] Save failed:', error.message);
+      return { ok: false, code: 'cache-save-failed' };
+    }
+  });
+
+  ipcMain.handle('cloud-offline-authenticate', async (_event, payload = {}) => {
+    try {
+      if (!safeStorage.isEncryptionAvailable() || !fs.existsSync(cacheFile)) {
+        return { ok: false, reason: 'not-cached' };
+      }
+
+      const username = normalizeUsername(payload.username);
+      const tenantId = String(payload.tenantId ?? '').trim();
+      const password = String(payload.password ?? '');
+      if (!tenantId || !password) return { ok: false, reason: 'invalid' };
+
+      const data = readCache();
+      const record = data.accounts[accountKey(tenantId, username)];
+      if (!record || record.profile.status !== 'active') {
+        return { ok: false, reason: 'not-cached' };
+      }
+
+      const salt = Buffer.from(record.salt, 'base64');
+      const expected = Buffer.from(record.hash, 'base64');
+      const actual = crypto.scryptSync(password, salt, expected.length, {
+        N: 1 << 15,
+        r: 8,
+        p: 1,
+        maxmem: 64 * 1024 * 1024,
+      });
+
+      if (expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) {
+        return { ok: false, reason: 'invalid' };
+      }
+
+      return {
+        ok: true,
+        offline: true,
+        cachedAt: Number(record.cachedAt || 0),
+        profile: record.profile,
+      };
+    } catch (error) {
+      console.warn('[Cloud auth cache] Offline verification failed:', error.message);
+      return { ok: false, reason: 'cache-unavailable' };
+    }
+  });
+
+  ipcMain.handle('cloud-clear-auth-cache', async () => {
+    try {
+      fs.rmSync(cacheFile, { force: true });
+      fs.rmSync(cacheFile + '.tmp', { force: true });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  });
+}
+
 app.on('before-quit', () => {
   try {
     licenseManager.recordShutdown();
@@ -1857,6 +2004,7 @@ app.on('before-quit', () => {
 
 app.whenReady().then(() => {
   setupLicenseIpc();
+  setupCloudAuthCacheIpc();
 
   // ══════════════════════════════════════════════════════════════
   // 🚀 استراتيجية الفتح السريع — نفس نهج VS Code و Spotify و Discord

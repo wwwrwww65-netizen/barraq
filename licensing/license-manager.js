@@ -167,34 +167,17 @@ class LicenseManager {
   async updateRestaurantInfo(info) {
     if (!info) return;
     let changed = false;
-    // نقبل أي قيمة حتى لو كانت فارغة (ما عدا undefined)
     if (info.restaurantName !== undefined && this.cache.restaurantName !== info.restaurantName) {
-      this.cache.restaurantName = info.restaurantName; changed = true;
+      this.cache.restaurantName = info.restaurantName;
+      changed = true;
     }
     if (info.phone !== undefined && this.cache.phone !== info.phone) {
-      this.cache.phone = info.phone; changed = true;
+      this.cache.phone = info.phone;
+      changed = true;
     }
-    if (info.adminUsername !== undefined && this.cache.adminUsername !== info.adminUsername) {
-      this.cache.adminUsername = info.adminUsername; changed = true;
-    }
-
-    if (changed) {
-      this.saveCache();
-    }
-    // نرسل للفايربيس دائماً إذا كان Hub (حتى لو لم يتغير الكاش)
-    // لأن السبب قد يكون أن الفايربيس ليس فيه البيانات بعد
-    if (this.isThisDeviceHub()) {
-      const hubId = this.cache.hubDeviceId || getDeviceId();
-      const patch = {};
-      if (this.cache.restaurantName) patch.restaurantName = this.cache.restaurantName;
-      if (this.cache.phone) patch.phone = this.cache.phone;
-      if (this.cache.adminUsername) patch.adminUsername = this.cache.adminUsername;
-      if (Object.keys(patch).length > 0) {
-        try {
-          await firebase.upsertLicenseForHub(this.app, hubId, patch);
-        } catch (_) {}
-      }
-    }
+    if (changed) this.saveCache();
+    // Customer clients never write license documents. The next activation
+    // request carries the restaurant details for owner review in Firebase.
   }
 
   writeTrialToDatabase(blob) {
@@ -434,13 +417,10 @@ class LicenseManager {
       settings = JSON.parse(lsSnapshot.restaurant_settings || '{}');
     } catch (_) {}
     return {
-      restaurantName: settings.name || lsSnapshot.restaurantName || '',
-      branch: settings.branch || '',
-      phone: settings.phone || '',
-      tax: settings.tax || '',
-      adminUsername: lsSnapshot.admin_username || '',
-      adminFullName: lsSnapshot.admin_fullname || lsSnapshot.setup_admin || '',
-      restaurantSettings: lsSnapshot.restaurant_settings || '',
+      restaurantName: String(settings.name || lsSnapshot.restaurantName || '').slice(0, 120),
+      branch: String(settings.branch || '').slice(0, 120),
+      phone: String(settings.phone || '').slice(0, 40),
+      tax: String(settings.tax || '').slice(0, 40),
     };
   }
 
@@ -491,17 +471,8 @@ class LicenseManager {
     };
 
     try {
-      await firebase.upsertLicenseForHub(this.app, deviceId, {
-        status: 'trial',
-        allowedClients: 2,
-        trialStartedAt: new Date(startedAt),
-        trialEndsAt: new Date(trialEndsAt),
-        restaurantName: restaurantPackage.restaurantName || '',
-        adminUsername: restaurantPackage.adminUsername || '',
-      });
       await firebase.createActivationRequest(this.app, req);
       this.markFirebaseSyncOk({
-        licenseDocId: this.cache.licenseDocId,
         allowedClients: 2,
         status: 'trial',
         hubDeviceId: deviceId,
@@ -509,7 +480,7 @@ class LicenseManager {
       });
       return { success: true };
     } catch (e) {
-      this.markFirebaseSyncOk({ status: 'trial', allowedClients: 2, hubDeviceId: deviceId, isHub: true });
+      // The local seven-day trial remains usable without network access.
       return { success: true, offline: true, warning: e.message };
     }
   }
@@ -556,30 +527,19 @@ class LicenseManager {
   async checkStatusFromCloud() {
     const deviceId = this.cache.hubDeviceId || getDeviceId();
     try {
-      let lic = await firebase.refreshLicenseFromCloud(this.app, deviceId);
-      
-      // ─── رفع الأجهزة القديمة (Migration) ───
-      if (!lic && (this.cache.status === 'active' || this.cache.status === 'trial')) {
-        const setupData = this.getSetupData() || {};
-        await firebase.upsertLicenseForHub(this.app, deviceId, {
-          status: this.cache.status,
-          allowedClients: this.cache.allowedClients || 1,
-          restaurantName: this.cache.restaurantName || setupData.restaurantName || 'عميل قديم (تم ترقيته لفايربيس)',
-          adminUsername: setupData.adminUsername || '',
-          phone: setupData.phone || '',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        });
-        lic = await firebase.refreshLicenseFromCloud(this.app, deviceId);
-      }
+      const lic = await firebase.refreshLicenseFromCloud(this.app, deviceId);
 
       if (!lic) {
-        return { success: true, found: false };
+        // A missing new-format document is not proof that an older local
+        // license expired. Keep local state intact and let the owner migrate
+        // the installation into DeviceLicenses explicitly.
+        this.markFirebaseSyncOk({ lastCloudLicenseFound: false });
+        return { success: true, found: false, status: this.cache.status || 'none' };
       }
+
       const allowed = Number(lic.allowedClients) || 1;
       const status = lic.status || 'trial';
 
-      // إذا رجعت الحالة إلى active أو trial — ارفع الحظر المحلي
       if (status === 'active' || status === 'trial') {
         if (this.killed) {
           console.log('[License] Kill switch lifted — status restored to:', status);
@@ -593,6 +553,10 @@ class LicenseManager {
         allowedClients: allowed,
         status,
         hubDeviceId: lic.hubDeviceId || deviceId,
+        tenantId: lic.tenantId || this.cache.tenantId || '',
+        managerProvisioned: lic.managerProvisioned === true,
+        managerUid: lic.managerUid || this.cache.managerUid || '',
+        lastCloudLicenseFound: true,
       });
 
       if (status === 'expired' || status === 'blocked') {
@@ -710,60 +674,38 @@ class LicenseManager {
   }
 
   async backgroundSyncTick() {
-    // لا نوقف المزامنة حتى لو الحالة المحلية blocked/expired
-    // حتى نتمكن من اكتشاف أي تغيير في Firebase (رفع الحظر أو تأكيده)
-    const isHub = this.isThisDeviceHub();
+    // Read-only synchronization: customer installations never write licenses.
     try {
-      const hubId = this.cache.hubDeviceId || getDeviceId();
-      // لا نزامن الأجهزة المرتبطة إلا إذا كان النظام Hub ونشطاً
-      if (isHub && this.isLicenseActive()) {
-        const linked = this.getLinkedDevicesList();
-        await firebase.syncLinkedDevicesToLicense(this.app, hubId, linked);
-      }
-      let lic = await firebase.refreshLicenseFromCloud(this.app, hubId);
-      
-      // ─── رفع الأجهزة القديمة (Migration) ───
-      const isExistingCustomer = this.isSetupComplete() && !this.cache.status;
-      const hasLocalStatus = this.cache.status === 'active' || this.cache.status === 'trial';
+      const deviceId = this.cache.hubDeviceId || getDeviceId();
+      const lic = await firebase.refreshLicenseFromCloud(this.app, deviceId);
 
-      if (!lic && (hasLocalStatus || isExistingCustomer)) {
-        // إنشاء سجل جديد في فايربيس للعميل القديم
-        const uploadStatus = this.cache.status || 'trial';
-        const setupData = this.getSetupData() || {};
-        await firebase.upsertLicenseForHub(this.app, hubId, {
-          status: uploadStatus,
-          allowedClients: this.cache.allowedClients || 1,
-          restaurantName: this.cache.restaurantName || setupData.restaurantName || '',
-          adminUsername: this.cache.adminUsername || setupData.adminUsername || '',
-          phone: this.cache.phone || setupData.phone || '',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        });
-        lic = await firebase.refreshLicenseFromCloud(this.app, hubId);
-      } else if (lic) {
-        // السجل موجود — نحدّث فقط الحقول الناقصة (phone, restaurantName, adminUsername)
-        const patch = {};
-        if (!lic.phone && this.cache.phone) patch.phone = this.cache.phone;
-        if (!lic.restaurantName && this.cache.restaurantName) patch.restaurantName = this.cache.restaurantName;
-        if (!lic.adminUsername && this.cache.adminUsername) patch.adminUsername = this.cache.adminUsername;
-        if (Object.keys(patch).length > 0) {
-          await firebase.upsertLicenseForHub(this.app, hubId, patch);
-        }
+      if (!lic) {
+        // Do not expire legacy local licenses merely because their new-format
+        // DeviceLicenses document has not yet been migrated by the owner.
+        this.markFirebaseSyncOk({ lastCloudLicenseFound: false });
+        return;
       }
 
-      if (lic) {
-        const newStatus = lic.status || this.cache.status;
-        this.markFirebaseSyncOk({
-          allowedClients: Number(lic.allowedClients) || this.cache.allowedClients || 1,
-          status: newStatus,
-          licenseDocId: lic.id,
-        });
-        if (newStatus === 'expired' || newStatus === 'blocked') {
-          this.executeKillSwitch(newStatus);
-        }
+      const newStatus = lic.status || this.cache.status;
+      this.markFirebaseSyncOk({
+        allowedClients: Number(lic.allowedClients) || this.cache.allowedClients || 1,
+        status: newStatus,
+        licenseDocId: lic.id,
+        hubDeviceId: lic.hubDeviceId || deviceId,
+        tenantId: lic.tenantId || this.cache.tenantId || '',
+        managerProvisioned: lic.managerProvisioned === true,
+        managerUid: lic.managerUid || this.cache.managerUid || '',
+        lastCloudLicenseFound: true,
+      });
+
+      if (newStatus === 'expired' || newStatus === 'blocked') {
+        this.executeKillSwitch(newStatus);
+      } else if (newStatus === 'active' || newStatus === 'trial') {
+        this.killed = false;
+        this.cache.timeTamperDetected = false;
       }
-    } catch (e) {
-      console.warn('[License] backgroundSync:', e.message);
+    } catch (error) {
+      console.warn('[License] backgroundSync:', error.message);
     }
   }
 
@@ -842,6 +784,9 @@ class LicenseManager {
       status,
       statusLabel: labels[status] || status,
       allowedClients: this.cache.allowedClients ?? 1,
+      tenantId: this.cache.tenantId || '',
+      managerProvisioned: this.cache.managerProvisioned === true,
+      managerUid: this.cache.managerUid || '',
       trialEndsAt: trial ? trial.trialEndsAt : null,
       trialEndsAtLabel,
       canLogin: access.ok,

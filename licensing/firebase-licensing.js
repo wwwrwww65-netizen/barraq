@@ -1,157 +1,92 @@
 /**
- * Firestore — مجموعتا Licenses و Activation_Requests
- * يتطلب: firebase-service-account.json في userData أو جذر المشروع
+ * Firebase client-side licensing bridge.
+ *
+ * Customer installations use only the public Firebase Web SDK. They may
+ * submit activation requests and read the single license document addressed
+ * to their device ID. They cannot create, edit, list, or delete licenses.
+ * The system owner approves requests and manages DeviceLicenses in Firebase
+ * Console; no service-account key is distributed with the application.
  */
-const fs = require('fs');
-const path = require('path');
-const { COL_LICENSES, COL_ACTIVATION_REQUESTS } = require('./constants');
+'use strict';
 
-let admin = null;
+const { getApps, initializeApp } = require('@firebase/app');
+const {
+  getFirestore,
+  doc,
+  getDoc,
+  collection,
+  addDoc,
+  serverTimestamp,
+} = require('@firebase/firestore');
+const firebaseConfig = require('../firebase-config');
+const { COL_ACTIVATION_REQUESTS } = require('./constants');
+
+const APP_NAME = 'mister-casher-licensing';
+const COL_DEVICE_LICENSES = 'DeviceLicenses';
+
+let appInstance = null;
 let db = null;
 let initError = null;
 
-function findServiceAccountPath(app) {
-  const candidates = [];
-  if (app) {
-    candidates.push(path.join(app.getPath('userData'), 'firebase-service-account.json'));
-  }
-  candidates.push(path.join(__dirname, '..', 'firebase-service-account.json'));
-  candidates.push(path.join(process.cwd(), 'firebase-service-account.json'));
-  for (const p of candidates) {
-    if (fs.existsSync(p)) return p;
-  }
-  return null;
-}
-
-function initFirebase(app) {
+function initFirebase() {
   if (db) return { ok: true, db };
   if (initError) return { ok: false, error: initError };
 
   try {
-    admin = require('firebase-admin');
-  } catch (e) {
-    initError = 'firebase-admin غير مثبت. شغّل: npm install firebase-admin';
-    return { ok: false, error: initError };
-  }
-
-  const saPath = findServiceAccountPath(app);
-  if (!saPath) {
-    initError =
-      'ملف firebase-service-account.json غير موجود. انسخه من Firebase Console إلى AppData/baraaq/';
-    return { ok: false, error: initError };
-  }
-
-  try {
-    const serviceAccount = JSON.parse(fs.readFileSync(saPath, 'utf8'));
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-      });
-    }
-    db = admin.firestore();
+    appInstance = getApps().find((item) => item.name === APP_NAME)
+      || initializeApp(firebaseConfig, APP_NAME);
+    db = getFirestore(appInstance);
     return { ok: true, db };
-  } catch (e) {
-    initError = e.message;
+  } catch (error) {
+    initError = error && error.message ? error.message : 'تعذر تهيئة Firebase.';
     return { ok: false, error: initError };
   }
 }
 
-function ts() {
-  return admin.firestore.FieldValue.serverTimestamp();
-}
-
-async function createActivationRequest(app, data) {
-  const init = initFirebase(app);
+async function createActivationRequest(_electronApp, data) {
+  const init = initFirebase();
   if (!init.ok) throw new Error(init.error);
-  const ref = await db.collection(COL_ACTIVATION_REQUESTS).add({
+
+  const ref = await addDoc(collection(db, COL_ACTIVATION_REQUESTS), {
     ...data,
-    createdAt: ts(),
-    updatedAt: ts(),
+    status: 'pending',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   });
   return ref.id;
 }
 
-async function getLicenseByDeviceId(app, deviceId) {
-  const init = initFirebase(app);
+async function getLicenseByDeviceId(_electronApp, deviceId) {
+  const cleanId = String(deviceId ?? '').trim();
+  if (!cleanId) throw new Error('معرّف الجهاز غير صالح.');
+
+  const init = initFirebase();
   if (!init.ok) throw new Error(init.error);
 
-  // نبحث أولاً بـ hubDeviceId (الحقل المعياري)
-  let snap = await db
-    .collection(COL_LICENSES)
-    .where('hubDeviceId', '==', deviceId)
-    .limit(1)
-    .get();
-
-  // إذا لم نجد، نبحث بـ deviceId (الحقل البديل في Firebase)
-  if (snap.empty) {
-    snap = await db
-      .collection(COL_LICENSES)
-      .where('deviceId', '==', deviceId)
-      .limit(1)
-      .get();
-  }
-
-  if (snap.empty) return null;
-  const doc = snap.docs[0];
-  return { id: doc.id, ...doc.data() };
+  const snapshot = await getDoc(doc(db, COL_DEVICE_LICENSES, cleanId));
+  if (!snapshot.exists()) return null;
+  return { id: snapshot.id, ...snapshot.data() };
 }
 
-async function getLicenseByDocId(app, docId) {
-  const init = initFirebase(app);
-  if (!init.ok) throw new Error(init.error);
-  const doc = await db.collection(COL_LICENSES).doc(docId).get();
-  if (!doc.exists) return null;
-  return { id: doc.id, ...doc.data() };
+async function getLicenseByDocId(_electronApp, docId) {
+  return getLicenseByDeviceId(_electronApp, docId);
 }
 
-async function upsertLicenseForHub(app, hubDeviceId, patch) {
-  const init = initFirebase(app);
-  if (!init.ok) throw new Error(init.error);
-
-  const existing = await getLicenseByDeviceId(app, hubDeviceId);
-  if (existing) {
-    await db.collection(COL_LICENSES).doc(existing.id).set(
-      { ...patch, hubDeviceId, updatedAt: ts() },
-      { merge: true }
-    );
-    return existing.id;
-  }
-
-  const ref = await db.collection(COL_LICENSES).add({
-    hubDeviceId,
-    status: 'trial',
-    allowedClients: 1,
-    linkedDevices: [],
-    ...patch,
-    createdAt: ts(),
-    updatedAt: ts(),
-  });
-  return ref.id;
+async function upsertLicenseForHub() {
+  throw new Error('تعديل أو إصدار التراخيص متاح لمالك النظام فقط من Firebase Console.');
 }
 
-async function syncLinkedDevicesToLicense(app, hubDeviceId, linkedDevices) {
-  const init = initFirebase(app);
-  if (!init.ok) throw new Error(init.error);
-  const lic = await getLicenseByDeviceId(app, hubDeviceId);
-  if (!lic) return false;
-  await db.collection(COL_LICENSES).doc(lic.id).set(
-    {
-      linkedDevices,
-      lastDevicesSyncAt: ts(),
-      updatedAt: ts(),
-    },
-    { merge: true }
-  );
-  return true;
+async function syncLinkedDevicesToLicense() {
+  // Device linking remains local/LAN. Customer clients must not write licenses.
+  return false;
 }
 
-async function refreshLicenseFromCloud(app, hubDeviceId) {
-  return getLicenseByDeviceId(app, hubDeviceId);
+async function refreshLicenseFromCloud(electronApp, deviceId) {
+  return getLicenseByDeviceId(electronApp, deviceId);
 }
 
 module.exports = {
   initFirebase,
-  findServiceAccountPath,
   createActivationRequest,
   getLicenseByDeviceId,
   getLicenseByDocId,

@@ -1,0 +1,224 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profilePath(uid) {
+      return /databases/$(database)/documents/userProfiles/$(uid);
+    }
+
+    function hasProfile(uid) {
+      return exists(profilePath(uid));
+    }
+
+    function activeManager(tenantId) {
+      return signedIn()
+        && hasProfile(request.auth.uid)
+        && get(profilePath(request.auth.uid)).data.role == 'manager'
+        && get(profilePath(request.auth.uid)).data.status == 'active'
+        && get(profilePath(request.auth.uid)).data.tenantId == tenantId;
+    }
+
+    function validManagerBootstrap(token, uid, tenantId, deviceId) {
+      let bootstrapPath = /databases/$(database)/documents/managerBootstrap/$(token);
+      return existsAfter(bootstrapPath)
+        && getAfter(bootstrapPath).data.status == 'claimed'
+        && getAfter(bootstrapPath).data.claimedBy == uid
+        && getAfter(bootstrapPath).data.tenantId == tenantId
+        && getAfter(bootstrapPath).data.deviceId == deviceId;
+    }
+
+    // Activation requests: unauthenticated create only; owner reviews in Console.
+    match /Activation_Requests/{requestId} {
+      allow create: if request.resource.data.status == 'pending'
+        && request.resource.data.type in [
+          'trial_start',
+          'permanent_activate',
+          'extra_devices',
+          'upgrade_request'
+        ]
+        && request.resource.data.deviceId is string
+        && request.resource.data.deviceId.size() >= 8
+        && request.resource.data.deviceId.size() <= 128
+        && request.resource.data.hubDeviceId is string
+        && request.resource.data.hubDeviceId.size() >= 8
+        && request.resource.data.clientDeviceId is string
+        && request.resource.data.clientDeviceId.size() >= 8
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.keys().hasOnly([
+          'type',
+          'deviceId',
+          'hubDeviceId',
+          'clientDeviceId',
+          'status',
+          'currentAllowed',
+          'requestedDevicesCount',
+          'restaurantName',
+          'branch',
+          'phone',
+          'tax',
+          'message',
+          'createdAt',
+          'updatedAt'
+        ])
+        && (!('restaurantName' in request.resource.data)
+          || (request.resource.data.restaurantName is string
+            && request.resource.data.restaurantName.size() <= 120))
+        && (!('branch' in request.resource.data)
+          || (request.resource.data.branch is string
+            && request.resource.data.branch.size() <= 120))
+        && (!('phone' in request.resource.data)
+          || (request.resource.data.phone is string
+            && request.resource.data.phone.size() <= 40))
+        && (!('tax' in request.resource.data)
+          || (request.resource.data.tax is string
+            && request.resource.data.tax.size() <= 40))
+        && (!('message' in request.resource.data)
+          || (request.resource.data.message is string
+            && request.resource.data.message.size() <= 300))
+        && (!('currentAllowed' in request.resource.data)
+          || (request.resource.data.currentAllowed is int
+            && request.resource.data.currentAllowed >= 1
+            && request.resource.data.currentAllowed <= 100))
+        && (!('requestedDevicesCount' in request.resource.data)
+          || (request.resource.data.requestedDevicesCount is int
+            && request.resource.data.requestedDevicesCount >= 1
+            && request.resource.data.requestedDevicesCount <= 100));
+
+      allow get, list, update, delete: if false;
+    }
+
+    // A device can read only its exact license. The first approved manager
+    // atomically marks managerProvisioned=true while creating their profile.
+    match /DeviceLicenses/{deviceId} {
+      allow get: if resource.data.deviceId == deviceId
+        && resource.data.status in ['trial', 'active', 'blocked', 'expired'];
+
+      allow update: if signedIn()
+        && resource.data.deviceId == deviceId
+        && resource.data.managerProvisioned == false
+        && resource.data.status in ['trial', 'active']
+        && request.resource.data.deviceId == resource.data.deviceId
+        && request.resource.data.tenantId == resource.data.tenantId
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.managerProvisioned == true
+        && request.resource.data.managerUid == request.auth.uid
+        && request.resource.data.managerProvisionedAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['managerProvisioned', 'managerUid', 'managerProvisionedAt'])
+        && existsAfter(profilePath(request.auth.uid))
+        && getAfter(profilePath(request.auth.uid)).data.role == 'manager'
+        && getAfter(profilePath(request.auth.uid)).data.status == 'active'
+        && getAfter(profilePath(request.auth.uid)).data.tenantId == resource.data.tenantId
+        && getAfter(profilePath(request.auth.uid)).data.deviceId == deviceId;
+
+      allow list, create, delete: if false;
+    }
+
+    // Owner-created, one-time approval capability. Token is the document ID.
+    match /managerBootstrap/{token} {
+      allow get: if resource.data.status == 'approved'
+        && resource.data.claimedBy == null
+        && resource.data.expiresAt is timestamp
+        && resource.data.expiresAt > request.time
+        && resource.data.deviceId is string;
+
+      allow list, create, delete: if false;
+
+      allow update: if signedIn()
+        && resource.data.status == 'approved'
+        && resource.data.claimedBy == null
+        && resource.data.expiresAt is timestamp
+        && resource.data.expiresAt > request.time
+        && request.resource.data.status == 'claimed'
+        && request.resource.data.claimedBy == request.auth.uid
+        && request.resource.data.tenantId == resource.data.tenantId
+        && request.resource.data.deviceId == resource.data.deviceId
+        && request.resource.data.expiresAt == resource.data.expiresAt
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'claimedBy', 'claimedAt'])
+        && request.resource.data.claimedAt == request.time;
+    }
+
+    // Own profile + same-tenant manager access only.
+    match /userProfiles/{uid} {
+      allow get: if signedIn()
+        && (uid == request.auth.uid || activeManager(resource.data.tenantId));
+
+      allow list: if signedIn()
+        && activeManager(resource.data.tenantId);
+
+      // First manager: claim the approved token in the same transaction.
+      allow create: if signedIn()
+        && uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.role == 'manager'
+        && request.resource.data.status == 'active'
+        && request.resource.data.tenantId is string
+        && request.resource.data.deviceId is string
+        && request.resource.data.bootstrapId is string
+        && validManagerBootstrap(
+          request.resource.data.bootstrapId,
+          request.auth.uid,
+          request.resource.data.tenantId,
+          request.resource.data.deviceId
+        );
+
+      // Managers may create employee profiles only inside their tenant.
+      allow create: if signedIn()
+        && activeManager(request.resource.data.tenantId)
+        && request.resource.data.uid == uid
+        && request.resource.data.role == 'employee'
+        && request.resource.data.status == 'active'
+        && request.resource.data.createdBy == request.auth.uid;
+
+      // Managers may update employee details/status, but cannot promote employees.
+      allow update: if signedIn()
+        && activeManager(resource.data.tenantId)
+        && resource.data.role == 'employee'
+        && request.resource.data.role == 'employee'
+        && request.resource.data.tenantId == resource.data.tenantId
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            'displayName',
+            'jobRole',
+            'permissions',
+            'status',
+            'avatar',
+            'updatedAt'
+          ]);
+
+      allow update: if signedIn()
+        && uid == request.auth.uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.tenantId == resource.data.tenantId
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['displayName', 'lastSeenAt']);
+
+      allow delete: if false;
+    }
+
+    match /tenants/{tenantId}/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /Licenses/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /System_Tests/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

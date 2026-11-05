@@ -389,13 +389,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     (function applyDiscountPermission() {
         try {
             const cUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-            // Super Admin always has access
-            if (cUser.role === 'المدير العام') return;
+            // Only the Firebase manager role bypasses employee permissions.
+            if (cUser.cloudRole === 'manager') return;
 
             const systemRoles = JSON.parse(localStorage.getItem('system_roles') || '[]');
             const myRole = systemRoles.find(r => r.name === cUser.role);
+            const rolePerms = cUser.cloudRole === 'employee' && cUser.permissions
+                ? cUser.permissions
+                : (myRole && myRole.perms);
 
-            const hasDiscountPerm = myRole && myRole.perms && myRole.perms['pos_discount'] === true;
+            const hasDiscountPerm = rolePerms && rolePerms['pos_discount'] === true;
 
             if (!hasDiscountPerm) {
                 // Hide the discount row entirely

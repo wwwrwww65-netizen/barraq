@@ -111,12 +111,15 @@ if (!_isPublicAuthPage) {
 
             // 1. الحماية الصارمة للمسارات (Route Guard)
             if (currentPageKey) {
-                if (cUser.role !== 'المدير العام') {
+                if (cUser.cloudRole !== 'manager') {
                     const systemRoles = JSON.parse(localStorage.getItem('system_roles') || '[]');
-                    const myRole = systemRoles.find(r => r.name === cUser.role);
+                    const localRole = systemRoles.find(r => r.name === cUser.role);
+                    const rolePerms = cUser.cloudRole === 'employee' && cUser.permissions
+                        ? cUser.permissions
+                        : (localRole && localRole.perms);
                     const requiredPerm = pageMap[currentPageKey];
 
-                    if (!myRole || !myRole.perms || myRole.perms[requiredPerm] !== true) {
+                    if (requiredPerm === 'sys_admin' || !rolePerms || rolePerms[requiredPerm] !== true) {
                         alert('📛 تنبيه أمني: حسابك لا يملك صلاحية الدخول لهذه الشاشة. يرجى مراجعة الإدارة.');
                         if (!path.endsWith('index.html')) {
                             window.location.href = 'index.html';
@@ -129,11 +132,14 @@ if (!_isPublicAuthPage) {
 
             // 2. وظيفة إخفاء العناصر غير المصرح بها من الواجهة (UI Filtering)
             window.syncGlobalPermissionsUI = function() {
-                if (cUser.role === 'المدير العام') return; // المدير يرى كل شيء
+                if (cUser.cloudRole === 'manager') return; // المدير المعتمد يرى كل شيء
 
                 const systemRoles = JSON.parse(localStorage.getItem('system_roles') || '[]');
-                const myRole = systemRoles.find(r => r.name === cUser.role);
-                if (!myRole || !myRole.perms) return;
+                const localRole = systemRoles.find(r => r.name === cUser.role);
+                const rolePerms = cUser.cloudRole === 'employee' && cUser.permissions
+                    ? cUser.permissions
+                    : (localRole && localRole.perms);
+                if (!rolePerms) return;
 
                 // فحص كل الروابط في الصفحة (Sidebar + Dashboard Buttons)
                 const links = document.querySelectorAll('a[href]');
@@ -143,7 +149,7 @@ if (!_isPublicAuthPage) {
                     
                     if (targetPage) {
                         const requiredPerm = pageMap[targetPage];
-                        if (myRole.perms[requiredPerm] !== true) {
+                        if (requiredPerm === 'sys_admin' || rolePerms[requiredPerm] !== true) {
                             // إخفاء العنصر تماماً
                             link.style.display = 'none';
                             
@@ -1265,8 +1271,8 @@ window.syncGlobalSettings = function() {
         const knownUsers = [];
 
         // 1. المدير الرئيسي
-        const adminUser = localStorage.getItem('admin_username') || 'admin';
-        knownUsers.push({ username: adminUser, display: 'المدير العام System Admin', role: 'المدير العام' });
+        const adminUser = currentUser?.authUsername || localStorage.getItem('admin_username') || 'admin';
+        knownUsers.push({ username: adminUser, display: currentUser?.name || 'المدير العام', role: 'المدير العام' });
 
         // 2. الموظفون من system_roles
         try {
@@ -1290,7 +1296,7 @@ window.syncGlobalSettings = function() {
         } catch(e) {}
 
         // فلتر: استبعاد المستخدم الحالي
-        const currentUsername = currentUser?.username || '';
+        const currentUsername = currentUser?.authUsername || currentUser?.username || '';
         const others = knownUsers.filter(u =>
             u.username !== currentUsername &&
             u.display  !== currentUsername

@@ -236,7 +236,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentUser = { name: 'كاشير', role: 'كاشير' };
     try { currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}'); } catch(e) {}
 
-    const isAdmin = ['المدير العام', 'مدير', 'أدمن', 'admin', 'manager'].includes(currentUser.role);
+    const isAdmin = currentUser.cloudRole === 'manager'
+        || (!currentUser.cloudRole && ['المدير العام', 'مدير', 'أدمن', 'admin', 'manager'].includes(currentUser.role));
 
     // ── Setup UI based on role ───────────────────────────────────────
     if (!isAdmin) {

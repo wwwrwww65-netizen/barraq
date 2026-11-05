@@ -255,7 +255,9 @@
                     const u = JSON.parse(userRaw);
                     document.querySelector('.user-name').textContent = u.username || u.name;
                     document.querySelector('.user-role').textContent = u.role;
-                    if(u.role !== 'مدير' && u.role !== 'Admin' && u.role !== 'المدير العام' && u.role !== 'مدير نظام') {
+                    const isCloudManager = u.cloudRole === 'manager';
+                    const isLegacyAdmin = !u.cloudRole && ['مدير', 'Admin', 'المدير العام', 'مدير نظام'].includes(u.role);
+                    if(!isCloudManager && !isLegacyAdmin) {
                         document.body.innerHTML = `
                             <div style="height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0b1120; color: white;">
                                 <i class="ph-fill ph-lock-key" style="font-size: 80px; color: #ef4444; margin-bottom: 20px;"></i>

@@ -66,6 +66,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // صورة القسم: ضغط تلقائي وتحويل إلى Base64 قبل الحفظ المحلي.
+    let selectedCategoryImage = editingCategory && editingCategory.image ? editingCategory.image : '';
+    const categoryFileInput = document.querySelector('.upload-card input[type="file"]');
+    const categoryUploadZone = categoryFileInput ? categoryFileInput.closest('.image-upload-zone') : null;
+    const categoryUploadPlaceholder = categoryUploadZone ? categoryUploadZone.querySelector('.upload-placeholder') : null;
+
+    if (selectedCategoryImage && categoryUploadPlaceholder) {
+        categoryUploadPlaceholder.innerHTML = `<img src="${selectedCategoryImage}" alt="صورة القسم" style="width:100%;max-height:180px;object-fit:cover;border-radius:10px;">`;
+    }
+
+    if (categoryFileInput) {
+        if (categoryUploadZone) {
+            categoryUploadZone.addEventListener('click', (event) => {
+                if (event.target !== categoryFileInput) categoryFileInput.click();
+            });
+        }
+        categoryFileInput.addEventListener('change', async (event) => {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            try {
+                const compressed = await window.MCImageTools.compressImage(file, {
+                    maxWidth: 1200, maxHeight: 800, maxBytes: 420 * 1024, quality: 0.84
+                });
+                selectedCategoryImage = compressed.dataUrl;
+                if (categoryUploadPlaceholder) {
+                    categoryUploadPlaceholder.innerHTML = `<img src="${selectedCategoryImage}" alt="صورة القسم" style="width:100%;max-height:180px;object-fit:cover;border-radius:10px;">`;
+                }
+            } catch (error) {
+                console.error('[Image] Category image compression failed:', error);
+                alert(error.message || 'تعذر ضغط صورة القسم. جرّب صورة أخرى.');
+                categoryFileInput.value = '';
+            }
+        });
+    }
+
     updateSelectedPrintersText();
 
     const form = document.querySelector('.add-item-form');
@@ -116,6 +151,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             nameAr: nameAr,
             nameEn: nameEn,
             desc: desc,
+            image: selectedCategoryImage,
             icon: selectedIcon,
             color: selectedColor,
             showPos: showPos,
